@@ -15,8 +15,6 @@
 #include "OsiPackedMatrix.hpp"
 #include "OsiRowCutDebugger.hpp"
 #include "CglProbing.hpp"
-#include "ekk_c_api.h"
-
 using std::max;
 using std::min;
 
@@ -332,13 +330,69 @@ static void tighten2(double *colLower, double * colUpper,
 void CglProbing::generateCuts(const OsiSolverInterface & si, 
 						OsiCuts & cs ) const
 {
+  int nRows=si.getNumRows(); 
+  double * rowLower = new double[nRows+1];
+  double * rowUpper = new double[nRows+1];
+
+  int nCols=si.getNumCols(); 
+  double * colLower = new double[nCols];
+  double * colUpper = new double[nCols];
+
+  int ninfeas=gutsOfGenerateCuts(si,cs,rowLower,rowUpper,colLower,colUpper);
+  if (ninfeas) {
+    // generate infeasible cut and return
+    OsiRowCut rc;
+    rc.setLb(DBL_MAX);
+    rc.setUb(0.0);   
+    cs.insert(rc);
+#ifdef CGL_DEBUG
+    const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
+    if (debugger&&debugger->onOptimalPath(si))
+      assert(!debugger->invalidCut(rc)); 
+#endif
+  }
+  delete [] rowLower;
+  delete [] rowUpper;
+  delete [] colLower;
+  delete [] colUpper;
+}
+int CglProbing::generateCutsAndModify(const OsiSolverInterface & si, 
+						OsiCuts & cs )
+{
+  int saveMode = mode_;
+  if (!mode_)
+    mode_=1;
+  int nRows=si.getNumRows(); 
+  double * rowLower = new double[nRows+1];
+  double * rowUpper = new double[nRows+1];
+
+  int nCols=si.getNumCols(); 
+  double * colLower = new double[nCols];
+  double * colUpper = new double[nCols];
+
+  int ninfeas=gutsOfGenerateCuts(si,cs,rowLower,rowUpper,colLower,colUpper);
+
+  mode_=saveMode;
+  // move bounds so can be used by user
+  delete [] rowLower_;
+  delete [] rowUpper_;
+  delete [] colLower_;
+  delete [] colUpper_;
+  rowLower_ = rowLower;
+  rowUpper_ = rowUpper;
+  colLower_	= colLower;
+  colUpper_	= colUpper;
+  return ninfeas;
+}
+int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si, 
+			      OsiCuts & cs ,
+			      double * rowLower, double * rowUpper,
+			      double * colLower, double * colUpper) const
+{
   // Get basic problem information
   int nRows;
   
   OsiPackedMatrix * rowCopy;
-
-  double * rowLower;
-  double * rowUpper;
 
   // get branch and bound cutoff
   double cutoff;
@@ -347,10 +401,6 @@ void CglProbing::generateCuts(const OsiSolverInterface & si,
   int mode=mode_;
   
   int nCols=si.getNumCols(); 
-  double * colLower = new double[nCols];
-  double * colUpper = new double[nCols];
-
-  
 
   // get integer variables
   char * intVar = new char[nCols];
@@ -364,6 +414,9 @@ void CglProbing::generateCuts(const OsiSolverInterface & si,
       intVar[i]=0;
     }
   }
+
+  int ninfeas=0;
+
   // see if using cached copy or not
   if (!numberRows_) {
     // create from current
@@ -389,16 +442,12 @@ void CglProbing::generateCuts(const OsiSolverInterface & si,
       rowCopy->appendRow(n,columns,elements);
       delete [] columns;
       delete [] elements;
-      rowLower = new double[nRows+1];
-      rowUpper = new double[nRows+1];
       memcpy(rowLower,si.getRowLower(),nRows*sizeof(double));
       memcpy(rowUpper,si.getRowUpper(),nRows*sizeof(double));
       rowLower[nRows]=-DBL_MAX;
       rowUpper[nRows]=cutoff;
       nRows++;
     } else {
-      rowLower = new double[nRows];
-      rowUpper = new double[nRows];
       memcpy(rowLower,si.getRowLower(),nRows*sizeof(double));
       memcpy(rowUpper,si.getRowUpper(),nRows*sizeof(double));
     }
@@ -448,20 +497,46 @@ void CglProbing::generateCuts(const OsiSolverInterface & si,
   const double * rowElements = rowCopy->getElements();
   
   if (mode) {
-    int ninfeas= tighten(colLower, colUpper, column, rowElements,
+    ninfeas= tighten(colLower, colUpper, column, rowElements,
 			 rowStart, rowLength, rowLower, rowUpper,
 			 nRows, nCols, intVar, 2, primalTolerance_);
-    if (ninfeas) {
-      // generate infeasible cut and return
-      OsiRowCut rc;
-      rc.setLb(DBL_MAX);
-      rc.setUb(0.0);   
-      cs.insert(rc);
-#ifdef CGL_DEBUG
-      if (debugger) 
-	assert(!debugger->invalidCut(rc)); 
-#endif
-    } else {
+    if (!ninfeas) {
+      // create column cuts where integer bounds have changed
+      {
+	const double * lower = si.getColLower();
+	const double * upper = si.getColUpper();
+	const double * colsol = si.getColSolution();
+	int numberChanged=0,ifCut=0;
+	OsiPackedVector lbs;
+	OsiPackedVector ubs;
+	for (i = 0; i < nCols; ++i) {
+	  if (intVar[i]) {
+	    if (colUpper[i]<upper[i]-1.0e-8) {
+	      if (colUpper[i]<colsol[i]-1.0e-8)
+		ifCut=1;
+	      ubs.insert(i,colUpper[i]);
+	      numberChanged++;
+	    }
+	    if (colLower[i]>lower[i]+1.0e-8) {
+	      if (colLower[i]>colsol[i]+1.0e-8)
+		ifCut=1;
+	      lbs.insert(i,colLower[i]);
+	      numberChanged++;
+	    }
+	  }
+	}
+	if (numberChanged) {
+	  OsiColCut cc;
+	  cc.setUbs(ubs);
+	  cc.setLbs(lbs);
+	  if (ifCut) {
+	    cc.setEffectiveness(100.0);
+	  } else {
+	    cc.setEffectiveness(1.0e-5);
+	  }
+	  cs.insert(cc);
+	}
+      }
       int * markR = new int [nRows];
       double * movement=new double [2*nCols];
       double * minR = new double [nRows];
@@ -475,7 +550,6 @@ void CglProbing::generateCuts(const OsiSolverInterface & si,
       // decide what to look at
       if (mode==1) {
 	const double * colsol = si.getColSolution();
-#if 1
 	double_int_pair * array = (double_int_pair *) movement;
 	for (i=0;i<nCols;i++) {
 	  if (intVar[i]&&colUpper[i]-colLower[i]>1.0e-8) {
@@ -491,20 +565,6 @@ void CglProbing::generateCuts(const OsiSolverInterface & si,
 	for (i=0;i<nLook;i++) {
 	  look[i]=array[i].sequence;
 	}
-#else
-	for (i=0;i<nCols;i++) {
-	  if (intVar[i]&&colUpper[i]-colLower[i]>1.0e-8) {
-	    double away = fabs(0.5-(colsol[i]-floor(colsol[i])));
-	    if (away<0.49999) {
-	      movement[nLook]=away;
-	      look[nLook++]=i;
-	    }
-	  }
-	}
-        printf("replace with std::sort\n");
-	ekk_sortOnDouble(movement,look,nLook);
-	nLook=min(nLook,maxProbe_);
-#endif
       } else {
 	for (i=0;i<nCols;i++) {
 	  if (intVar[i]&&colUpper[i]-colLower[i]>1.0e-8) {
@@ -516,17 +576,6 @@ void CglProbing::generateCuts(const OsiSolverInterface & si,
 		     rowLower, rowUpper,
 		     intVar, minR, maxR, markR, movement,
 		     look,nLook);
-      if (ninfeas) {
-	// generate infeasible cut and return
-	OsiRowCut rc;
-	rc.setLb(DBL_MAX);
-	rc.setUb(0.0);   
-#ifdef CGL_DEBUG
-	if (debugger) 
-	  assert(!debugger->invalidCut(rc)); 
-#endif
-	cs.insert(rc);
-      }
       delete [] look;
       delete [] markR;
       delete [] movement;
@@ -559,21 +608,11 @@ void CglProbing::generateCuts(const OsiSolverInterface & si,
 	     rowStart, rowLength, rowLower, rowUpper,
 	     minR , maxR , markR, nRows, nCols);
     OsiCuts csNew;
-    int ninfeas= probe(si, debugger, csNew, colLower, colUpper, rowCopy,
+    ninfeas= probe(si, debugger, csNew, colLower, colUpper, rowCopy,
 		   rowLower, rowUpper,
 		       intVar, minR, maxR, markR, movement,
 		   look,nLook);
-    if (ninfeas) {
-      // generate infeasible cut and return
-      OsiRowCut rc;
-      rc.setLb(DBL_MAX);
-      rc.setUb(0.0);   
-#ifdef CGL_DEBUG
-      if (debugger) 
-	assert(!debugger->invalidCut(rc)); 
-#endif
-      cs.insert(rc);
-    } else {
+    if (!ninfeas) {
       // go through row cuts
       int nCuts = csNew.sizeRowCuts();
       int iCut;
@@ -819,11 +858,8 @@ void CglProbing::generateCuts(const OsiSolverInterface & si,
     delete [] minR;
     delete [] maxR;
   }
-  delete [] rowLower;
-  delete [] rowUpper;
-  delete [] colLower;
-  delete [] colUpper;
   delete [] intVar;
+  return ninfeas;
 }
 // Does probing and adding cuts
 int CglProbing::probe( const OsiSolverInterface & si, 
@@ -2080,6 +2116,16 @@ const double * CglProbing::tightLower() const
 const double * CglProbing::tightUpper() const
 {
   return colUpper_;
+}
+// Returns relaxed Row lower
+const double * CglProbing::relaxedRowLower() const
+{
+  return rowLower_;
+}
+// Returns relaxed Row upper
+const double * CglProbing::relaxedRowUpper() const
+{
+  return rowUpper_;
 }
 
 

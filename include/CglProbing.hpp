@@ -78,9 +78,14 @@ public:
       2) Look at all integer variables, using current bounds.
          Probing will be done on all
 
+	 ** If generateCutsAndModify is used then new relaxed
+	 row bounds and tightened coliumn bounds are generated
+	 Returns number of infeasibilities 
   */
   virtual void generateCuts( const OsiSolverInterface & si, 
 			     OsiCuts & cs) const;
+  int generateCutsAndModify( const OsiSolverInterface & si, 
+			     OsiCuts & cs);
   //@}
 
   /**@name snapshot */
@@ -106,6 +111,14 @@ public:
   const double * tightLower() const;
   /// Upper
   const double * tightUpper() const;
+  //@}
+
+  /**@name Get possible freed up row bounds - only valid after mode==3 */
+  //@{
+  /// Lower
+  const double * relaxedRowLower() const;
+  /// Upper
+  const double * relaxedRowUpper() const;
   //@}
 
   /**@name Change mode */
@@ -181,6 +194,12 @@ private:
 	     double * rowLower, double * rowUpper,
 	     char * intVar, double * minR, double * maxR, int * markR, 
 	     double * movement, int * look, int nlook) const;
+  /** Does most of work of generateCuts 
+      Returns number of infeasibilities */
+  int gutsOfGenerateCuts( const OsiSolverInterface & si, 
+			  OsiCuts & cs,
+			  double * rowLower, double * rowUpper,
+			  double * colLower, double * colUpper) const;
   //@}
 
   // Private member data

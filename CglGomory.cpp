@@ -21,7 +21,6 @@
 #endif
 #include "OsiWarmStartBasis.hpp"
 #include "CglGomory.hpp"
-#include "ekk_c_api.h"
 
 using std::min;
 
@@ -368,8 +367,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
     int iBasic=columnIsBasic[iColumn];
     double ratio=reducedValue/(1.0-reducedValue);
     if (iBasic>=0) {
-      int j;
 #ifdef CGL_DEBUG
+      int j;
       {
 	// put column into array
 	array.setVector(columnLength[iColumn],row+columnStart[iColumn],

@@ -45,6 +45,17 @@ XprIncDir := PROBE
 XprLibDir := PROBE
 XprLibName := libxosl.so libmp-opt.so
 
+# Clp
+#ClpIncDir := NONE
+ClpIncDir := PROBE
+ClpLibDir := PROBE
+ClpLibName := libclp.so
+
+# See if zlib there (should we go for bzlib as well?)
+ZlibIncDir := PROBE
+ZlibLibDir := PROBE
+ZlibLibName := libz.so libz.a
+
 # Osi
 OsiIncDir := PROBE
 OsiLibDir := PROBE
@@ -60,6 +71,7 @@ MakefileDir := ../Common/make
 include ${MakefileDir}/Makefile.coin
 include ${MakefileDir}/Makefile.detectSolver
 include ${MakefileDir}/Makefile.detectOsi
+include ${MakefileDir}/Makefile.detectZlib
 
 ##############################################################################
 
