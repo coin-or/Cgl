@@ -26,14 +26,14 @@
 class CoinWarmStartBasis;
 
 #define DGG_DEBUG_DGG 1
-#define CGL_DEBUG
+//#define CGL_DEBUG
 #define  q_max  data->cparams.q_max
 #define  q_min  data->cparams.q_min
 #define  t_max  data->cparams.t_max
 #define  t_min  data->cparams.t_min
 #define  a_max  data->cparams.a_max
 
-#define talk true
+#define talk false // true
 
 
 const OsiSolverInterface * six;
