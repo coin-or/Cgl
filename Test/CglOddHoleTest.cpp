@@ -53,11 +53,12 @@ CglOddHoleUnitTest(
     const int len[]={2,2,2};
     CoinPackedMatrix matrix(true,nRows,nCols,nEls,elem,row,start,len);
     const double sol[]={0.5,0.5,0.5};
+    const double dj[]={0,0,0};
     const int which[]={1,1,1};
     const int fixed[]={0,0,0};
     OsiCuts cs;
     CglOddHole test1;
-    test1.generateCuts(NULL,matrix,sol,cs,which,fixed,1);
+    test1.generateCuts(NULL,matrix,sol,dj,cs,which,fixed,true);
     CoinPackedVector check;
     int index[] = {0,1,2};
     double el[] = {1,1,1};
