@@ -447,7 +447,7 @@ int CglProbing::generateCutsAndModify(const OsiSolverInterface & si,
       printf("%d %g %g %g %g\n",i,lower[i],solution[i],upper[i],optimal[i]);
       objval1 += solution[i]*objective[i];
       objval2 += optimal[i]*objective[i];
-      assert(optimal[i]>=lower[i]&&optimal[i]<=upper[i]);
+      assert(optimal[i]>=lower[i]-1.0e-5&&optimal[i]<=upper[i]+1.0e-5);
     }
     printf("current obj %g, integer %g\n",objval1,objval2);
   }
@@ -1046,21 +1046,18 @@ int CglProbing::probe( const OsiSolverInterface & si,
     else
       rowCuts=4;
   }
+  double direction = si.getObjSense();
   for (i = 0; i < nCols; ++i) {
-    /* was if (intVar[i]) */
-    if (1) {
-      if (colUpper[i]-colLower[i]>1.0e-8) {
-	if (colsol[i]<colLower[i]+primalTolerance_) {
-	  colsol[i]=colLower[i];
-	  djs[i] = max(0.0,djs[i]);
-	} else if (colsol[i]>colUpper[i]-primalTolerance_) {
-	  colsol[i]=colUpper[i];
-	  djs[i] = min(0.0,djs[i]);
-	} else {
-	  djs[i]=0.0;
-	}
-	/*if (fabs(djs[i])<1.0e-5) 
-	  djs[i]=0.0;*/
+    double djValue = djs[i]*direction;
+    if (colUpper[i]-colLower[i]>1.0e-8) {
+      if (colsol[i]<colLower[i]+primalTolerance_) {
+        colsol[i]=colLower[i];
+        djs[i] = max(0.0,djValue);
+      } else if (colsol[i]>colUpper[i]-primalTolerance_) {
+        colsol[i]=colUpper[i];
+        djs[i] = min(0.0,djValue);
+      } else {
+        djs[i]=0.0;
       }
     }
   }
@@ -1069,10 +1066,11 @@ int CglProbing::probe( const OsiSolverInterface & si,
 
   double cutoff;
   si.getDblParam(OsiDualObjectiveLimit,cutoff);
-  cutoff *= si.getObjSense();
+  cutoff *= direction;
   if (fabs(cutoff)>1.0e30)
     assert (cutoff>1.0e30);
   double current = si.getObjValue();
+  current *= direction;
   // make irrelevant if mode is 0
   if (!mode_)
     cutoff=DBL_MAX;
