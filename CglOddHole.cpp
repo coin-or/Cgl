@@ -15,7 +15,7 @@
 #include "CoinPackedMatrix.hpp"
 #include "OsiRowCutDebugger.hpp"
 #include "CglOddHole.hpp"
-
+//#define CGL_DEBUG
 //-------------------------------------------------------------------------------
 // Generate three cycle cuts
 //------------------------------------------------------------------- 
@@ -460,13 +460,40 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 	    rc.setUb(DBL_MAX);
 	    rc.setLb(rhs);   
 	  }
-	  if (violation<minimumViolation_||
-	      ((double) ii) * minimumViolationPer_>violation||
-	      ii>maximumEntries_) {
+	  if (violation<minimumViolation_) {
 #ifdef CGL_DEBUG
 	    printf("why no cut\n");
 #endif
 	    good=false;
+	  } else {
+	    if (((double) ii) * minimumViolationPer_>violation||
+		ii>maximumEntries_) {
+#ifdef CGL_DEBUG
+	      printf("why no cut\n");
+#endif
+	      if (packed) {
+		// relax by taking out ones with solution 0.0
+		nincut=ii;
+		ii=0;
+		sum=0.0;
+		for (k=0;k<nincut;k++) {
+		  int jcol=candidate[k];
+		  if (solution[jcol]) {
+		    element[ii]=element[k];
+		    sum+=solution[jcol]*element[ii];
+		    candidate[ii++]=jcol;
+		  }
+		}
+		violation = sum-rhs;
+		if (violation<minimumViolation_||
+		    ((double) ii) * minimumViolationPer_>violation||
+		    ii>maximumEntries_) {
+		  good=false;
+		}
+	      } else { 
+		good=false;
+	      }
+	    }
 	  }
 	  if (good) {
 	    //this assumes not many cuts
@@ -759,4 +786,10 @@ CglOddHole::setMaximumEntries(int value)
 {
   if (value>2)
     maximumEntries_=value;
+}
+
+// This can be used to refresh any inforamtion
+void 
+CglOddHole::refreshSolver(OsiSolverInterface * solver)
+{
 }

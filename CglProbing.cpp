@@ -2278,8 +2278,7 @@ usingObjective_(false)
 //-------------------------------------------------------------------
 // Copy constructor 
 //-------------------------------------------------------------------
-CglProbing::CglProbing (
-                                                              const CglProbing & source)
+CglProbing::CglProbing (  const CglProbing & source)
                                                               :
   CglCutGenerator(source),
   primalTolerance_(source.primalTolerance_),
@@ -2404,4 +2403,10 @@ CglProbing::operator=(
     }
   }
   return *this;
+}
+
+/// This can be used to refresh any inforamtion
+void 
+CglProbing::refreshSolver(OsiSolverInterface * solver)
+{
 }

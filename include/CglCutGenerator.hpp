@@ -45,6 +45,9 @@ public:
 
   /// Destructor 
   virtual ~CglCutGenerator ();
+
+  /// This can be used to refresh any inforamtion
+  virtual void refreshSolver(OsiSolverInterface * solver) {};
   //@}
   
   // test this class
