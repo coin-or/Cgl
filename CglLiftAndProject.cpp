@@ -153,7 +153,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   // Mark end of BStarts
   //BStarts[twoM+1]=BStarts[twoM]+2;
 
-  BStarts[twoM+1]=BStarts[twoM]+BLengths[twoM];
+  BStarts[twoM]=BStarts[twoM-1]+BLengths[twoM-1];
 
   // Cols that will be deleted each iteration
   int BNumColsLessOne=BNumCols-1;
@@ -317,8 +317,9 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
     // (Could "insert". Seems inefficient)
     int v_0Indices[2]={j,nPlus1};
     int u_0Indices[1]={j};
-    OsiPackedVector  v_0(1,v_0Elements,v_0Indices);
-    OsiPackedVector  u_0(1,u_0Elements,u_0Indices);
+    // 
+    OsiPackedVector  v_0(2,v_0Indices,v_0Elements,false);
+    OsiPackedVector  u_0(1,u_0Indices,u_0Elements,false);
     coneSi->addCol(v_0,0,INFINITY,0);
     coneSi->addCol(u_0,0,INFINITY,x[j]);
     if(haveWarmStart) {
@@ -336,7 +337,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
       double * wstar = coneSi->getColSolution();
       CoinDisjointCopyN(wstar, m, ustar);
       Atilde->transposeTimes(ustar,alpha);
-      alpha[j]-=wstar[BNumCols-1]; 
+      alpha[j]+=wstar[BNumCols-1]; 
       
       // Are these buts guaranteed to be violated?
       // Not sure.
