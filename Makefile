@@ -117,10 +117,10 @@ install: libcgl
 	@echo "Installing include files..."
 	@mkdir -p ${InstallDir}/include
 # *FIXME* : do we _really_ need all the headers?
-	@cp -u include/*.hpp ../Common/include/*.hpp ${InstallDir}/include
+	@${CP} include/*.hpp ../Common/include/*.hpp ${InstallDir}/include
 	@echo "Installing libraries..."
 	@mkdir -p ${InstallDir}/lib
-	@cp -u $(TARGETDIR)/libcgl$(OptVersion)$(LIBEXT) ${InstallDir}/lib
+	@${CP} $(TARGETDIR)/libcgl$(OptVersion)$(LIBEXT) ${InstallDir}/lib
 	@rm -f ${InstallDir}/lib/libcgl$(LIBEXT)
 	@cd ${InstallDir}/lib; \
 		ln -s libcgl$(OptVersion)$(LIBEXT) libcgl$(LIBEXT)
