@@ -1261,6 +1261,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		int iClique = whichClique_[i];
 		for (int k=cliqueStart_[iClique];k<cliqueStart_[iClique+1];k++) {
 		  int kcol = cliqueEntry_[k].sequence;
+                  if (jcol==kcol)
+                    continue;
 		  int kway = cliqueEntry_[k].oneFixes;
 		  if (!markC[kcol]) {
 		    // not on list yet
@@ -1273,8 +1275,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      nstackC++;
 		      if (!kway) {
 			// going up
-			assert (djs[kcol]>=0.0);
-			objVal += djs[kcol];
+                        double solMovement = 1.0-colsol[kcol];
+                        if (solMovement>0.0001)
+                          assert (djs[kcol]>=0.0);
+			objVal += djs[kcol]*solMovement;
 			colLower[kcol]=1.0;
 			/* update immediately */
 			for (jj=columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
@@ -1311,8 +1315,11 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			}
 		      } else {
 			// going down
-			assert (djs[kcol]<=0.0);
-			objVal -= djs[kcol];
+                        double solMovement=0.0-colsol[kcol];
+                        if (solMovement<-0.0001) {
+                          assert (djs[kcol]<=0.0);
+                          objVal += djs[kcol]*solMovement;
+                        }
 			colUpper[kcol]=0.0;
 			/* update immediately */
 			for (jj=columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
