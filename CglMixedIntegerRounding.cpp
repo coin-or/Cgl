@@ -16,6 +16,7 @@
 
 //#include <cmath>
 //#include <cstdlib>
+#include <cassert>
 
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedMatrix.hpp"
