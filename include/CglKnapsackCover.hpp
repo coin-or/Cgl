@@ -13,7 +13,10 @@ class CglKnapsackCover : public CglCutGenerator {
 					const std::string mpdDir );
 
 public:
-  /**@name Generate Cuts */
+   /** A method to set which rows should be tested for knapsack covers */
+   void setTestedRowIndices(int num, const int* ind);
+
+   /**@name Generate Cuts */
   //@{
   /** Generate knapsack cover cuts for the model of the solver interface, si. 
       Insert the generated cuts into OsiCut, cs.
@@ -205,6 +208,10 @@ void liftUpDownAndUncomplementAndAdd(
   double onetol_;  
   /// Maximum in knapsack
   int maxInKnapsack_;
+   /** which rows to look at. If specified, only these rows will be considered
+       for generating knapsack covers. Otherwise all rows will be tried */
+   int numRowsToCheck_;
+   int* rowsToCheck_;
   //@}
 };
 

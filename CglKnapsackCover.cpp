@@ -43,7 +43,7 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
   // has a meaningful colsol.
   double * xstar= new double[nCols]; 
   const double *colsol = si.getColSolution(); 
-  int k; // dummy iterator variable
+  int k; 
   for (k=0; k<nCols; k++){
     xstar[k]=colsol[k];
     complement[k]=0;
@@ -51,10 +51,23 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
   
   // Main loop
   int rowIndex;
-  for (rowIndex=0; rowIndex<nRows; rowIndex++){
+  int numCheck = 0;
+  int* toCheck = 0;
+  if (!rowsToCheck_) {
+     toCheck = new int[nRows];
+     CoinIotaN(toCheck, nRows, 0);
+     numCheck = nRows;
+  } else {
+     numCheck = numRowsToCheck_;
+     toCheck = rowsToCheck_;
+  }
+  for (int ii=0; ii < numCheck; ++ii){
+     rowIndex = toCheck[ii];
+     if (rowIndex < 0 || rowIndex >= nRows)
+	continue;
 
 #ifdef PRINT_DEBUG
-    cout << "Processing row " << rowIndex << endl;
+    cout << "CGL: Processing row " << rowIndex << endl;
 #endif
     
     // Get a tight row 
@@ -71,6 +84,9 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
     // if (si.getMatrixByRow()->vectorSize(rowIndex)<3){
     if (si.getMatrixByRow()->getVectorSize(rowIndex)<2||
 	si.getMatrixByRow()->getVectorSize(rowIndex)>maxInKnapsack_){
+#ifdef PRINT_DEBUG
+    cout << "CGL: Skipping due to vector size" << si.getMatrixByRow()->getVectorSize(rowIndex) << endl;
+#endif
       continue;
     }
     
@@ -139,11 +155,13 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
 
     OsiPackedVector cover, remainder;  
 
+
     if (findGreedyCover(rowIndex, krow, b, xstar, cover, remainder) == 1){
 
       // Lift cover inequality and add to cut set 
       if (!liftAndUncomplementAndAdd(si.getRowUpper()[rowIndex], krow, b,
-				     complement, rowIndex, cover, remainder, cs)) {
+				     complement, rowIndex, cover, 
+				     remainder, cs)) {
 	// Reset local data and continue to the next iteration 
 	// of the rowIndex-loop
         // I am not sure this is needed but I am just being careful
@@ -157,6 +175,7 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
 	continue;
       }  
     }
+
 
     //////////////////////////////////////////////////////
     // Try to generate a violated                       //
@@ -172,7 +191,8 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
 
       // (Sequence Independent) Lift cover inequality and add to cut set 
       if (!liftAndUncomplementAndAdd(si.getRowUpper()[rowIndex], krow, b,
-				     complement, rowIndex, cover, remainder, cs)) {
+				     complement, rowIndex, cover, 
+				     remainder, cs)) {
 	// Reset local data and continue to the next iteration 
 	// of the rowIndex-loop
         // I am not sure this is needed but I am just being careful
@@ -186,13 +206,17 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
 	continue;
       }  
 
+      // Skip experiment for now...
+#if 0
       // experimenting here...
       // (Sequence Dependent) Lift cover inequality and add to cut set
       seqLiftAndUncomplementAndAdd(nCols, xstar, complement, rowIndex,
 				   krow.getNumElements(), b, cover, remainder,
 				   cs);
-
+#endif 
     }  
+
+
 
     //////////////////////////////////////////////////////
     // Try to generate cuts using covers of unsat       //
@@ -200,26 +224,29 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
     //////////////////////////////////////////////////////
     OsiPackedVector atOnes;
     OsiPackedVector fracCover; // different than cover
-
+    
     // reset the remainder
     remainder.setVector(0,NULL,NULL);
+    
 
     if (findJohnAndEllisCover(rowIndex, krow, b,
 			      xstar, fracCover, atOnes, remainder) == 1){
-
+      
       // experimenting here...
       // Sequence Dependent Lifting up on remainders and lifting down on the
       // atOnes 
       liftUpDownAndUncomplementAndAdd(nCols, xstar, complement, rowIndex,
 				      krow.getNumElements(), b, fracCover,
 				      atOnes, remainder, cs);
-    }  
+    }
+
 
     //////////////////////////////////////////////////////
     // Try to generate a violated                       //
     // minimal cover by considering the                 //
     // most violated cover problem                      //
     //////////////////////////////////////////////////////
+
 
     // reset cover and remainder
     cover.setVector(0,NULL,NULL);
@@ -290,11 +317,24 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
   }
   
   // Clean up: free allocated memory
+  if (toCheck != rowsToCheck_)
+     delete[] toCheck;
   delete[] xstar;
   delete[] complement;
  
 }
 
+void
+CglKnapsackCover::setTestedRowIndices(int num, const int* ind)
+{
+   if (rowsToCheck_)
+      delete[] rowsToCheck_;
+   numRowsToCheck_ = num;
+   if (num > 0) {
+      rowsToCheck_ = new int[num];
+      CoinCopyN(ind, num, rowsToCheck_);
+   }
+}
 
 //------------------------------------------------------------- 
 // Lift and uncomplement cut. Add cut to the cutset
@@ -2254,7 +2294,9 @@ CglKnapsackCover::CglKnapsackCover ()
 CglCutGenerator(),
 epsilon_(1.0e-08),
 onetol_(1-epsilon_),
-maxInKnapsack_(50)
+maxInKnapsack_(50),
+numRowsToCheck_(-1),
+rowsToCheck_(0)
 {
   // nothing to do here
 }
@@ -2266,8 +2308,14 @@ CglKnapsackCover::CglKnapsackCover (const CglKnapsackCover & source) :
    CglCutGenerator(source),
    epsilon_(source.epsilon_),
    onetol_(source.onetol_),
-   maxInKnapsack_(source.maxInKnapsack_)
+   maxInKnapsack_(source.maxInKnapsack_),
+   numRowsToCheck_(source.numRowsToCheck_),
+   rowsToCheck_(0)
 {
+   if (numRowsToCheck_ > 0) {
+      rowsToCheck_ = new int[numRowsToCheck_];
+      CoinCopyN(source.rowsToCheck_, numRowsToCheck_, rowsToCheck_);
+   }
   // Nothing to do here
 }
 
@@ -2276,6 +2324,7 @@ CglKnapsackCover::CglKnapsackCover (const CglKnapsackCover & source) :
 //-------------------------------------------------------------------
 CglKnapsackCover::~CglKnapsackCover ()
 {
+   delete[] rowsToCheck_;
   // Nothing to do here
 }
 
@@ -2283,14 +2332,21 @@ CglKnapsackCover::~CglKnapsackCover ()
 // Assignment operator 
 //-------------------------------------------------------------------
 CglKnapsackCover &
-CglKnapsackCover::operator=(
-                                         const CglKnapsackCover& rhs)
+CglKnapsackCover::operator=(const CglKnapsackCover& rhs)
 {
-  if (this != &rhs) {
-    CglCutGenerator::operator=(rhs);
-    epsilon_=rhs.epsilon_;
-    onetol_=rhs.onetol_;
-    maxInKnapsack_=rhs.maxInKnapsack_;
-  }
-  return *this;
+   if (this != &rhs) {
+      CglCutGenerator::operator=(rhs);
+      epsilon_=rhs.epsilon_;
+      onetol_=rhs.onetol_;
+      maxInKnapsack_=rhs.maxInKnapsack_;
+      delete[] rowsToCheck_;
+      numRowsToCheck_ = rhs.numRowsToCheck_;
+      if (numRowsToCheck_ > 0) {
+	 rowsToCheck_ = new int[numRowsToCheck_];
+	 CoinCopyN(rhs.rowsToCheck_, numRowsToCheck_, rowsToCheck_);
+      } else {
+	 rowsToCheck_ = 0;
+      }
+   }
+   return *this;
 }
