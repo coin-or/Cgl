@@ -6,6 +6,8 @@
 
 export CoinDir := $(shell cd ..; pwd)
 export MakefileDir := $(CoinDir)/Makefiles
+include ${MakefileDir}/Makefile.coin
+include ${MakefileDir}/Makefile.location
 
 ###############################################################################
 
@@ -30,5 +32,9 @@ unitTest: install
 
 clean: 
 	@rm -rf Junk
-	@rm -rf $(UNAME)
+	@rm -rf $(UNAME)*
 	@rm -rf dep
+	@rm -rf Test/Junk
+	@rm -rf Test/$(UNAME)*
+	@rm -rf Test/dep
+	@rm -f unitTest
