@@ -5,7 +5,7 @@
 
 ###############################################################################
 
-export CoinDir := $(shell cd ..; pwd)
+export CoinDir := $(shell cd ../..; pwd)
 export MakefileDir := $(CoinDir)/Makefiles
 include ${MakefileDir}/Makefile.coin
 include ${MakefileDir}/Makefile.location
@@ -14,13 +14,10 @@ include ${MakefileDir}/Makefile.location
 
 .DELETE_ON_ERROR:
 
-.PHONY: default install library clean unitTest
+.PHONY: default clean unitTest
 
-default: install
+default: unitTest
 
-unitTest : install
-	(cd Test && ${MAKE} unitTest)
-
-install clean library : % :
-	(cd ../Osi && ${MAKE} install)
-	${MAKE} -f Makefile.Cgl $*
+unitTest clean : % :
+	(cd .. && ${MAKE} install)
+	${MAKE} -f Makefile.test $*

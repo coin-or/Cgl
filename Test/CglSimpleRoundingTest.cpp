@@ -85,7 +85,7 @@ CglSimpleRoundingUnitTest(
 
     // get the last "sr"=simple rounding cut that was derived
     OsiRowCut srRowCut2 = cuts.rowCut(2); 
-    OsiPackedVector srRowCutPV2 = srRowCut2.row();
+    CoinPackedVector srRowCutPV2 = srRowCut2.row();
 
     // this is what the last cut should look like: i.e. the "solution"
     const int solSize = 2;
@@ -99,7 +99,7 @@ CglSimpleRoundingUnitTest(
     // Test for equality between the derived cut and the solution cut
 
     // Note: testing two OsiRowCuts are equal invokes testing two
-    // OsiPackedVectors are equal which invokes testing two doubles
+    // CoinPackedVectors are equal which invokes testing two doubles
     // are equal.  Usually not a good idea to test that two doubles are equal, 
     // but in this cut the "doubles" represent integer values.
     assert(srRowCut2 == solRowCut);
@@ -121,13 +121,13 @@ CglSimpleRoundingUnitTest(
     int objIndices[14] = { 
        0,  6,  7,  9, 13, 17, 18,
       22, 24, 25, 26, 27, 28, 29 };
-    OsiPackedVector p0033(14,objIndices,1.0);
+    CoinPackedVector p0033(14,objIndices,1.0);
 
     // test that none of the generated cuts
     // chops off the optimal solution
     int nRowCuts = cuts.sizeRowCuts();
     OsiRowCut rcut;
-    OsiPackedVector rpv;
+    CoinPackedVector rpv;
     int i;
     for (i=0; i<nRowCuts; i++){
       rcut = cuts.rowCut(i);

@@ -13,9 +13,9 @@
 
 #include "CoinHelperFunctions.hpp"
 #include "CglKnapsackCover.hpp"
-#include "OsiPackedVector.hpp"
+#include "CoinPackedVector.hpp"
 #include "CoinSort.hpp"
-#include "OsiPackedMatrix.hpp"
+#include "CoinPackedMatrix.hpp"
 //#define DEBUG
 //-----------------------------------------------------------------------------
 // Generate knapsack cover cuts
@@ -33,7 +33,7 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
   // - b is the rhs of knapsack inequality.
   // - complement[i] is 1 if the index i in krow refers to the complement
   // of the variable, and 0 otherwise. 
-  OsiPackedVector krow; 
+  CoinPackedVector krow; 
   double b=0.0;
   int * complement= new int[nCols];
     
@@ -153,7 +153,7 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
     // minimal cover greedily from fractional vars      //
     //////////////////////////////////////////////////////
 
-    OsiPackedVector cover, remainder;  
+    CoinPackedVector cover, remainder;  
 
 
     if (findGreedyCover(rowIndex, krow, b, xstar, cover, remainder) == 1){
@@ -222,8 +222,8 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
     // Try to generate cuts using covers of unsat       //
     // vars on reduced krows with John and Ellis logic  //
     //////////////////////////////////////////////////////
-    OsiPackedVector atOnes;
-    OsiPackedVector fracCover; // different than cover
+    CoinPackedVector atOnes;
+    CoinPackedVector fracCover; // different than cover
     
     // reset the remainder
     remainder.setVector(0,NULL,NULL);
@@ -342,15 +342,15 @@ CglKnapsackCover::setTestedRowIndices(int num, const int* ind)
 int 
 CglKnapsackCover::liftAndUncomplementAndAdd(
          double rowub,
-         OsiPackedVector & krow,
+         CoinPackedVector & krow,
          double & b,
          int * complement,
          int row,
-         OsiPackedVector & cover,
-         OsiPackedVector & remainder,
+         CoinPackedVector & cover,
+         CoinPackedVector & remainder,
          OsiCuts & cs ) const
 {
-  OsiPackedVector cut;
+  CoinPackedVector cut;
   double cutRhs = cover.getNumElements() - 1.0;
   int goodCut=1;
   
@@ -424,12 +424,12 @@ int
 CglKnapsackCover::deriveAKnapsack(
        const OsiSolverInterface & si, 
        OsiCuts & cs,
-       OsiPackedVector & krow, 
+       CoinPackedVector & krow, 
        double & b,
        int *  complement,
        double *  xstar,
        int rowIndex,
-       const OsiPackedVectorBase & matrixRow ) const
+       const CoinPackedVectorBase & matrixRow ) const
 
 {
   int i;
@@ -441,7 +441,7 @@ CglKnapsackCover::deriveAKnapsack(
   // otherwise
   //     leMatrixRow == matrixRow.
 
-  OsiPackedVector leMatrixRow(matrixRow); 
+  CoinPackedVector leMatrixRow(matrixRow); 
 
   double maxKrowElement = -DBL_MAX;
   double minKrowElement = DBL_MAX;
@@ -603,7 +603,7 @@ CglKnapsackCover::deriveAKnapsack(
   // If any coefficient a_j > b, then x_j = 0, return 0
   // If any complemented var has coef a_j > b, then x_j = 1, return 0 
   int fixed = 0;
-  OsiPackedVector fixedBnd;  
+  CoinPackedVector fixedBnd;  
   for(i=0; i<krow.getNumElements(); i++){
     if (krow.getElements()[i]> b){
       fixedBnd.insert(krow.getIndices()[i],complement[krow.getIndices()[i]]);
@@ -640,11 +640,11 @@ int
 CglKnapsackCover::findLPMostViolatedMinCover(
       int nCols,
       int row,
-      OsiPackedVector & krow,
+      CoinPackedVector & krow,
       double & b,
       double * xstar, 
-      OsiPackedVector & cover,
-      OsiPackedVector & remainder) const
+      CoinPackedVector & cover,
+      CoinPackedVector & remainder) const
 {
   
   // Assumes krow and b describe a knapsack inequality in cannonical form
@@ -844,11 +844,11 @@ int
 CglKnapsackCover::findExactMostViolatedMinCover(
         int nCols,
         int row,
-        OsiPackedVector & krow,
+        CoinPackedVector & krow,
         double b, 
         double *  xstar, 
-        OsiPackedVector & cover,
-        OsiPackedVector & remainder) const 
+        CoinPackedVector & cover,
+        CoinPackedVector & remainder) const 
 {
   
   // assumes the row is in cannonical knapsack form 
@@ -1017,11 +1017,11 @@ CglKnapsackCover::findExactMostViolatedMinCover(
 int
 CglKnapsackCover::findPseudoJohnAndEllisCover(
      int row,
-     OsiPackedVector & krow,
+     CoinPackedVector & krow,
      double & b,
      double * xstar, 
-     OsiPackedVector & cover,  
-     OsiPackedVector & remainder) const
+     CoinPackedVector & cover,  
+     CoinPackedVector & remainder) const
 
 {
   // semi-mimic of John&Ellis's approach without taking advantage of SOS info
@@ -1071,11 +1071,11 @@ CglKnapsackCover::findPseudoJohnAndEllisCover(
   double unsatRhs = b;
 
   // working info on unsatisfied vars
-  OsiPackedVector unsat;
+  CoinPackedVector unsat;
   unsat.reserve(krow.getNumElements());
 
   // working info on vars with value one
-  OsiPackedVector atOne;
+  CoinPackedVector atOne;
   atOne.reserve(krow.getNumElements());
 
   // partition the (binary) variables in the cannonical knapsack
@@ -1259,12 +1259,12 @@ CglKnapsackCover::findPseudoJohnAndEllisCover(
 int
 CglKnapsackCover::findJohnAndEllisCover(
      int row,
-     OsiPackedVector & krow,
+     CoinPackedVector & krow,
      double & b,
      double * xstar, 
-     OsiPackedVector & fracCover,  
-     OsiPackedVector & atOne,
-     OsiPackedVector & remainder) const
+     CoinPackedVector & fracCover,  
+     CoinPackedVector & atOne,
+     CoinPackedVector & remainder) const
 
 {
   // John Forrest and Ellis Johnson's approach as I see it.
@@ -1312,7 +1312,7 @@ CglKnapsackCover::findJohnAndEllisCover(
   double unsatRhs = b;
 
   // working info on unsatisfied vars
-  OsiPackedVector unsat;
+  CoinPackedVector unsat;
   unsat.reserve(krow.getNumElements());
 
   // partition the (binary) variables in the cannonical knapsack
@@ -1503,11 +1503,11 @@ CglKnapsackCover::findJohnAndEllisCover(
 int
 CglKnapsackCover::findGreedyCover(
      int row,
-     OsiPackedVector & krow,
+     CoinPackedVector & krow,
      double & b,
      double * xstar,
-     OsiPackedVector & cover,
-     OsiPackedVector & remainder
+     CoinPackedVector & cover,
+     CoinPackedVector & remainder
      ) const
   // the row argument is a hold over from debugging
   // ToDo: move the print cover statement out to the mainprogram 
@@ -1604,15 +1604,15 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
 
 	 // vars have frac soln values in lp relaxation
 	 // and form cover with the vars atOne
-         OsiPackedVector & fracCover, 
+         CoinPackedVector & fracCover, 
 	 // vars have soln value of 1 in lp relaxation
-         OsiPackedVector & atOne,
+         CoinPackedVector & atOne,
 	 // and together with fracCover form minimal (?) cover. 
-         OsiPackedVector & remainder,
+         CoinPackedVector & remainder,
 
 	 OsiCuts & cs ) const
 {
-  OsiPackedVector cut;
+  CoinPackedVector cut;
 
   // reserve storage for the cut
   cut.reserve(nRowElem);
@@ -1649,8 +1649,8 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
     // a is the part of krow corresponding to vars which have been lifted
     // alpha are the lifted coefficients with explicit storage of lifted zero
     // coefficients the a.getIndices() and alpha.getIndices() are identical
-    OsiPackedVector a(fracCover);
-    OsiPackedVector alpha;
+    CoinPackedVector a(fracCover);
+    CoinPackedVector alpha;
     int i;
     for (i=0; i<fracCover.getNumElements(); i++){
       alpha.insert(fracCover.getIndices()[i],1.0);
@@ -1854,11 +1854,11 @@ CglKnapsackCover::seqLiftAndUncomplementAndAdd(
                                      //     size, row length. 
       double & b,                    // rhs of the cannonical knapsack
                                      //     inequality derived from row 
-      OsiPackedVector & cover,       // need not be violated
-      OsiPackedVector & remainder,
+      CoinPackedVector & cover,       // need not be violated
+      CoinPackedVector & remainder,
       OsiCuts & cs) const
 {
-  OsiPackedVector cut;
+  CoinPackedVector cut;
   
   // reserve storage for the cut
   cut.reserve(nRowElem);
@@ -1882,8 +1882,8 @@ CglKnapsackCover::seqLiftAndUncomplementAndAdd(
     // a is the part of krow corresponding to vars which have been lifted
     // alpha are the lifted coefficients with explicit storage of lifted zero
     // coefficients the a.getIndices() and alpha.getIndices() are identical
-    OsiPackedVector a(cover);
-    OsiPackedVector alpha;
+    CoinPackedVector a(cover);
+    CoinPackedVector alpha;
     int i;
     for (i=0; i<cover.getNumElements(); i++){
       alpha.insert(cover.getIndices()[i],1.0);
@@ -2019,9 +2019,9 @@ int
 CglKnapsackCover::liftCoverCut(
       double & b,
       int nRowElem,
-      OsiPackedVector & cover,
-      OsiPackedVector & remainder,
-      OsiPackedVector & cut) const
+      CoinPackedVector & cover,
+      CoinPackedVector & remainder,
+      CoinPackedVector & cut) const
 {
   int i;
   int  goodCut=1;

@@ -11,15 +11,15 @@
 #include <iostream>
 
 #include "CoinHelperFunctions.hpp"
-#include "OsiPackedVector.hpp"
-#include "OsiPackedMatrix.hpp"
-#include "OsiIndexedVector.hpp"
+#include "CoinPackedVector.hpp"
+#include "CoinPackedMatrix.hpp"
+#include "CoinIndexedVector.hpp"
 #include "OsiRowCutDebugger.hpp"
-#include "OsiFactorization.hpp"
+#include "CoinFactorization.hpp"
 #ifdef FULL_DEBUG
 #include "OsiSimplexSolution.hpp"
 #endif
-#include "OsiWarmStartBasis.hpp"
+#include "CoinWarmStartBasis.hpp"
 #include "CglGomory.hpp"
 
 using std::min;
@@ -37,9 +37,9 @@ void CglGomory::generateCuts(const OsiSolverInterface & si,
   // get integer variables and basis
   char * intVar = new char[numberColumns];
   int i;
-  OsiWarmStart * warmstart = si.getWarmStart();
-  const OsiWarmStartBasis* warm =
-    dynamic_cast<const OsiWarmStartBasis*>(warmstart);
+  CoinWarmStart * warmstart = si.getWarmStart();
+  const CoinWarmStartBasis* warm =
+    dynamic_cast<const CoinWarmStartBasis*>(warmstart);
   const double * colUpper = si.getColUpper();
   const double * colLower = si.getColLower();
   for (i=0;i<numberColumns;i++) {
@@ -198,18 +198,18 @@ inline Rational nearestRational(double value, int maxDenominator)
 int
 CglGomory::generateCuts( const OsiRowCutDebugger * debugger, 
 		     OsiCuts & cs,
-		     const OsiPackedMatrix & columnCopy,
+		     const CoinPackedMatrix & columnCopy,
 		     const double * objective, const double * colsol,
 		     const double * colLower, const double * colUpper,
 		     const double * rowLower, const double * rowUpper,
 			 const char * intVar,
-		    const OsiWarmStartBasis* warm) const
+		    const CoinWarmStartBasis* warm) const
 {
   int numberRows=columnCopy.getNumRows();
   int numberColumns=columnCopy.getNumCols(); 
   
   // check factorization is okay
-  OsiFactorization factorization;
+  CoinFactorization factorization;
   // We can either set increasing rows so ...IsBasic gives pivot row
   // or we can just increment iBasic one by one
   // for now let ...iBasic give pivot row
@@ -221,7 +221,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   int i;
   int numberBasic=0;
   for (i=0;i<numberRows;i++) {
-    if (warm->getArtifStatus(i) == OsiWarmStartBasis::basic) {
+    if (warm->getArtifStatus(i) == CoinWarmStartBasis::basic) {
       rowIsBasic[i]=1;
       numberBasic++;
     } else {
@@ -229,7 +229,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
     }
   }
   for (i=0;i<numberColumns;i++) {
-    if (warm->getStructStatus(i) == OsiWarmStartBasis::basic) {
+    if (warm->getStructStatus(i) == CoinWarmStartBasis::basic) {
       columnIsBasic[i]=1;
       numberBasic++;
     } else {
@@ -251,7 +251,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   int iColumn,iRow;
 
   // get row copy of matrix
-  OsiPackedMatrix rowCopy =  columnCopy;
+  CoinPackedMatrix rowCopy =  columnCopy;
   rowCopy.reverseOrdering();
   const int * column = rowCopy.getIndices();
   const int * rowStart = rowCopy.getVectorStarts();
@@ -347,8 +347,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 
   int j;
   // two vectors for updating (one is work)
-  OsiIndexedVector work;
-  OsiIndexedVector array;
+  CoinIndexedVector work;
+  CoinIndexedVector array;
   // make sure large enough
   work.reserve(numberRows);
   array.reserve(numberRows);
@@ -356,7 +356,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   double * arrayElements = array.denseVector();
   int numberAdded=0;
   // we also need somewhere to accumulate cut
-  OsiIndexedVector cutVector;
+  CoinIndexedVector cutVector;
   cutVector.reserve(numberColumns+1);
   int * cutIndex = cutVector.getIndices();
   double * cutElement = cutVector.denseVector(); 
@@ -469,7 +469,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      } else {
 		rhs += colLower[j]*coefficient;
 	      }
-	      if (fabs(coefficient)>= OSI_INDEXED_TINY_ELEMENT) {
+	      if (fabs(coefficient)>= COIN_INDEXED_TINY_ELEMENT) {
 		 cutElement[j] = coefficient;
 	      } else {
 		 cutElement[j] = 1.0e-100;

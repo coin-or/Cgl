@@ -9,9 +9,9 @@
 
 #include <string>
 #include <cstring>
-#include <assert.h>
-#include <iostream.h>
-#include <stdlib.h>
+#include <cassert>
+#include <iostream>
+#include <cstdlib>
 
 #ifdef COIN_USE_OSL
 #include <OsiOslSolverInterface.hpp>
@@ -110,7 +110,7 @@ int main (int argc, const char *argv[])
 // Display message on stdout and stderr
 void testingMessage( const char * const msg )
 {
-   cerr <<msg;
+   std::cerr <<msg;
    //cout <<endl <<"*****************************************"
    //     <<endl <<msg <<endl;
 }

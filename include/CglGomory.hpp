@@ -7,7 +7,7 @@
 
 #include "CglCutGenerator.hpp"
 
-class OsiWarmStartBasis;
+class CoinWarmStartBasis;
 /** Gomory Cut Generator Class */
 class CglGomory : public CglCutGenerator {
    friend void CglGomoryUnitTest(const OsiSolverInterface * siP,
@@ -35,12 +35,12 @@ public:
       returns number of cuts generated */
   int generateCuts( const OsiRowCutDebugger * debugger, 
 		    OsiCuts & cs,
-		    const OsiPackedMatrix & columnCopy,
+		    const CoinPackedMatrix & columnCopy,
 		    const double * objective, const double * colsol,
 		    const double * colLower, const double * colUpper,
 		    const double * rowLower, const double * rowUpper,
 		    const char * intVar ,
-		    const OsiWarmStartBasis* warm) const;
+		    const CoinWarmStartBasis* warm) const;
 
   //@}
 

@@ -13,9 +13,9 @@
 
 #include "CoinHelperFunctions.hpp"
 #include "CglLiftAndProject.hpp"
-#include "OsiPackedVector.hpp"
+#include "CoinPackedVector.hpp"
 #include "CoinSort.hpp"
-#include "OsiPackedMatrix.hpp"
+#include "CoinPackedMatrix.hpp"
 
 //-----------------------------------------------------------------------------
 // Generate Lift-and-Project cuts
@@ -58,7 +58,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   const double * x = si.getColSolution();
 
   // Remember - Atildes may have gaps..
-  const OsiPackedMatrix * Atilde = si.getMatrixByRow();
+  const CoinPackedMatrix * Atilde = si.getMatrixByRow();
   const double * AtildeElements =  Atilde->getElements();
   const int * AtildeIndices =  Atilde->getIndices();
   const int * AtildeStarts = Atilde->getVectorStarts();
@@ -179,8 +179,8 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   // in B without the v_0 and u_0 cols
   int BFullSizeLessThree = BFullSize-3;
 
-  // Load B matrix into a column orders OsiPackedMatrix
-  OsiPackedMatrix * BMatrix = new OsiPackedMatrix(true, BNumRows,
+  // Load B matrix into a column orders CoinPackedMatrix
+  CoinPackedMatrix * BMatrix = new CoinPackedMatrix(true, BNumRows,
 						  BNumColsLessTwo, 
 						  BFullSizeLessThree,
 						  BElements,BIndices, 
@@ -229,12 +229,12 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
 
   bool haveWarmStart = false;
   bool equalObj1, equalObj2;
-  OsiRelFltEq eq;
+  CoinRelFltEq eq;
 
   double v_0Elements[2] = {-1,1};
   double u_0Elements[1] = {1};
 
-  OsiWarmStart * warmStart;
+  CoinWarmStart * warmStart;
 
   double * ustar = new double[m];
   CoinFillN(ustar, m, 0.0);
@@ -256,11 +256,11 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
     int v_0Indices[2]={j,nPlus1};
     int u_0Indices[1]={j};
     // 
-    OsiPackedVector  v_0(2,v_0Indices,v_0Elements,false);
-    OsiPackedVector  u_0(1,u_0Indices,u_0Elements,false);
+    CoinPackedVector  v_0(2,v_0Indices,v_0Elements,false);
+    CoinPackedVector  u_0(1,u_0Indices,u_0Elements,false);
 
 #if CGL_DEBUG
-    const OsiPackedMatrix *see1 = coneSi->getMatrixByRow();
+    const CoinPackedMatrix *see1 = coneSi->getMatrixByRow();
 #endif
 
     coneSi->addCol(v_0,-solverINFINITY,solverINFINITY,0);
@@ -272,7 +272,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
     else {
 
 #if CGL_DEBUG
-      const OsiPackedMatrix *see2 = coneSi->getMatrixByRow();
+      const CoinPackedMatrix *see2 = coneSi->getMatrixByRow();
 #endif
 
       coneSi->initialSolve();
