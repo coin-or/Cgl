@@ -83,7 +83,7 @@ VPATH := . : include : Junk : ${TARGETDIR} : ${DEPDIR}
 CXXFLAGS += $(addprefix -I,$(OsiIncDir))
 
 CXXFLAGS += $(addprefix -I,$(DETECTINCDIRS))
-CXXFLAGS += $(addprefix -D,$(SOLVERDEFINES))
+CXXFLAGS += $(addprefix -D,$(DETECTDEFINES))
 
 LIBDIRS := $(DETECTLIBDIRS) $(InstallDir)/lib
 LIBS    := libcgl.so $(OsiLibName) $(DETECTLIBNAMES)
