@@ -106,7 +106,8 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     {if(talk) printf ("2mir_test: debug success\n");}
 #endif
   
-  for (int i=0; i<cut_list.n; i++){
+  int i;
+  for ( i=0; i<cut_list.n; i++){
     DGG_constraint_t *cut = cut_list.c[i];
     OsiRowCut rowcut;
     
@@ -127,7 +128,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     
   }
   
-  for (int i=0; i<cut_list.n; i++)
+  for ( i=0; i<cut_list.n; i++)
     DGG_freeConstraint (cut_list.c[i]);
   DGG_list_free (&cut_list);
   DGG_freeData (data);
@@ -506,11 +507,12 @@ DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
      where the basic rows and columns are. NOTE: WE could do this 
      only once and keep it in osi_data at the expense of space!! */
 
-  for(int i=0; i<data->ncol; i++){
+  int i;
+  for( i=0; i<data->ncol; i++){
     if ( DGG_isBasic(data,i) ) colIsBasic[i] = 1;
     else                       colIsBasic[i] = -1;
   }
-  for(int i=0; i<data->nrow; i++){
+  for( i=0; i<data->nrow; i++){
     if ( DGG_isBasic(data,i+data->ncol) ) rowIsBasic[i] = 1;
     else                                  rowIsBasic[i] = -1;
   }
@@ -584,7 +586,8 @@ DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
 
   /* count non-zeroes */
   nz = 0; 
-  for(int j=0; j<data->ncol+data->nrow; j++){
+  int j;
+  for( j=0; j<data->ncol+data->nrow; j++){
     if ( fabs(value[j]) > DGG_MIN_TABLEAU_COEFFICIENT )
       nz += 1;
   }
@@ -606,7 +609,7 @@ DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
   tabrow->index = (int*) malloc(sizeof(int)*nz);
  
   tabrow->nz = 0;
-  for(int j = 0; j < data->ncol + data->nrow; j++)
+  for( j = 0; j < data->ncol + data->nrow; j++)
     if ( fabs(value[j]) > DGG_MIN_TABLEAU_COEFFICIENT ){
       tabrow->coeff[tabrow->nz] = value[j];
       tabrow->index[tabrow->nz] = j;
@@ -655,8 +658,9 @@ DGG_getFormulaConstraint( int da_row,
   form_row->nz = nz; 
   form_row->max_nz = nz+1;
  
-  for(int i=0; i < nz; i++) form_row->coeff[i] = rowMat[rowBeg[da_row]+i];
-  for(int i=0; i < nz; i++) form_row->index[i] = rowInd[rowBeg[da_row]+i];
+  int i;
+  for( i=0; i < nz; i++) form_row->coeff[i] = rowMat[rowBeg[da_row]+i];
+  for( i=0; i < nz; i++) form_row->index[i] = rowInd[rowBeg[da_row]+i];
 
   if ( DGG_isConstraintBoundedAbove(data,data->ncol + da_row) ){
     form_row->rhs = rowUpper[da_row];
@@ -943,11 +947,12 @@ int DGG_nicefyConstraint( const void *solver_ptr,
   
   DGG_TEST(cut->sense == 'L', 1, "can't nicefy an L constraint");
   
-  for(int i=0; i<cut->nz; i++) // first clean out noise
+  int i;
+  for( i=0; i<cut->nz; i++) // first clean out noise
     if( fabs(cut->coeff[i]) < DGG_NICEFY_MIN_ABSVALUE)
       cut->coeff[i] = 0;
 
-  for(int i=0; i<cut->nz; i++){
+  for( i=0; i<cut->nz; i++){
     
     if( DGG_isInteger(data, cut->index[i])){// look at integral vars.
 
