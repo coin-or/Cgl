@@ -1,8 +1,3 @@
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// WARNING: work-in-progress. Not functional.
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
 // Copyright (C) 2000, International Business Machines
 // Corporation and others.  All Rights Reserved.
 #if defined(_MSC_VER)
@@ -72,16 +67,18 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   const double * btilde = si.getRowLower();
 
   // Set up memory for system (10) [BCC:307]
-  // (the problem over the polar cone)
+  // (the problem over the norm intersected 
+  //  with the polar cone)
   // 
   // min <<x^T,Atilde^T>,u> + x_ju_0
   // s.t.
   //     <B,w> = (0,...,0,beta_,beta)^T
-  //        w   >= 0
+  //        w  is nonneg for all but the
+  //           last two entries, which are free.
   // where 
   // w = (u,v,v_0,u_0)in BCC notation 
-  //      u and v are m-vectors
-  //      v_0 and u_0 are scalars, and
+  //      u and v are m-vectors; u,v >=0
+  //      v_0 and u_0 are free-scalars, and
   //  
   // B = Atilde^T  -Atilde^T  -e_j e_j
   //     btilde^T   e_0^T      0   0
@@ -96,13 +93,13 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   // At each iteration, only need to change 2 cols and objfunc
   // Sane design of OsiSolverInterface does not permit mucking
   // with matrix.
-  // Becuase we must delete and add cols to alter matrix,
+  // Because we must delete and add cols to alter matrix,
   // and we can only add columns on the end of the matrix
   // put the v_0 and u_0 columns on the end.
   // rather than as described in [BCC]
  
   // Initially allocating B with space for v_0 and u_O cols
-  // but not populating.
+  // but not populating, for efficiency.
 
   // B without u_0 and v_0 is a (n+2 x 2m) size matrix.
 
@@ -139,20 +136,6 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
     k++;
   }
 
-  // Store column coresponding to beta
-  //  k += offset;
-  //BElements[k]=-1;
-  //BIndices[k]=n;
-  //k++;
-  //BElements[k]=-1;
-  //BIndices[k]=nPlus1;
-  //k++;
-  //BStarts[twoM]=BStarts[twoM-1]+BLengths[twoM-1]; 
-  //BLengths[twoM]= 2;
-
-  // Mark end of BStarts
-  //BStarts[twoM+1]=BStarts[twoM]+2;
-
   BStarts[twoM]=BStarts[twoM-1]+BLengths[twoM-1];
 
   // Cols that will be deleted each iteration
@@ -161,12 +144,12 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   const int delCols[2] = {BNumColsLessOne, BNumColsLessTwo};
 
   // Set lower bound on u and v
-  // u_0, v_0 >= 0 is implied but this is easier
+  // u_0, v_0 will be reset as free
   const double INFINITY = si.getInfinity();
   double * BColLowers = new double[BNumCols];
   double * BColUppers = new double[BNumCols];
   CoinFillN(BColLowers,BNumCols,0.0);  
-  CoinFillN(BColUppers,BNumCols,INFINITY);  
+  CoinFillN(BColUppers,BNumCols,INFINITY); 
 
   // Set row lowers and uppers.
   // The rhs is zero, for but the last two rows.
@@ -193,94 +176,50 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   CoinDisjointCopyN(Atildex,m,BObjective); 
 
   // Number of cols and size of Elements vector
-  // in B without v_0 and u_0 cols
+  // in B without the v_0 and u_0 cols
   int BFullSizeLessThree = BFullSize-3;
 
   // Load B matrix into a column orders OsiPackedMatrix
-  // Need to change to values in BIndices each iterations - ask LL.
   OsiPackedMatrix * BMatrix = new OsiPackedMatrix(true, BNumRows,
 						  BNumColsLessTwo, 
 						  BFullSizeLessThree,
 						  BElements,BIndices, 
 						  BStarts,BLengths);
   // Assign problem into a solver interface 
+  // Note: coneSi will cleanup the memory itself
   OsiSolverInterface * coneSi = si.clone(false);
   coneSi->assignProblem (BMatrix, BColLowers, BColUppers, 
 		      BObjective,
 		      BRowLowers, BRowUppers);
 
-  // Problem sense should defalut to "min" by default, but ...
+  // Problem sense should defalut to "min" by default, 
+  // but just to be virtuous...
   coneSi->setObjSense(1.0);
 
-#if 0
-  // B set up with out v_0 and u_0 columns
-  //   but with empty memory allocated.
-  // Calculate base objective
-  // bounded = false;
-  // int j=0;
-  // while (!bounded){
-  //   bool found = findFractionalBinary(si,x,&j,n);
-  //                                  // starts looking at position j
-  //                                  // and increments over all variables
-  //                                  // returns new j & true, 
-  //                                  // else returns n & false
-  //   if (! found), return {clean up memory}
-  //   add {-e_j,0,-1} col for v_0
-  //   add {e_j,0,0} col for u_0
-  //   set objective[u_0]=x_j;
-  //   solve min{objw:Bw=0, w>=0}
-  //   if unbounded, continue;
-  //   bounded = true;
-  //   get warmstart;
-  //   caculate and add cuts;
-  //   reset objective[u_0] // maynot need (?)
-  //   delete col for u_0   // what hapens to obj when col deleted?
-  //   delete col for v_0
-  // }
-  // while(true) {
-  //   bool found = findFractionalBinary(si,x,&j,n);
-  //   if (! found), return {clean up memory} 
-  //   (IMPROVEME:use warmstart info to see if j attractive) 
-  //   add {-e_j,0,-1} col for v_0
-  //   add {e_j,0,0} col for u_0
-  //   set objective[u_0]=x_j;
-  //   set warmstart information
-  //   solve min{objw:Bw=0, w>=0}
-  //   if (bounded)unbounded
-  //     get warmstart information
-  //     caculate and add cuts;
-  //   reset objective[u_0] // may not need
-  //   delete col for u_0   // what happen to obj when col deleted?
-  //   delete col for v_0
-  // }
-  // clean up memory
-  // return 0;
-#endif
-
-  // B without u_0 and v_0, assign problem
+  // The plot outline from here on down:
+  // coneSi has been assigned B without the u_0 and v_0 columns
   // Calculate base objective <<x^T,Atilde^T>,u>
   // bool haveWarmStart = false;
   // For (j=0; j<n, j++)
-  //   if (!isBinary(x_j) || x_j<=0 || x_j>=1) continue
+  //   if (!isBinary(x_j) || x_j<=0 || x_j>=1) continue;
   //   // IMPROVEME: if(haveWarmStart) check if j attractive
-  //   add {-e_j,0,-1} col for v_0
-  //   add {e_j,0,0} col for u_0
-  //   objective coef for u_0 = x_j 
+  //   add {-e_j,0,-1} matrix column for v_0
+  //   add {e_j,0,0} matrix column for u_0
+  //   objective coefficient for u_0 is  x_j 
   //   if (haveWarmStart) 
   //      set warmstart info
-  //   solve min{objw:Bw=0, w>=0}
+  //   solve min{objw:Bw=0; w>=0,except v_0, u_0 free}
   //   if (bounded)
   //      get warmstart info
   //      haveWarmStart=true;
   //      ustar = optimal u solution
-  //      ustar_0 = optimal u_o solution
+  //      ustar_0 = optimal u_0 solution
   //      alpha^T= <ustar^T,Atilde> -ustar_0e_j^T
   //      (double check <alpha^T,x> >= beta_ should be violated)
   //      add <alpha^T,x> >= beta_ to cutset 
   //   endif
-  //   reset objective[u_0] // may not need
-  //   delete col for u_0   // what happen to obj when col deleted?
-  //   delete col for v_0
+  //   delete column for u_0 // this deletes all column info.
+  //   delete column for v_0
   // endFor
   // clean up memory
   // return 0;
@@ -292,7 +231,6 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   bool equalObj1, equalObj2;
   OsiRelFltEq eq;
 
-  // Is this temp? Or permanent??
   double v_0Elements[2] = {-1,1};
   double u_0Elements[1] = {1};
 
@@ -320,15 +258,23 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
     // 
     OsiPackedVector  v_0(2,v_0Indices,v_0Elements,false);
     OsiPackedVector  u_0(1,u_0Indices,u_0Elements,false);
-    coneSi->addCol(v_0,0,INFINITY,0);
-    coneSi->addCol(u_0,0,INFINITY,x[j]);
+
+#if DEBUG
+    const OsiPackedMatrix *see1 = coneSi->getMatrixByRow();
+#endif
+
+    coneSi->addCol(v_0,-INFINITY,INFINITY,0);
+    coneSi->addCol(u_0,-INFINITY,INFINITY,x[j]);
     if(haveWarmStart) {
       coneSi->setWarmStart(warmStart);
       coneSi->resolve();
     }
     else {
-    // initialSolve or resolve? (i.e. can I remove the "else"?)
-    // what happens if you call resolve, and haven't solved once?
+
+#if DEBUG
+      const OsiPackedMatrix *see2 = coneSi->getMatrixByRow();
+#endif
+
       coneSi->initialSolve();
     }
     if(coneSi->isProvenOptimal()){
@@ -339,8 +285,6 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
       Atilde->transposeTimes(ustar,alpha);
       alpha[j]+=wstar[BNumCols-1]; 
       
-      // Are these buts guaranteed to be violated?
-      // Not sure.
 #if debug
       int p;
       double sum;
@@ -351,15 +295,15 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
 			"CglLiftAndProject");
       }
 #endif
+
       // add <alpha^T,x> >= beta_ to cutset
       OsiRowCut rc;
-      // setRow(int, int*, double*);
       rc.setRow(n,nVectorIndices,alpha);
       rc.setLb(beta_);
       rc.setUb(INFINITY);
       cs.insert(rc);
     }
-    // delete col for u_o and v_0 (and maybe objfunc?)
+    // delete col for u_o and v_0
     coneSi->deleteCols(2,delCols);
 
     // clean up memory

@@ -1,7 +1,3 @@
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-// WARNING: work-in-progress. Not functional.
-// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 // Copyright (C) 2000, International Business Machines
 // Corporation and others.  All Rights Reserved.
 #ifndef CglLiftAndProject_H
@@ -19,7 +15,8 @@ class CglLiftAndProject : public CglCutGenerator {
 public:
   /**@name Generate Cuts */
   //@{
-  /** Generate knapsack cover cuts for the model of the solver interface, si. 
+  /** Generate lift-and-project cuts for the 
+      model of the solver interface, si. 
       Insert the generated cuts into OsiCut, cs.
   */
   virtual void generateCuts(const OsiSolverInterface & si, OsiCuts & cs) const;
