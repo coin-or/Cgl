@@ -1,26 +1,33 @@
 # Look at and if necessary edit the following files:
 # - ../Makefiles/Makefile.location
-# - Makefile.Osi 
-# - Osi*/Makefile for the libs you have specified above
+# - Makefile.Cgl
 
 ###############################################################################
 
 export CoinDir := $(shell cd ..; pwd)
 export MakefileDir := $(CoinDir)/Makefiles
-include ${MakefileDir}/Makefile.coin
-include ${MakefileDir}/Makefile.location
 
 ###############################################################################
 
 .DELETE_ON_ERROR:
 
-.PHONY: default install library clean unitTest
+.PHONY: default install clean library unitTest libdepend doc
 
 default: install
 
-unitTest : install
+libdepend:
+	(cd ../Osi && ${MAKE} inst-libOsi)
+
+install library: libdepend
+	${MAKE} -f Makefile.Cgl $@
+
+doc:
+	doxygen $(MakefileDir)/doxygen.conf
+
+unitTest: install
 	(cd Test && ${MAKE} unitTest)
 
-install clean library : % :
-	(cd ../Osi && ${MAKE} inst-libOsi)
-	${MAKE} -f Makefile.Cgl $*
+clean: 
+	@rm -rf Junk
+	@rm -rf $(UNAME)
+	@rm -rf dep

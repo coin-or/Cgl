@@ -24,8 +24,6 @@ export LibType OptLevel LIBNAME LIBSRC
 # You should not need to edit below this line.
 ##############################################################################
 # The location of the customized Makefiles
-export CoinDir := $(shell cd ..; pwd)
-export MakefileDir := $(CoinDir)/Makefiles
 include ${MakefileDir}/Makefile.coin
 include ${MakefileDir}/Makefile.location
 
@@ -38,9 +36,9 @@ export ExtraDefine  := ${OsiDefine} ${CoinDefine} ${zlibDefine} ${bzlibDefine}
 
 .DELETE_ON_ERROR:
 
-.PHONY: default install libosi library clean doc
+.PHONY: default install library
 
 default: install
 
-install clean doc library : % :
+install library :
 	$(MAKE) -f ${MakefileDir}/Makefile.lib $*
