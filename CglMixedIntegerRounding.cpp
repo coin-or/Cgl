@@ -307,7 +307,8 @@ mixIntRoundPreprocess(const OsiSolverInterface& si) const
   int numINT         = 0;
   int numOTHER       = 0;
 
-  for (int iRow = 0; iRow < numRows_; ++iRow) {
+  int iRow;
+  for (iRow = 0; iRow < numRows_; ++iRow) {
     // get the type of a row
     const RowType rowType = 
       determineRowType(si, rowLengths[iRow], colInds+rowStarts[iRow],
@@ -397,7 +398,7 @@ mixIntRoundPreprocess(const OsiSolverInterface& si) const
   int countM = 0;
   int countC = 0;
   int countI = 0;
-  for (int iRow = 0; iRow < numRows_; ++iRow) {
+  for ( iRow = 0; iRow < numRows_; ++iRow) {
 
     RowType rowType = rowTypes_[iRow];
 
@@ -864,7 +865,7 @@ CglMixedIntegerRounding::selectRowToAggregate(
                       VUB.getVal() * xlp[VUB.getVar()] : colUpperBound[indCol];
 
     // Compute distances from current solution to upper and lower bounds
-    double delta = std::min(xlp[indCol] - LB, UB - xlp[indCol]);
+    double delta = CoinMin(xlp[indCol] - LB, UB - xlp[indCol]);
 
     // In case this variable is acceptable look for possible rows
     if (delta > deltaMax) {
@@ -982,7 +983,8 @@ CglMixedIntegerRounding::boundSubstitution(
   // negative, store variable in the vector contVariablesInS.
   // If it is integer, store variable in the vector mixedKnapsack
   int numCont = 0;
-  for (int j = 0; j < numColsAggregated; ++j) {
+  int j;
+  for ( j = 0; j < numColsAggregated; ++j) {
 
     // get index and coefficient of column j in the aggregated row
     const int indCol = rowAggregatedIndices[j];
@@ -1109,7 +1111,7 @@ CglMixedIntegerRounding::boundSubstitution(
   const int *knapsackIndices = mixedKnapsack.getIndices();
   const double *knapsackElements = mixedKnapsack.getElements();  
 
-  for (int j = 0; j < numInt; ++j) {
+  for ( j = 0; j < numInt; ++j) {
     // if the coefficient is zero, disregard
     if (fabs(knapsackElements[j]) < EPSILON_) continue;
     // if the lower bound is not zero, then we stop
@@ -1163,7 +1165,8 @@ CglMixedIntegerRounding::cMirSeparation(
   // contains the vars in T that are strictly between their bounds
   std::set<int> setC;
   CoinPackedVector complT;
-  for (int j = 0; j < numInt; ++j) {
+  int j;
+  for ( j = 0; j < numInt; ++j) {
     const int indCol = knapsackIndices[j];
     // if the upper bound is infinity, then indCol is in T and cannot
     // be in complT
@@ -1187,7 +1190,7 @@ CglMixedIntegerRounding::cMirSeparation(
   }
 
   // Construct c-MIR inequalities and take the one with the largest violation
-  for (int j = 0; j < numInt; ++j) {
+  for ( j = 0; j < numInt; ++j) {
     int indCol = knapsackIndices[j];
     if ( (xlp[indCol] <= EPSILON_) || 
 	 (xlp[indCol] >= colUpperBound[indCol] - EPSILON_))
@@ -1280,7 +1283,7 @@ CglMixedIntegerRounding::cMirSeparation(
 
   // write the best cut found with the model variables
   int numCont = contVariablesInS.getNumElements();
-  for (int j = 0; j < numCont; ++j) {
+  for ( j = 0; j < numCont; ++j) {
     int indCol = contVarInSIndices[j];
     double coefCol = contVarInSElements[j];
       
@@ -1364,7 +1367,7 @@ CglMixedIntegerRounding::cMirSeparation(
   const double cutRHS = rhsBestCut;
   double violation = 0.0;
   double normCut = 0.0;
-  for (int j = 0; j < cutLen; ++j) {
+  for ( j = 0; j < cutLen; ++j) {
     violation += cutCoef[j] * xlp[cutInd[j]];
     normCut += cutCoef[j] * cutCoef[j];
   }
