@@ -53,13 +53,105 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
  
 
   // Get basic problem information
-  // let Atilde be an aNRows by aNCols matrix
-  const int aNRows=si.getNumRows(); 
-  const int aNCols=si.getNumCols(); 
+  // let Atilde be an m by n matrix
+  const int m = si.getNumRows(); 
+  const int n = si.getNumCols(); 
   const double * x = si.getColSolution();
+
+  // Remember - Atildes may have gaps..
+  const OsiPackedMatrix * Atilde = si->getMatrixByRow();
+  const double * AtildeElements =  origAByCol->getElements();
+  const int * AtildeIndices =  origAByCol->getIndices();
+  const int * AtildeStarts = origAByCol->getVectorStarts();
+  const int * AtildeLengths = origAByCol->getVectorLengths();  
+  const int AtildeFullSize = AtildeStarts[m+1];
+  const double * btilde = si->getRowLower();
 
   // Set up memory for system (10) [BCC:307]
   // (the problem over the polar cone)
+  // 
+  // min <<x^T,Atilde^T>,u> + u_0x_j
+  // s.t.
+  //     <w^T,B> = 0
+  //        w   >= 0
+  // where 
+  // w^T = (u^T,v^T,u_0,v_0,beta)in BCC notation and
+  //  
+  // B = Atilde^T  -Atilde^T  e_j  -e_j  e_0
+  //     btilde^T   e_0^T     0     0    -1
+  //     e_0^T      btilde^T  0     1    -1
+
+  // ^T indicates Transpose
+  // e_0 is a (AtildeNCols x 1) vector of all zeros 
+  // e_j is e_0 with a 1 in the jth position
+
+
+  // Storing B in column order. B is a (n+2 x 2m+3) matrix 
+  // But need to allow for possible gaps in Atilde... 
+  int TwoM = 2*m;
+  int BFullSize = 2*AtildeFullSize+TwoM+5;
+  double * BElements = new double[BFullSize];
+  int * BIndices = new int[BFullSize];
+  int * BStarts = new int[TwoM+4];
+  int * BLengths = new int[TwoM+3];
+
+
+  int i, ij, k=0;
+  int nPlus1=n+1;
+  int nPlus2=n+2;
+  int offset = AtildeStarts[m]+m;
+  for (i=0; i<m; i++){
+    for (ij=AtildeStarts[i];ij<AtildeStarts[i]+AtildeLengths[i];ij++){
+      BElements[k]=AtildeElements[ij];
+      BElements[k+?]=-AtildeElements[ij];
+      BIndices[k]= AtildeIndices[ij];
+      BIndices[k+?]= AtildeIndices[ij];
+	
+      k++;
+    }
+    BElemensts[k]=btilde[i];
+    BElements[k+?]=btilde[i];
+    BIndices[k]=nPlus1;
+    BIndices[k+?]=nPlus2;
+    BStarts[i]= AtildeStarts[i]+i;
+    BStarts[i+m]=offset+BStarts[i];// = AtildeStarts[m]+m+AtildeStarts[i]+i
+    BLengths[i]= AtildeLengths[i]+1;
+    BLengths[i+m]= AtildeLengths[i]+1;
+    k++;
+  }
+  i=2*m
+  // Store column corresponding to u_0
+  BElements[k]=1;
+  BIndices[k]=j;
+  k++;
+  BStarts[i]=BStarts[i-1]+AtildeLengths[m-1];
+  BLengths[i]= 1;
+  i++;
+  // Store column corresponding to v_0
+  BElements[k]=-1;
+  BIndices[k]=j;
+  k++;
+  BElements[k]=1;
+  BIndices[k]=nPlus2;
+  k++
+  BStarts[i]=BStarts[i-1]+1;
+  BLengths[i]= 2;
+  i++;
+
+  // Store column coresponding to beta
+  BElements[k]=-1;
+  BIndices[k]=nPlus1;
+  k++;
+  BElements[k]=-1;
+  BIndices[k]=nPlus2;
+  k++
+  BStarts[i]=BStarts[i-1]+2;
+  BLengths[i]= 2;
+  i++;
+
+  // Mark end of BStarts
+  BStarts[i]=BStarts[i-1]+2;
+
 
 
   // ---------JUNK ---------------------------
