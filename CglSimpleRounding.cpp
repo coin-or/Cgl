@@ -96,11 +96,11 @@ CglSimpleRounding::generateCuts(const OsiSolverInterface & si,
 	dxInt = irow.getElements()[k]*pow(10.0,power);
 	xInt[k]= (int) (dxInt+0.5); // Need to add the 0.5 
 	// so that a dxInt=9.999 will give a xInt=1
-	
+
 #ifdef CGL_DEBUG
 	printf("%g     %g   \n",irow.getElements()[k],dxInt);
 #endif
-	
+
       }
 
     } else {

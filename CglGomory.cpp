@@ -23,7 +23,10 @@
 #include "CglGomory.hpp"
 
 using std::min;
-
+static void xxxxxx()
+{
+  printf("xx\n");
+}
 //-------------------------------------------------------------------
 // Generate disaggregation cuts
 //------------------------------------------------------------------- 
@@ -392,6 +395,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	assert (nn==1);
       }
 #endif
+      if (iColumn==4)
+	xxxxxx();
       if(intVar[iColumn]&&reducedValue<1.0-away_&&reducedValue>away_) {
 #ifdef CGL_DEBUG
 	cutVector.checkClear();
@@ -560,18 +565,23 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	  if (sum >rhs+0.9*violationTolerance_&&
 	      fabs((sum-rhs)-violation)<1.0e-6) {
 #ifdef CGL_DEBUG
-	    for (j=0;j<number;j++) {
-	      std::cout<<" ["<<cutIndex[j]<<","<<packed[j]<<"]";
-	    }
-	    std::cout<<" <= "<<rhs<<std::endl;
+#if CGL_DEBUG==1
+	    if (number<10) {
 #endif
-	    if (!numberNonInteger) {
+	      for (j=0;j<number;j++) {
+		std::cout<<" ["<<cutIndex[j]<<","<<packed[j]<<"]";
+	      }
+	      std::cout<<" <= "<<rhs<<std::endl;
+#if CGL_DEBUG==1
+	    }
+#endif
+#endif
+	    if (!numberNonInteger&&number) {
 #ifdef CGL_DEBUG
 	      assert (sizeof(Rational)==sizeof(double));
 #endif
 	      Rational * cleaned = (Rational *) cutElement;
 	      int * xInt = (int *) cutElement;
-	      assert (number);
 	      // cut should have an integer slack so try and simplify
 	      // add in rhs and put in cutElements (remember to zero later)
 	      cutIndex[number]=numberColumns+1;
@@ -606,9 +616,9 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		    break;
 		  }
 		}
-		
+
 		if (nOverflow){
-#ifdef CGL_DEBUG		
+#ifdef CGL_DEBUG
 		  printf("Gomory Scaling: Warning: Overflow detected \n");
 #endif
 		  numberNonInteger=-1;
@@ -672,6 +682,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		rc.setUb(bounds[1]);   
 		cs.insert(rc);
 #ifdef CGL_DEBUG
+	      if (!number)
+		std::cout<<"******* Empty cut - infeasible"<<std::endl;
 		if (debugger) 
 		  assert(!debugger->invalidCut(rc)); 
 #endif

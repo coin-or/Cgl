@@ -193,7 +193,7 @@ private:
 	     double * colLower, double * colUpper, OsiPackedMatrix *rowCopy,
 	     double * rowLower, double * rowUpper,
 	     char * intVar, double * minR, double * maxR, int * markR, 
-	     double * movement, int * look, int nlook) const;
+	     int * look, int nlook) const;
   /** Does most of work of generateCuts 
       Returns number of infeasibilities */
   int gutsOfGenerateCuts( const OsiSolverInterface & si, 

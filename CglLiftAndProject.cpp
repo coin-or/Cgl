@@ -122,7 +122,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
       BElements[k+offset]=-AtildeElements[ij];
       BIndices[k]= AtildeIndices[ij];
       BIndices[k+offset]= AtildeIndices[ij];
-	
+
       k++;
     }
     BElements[k]=btilde[i];

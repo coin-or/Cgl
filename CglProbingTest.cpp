@@ -7,6 +7,7 @@
 
 #include <cstdio>
 #include <cassert>
+#include <iostream>
 
 #include "OsiPackedMatrix.hpp"
 #include "CglProbing.hpp"
