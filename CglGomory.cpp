@@ -101,6 +101,15 @@ int gcd(int a, int b)
     a = b;
     b = temp;
   }
+  // if zero then gcd is nonzero (zero may occur in rhs of packed)
+  if (!a) {
+    if (b) {
+      return b;
+    } else {
+      printf("**** gcd given two zeros!!\n");
+      abort();
+    }
+  }
   while (remainder) {
 
 #if CGL_DEBUG>1
@@ -618,10 +627,12 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 #if CGL_DEBUG>1
 		    printf("%g => %g   \n",old,packed[j]);
 #endif
-		    if (fabs(packed[j])>maxMultiplier*fabs(old))
-		      maxMultiplier = packed[j]/old;
-		    if (fabs(packed[j])<minMultiplier*fabs(old))
-		      minMultiplier = packed[j]/old;
+		    if (packed[j]) {
+		      if (fabs(packed[j])>maxMultiplier*fabs(old))
+			maxMultiplier = packed[j]/old;
+		      if (fabs(packed[j])<minMultiplier*fabs(old))
+			minMultiplier = packed[j]/old;
+		    }
 		  }
 		  rhs = packed[number];
 		  double ratio=maxMultiplier/minMultiplier;
