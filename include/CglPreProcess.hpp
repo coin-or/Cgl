@@ -1,7 +1,7 @@
 // Copyright (C) 2005, International Business Machines
 // Corporation and others.  All Rights Reserved.
-#ifndef CglProcess_H
-#define CglProcess_H
+#ifndef CglPreProcess_H
+#define CglPreProcess_H
 
 #include <string>
 #include <vector>
@@ -29,7 +29,7 @@
 
 */
 
-class CglProcess  {
+class CglPreProcess  {
   
 public:
 
@@ -40,8 +40,22 @@ public:
       Presolve will be done numberPasses times.
 
       Returns NULL if infeasible
+
+      This version uses default strategy.  For more control copy and edit
+      code from this function i.e. call preProcessNonDefault
   */
   OsiSolverInterface * preProcess(OsiSolverInterface & model, 
+                                  bool makeEquality=true, int numberPasses=5);
+  /** preProcess problem - returning new problem.
+      If makeEquality true then <= cliques converted to ==.
+      Presolve will be done numberPasses times.
+
+      Returns NULL if infeasible
+
+      This version assumes user has added cut generators to CglPreProcess object
+      before calling it.  As an example use coding in preProcess
+  */
+  OsiSolverInterface * preProcessNonDefault(OsiSolverInterface & model, 
                                   bool makeEquality=true, int numberPasses=5);
   /// Creates solution in original model
   void postProcess(OsiSolverInterface &model);
@@ -108,16 +122,16 @@ public:
   void passInMessageHandler(CoinMessageHandler * handler);
   /// Set language
   void newLanguage(CoinMessages::Language language);
-  void setLanguage(CoinMessages::Language language)
+  inline void setLanguage(CoinMessages::Language language)
   {newLanguage(language);};
   /// Return handler
-  CoinMessageHandler * messageHandler() const
+  inline CoinMessageHandler * messageHandler() const
   {return handler_;};
   /// Return messages
-  CoinMessages messages() 
+  inline CoinMessages messages() 
   {return messages_;};
   /// Return pointer to messages
-  CoinMessages * messagesPointer() 
+  inline CoinMessages * messagesPointer() 
   {return &messages_;};
   //@}
   //---------------------------------------------------------------------------
@@ -126,16 +140,16 @@ public:
   ///@name Constructors and destructors etc
   //@{
   /// Constructor
-  CglProcess(); 
+  CglPreProcess(); 
   
   /// Copy constructor .
-  CglProcess(const CglProcess & rhs);
+  CglPreProcess(const CglPreProcess & rhs);
   
   /// Assignment operator 
-  CglProcess & operator=(const CglProcess& rhs);
+  CglPreProcess & operator=(const CglPreProcess& rhs);
   
   /// Destructor 
-  ~CglProcess ();
+  ~CglPreProcess ();
   
   /// Clears out as much as possible
   void gutsOfDestructor();
@@ -145,7 +159,8 @@ private:
   ///@name private methods
   //@{
   /** Return model with useful modifications.  
-      If constraints true then returns any x+y=1 or x-y=0 constraints
+      If constraints true then adds any x+y=1 or x-y=0 constraints
+      If NULL infeasible
   */
   OsiSolverInterface * modified(OsiSolverInterface * model,
                                 bool constraints,

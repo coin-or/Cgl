@@ -56,6 +56,12 @@ public:
   /// get limit on number in knapsack
   inline int getMaxInKnapsack() const
            {return maxInKnapsack_;};
+  /// Switch off expensive cuts
+  inline void switchOffExpensive()
+  { expensiveCuts_=false;};
+  /// Switch on expensive cuts
+  inline void switchOnExpensive()
+  { expensiveCuts_=true;};
 private:
   
  // Private member methods
@@ -147,7 +153,7 @@ private:
      int row,
      CoinPackedVector & cover,
      CoinPackedVector & remainder,
-     OsiCuts & cs) const;
+     OsiCuts & cs ) const;
 
   /// sequence-dependent lift, uncomplement and add the resulting cut to the cut set
 void seqLiftAndUncomplementAndAdd(
@@ -159,7 +165,7 @@ void seqLiftAndUncomplementAndAdd(
       double & b,
       CoinPackedVector & cover,      // need not be violated
       CoinPackedVector & remainder,
-      OsiCuts & cs) const;
+      OsiCuts & cs ) const;
 
   /// sequence-dependent lift binary variables either up or down, uncomplement and add to the cut set
 void liftUpDownAndUncomplementAndAdd(
@@ -231,6 +237,8 @@ void liftUpDownAndUncomplementAndAdd(
        for generating knapsack covers. Otherwise all rows will be tried */
    int numRowsToCheck_;
    int* rowsToCheck_;
+  /// exactKnapsack can be expensive - this switches off some
+  bool expensiveCuts_;
   //@}
 };
 

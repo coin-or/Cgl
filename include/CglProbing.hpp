@@ -94,10 +94,12 @@ public:
       this is to speed up process and to give global cuts
       Can give an array with 1 set to select, 0 to ignore
       column bounds are tightened
-      If array given then values of 1 will be set to 0 if redundant
+      If array given then values of 1 will be set to 0 if redundant.
+      Objective may be added as constraint
   */
   void snapshot ( const OsiSolverInterface & si,
-		  char * possible=NULL);
+		  char * possible=NULL,
+                  bool withObjective=true);
   /// Deletes snapshot
   void deleteSnapshot ( );
   /** Creates cliques for use by probing.
@@ -141,6 +143,10 @@ public:
   void setMaxPass(int value);
   /// Get maximum number of passes per node
   int getMaxPass() const;
+  /// Set log level - 0 none, 1 - a bit, 2 - more details
+  void CglProbing::setLogLevel(int value);
+  /// Get log level
+  int CglProbing::getLogLevel() const;
   /// Set maximum number of unsatisfied variables to look at
   void setMaxProbe(int value);
   /// Get maximum number of unsatisfied variables to look at
@@ -149,6 +155,22 @@ public:
   void setMaxLook(int value);
   /// Get maximum number of variables to look at in one probe
   int getMaxLook() const;
+  /// Set maximum number of elements in row for it to be considered
+  void setMaxElements(int value);
+  /// Get maximum number of elements in row for it to be considered
+  int getMaxElements() const;
+  /// Set maximum number of unsatisfied variables to look at (root node)
+  void setMaxProbeRoot(int value);
+  /// Get maximum number of unsatisfied variables to look at (root node)
+  int getMaxProbeRoot() const;
+  /// Set maximum number of variables to look at in one probe (root node)
+  void setMaxLookRoot(int value);
+  /// Get maximum number of variables to look at in one probe (root node)
+  int getMaxLookRoot() const;
+  /// Set maximum number of elements in row for it to be considered (root node)
+  void setMaxElementsRoot(int value);
+  /// Get maximum number of elements in row for it to be considered (root node)
+  int getMaxElementsRoot() const;
   /**
      Returns true if may generate Row cuts in tree (rather than root node).
      Used so know if matrix will change in tree.  Really
@@ -206,28 +228,66 @@ private:
  // Private member methods
   /**@name probe */
   //@{
-  /// Does probing and adding cuts
+  /// Does probing and adding cuts (without cliques and mode_!=0)
   int probe( const OsiSolverInterface & si, 
 	     const OsiRowCutDebugger * debugger, 
 	     OsiCuts & cs, 
 	     double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
 	     double * rowLower, double * rowUpper,
 	     char * intVar, double * minR, double * maxR, int * markR, 
-	     int * look, int nlook) const;
+	     int * look, int nlook,
+             const CglTreeInfo info) const;
+  /// Does probing and adding cuts (with cliques)
+  int probeCliques( const OsiSolverInterface & si, 
+	     const OsiRowCutDebugger * debugger, 
+	     OsiCuts & cs, 
+	     double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
+	     double * rowLower, double * rowUpper,
+	     char * intVar, double * minR, double * maxR, int * markR, 
+	     int * look, int nlook,
+             const CglTreeInfo info) const;
+  /// Does probing and adding cuts for clique slacks
+  int probeSlacks( const OsiSolverInterface & si, 
+                    const OsiRowCutDebugger * debugger, 
+                    OsiCuts & cs, 
+                    double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
+                    double * rowLower, double * rowUpper,
+                    char * intVar, double * minR, double * maxR,int * markR,
+                    const CglTreeInfo info) const;
   /** Does most of work of generateCuts 
       Returns number of infeasibilities */
   int gutsOfGenerateCuts( const OsiSolverInterface & si, 
 			  OsiCuts & cs,
 			  double * rowLower, double * rowUpper,
-			  double * colLower, double * colUpper) const;
+			  double * colLower, double * colUpper,
+                          const CglTreeInfo info) const;
+  /// Sets up clique information for each row
+  void setupRowCliqueInformation(const OsiSolverInterface & si);
+  /** This tightens column bounds (and can declare infeasibility)
+      It may also declare rows to be redundant */
+  int tighten(double *colLower, double * colUpper,
+              const int *column, const double *rowElements, 
+              const CoinBigIndex *rowStart, const int * rowLength,
+              double *rowLower, double *rowUpper, 
+              int nRows,int nCols,char * intVar,int maxpass,
+              double tolerance) const;
+  /// This just sets minima and maxima on rows
+  void tighten2(double *colLower, double * colUpper,
+                const int *column, const double *rowElements, 
+                const CoinBigIndex *rowStart, const int * rowLength,
+                double *rowLower, double *rowUpper, 
+                double * minR, double * maxR, int * markR,
+                int nRows,int nCols) const;
   //@}
 
   // Private member data
 
   /**@name Private member data */
   //@{
-  /// Row copy
+  /// Row copy (only if snapshot)
   CoinPackedMatrix * rowCopy_;
+  /// Column copy (only if snapshot)
+  CoinPackedMatrix * columnCopy_;
   /// Lower bounds on rows
   double * rowLower_;
   /// Upper bounds on rows
@@ -236,10 +296,10 @@ private:
   double * colLower_;
   /// Upper bounds on columns
   double * colUpper_;
-  /// Number of rows in snapshot (0 if no snapshot)
-  int numberRows_;
-  /// Number of columns in snapshot (must == current)
-  int numberColumns_;
+  /// Number of rows in snapshot (or when cliqueRow stuff computed)
+  mutable int numberRows_;
+  /// Number of columns in problem ( must == current)
+  mutable int numberColumns_;
   /// Tolerance to see if infeasible
   double primalTolerance_;
   /** Mode - 0 lazy using snapshot, 1 just unsatisfied, 2 all.
@@ -253,25 +313,42 @@ private:
   mutable int rowCuts_;
   /// Maximum number of passes to do in probing
   int maxPass_;
+  /// Log level - 0 none, 1 - a bit, 2 - more details
+  int logLevel_;
   /// Maximum number of unsatisfied variables to probe
   int maxProbe_;
   /// Maximum number of variables to look at in one probe
   int maxStack_;
+  /// Maximum number of elements in row for scan
+  int maxElements_;
+  /// Maximum number of unsatisfied variables to probe at root
+  int maxProbeRoot_;
+  /// Maximum number of variables to look at in one probe at root
+  int maxStackRoot_;
+  /// Maximum number of elements in row for scan at root
+  int maxElementsRoot_;
   /// Whether to include objective as constraint
   bool usingObjective_;
   /// Number of integer variables
   int numberIntegers_;
-  /// Disaggregation cuts
+  /// Number of 0-1 integer variables
+  int number01Integers_;
+  /** Only useful type of disaggregation is most normal
+      For now just done for 0-1 variables
+      Can be used for building cliques
+   */
+  typedef struct {
+    unsigned int zeroOne:1; // nonzero if affected variable is 0-1
+    unsigned int whenAtUB:1; // nonzero if fixing happens when this variable at 1
+    unsigned int affectedToUB:1; // nonzero if affected variable fixed to UB
+    unsigned int affected:29; // If 0-1 then 0-1 sequence, otherwise true
+  } disaggregationAction;
+  /// Disaggregation cuts and for building cliques
   typedef struct {
     int sequence; // integer variable
-    // newValue will be NULL if no probing done yet
-    // lastLBWhenAt1 gives length of newValue;
-    int lastUBWhenAt0; // last UB changed when integer at lb 
-    int lastLBWhenAt0; // last LB changed when integer at lb
-    int lastUBWhenAt1; // last UB changed when integer at ub
-    int lastLBWhenAt1; // last LB changed when integer at ub
-    int * index; // columns whose bounds will be changed
-    double * newValue; // new values 
+    // index will be NULL if no probing done yet
+    int length; // length of newValue
+    disaggregationAction * index; // columns whose bounds will be changed
   } disaggregation;
   disaggregation * cutVector_;
   /// Cliques
@@ -287,7 +364,7 @@ private:
   /// Entries for clique
   typedef struct {
     unsigned int oneFixes:1; //  nonzero if variable to 1 fixes all
-    unsigned int sequence:31; //  variable (in matrix)
+    unsigned int sequence:31; //  variable (in matrix) (but also see cliqueRow_)
   } cliqueEntry;
   cliqueEntry * cliqueEntry_;
   /** Start of oneFixes cliques for a column in matrix or -1 if not
@@ -300,6 +377,13 @@ private:
   int * endFixStart_;
   /// Clique numbers for one or zero fixes
   int * whichClique_;
+  /** For each column with nonzero in row copy this gives a clique "number".
+      So first clique mentioned in row is always 0.  If no entries for row
+      then no cliques.  If sequence > numberColumns then not in clique.
+  */
+  cliqueEntry * cliqueRow_;
+  /// cliqueRow_ starts for each row
+  int * cliqueRowStart_;
   //@}
 };
 

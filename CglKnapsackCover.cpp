@@ -479,18 +479,18 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
       // reset the remainder
       remainder.setVector(0,NULL,NULL);
       
-      
-      if (findJohnAndEllisCover(rowIndex, krow, b,
-				xstar, fracCover, atOnes, remainder) == 1){
-	
-	// experimenting here...
-	// Sequence Dependent Lifting up on remainders and lifting down on the
-	// atOnes 
-	liftUpDownAndUncomplementAndAdd(nCols, xstar, complement, rowIndex,
-					krow.getNumElements(), b, fracCover,
-					atOnes, remainder, cs);
+      if (expensiveCuts_||krow.getNumElements()<=15) {
+        if (findJohnAndEllisCover(rowIndex, krow, b,
+                                  xstar, fracCover, atOnes, remainder) == 1){
+          
+          // experimenting here...
+          // Sequence Dependent Lifting up on remainders and lifting down on the
+          // atOnes 
+          liftUpDownAndUncomplementAndAdd(nCols, xstar, complement, rowIndex,
+                                          krow.getNumElements(), b, fracCover,
+                                          atOnes, remainder, cs);
+        }
       }
-      
       
       //////////////////////////////////////////////////////
       // Try to generate a violated                       //
@@ -513,7 +513,8 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
 	  
 	  // Lift cover inequality and add to cut set 
 	  if (!liftAndUncomplementAndAdd(rowUpper[rowIndex], krow, b,
-					 complement, rowIndex, cover, remainder, cs)) {
+					 complement, rowIndex, cover, remainder,
+                                         cs)) {
 	    // Reset local data and continue to the next iteration 
 	    // of the rowIndex-loop
 	    // I am not sure this is needed but I am just being careful
@@ -534,7 +535,8 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
 	  
 	  // Lift cover inequality and add to cut set 
 	  if (!liftAndUncomplementAndAdd(rowUpper[rowIndex], krow, b,
-					 complement, rowIndex, cover, remainder, cs)) {
+					 complement, rowIndex, cover, remainder,
+                                         cs)) {
 	    // Reset local data and continue to the next iteration 
 	    // of the rowIndex-loop
 	    // I am not sure this is needed but I am just being careful
@@ -1962,8 +1964,7 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
          CoinPackedVector & atOne,
 	 // and together with fracCover form minimal (?) cover. 
          CoinPackedVector & remainder,
-
-	 OsiCuts & cs ) const
+         OsiCuts & cs ) const
 {
   CoinPackedVector cut;
 
@@ -2691,7 +2692,8 @@ epsilon2_(1.0e-5),
 onetol_(1-epsilon_),
 maxInKnapsack_(50),
 numRowsToCheck_(-1),
-rowsToCheck_(0)
+rowsToCheck_(0),
+expensiveCuts_(false)
 {
   // nothing to do here
 }
@@ -2706,7 +2708,8 @@ CglKnapsackCover::CglKnapsackCover (const CglKnapsackCover & source) :
    onetol_(source.onetol_),
    maxInKnapsack_(source.maxInKnapsack_),
    numRowsToCheck_(source.numRowsToCheck_),
-   rowsToCheck_(0)
+   rowsToCheck_(0),
+   expensiveCuts_(source.expensiveCuts_)
 {
    if (numRowsToCheck_ > 0) {
       rowsToCheck_ = new int[numRowsToCheck_];
@@ -2753,6 +2756,7 @@ CglKnapsackCover::operator=(const CglKnapsackCover& rhs)
       } else {
 	 rowsToCheck_ = 0;
       }
+      expensiveCuts_ = rhs.expensiveCuts_;
    }
    return *this;
 }

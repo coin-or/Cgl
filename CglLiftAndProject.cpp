@@ -27,7 +27,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
   //
   //   min {cx: <Atilde,x> >= btilde} 
   //
-  // is in cannonical form with all bounds,
+  // is in canonical form with all bounds,
   // including x_t>=0, -x_t>=-1 for x_t binary,
   // explicitly stated in the constraint matrix. 
   // See ~/COIN/Examples/Cgl2/cgl2.cpp 
@@ -40,7 +40,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
 
   // This implementation uses Normalization 1.
 
-  // Given cannonical problem and
+  // Given canonical problem and
   // the lp-relaxation solution, x,
   // the LAP cut generator attempts to construct
   // a cut for every x_j such that 0<x_j<1
@@ -192,7 +192,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
 		      BObjective,
 		      BRowLowers, BRowUppers);
 
-  // Problem sense should defalut to "min" by default, 
+  // Problem sense should default to "min" by default, 
   // but just to be virtuous...
   coneSi->setObjSense(1.0);
 
