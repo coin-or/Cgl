@@ -30,7 +30,6 @@ void CglGomory::generateCuts(const OsiSolverInterface & si,
 						OsiCuts & cs ) const
 {
   // Get basic problem information
-  int numberRows=si.getNumRows();
   int numberColumns=si.getNumCols(); 
 
   // get integer variables and basis
@@ -159,8 +158,8 @@ inline Rational nearestRational(double value, int maxDenominator)
     return tryA;
   integerPart = floor(value);
   value -= integerPart;
-  tryThis.numerator = tryB.numerator*integerPart + tryA.numerator;
-  tryThis.denominator = tryB.denominator*integerPart + tryA.denominator;
+  tryThis.numerator = tryB.numerator* (int ) integerPart + tryA.numerator;
+  tryThis.denominator = tryB.denominator* (int ) integerPart + tryA.denominator;
   tryA = tryB;
   tryB = tryThis;
 
@@ -178,8 +177,8 @@ inline Rational nearestRational(double value, int maxDenominator)
     value = 1.0/value;
     integerPart = floor(value+1.0e-10);
     value -= integerPart;
-    tryThis.numerator = tryB.numerator*integerPart + tryA.numerator;
-    tryThis.denominator = tryB.denominator*integerPart + tryA.denominator;
+    tryThis.numerator = tryB.numerator* (int ) integerPart + tryA.numerator;
+    tryThis.denominator = tryB.denominator* (int ) integerPart + tryA.denominator;
     tryA = tryB;
     tryB = tryThis;
   }
@@ -347,7 +346,6 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
     }
   }
 
-  int j;
   // two vectors for updating (one is work)
   CoinIndexedVector work;
   CoinIndexedVector array;
@@ -569,6 +567,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      std::cout<<" <= "<<rhs<<std::endl;
 #if CGL_DEBUG==1
 	    }
+#endif
 #endif
 	    if (!numberNonInteger&&number) {
 #ifdef CGL_DEBUG
