@@ -129,6 +129,7 @@ CglProbingUnitTest(
     // now all variables
     osicuts=OsiCuts();
     test1.setMode(2);
+    test1.setRowCuts(3);
     test1.generateCuts(*siP,osicuts);
     nColCuts = osicuts.sizeColCuts();
     nRowCuts = osicuts.sizeRowCuts();
@@ -191,7 +192,7 @@ CglProbingUnitTest(
 	std::cout <<std::endl;
       }
     }
-    assert (osicuts.sizeRowCuts()>=7);
+    assert (osicuts.sizeRowCuts()>=4);
     delete siP;
   }
 

@@ -12,6 +12,7 @@
 #include <cassert>
 #include <iostream>
 //#define PRINT_DEBUG
+//#define CGL_DEBUG
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedVector.hpp"
 #include "CoinPackedMatrix.hpp"
@@ -1086,6 +1087,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
       up = ceil(solval-tolerance);
       if(colUpper[j]-colLower[j]<1.0e-8) markC[j]=3;
       if (markC[j]||!intVar[j]) continue;
+      double saveSolval = solval;
       if (solval>colUpper[j]-tolerance||solval<colLower[j]+tolerance) {
 	awayFromBound=0;
 	if (solval<colLower[j]+tolerance) {
@@ -1576,7 +1578,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	       or maybe better see if it is a cut */
 	    if (iway==0) {
 	      nstackC0=min(nstackC,maxStack_);
-	      double solMove = solval-down;
+	      double solMove = saveSolval-down;
 	      double boundChange;
 	      if (notFeasible) {
 		nstackC0=0;
@@ -1838,7 +1840,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	      } else {
 		goingToTrueBound=0;
 	      }
-	      double solMove = up-solval;
+	      double solMove = up-saveSolval;
 	      double boundChange;
 	      /* restore all */
 	      for (istackC=nstackC-1;istackC>=0;istackC--) {
