@@ -1258,7 +1258,8 @@ DGG_generateCutsFromBase( DGG_constraint_t *orig_base,
     DGG_freeConstraint(base);
   }
 
-  for (int i = cut_list->n-1; i>=new_pos; i--){
+  int i;
+  for ( i = cut_list->n-1; i>=new_pos; i--){
     DGG_constraint_t *lcut = cut_list->c[i];
 
     rval = DGG_unTransformConstraint(data, lcut);
