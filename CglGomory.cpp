@@ -686,6 +686,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		if (value<TINY_ELEMENT) {
 		  // what happens if we set zero
 		  number=limit_+1;
+		  numberNonInteger=1;
 		  break;
 		} else {
 		  largest=max(largest,value);
@@ -694,8 +695,10 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		  packed[number++]=packed[i];
 		}
 	      }
-	      if (largest>1.0e9*smallest)
+	      if (largest>1.0e9*smallest) {
 		number=limit_+1; //reject
+		numberNonInteger=1;
+	      }
 	    }
 	    if (number<limit_||!numberNonInteger) {
 	      bounds[1]=rhs;
