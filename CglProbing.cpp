@@ -1404,17 +1404,18 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		  bool onList = (markC[kcol]!=0);
 		  if (markC[kcol]!=3) {
 		    value2=rowElements[kk];
+                    int markIt=markC[kcol];
 		    if (value2 < 0.0) {
-		      if (colUpper[kcol] < 1e10 && (markC[kcol]&2)==0 &&
+		      if (colUpper[kcol] < 1e10 && (markIt&2)==0 &&
 			  rowUpper[irow]<1.0e10) {
 			dbound = colUpper[kcol]+
 			  (rowUpper[irow]-minR[irow])/value2;
 			if (dbound > colLower[kcol] + primalTolerance_) {
 			  if (intVar[kcol]) {
-			    markC[kcol] |= 2;
+                            markIt |= 2;
 			    newLower = ceil(dbound-primalTolerance_);
 			  } else {
-			    markC[kcol]=3;
+                            markIt=3;
 			    newLower=dbound;
 			    if (newLower>colUpper[kcol]&&
 				newLower-primalTolerance_<=colUpper[kcol]) {
@@ -1424,16 +1425,16 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			  moveUp = newLower-colLower[kcol];
 			}
 		      }
-		      if (colLower[kcol] > -1e10 && (markC[kcol]&1)==0 &&
+		      if (colLower[kcol] > -1e10 && (markIt&1)==0 &&
 			  rowLower[irow]>-1.0e10) {
 			dbound = colLower[kcol] + 
 			  (rowLower[irow]-maxR[irow])/value2;
 			if (dbound < colUpper[kcol] - primalTolerance_) {
 			  if (intVar[kcol]) {
-			    markC[kcol] |= 1;
+			    markIt |= 1;
 			    newUpper = floor(dbound+primalTolerance_);
 			  } else {
-			    markC[kcol]=3;
+			    markIt=3;
 			    newUpper=dbound;
 			    if (newUpper<colLower[kcol]&&
 				newUpper+primalTolerance_>=colLower[kcol]) {
@@ -1445,16 +1446,16 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      }
 		    } else {
 		      /* positive element */
-		      if (colUpper[kcol] < 1e10 && (markC[kcol]&2)==0 &&
+		      if (colUpper[kcol] < 1e10 && (markIt&2)==0 &&
 			  rowLower[irow]>-1.0e10) {
 			dbound = colUpper[kcol] + 
 			  (rowLower[irow]-maxR[irow])/value2;
 			if (dbound > colLower[kcol] + primalTolerance_) {
 			  if (intVar[kcol]) {
-			    markC[kcol] |= 2;
+			    markIt |= 2;
 			    newLower = ceil(dbound-primalTolerance_);
 			  } else {
-			    markC[kcol]=3;
+			    markIt=3;
 			    newLower=dbound;
 			    if (newLower>colUpper[kcol]&&
 				newLower-primalTolerance_<=colUpper[kcol]) {
@@ -1464,16 +1465,16 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			  moveUp = newLower-colLower[kcol];
 			}
 		      }
-		      if (colLower[kcol] > -1e10 && (markC[kcol]&1)==0 &&
+		      if (colLower[kcol] > -1e10 && (markIt&1)==0 &&
 			  rowUpper[irow]<1.0e10) {
 			dbound = colLower[kcol] + 
 			  (rowUpper[irow]-minR[irow])/value2;
 			if (dbound < colUpper[kcol] - primalTolerance_) {
 			  if (intVar[kcol]) {
-			    markC[kcol] |= 1;
+			    markIt |= 1;
 			    newUpper = floor(dbound+primalTolerance_);
 			  } else {
-			    markC[kcol]=3;
+			    markIt=3;
 			    newUpper=dbound;
 			    if (newUpper<colLower[kcol]&&
 				newUpper+primalTolerance_>=colLower[kcol]) {
@@ -1484,6 +1485,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			}
 		      }
 		    }
+		    if (nstackC<2*maxStack_) 
+                      markC[kcol] = markIt;
 		    if (moveUp&&nstackC<2*maxStack_) {
 		      fixThis++;
 #ifdef PRINT_DEBUG
