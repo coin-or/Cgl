@@ -66,17 +66,18 @@ private:
   
  // Private member methods
 
-
   /**@name Private methods */
   //@{
+
   //@}
 
   // Private member data
 
   /**@name Private member data */
   //@{
-  /// epsilon
+  /// The normalization is beta_=1 or beta_=-1
   double beta_;  
+  /// epsilon
   double epsilon_;  
   /// 1-epsilon
   double onetol_;  
