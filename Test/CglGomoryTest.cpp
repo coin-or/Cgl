@@ -58,7 +58,7 @@ CglGomoryUnitTest(
  
     // matrix data
     //deliberate hiccup of 2 between 0 and 1
-    int start[5]={0,4,7,8,9};
+    CoinBigIndex start[5]={0,4,7,8,9};
     int length[5]={2,3,1,1,1};
     int rows[11]={0,2,-1,-1,0,1,2,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0,1,1,1};
@@ -266,7 +266,7 @@ CglGomoryUnitTest(
  
     // matrix data
     //deliberate hiccup of 2 between 0 and 1
-    int start[5]={0,4,7,8,9};
+    CoinBigIndex start[5]={0,4,7,8,9};
     int length[5]={2,3,1,1,1};
     int rows[11]={0,2,-1,-1,0,1,2,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0,1,-1,1};
@@ -474,7 +474,7 @@ CglGomoryUnitTest(
  
     // matrix data
     //deliberate hiccup of 2 between 0 and 1
-    int start[5]={0,4};
+    CoinBigIndex start[5]={0,4};
     int length[5]={2,3};
     int rows[11]={0,2,-1,-1,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0};
@@ -676,7 +676,7 @@ CglGomoryUnitTest(
  
     // matrix data
     //deliberate hiccup of 2 between 0 and 1
-    int start[5]={0,4};
+    CoinBigIndex start[5]={0,4};
     int length[5]={2,3};
     int rows[11]={0,2,-1,-1,0,1,2};
     double elements[11]={-7.0,-2.0,1.0e10,1.0e10,+2.0,1.0,+2.0};
@@ -883,7 +883,7 @@ CglGomoryUnitTest(
  
     // matrix data
     //deliberate hiccup of 2 between 0 and 1
-    int start[5]={0,4,7,8,9};
+    CoinBigIndex start[5]={0,4,7,8,9};
     int length[5]={2,3,1,1,1};
     int rows[11]={0,2,-1,-1,0,1,2,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0,1,1,1};
@@ -1015,7 +1015,7 @@ CglGomoryUnitTest(
  
     // matrix data
     //deliberate hiccup of 2 between 0 and 1
-    int start[5]={0,4,7,8,9};
+    CoinBigIndex start[5]={0,4,7,8,9};
     int length[5]={2,3,1,1,1};
     int rows[11]={0,2,-1,-1,0,1,2,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0,1,-1,1};
@@ -1147,7 +1147,7 @@ CglGomoryUnitTest(
  
     // matrix data
     //deliberate hiccup of 2 between 0 and 1
-    int start[5]={0,4};
+    CoinBigIndex start[5]={0,4};
     int length[5]={2,3};
     int rows[11]={0,2,-1,-1,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0};
@@ -1276,7 +1276,7 @@ CglGomoryUnitTest(
  
     // matrix data
     //deliberate hiccup of 2 between 0 and 1
-    int start[5]={0,4};
+    CoinBigIndex start[5]={0,4};
     int length[5]={2,3};
     int rows[11]={0,2,-1,-1,0,1,2};
     double elements[11]={-7.0,-2.0,1.0e10,1.0e10,+2.0,1.0,+2.0};

@@ -542,8 +542,8 @@ CglKnapsackCoverUnitTest(
       double * sol1 = new double[nel];
       double * el1 = new double[nel];
       int * col1 = new int[nel];
-      int * start = new int[ncol+1];
-      memset(start,0,ncol*sizeof(int));
+      CoinBigIndex * start = new CoinBigIndex [ncol+1];
+      memset(start,0,ncol*sizeof(CoinBigIndex ));
       int * row = new int[nel];
       int i;
       for (i=0;i<nel;i++) {

@@ -255,11 +255,11 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   CoinPackedMatrix rowCopy =  columnCopy;
   rowCopy.reverseOrdering();
   const int * column = rowCopy.getIndices();
-  const int * rowStart = rowCopy.getVectorStarts();
+  const CoinBigIndex * rowStart = rowCopy.getVectorStarts();
   const int * rowLength = rowCopy.getVectorLengths(); 
   const double * rowElements = rowCopy.getElements();
   const int * row = columnCopy.getIndices();
-  const int * columnStart = columnCopy.getVectorStarts();
+  const CoinBigIndex * columnStart = columnCopy.getVectorStarts();
   const int * columnLength = columnCopy.getVectorLengths(); 
   const double * columnElements = columnCopy.getElements();
 

@@ -61,7 +61,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   const CoinPackedMatrix * Atilde = si.getMatrixByRow();
   const double * AtildeElements =  Atilde->getElements();
   const int * AtildeIndices =  Atilde->getIndices();
-  const int * AtildeStarts = Atilde->getVectorStarts();
+  const CoinBigIndex * AtildeStarts = Atilde->getVectorStarts();
   const int * AtildeLengths = Atilde->getVectorLengths();  
   const int AtildeFullSize = AtildeStarts[m];
   const double * btilde = si.getRowLower();
@@ -109,7 +109,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   int BFullSize = 2*AtildeFullSize+twoM+3;
   double * BElements = new double[BFullSize];
   int * BIndices = new int[BFullSize];
-  int * BStarts = new int[BNumCols+1];
+  CoinBigIndex * BStarts = new CoinBigIndex [BNumCols+1];
   int * BLengths = new int[BNumCols];
 
 

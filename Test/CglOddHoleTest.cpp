@@ -49,7 +49,7 @@ CglOddHoleUnitTest(
     const int nEls=6;
     const double elem[]={1.0,1.0,1.0,1.0,1.0,1.0};
     const int row[]={0,1,0,2,1,2};
-    const int start[]={0,2,4};
+    const CoinBigIndex start[]={0,2,4};
     const int len[]={2,2,2};
     CoinPackedMatrix matrix(true,nRows,nCols,nEls,elem,row,start,len);
     const double sol[]={0.5,0.5,0.5};

@@ -66,7 +66,7 @@ static void checkBounds(const OsiRowCutDebugger * debugger,OsiColCut & cut)
 // It may also declare rows to be redundant
 static int tighten(double *colLower, double * colUpper,
 		   const int *column, const double *rowElements, 
-		   const int *rowStart, const int * rowLength,
+		   const CoinBigIndex *rowStart, const int * rowLength,
 		   double *rowLower, double *rowUpper, 
 		   int nRows,int nCols,char * intVar,int maxpass,
 		   double tolerance)
@@ -287,7 +287,7 @@ static int tighten(double *colLower, double * colUpper,
 // This just sets minima and maxima on rows
 static void tighten2(double *colLower, double * colUpper,
 		     const int *column, const double *rowElements, 
-		     const int *rowStart, const int * rowLength,
+		     const CoinBigIndex *rowStart, const int * rowLength,
 		     double *rowLower, double *rowUpper, 
 		     double * minR, double * maxR, int * markR,
 		     int nRows,int nCols)
@@ -589,7 +589,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 #endif
    
   const int * column = rowCopy->getIndices();
-  const int * rowStart = rowCopy->getVectorStarts();
+  const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
   const int * rowLength = rowCopy->getVectorLengths(); 
   const double * rowElements = rowCopy->getElements();
   
@@ -999,11 +999,11 @@ int CglProbing::probe( const OsiSolverInterface & si,
   CoinPackedMatrix columnCopy = * rowCopy;
   columnCopy.reverseOrdering();
   const int * column = rowCopy->getIndices();
-  const int * rowStart = rowCopy->getVectorStarts();
+  const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
   const int * rowLength = rowCopy->getVectorLengths(); 
   const double * rowElements = rowCopy->getElements();
   const int * row = columnCopy.getIndices();
-  const int * columnStart = columnCopy.getVectorStarts();
+  const CoinBigIndex * columnStart = columnCopy.getVectorStarts();
   const int * columnLength = columnCopy.getVectorLengths(); 
   const double * columnElements = columnCopy.getElements();
   double movement;
@@ -2085,7 +2085,7 @@ void CglProbing::snapshot ( const OsiSolverInterface & si,
   rowCopy_ = new CoinPackedMatrix(*si.getMatrixByRow());
 
   const int * column = rowCopy_->getIndices();
-  const int * rowStart = rowCopy_->getVectorStarts();
+  const CoinBigIndex * rowStart = rowCopy_->getVectorStarts();
   const int * rowLength = rowCopy_->getVectorLengths(); 
   const double * rowElements = rowCopy_->getElements();
   

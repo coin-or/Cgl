@@ -61,7 +61,7 @@ void CglOddHole::generateCuts(const OsiSolverInterface & si,
   double * solution = new double[nCols];
   memcpy(solution,si.getColSolution(),nCols*sizeof(double));
   const int * column = rowCopy->getIndices();
-  const int * rowStart = rowCopy->getVectorStarts();
+  const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
   const int * rowLength = rowCopy->getVectorLengths(); 
   const double * collower = si.getColLower();
   const double * colupper = si.getColUpper();
@@ -160,11 +160,11 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
   int nCols=columnCopy.getNumCols(); 
   
   const int * column = rowCopy.getIndices();
-  const int * rowStart = rowCopy.getVectorStarts();
+  const CoinBigIndex * rowStart = rowCopy.getVectorStarts();
   const int * rowLength = rowCopy.getVectorLengths(); 
   
   const int * row = columnCopy.getIndices();
-  const int * columnStart = columnCopy.getVectorStarts();
+  const CoinBigIndex * columnStart = columnCopy.getVectorStarts();
   const int * columnLength = columnCopy.getVectorLengths(); 
 
   // we need only look at suitable rows and variables with unsatisfied 0-1
@@ -591,7 +591,7 @@ void CglOddHole::createRowList( const OsiSolverInterface & si,
   const CoinPackedMatrix * rowCopy = si.getMatrixByRow();
 
   const int * column = rowCopy->getIndices();
-  const int * rowStart = rowCopy->getVectorStarts();
+  const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
   const int * rowLength = rowCopy->getVectorLengths(); 
   
   int rowIndex;

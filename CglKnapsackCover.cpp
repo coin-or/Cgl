@@ -89,7 +89,7 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
   const CoinPackedMatrix * matrixByRow = si.getMatrixByRow();
   const double * elementByRow = matrixByRow->getElements();
   const int * column = matrixByRow->getIndices();
-  const int * rowStart = matrixByRow->getVectorStarts();
+  const CoinBigIndex * rowStart = matrixByRow->getVectorStarts();
   const int * rowLength = matrixByRow->getVectorLengths();
   const double * rowUpper = si.getRowUpper();
   const double * rowLower = si.getRowLower();
