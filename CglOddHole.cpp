@@ -449,27 +449,24 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
           printf("\n");
 #endif
 	  OsiRowCut rc;
+	  double violation=0.0;
 	  if (packed) {
-	    if (sum>rhs+0.001) {
-	      rc.setLb(-DBL_MAX);
-	      rc.setUb(rhs);   
-	    } else {
-#ifdef CGL_DEBUG
-	      printf("why no cut\n");
-#endif
-	      good=false;
-	    }
+	    violation = sum-rhs;
+	    rc.setLb(-DBL_MAX);
+	    rc.setUb(rhs);   
 	  } else {
 	    // other way for cover
-	    if (sum<rhs-0.001) {
-	      rc.setUb(DBL_MAX);
-	      rc.setLb(rhs);   
-	    } else {
+	    violation = rhs-sum;
+	    rc.setUb(DBL_MAX);
+	    rc.setLb(rhs);   
+	  }
+	  if (violation<minimumViolation_||
+	      ((double) ii) * minimumViolationPer_>violation||
+	      ii>maximumEntries_) {
 #ifdef CGL_DEBUG
-	      printf("why no cut\n");
+	    printf("why no cut\n");
 #endif
-	      good=false;
-	    }
+	    good=false;
 	  }
 	  if (good) {
 	    //this assumes not many cuts
@@ -499,9 +496,9 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 		hash = (double *) realloc(hash,maxcuts*sizeof(double));
 	      }
 	      hash[ncuts++]=value;
-	      printf("sum %g rhs %g %d\n",sum,rhs,ii);
 	      rc.setRow(ii,candidate,element);
 #ifdef CGL_DEBUG
+	      printf("sum %g rhs %g %d\n",sum,rhs,ii);
 	      if (debugger) 
 		assert(!debugger->invalidCut(rc)); 
 #endif
@@ -644,6 +641,9 @@ onetol_(1-epsilon_)
   startClique_=NULL;
   numberCliques_=0;
   member_=NULL;
+  minimumViolation_=0.001;
+  minimumViolationPer_=0.0003;
+  maximumEntries_=100;
 }
 
 //-------------------------------------------------------------------
@@ -672,6 +672,9 @@ onetol_(source.onetol_)
     startClique_=NULL;
     member_=NULL;
   }
+  minimumViolation_=source.minimumViolation_;
+  minimumViolationPer_=source.minimumViolationPer_;
+  maximumEntries_=source.maximumEntries_;
 }
 
 //-------------------------------------------------------------------
@@ -715,6 +718,45 @@ CglOddHole::operator=(
       startClique_=NULL;
       member_=NULL;
     }
+    minimumViolation_=rhs.minimumViolation_;
+    minimumViolationPer_=rhs.minimumViolationPer_;
+    maximumEntries_=rhs.maximumEntries_;
   }
   return *this;
+}
+// Minimum violation
+double 
+CglOddHole::getMinimumViolation() const
+{
+  return minimumViolation_;
+}
+void 
+CglOddHole::setMinimumViolation(double value)
+{
+  if (value>1.0e-8&&value<=0.5)
+    minimumViolation_=value;
+}
+// Minimum violation per entry
+double 
+CglOddHole::getMinimumViolationPer() const
+{
+  return minimumViolationPer_;
+}
+void 
+CglOddHole::setMinimumViolationPer(double value)
+{
+  if (value>1.0e-8&&value<=0.25)
+    minimumViolationPer_=value;
+}
+// Maximum number of entries in a cut
+int 
+CglOddHole::getMaximumEntries() const
+{
+  return maximumEntries_;
+}
+void 
+CglOddHole::setMaximumEntries(int value)
+{
+  if (value>2)
+    maximumEntries_=value;
 }

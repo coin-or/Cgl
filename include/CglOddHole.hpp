@@ -62,6 +62,18 @@ public:
   /// Returns how many rows might give odd hole cuts
   int numberPossible();
   //@}
+  /**@name Gets and Sets */
+  //@{
+  /// Minimum violation
+  double getMinimumViolation() const;
+  void setMinimumViolation(double value);
+  /// Minimum violation per entry
+  double getMinimumViolationPer() const;
+  void setMinimumViolationPer(double value);
+  /// Maximum number of entries in a cut
+  int getMaximumEntries() const;
+  void setMaximumEntries(int value);
+  //@}
 
   /**@name Constructors and destructors */
   //@{
@@ -113,6 +125,12 @@ private:
   double epsilon_;  
   /// 1-epsilon
   double onetol_;
+  /// Minimum violation
+  double minimumViolation_;
+  /// Minimum violation per entry
+  double minimumViolationPer_;
+  /// Maximum number of entries in a cut
+  int maximumEntries_;
   /// number of rows when suitability tested
   int numberRows_;
   /// number of cliques
