@@ -17,15 +17,11 @@
 #include "CoinIndexedVector.hpp"
 #include "OsiRowCutDebugger.hpp"
 #include "CoinFactorization.hpp"
-#ifdef FULL_DEBUG
-#include "OsiSimplexSolution.hpp"
-#endif
 #include "CoinWarmStartBasis.hpp"
 #include "CglGomory.hpp"
 #include "CoinFinite.hpp"
-
 //-------------------------------------------------------------------
-// Generate disaggregation cuts
+// Generate Gomory cuts
 //------------------------------------------------------------------- 
 void CglGomory::generateCuts(const OsiSolverInterface & si, 
 						OsiCuts & cs ) const
@@ -52,6 +48,8 @@ void CglGomory::generateCuts(const OsiSolverInterface & si,
 	  // negative bounds - I am not sure works
 	  intVar[i] = 0;
 	}
+      } else {
+	intVar[i] = 0;
       }
     } else {
       intVar[i]=0;
@@ -79,17 +77,16 @@ void CglGomory::generateCuts(const OsiSolverInterface & si,
 inline double above_integer(double value) 
 {
   double value2=floor(value);
-  if (value-value2>0.9999999) {
-    value2 = floor(value+0.5);
-    assert (value-value2<=0.00000011);
-  }
+  double value3=floor(value+0.5);
+  if (fabs(value3-value)<1.0e-7*(fabs(value3)+1.0))
+    return 0.0;
   return value-value2;
 }
 //-------------------------------------------------------------------
 // Returns the greatest common denominator of two 
 // positive integers, a and b, found using Euclid's algorithm 
 //-------------------------------------------------------------------
-int gcd(int a, int b) 
+static int gcd(int a, int b) 
 {
   int remainder = -1;
 #if CGL_DEBUG>1
@@ -287,19 +284,6 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
       rowActivity[iRow] += columnElements[k]*value;
     }
   }
-#ifdef FULL_DEBUG
-  // check solution matches
-  {
-    OsiSimplexSolution test;
-    test.borrowModel(columnCopy, colLower, colUpper,
-		     objective, 
-		     rowLower, rowUpper);
-    test.factorize(factorization, *warm);
-    test.getSolution(rowActivity, colsol);
-    assert (test.largestSolutionError()<1.0e-5);
-    assert (test.primalFeasible());
-  }
-#endif
   /* we need to mark rows:
      0) equality
      1) slack at lb (activity at ub)
@@ -312,17 +296,19 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
     if (rowIsBasic[iRow]<0&&rowUpper[iRow]>rowLower[iRow]+1.0e-7) {
       int type=0;
       double rhs=0.0;
-      if (rowActivity[iRow]>rowUpper[iRow]-1.0e-7) {
+      if (rowActivity[iRow]>=rowUpper[iRow]-1.0e-7) {
 	type=1;
 	rhs=rowUpper[iRow];
-      } else if (rowActivity[iRow]<rowLower[iRow]+1.0e-7) {
+      } else if (rowActivity[iRow]<=rowLower[iRow]+1.0e-7) {
 	type=2;
 	rhs=rowLower[iRow];
       } else {
 	// wrong - but probably large rhs
+	rowType[iRow]=type;
 #ifdef CGL_DEBUG
 	assert (min(rowUpper[iRow]-rowActivity[iRow],
 		    rowActivity[iRow]-rowUpper[iRow])<1.0e-7);
+	abort();
 #else
 	continue;
 #endif
@@ -437,12 +423,12 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      iRow = row[k];
 	      value += columnElements[k]*arrayElements[iRow];
 	    }
-	    if (fabs(value)<1.0e-12) {
+	    if (fabs(value)<1.0e-16) {
 	      // small value
 	      continue;
 	    } else {
 #if CGL_DEBUG>1
-	      printf("for basic %d, column %d has alpha %g, colsol %g\n",
+	      if (iColumn==314) printf("for basic %d, column %d has alpha %g, colsol %g\n",
 		     iColumn,j,value,colsol[j]);
 #endif
 	      // deal with bounds
@@ -453,6 +439,10 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      } else {
 		//reducedValue -= value*colLower[j];
 	      }
+#if CGL_DEBUG>1
+	      if (iColumn==314) printf("value %g reduced %g int %d rhs %g swap %d\n",
+		     value,reducedValue,intVar[j],rhs,swap[j]);
+#endif
 	      double coefficient;
 	      if (intVar[j]) {
 		// integer
@@ -505,7 +495,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	    iRow=arrayRows[j];
 	    double value = arrayElements[iRow];
 	    int type=rowType[iRow];
-	    if (type&&fabs(value)>=1.0e-12) {
+	    if (type&&fabs(value)>=1.0e-16) {
 	      if ((type&1)==0) {
 		// negate to get correct coefficient
 		value = - value;
@@ -554,7 +544,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	    int jColumn =cutIndex[j];
 	    double value=-cutElement[jColumn];
 	    cutElement[jColumn]=0.0;
-	    if (fabs(value)>1.0e-12) {
+	    if (fabs(value)>1.0e-16) {
 	      sum+=value*colsol[jColumn];
 	      packed[number]=value;
 	      cutIndex[number++]=jColumn;
@@ -564,15 +554,16 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	  cutVector.setNumElements(0);
 	  if (sum >rhs+0.9*violationTolerance_&&
 	      fabs((sum-rhs)-violation)<1.0e-6) {
-#ifdef CGL_DEBUG
-#if CGL_DEBUG==1
-	    if (number<10) {
+	    //#ifdef CGL_DEBUG
+#if 1
+#if CGL_DEBUG<=1
+	    if (number<=-10) {
 #endif
 	      for (j=0;j<number;j++) {
 		std::cout<<" ["<<cutIndex[j]<<","<<packed[j]<<"]";
 	      }
 	      std::cout<<" <= "<<rhs<<std::endl;
-#if CGL_DEBUG==1
+#if CGL_DEBUG<=1
 	    }
 #endif
 #endif
@@ -684,10 +675,19 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      for (i=0;i<number2;i++) {
 		double value=fabs(packed[i]);
 		if (value<TINY_ELEMENT) {
-		  // what happens if we set zero
-		  number=limit_+1;
-		  numberNonInteger=1;
-		  break;
+		  int iColumn = cutIndex[i];
+		  if (colUpper[iColumn]-colLower[iColumn]<10.0) {
+		    // weaken cut
+		    if (packed[i]>0.0) 
+		      rhs -= value*colLower[iColumn];
+		    else
+		      rhs += value*colUpper[iColumn];
+		  } else {
+		    // throw away
+		    number=limit_+1;
+		    numberNonInteger=1;
+		    break;
+		  }
 		} else {
 		  largest=max(largest,value);
 		  smallest=min(smallest,value);

@@ -16,8 +16,9 @@
 #include "CoinPackedVector.hpp"
 #include "CoinSort.hpp"
 #include "CoinPackedMatrix.hpp"
+#include "OsiRowCutDebugger.hpp"
 //#define PRINT_DEBUG
-//#define DEBUG
+//#define CGL_DEBUG
 //-----------------------------------------------------------------------------
 // Generate knapsack cover cuts
 //------------------------------------------------------------------- 
@@ -28,7 +29,7 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
   int nRows=si.getNumRows(); 
   int nCols=si.getNumCols(); 
 
-  // Create working space for "cannonical" knapsack inequality
+  // Create working space for "canonical" knapsack inequality
   // - krow will contain the coefficients and indices of the 
   // (potentially complemented) variables in the knapsack inequality.
   // - b is the rhs of knapsack inequality.
@@ -43,15 +44,153 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
   // Assumes the lp-relaxation has been solved, and the solver interface
   // has a meaningful colsol.
   double * xstar= new double[nCols]; 
+
+  // To allow for vub knapsacks
+  int * thisColumnIndex = new int [nCols];
+  double * thisElement = new double[nCols];
+  int * back = new int[nCols];
+  
   const double *colsol = si.getColSolution(); 
   int k; 
+  // For each row point to vub variable
+  // -1 if no vub
+  // -2 if can skip row for knapsacks
+
+  int * vub = new int [nRows];
+
+  // For each column point to vub row
+  int * vubRow = new int [nCols];
+  double * vubValue = new double [nRows];
+
+  // Take out all fixed
+  double * effectiveUpper = new double [nRows];
+  double * effectiveLower = new double [nRows];
+  const double * colUpper = si.getColUpper();
+  const double * colLower = si.getColLower();
   for (k=0; k<nCols; k++){
+    back[k]=-1;
     xstar[k]=colsol[k];
     complement[k]=0;
+    vubRow[k]=-1;
+    if (si.isBinary(k)) {
+      if (si.isFreeBinary(k)) {
+	vubRow[k]=-2;
+      } else {
+	vubRow[k]=-10;
+      }
+    } else if (colUpper[k]==colLower[k]) {
+      vubRow[k]=-10; // fixed
+    }
   }
-  
-  // Main loop
+
   int rowIndex;
+  int numberVub=0;
+
+  const CoinPackedMatrix * matrixByRow = si.getMatrixByRow();
+  const double * elementByRow = matrixByRow->getElements();
+  const int * column = matrixByRow->getIndices();
+  const int * rowStart = matrixByRow->getVectorStarts();
+  const int * rowLength = matrixByRow->getVectorLengths();
+  const double * rowUpper = si.getRowUpper();
+  const double * rowLower = si.getRowLower();
+
+  // Scan all rows looking for possibles
+
+  for (rowIndex=0;rowIndex<nRows;rowIndex++) {
+    int start = rowStart[rowIndex];
+    int end = start + rowLength[rowIndex];
+    double upRhs = rowUpper[rowIndex]; 
+    double loRhs = rowLower[rowIndex]; 
+    int numberContinuous=0;
+    int numberBinary=0;
+    int iCont=-1;
+    double sum = 0.0;
+    double valueContinuous=0.0;
+    double valueBinary=0.0;
+    int iBinary=-1;
+    int j;
+    for (j=start;j<end;j++) {
+      int iColumn=column[j];
+      if (colUpper[iColumn]>colLower[iColumn]) {
+	sum += colsol[iColumn]*elementByRow[j];
+	if (vubRow[iColumn]==-2) {
+	  // binary
+	  numberBinary++;
+	  valueBinary=elementByRow[j];
+	  iBinary=iColumn;
+	} else if (vubRow[iColumn]==-1) {
+	  // only use if not at bound
+	  if (colsol[iColumn]<colUpper[iColumn]-1.0e-6&&
+	      colsol[iColumn]>colLower[iColumn]+1.0e-6) {
+	    // possible
+	    iCont=iColumn;
+	    numberContinuous++;
+	    valueContinuous=elementByRow[j];
+	  } else {
+	    // ** needs more thought
+	    numberContinuous ++;
+	    iCont=-1;
+	  }
+	} else {
+	  // ** needs more thought
+	  numberContinuous ++;
+	  iCont=-1;
+	  if (colsol[iColumn]<colUpper[iColumn]-1.0e-6&&
+	      colsol[iColumn]>colLower[iColumn]+1.0e-6) {
+	    // already assigned
+	    numberContinuous ++;
+	    iCont=-1;
+	  }
+	}
+      } else {
+	// fixed
+	upRhs -= colLower[iColumn]*elementByRow[j];
+	loRhs -= colLower[iColumn]*elementByRow[j];
+      }
+    }
+    // see if binding
+    effectiveUpper[rowIndex] = upRhs;
+    effectiveLower[rowIndex] = loRhs;
+    vubValue[rowIndex] = valueContinuous;
+    bool possible = false;
+    if (fabs(sum-upRhs)<1.0e-5) {
+      possible=true;
+    } else {
+      effectiveUpper[rowIndex]=DBL_MAX;
+    }
+    if (fabs(sum-loRhs)<1.0e-5) {
+      possible=true;
+    } else {
+      effectiveLower[rowIndex]=-DBL_MAX;
+    }
+    if (!numberBinary||numberBinary+numberContinuous>maxInKnapsack_)
+      possible=false;
+    if (possible) {
+      // binding with binary
+      if(numberContinuous==1&&iCont>=0) {
+	// vub
+	if (numberBinary==1)
+#ifdef PRINT_DEBUG
+	  printf("vub (by row %d) %g <= 0-1 %g * %d + %g * %d <= %g\n",
+		 rowIndex,effectiveLower[rowIndex],valueBinary,iBinary,
+		 valueContinuous,iCont,effectiveUpper[rowIndex]);
+#endif
+	vubRow[iCont]=rowIndex;
+	vub[rowIndex]=iCont;
+	numberVub++;
+      } else if (numberBinary>1) {
+	// could be knapsack
+	vub[rowIndex]=-1;
+      } else {
+	// no point looking at this row
+	vub[rowIndex]=-2;
+      }
+    } else {
+      // no point looking at this row
+      vub[rowIndex]=-2;
+    }
+  }
+  // Main loop
   int numCheck = 0;
   int* toCheck = 0;
   if (!rowsToCheck_) {
@@ -62,10 +201,20 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
      numCheck = numRowsToCheck_;
      toCheck = rowsToCheck_;
   }
+
+  // Set up number of tries for each row
+  int ntry;
+  if (numberVub) 
+    ntry=4;
+  else
+    ntry=2;
+  //ntry=2; // switch off
   for (int ii=0; ii < numCheck; ++ii){
      rowIndex = toCheck[ii];
      if (rowIndex < 0 || rowIndex >= nRows)
 	continue;
+     if (vub[rowIndex]==-2)
+       continue;
 
 #ifdef PRINT_DEBUG
     std::cout << "CGL: Processing row " << rowIndex << std::endl;
@@ -80,249 +229,402 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
     //  continue;
     // }
     
-    // Skip rows with 1 or 2 vars
-    // ToDo: 2 -> lprelax of exact knapsack cover
-    // if (si.getMatrixByRow()->vectorSize(rowIndex)<3){
-    if (si.getMatrixByRow()->getVectorSize(rowIndex)<2||
-	si.getMatrixByRow()->getVectorSize(rowIndex)>maxInKnapsack_){
-#ifdef PRINT_DEBUG
-    std::cout << "CGL: Skipping due to vector size" << si.getMatrixByRow()->getVectorSize(rowIndex) << std::endl;
-#endif
-      continue;
-    }
     
     //////////////////////////////////////////////////////
     // Derive a "canonical"  knapsack                  //
     // inequality (in binary variables)                 //
     // from the model row in mixed integer variables    //
     //////////////////////////////////////////////////////
-    
 #ifdef CGL_DEBUG
-    for(k=0; k<krow.getNumElements(); k++) {
-      if (complement[krow.getIndices()[k]]){
-	assert(xstar[krow.getIndices()[k]]== 1.0-colsol[krow.getIndices()[k]]);
-      } else {
-	assert(xstar[krow.getIndices()[k]]== colsol[krow.getIndices()[k]]);
-      }
-    }
     assert(!krow.getNumElements());
 #endif
-    if (!deriveAKnapsack(si, cs, krow, b, complement, 
-			    xstar, rowIndex, 
-			    si.getMatrixByRow()->getVector(rowIndex))){
+    double effectiveRhs[4];
+    double rhs[4];
+    double sign[]={0.0,0.0,-1.0,1.0};
+    bool rowType[] = {false,true,false,true};
+    effectiveRhs[0] = effectiveLower[rowIndex]; 
+    rhs[0]=rowLower[rowIndex];
+    effectiveRhs[2] = effectiveRhs[0];
+    rhs[2]= effectiveRhs[0];
+    effectiveRhs[1] = effectiveUpper[rowIndex]; 
+    rhs[1]=rowUpper[rowIndex];
+    effectiveRhs[3] = effectiveRhs[1];
+    rhs[3]= effectiveRhs[1];
+    int itry;
+#ifdef CGL_DEBUG
+    int kcuts[4];
+    memset(kcuts,0,4*sizeof(int));
+#endif
+    for (itry=0;itry<ntry;itry++) {
+#ifdef CGL_DEBUG
+      int nlast=cs.sizeRowCuts();
+#endif
+      // see if to skip
+      if (fabs(effectiveRhs[itry])>1.0e20)
+	continue;
+      int length = rowLength[rowIndex];
+      memcpy(thisColumnIndex,column+rowStart[rowIndex],length*sizeof(int));
+      memcpy(thisElement,elementByRow+rowStart[rowIndex],
+	     length*sizeof(double));
+      b=rhs[itry];
+      if (itry>1) {
+	// see if we would be better off relaxing
+	int i;
+	// mark columns
+	int length2=length; // for new length
+	int numberReplaced=0;
+	for (i=0;i<length;i++) {
+	  int iColumn = thisColumnIndex[i];
+	  back[thisColumnIndex[i]]=i;
+	  if (vubRow[iColumn]==-10) {
+	    // fixed - take out
+	    thisElement[i]=0.0;
+	  }
+	}
+	for (i=0;i<length;i++) {
+	  int iColumn = thisColumnIndex[i];
+	  int iRow = vubRow[iColumn];
+	  if (iRow>=0&&vub[iRow]==iColumn&&iRow!=rowIndex) {
+	    double useRhs=0.0;
+	    double vubCoefficient = vubValue[iRow];
+	    double thisCoefficient = thisElement[i];
+	    int replace = 0;
+	    // break it out - may be able to do better
+	    if (sign[itry]*thisCoefficient>0.0) {
+	      // we want valid lower bound on continuous
+	      if (effectiveLower[iRow]>-1.0e20&&vubCoefficient>0.0) 
+		replace=-1;
+	      else if (effectiveUpper[iRow]<1.0e20&&vubCoefficient<0.0) 
+		replace=1;
+	    } else {
+	      // we want valid upper bound on continuous
+	      if (effectiveLower[iRow]>-1.0e20&&vubCoefficient<0.0) 
+		replace=-1;
+	      else if (effectiveUpper[iRow]<1.0e20&&vubCoefficient>0.0) 
+		replace=1;
+	    }
+	    if (replace) {
+	      numberReplaced++;
+	      if (replace<0)
+		useRhs = effectiveLower[iRow];
+	      else
+		useRhs = effectiveUpper[iRow];
+	      // now replace (just using vubRow==-2)
+	      // delete continuous
+	      thisElement[i]=0.0;
+	      double scale = thisCoefficient/vubCoefficient;
+	      // modify rhs
+	      b -= scale*useRhs;
+	      int start = rowStart[iRow];
+	      int end = start+rowLength[iRow];
+	      int j;
+	      for (j=start;j<end;j++) {
+		int iColumn = column[j];
+		if (vubRow[iColumn]==-2) {
+		  double change = scale*elementByRow[j];
+		  int iBack = back[iColumn];
+		  if (iBack<0) {
+		    // element does not exist
+		    back[iColumn]=length2;
+		    thisElement[length2]=-change;
+		    thisColumnIndex[length2++]=iColumn;
+		  } else {
+		    // element does exist
+		    thisElement[iBack] -= change;
+		  }
+		}
+	      }
+	    }
+	  }
+	}
+	if (numberReplaced) {
+	  length=0;
+	  for (i=0;i<length2;i++) {
+	    int iColumn = thisColumnIndex[i];
+	    back[iColumn]=-1; // un mark
+	    if (thisElement[i]) {
+	      thisElement[length]=thisElement[i];
+	      thisColumnIndex[length++]=iColumn;
+	    }
+	  }
+	  if (length>maxInKnapsack_)
+	    continue; // too long
+	} else {
+	  for (i=0;i<length;i++) {
+	    int iColumn = thisColumnIndex[i];
+	    back[iColumn]=-1; // un mark
+	  }
+	  continue; // no good
+	}
+      }
+      if (!deriveAKnapsack(si, cs, krow, rowType[itry], b, complement, 
+			   xstar, rowIndex, 
+			   length,thisColumnIndex,thisElement)) {
+	
+	// Reset local data and continue to the next iteration 
+	// of the rowIndex-loop
+	for(k=0; k<krow.getNumElements(); k++) {
+	  if (complement[krow.getIndices()[k]]){
+	    xstar[krow.getIndices()[k]]= 1.0-xstar[krow.getIndices()[k]];
+	    complement[krow.getIndices()[k]]=0;        
+	  }
+	}
+	krow.setVector(0,NULL,NULL);
+	continue;
+      }
+#ifdef PRINT_DEBUG
+      {
+	// Get the sense of the row
+	int i;
+	printf("rhs sense %c rhs %g\n",si.getRowSense()[rowIndex],
+	       si.getRightHandSide()[rowIndex]);
+	const int * indices = si.getMatrixByRow()->getVector(rowIndex).getIndices();
+	const double * elements = si.getMatrixByRow()->getVector(rowIndex).getElements();
+	// for every variable in the constraint
+	for (i=0; i<si.getMatrixByRow()->getVector(rowIndex).getNumElements(); i++){
+	  printf("%d (s=%g) %g, ",indices[i],colsol[indices[i]],elements[i]);
+	}
+	printf("\n");
+      }
+#endif
       
-      // Reset local data and continue to the next iteration 
-      // of the rowIndex-loop
-      for(k=0; k<krow.getNumElements(); k++) {
-        if (complement[krow.getIndices()[k]]){
-          xstar[krow.getIndices()[k]]= 1.0-xstar[krow.getIndices()[k]];
-          complement[krow.getIndices()[k]]=0;        
-        }
+      //////////////////////////////////////////////////////
+      // Look for a series of                             //
+      // different types of minimal covers.               //
+      // If a minimal cover is found,                     //
+      // lift the associated minimal cover inequality,    //
+      // uncomplement the vars                            //
+      // and add it to the cut set.                       //
+      // After the last type of cover is tried,           //
+      // restore xstar values                             //
+      //////////////////////////////////////////////////////
+      
+      //////////////////////////////////////////////////////
+      // Try to generate a violated                       //
+      // minimal cover greedily from fractional vars      //
+      //////////////////////////////////////////////////////
+      
+      CoinPackedVector cover, remainder;  
+      
+      
+      if (findGreedyCover(rowIndex, krow, b, xstar, cover, remainder) == 1){
+	
+	// Lift cover inequality and add to cut set 
+	if (!liftAndUncomplementAndAdd(rowUpper[rowIndex], krow, b,
+				       complement, rowIndex, cover, 
+				       remainder, cs)) {
+	  // Reset local data and continue to the next iteration 
+	  // of the rowIndex-loop
+	  // I am not sure this is needed but I am just being careful
+	  for(k=0; k<krow.getNumElements(); k++) {
+	    if (complement[krow.getIndices()[k]]){
+	      xstar[krow.getIndices()[k]]= 1.0-xstar[krow.getIndices()[k]];
+	      complement[krow.getIndices()[k]]=0;        
+	    }
+	  }
+	  krow.setVector(0,NULL,NULL);
+	  continue;
+	}  
+      }
+      
+      
+      //////////////////////////////////////////////////////
+      // Try to generate a violated                       //
+      // minimal cover using pseudo John and Ellis logic  //
+      //////////////////////////////////////////////////////
+      
+      // Reset the cover and remainder
+      cover.setVector(0,NULL,NULL);
+      remainder.setVector(0,NULL,NULL);
+      
+      if (findPseudoJohnAndEllisCover(rowIndex, krow, b,
+				      xstar, cover, remainder) == 1){
+	
+	// (Sequence Independent) Lift cover inequality and add to cut set 
+	if (!liftAndUncomplementAndAdd(rowUpper[rowIndex], krow, b,
+				       complement, rowIndex, cover, 
+				       remainder, cs)) {
+	  // Reset local data and continue to the next iteration 
+	  // of the rowIndex-loop
+	  // I am not sure this is needed but I am just being careful
+	  for(k=0; k<krow.getNumElements(); k++) {
+	    if (complement[krow.getIndices()[k]]){
+	      xstar[krow.getIndices()[k]]= 1.0-xstar[krow.getIndices()[k]];
+	      complement[krow.getIndices()[k]]=0;        
+	    }
+	  }
+	  krow.setVector(0,NULL,NULL);
+	  continue;
+	}  
+	
+	// Skip experiment for now...
+#if 0
+	// experimenting here...
+	// (Sequence Dependent) Lift cover inequality and add to cut set
+	seqLiftAndUncomplementAndAdd(nCols, xstar, complement, rowIndex,
+				     krow.getNumElements(), b, cover, remainder,
+				     cs);
+#endif 
+      }  
+      
+      
+      
+      //////////////////////////////////////////////////////
+      // Try to generate cuts using covers of unsat       //
+      // vars on reduced krows with John and Ellis logic  //
+      //////////////////////////////////////////////////////
+      CoinPackedVector atOnes;
+      CoinPackedVector fracCover; // different than cover
+      
+      // reset the remainder
+      remainder.setVector(0,NULL,NULL);
+      
+      
+      if (findJohnAndEllisCover(rowIndex, krow, b,
+				xstar, fracCover, atOnes, remainder) == 1){
+	
+	// experimenting here...
+	// Sequence Dependent Lifting up on remainders and lifting down on the
+	// atOnes 
+	liftUpDownAndUncomplementAndAdd(nCols, xstar, complement, rowIndex,
+					krow.getNumElements(), b, fracCover,
+					atOnes, remainder, cs);
+      }
+      
+      
+      //////////////////////////////////////////////////////
+      // Try to generate a violated                       //
+      // minimal cover by considering the                 //
+      // most violated cover problem                      //
+      //////////////////////////////////////////////////////
+      
+      
+      // reset cover and remainder
+      cover.setVector(0,NULL,NULL);
+      remainder.setVector(0,NULL,NULL);
+      
+      // if the size of the krow is "small", 
+      //    use an exact algorithm to find the most violated (minimal) cover, 
+      // else, 
+      //    use an lp-relaxation to find the most violated (minimal) cover.
+      if(krow.getNumElements()<=15){
+	if (findExactMostViolatedMinCover(nCols, rowIndex, krow, b,
+					  xstar, cover, remainder) == 1){
+	  
+	  // Lift cover inequality and add to cut set 
+	  if (!liftAndUncomplementAndAdd(rowUpper[rowIndex], krow, b,
+					 complement, rowIndex, cover, remainder, cs)) {
+	    // Reset local data and continue to the next iteration 
+	    // of the rowIndex-loop
+	    // I am not sure this is needed but I am just being careful
+	    for(k=0; k<krow.getNumElements(); k++) {
+	      if (complement[krow.getIndices()[k]]){
+		xstar[krow.getIndices()[k]]= 1.0-xstar[krow.getIndices()[k]];
+		complement[krow.getIndices()[k]]=0;        
+	      }
+	    }
+	    krow.setVector(0,NULL,NULL);
+	    continue;
+	  }  
+	}
+      } 
+      else {
+	if (findLPMostViolatedMinCover(nCols, rowIndex, krow, b,
+				       xstar, cover, remainder) == 1){
+	  
+	  // Lift cover inequality and add to cut set 
+	  if (!liftAndUncomplementAndAdd(rowUpper[rowIndex], krow, b,
+					 complement, rowIndex, cover, remainder, cs)) {
+	    // Reset local data and continue to the next iteration 
+	    // of the rowIndex-loop
+	    // I am not sure this is needed but I am just being careful
+	    for(k=0; k<krow.getNumElements(); k++) {
+	      if (complement[krow.getIndices()[k]]){
+		xstar[krow.getIndices()[k]]= 1.0-xstar[krow.getIndices()[k]];
+		complement[krow.getIndices()[k]]=0;        
+	      }
+	    }
+	    krow.setVector(0,NULL,NULL);
+	    continue;
+	  }  
+	}
+      } 
+      
+      
+      
+      // Reset xstar and complement to their initialized values for the next
+      // go-around 
+      int k;
+      if (fabs(b-rowUpper[rowIndex]) > epsilon_) {
+	for(k=0; k<krow.getNumElements(); k++) {
+	  if (complement[krow.getIndices()[k]]){
+	    xstar[krow.getIndices()[k]]= 1.0-xstar[krow.getIndices()[k]];
+	    complement[krow.getIndices()[k]]=0;
+	  }
+	}
       }
       krow.setVector(0,NULL,NULL);
-      continue;
-    }
-#ifdef PRINT_DEBUG
-    {
-      // Get the sense of the row
-      int i;
-      printf("rhs sense %c rhs %g\n",si.getRowSense()[rowIndex],
-	     si.getRightHandSide()[rowIndex]);
-      const int * indices = si.getMatrixByRow()->getVector(rowIndex).getIndices();
-      const double * elements = si.getMatrixByRow()->getVector(rowIndex).getElements();
-      // for every variable in the constraint
-      for (i=0; i<si.getMatrixByRow()->getVector(rowIndex).getNumElements(); i++){
-	printf("%d (s=%g) %g, ",indices[i],colsol[indices[i]],elements[i]);
+#ifdef CGL_DEBUG
+      int nnow = cs.sizeRowCuts();
+      if (nnow>nlast) {
+	const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
+	if (debugger&&debugger->onOptimalPath(si)) {
+	  // check cuts okay
+	  int k;
+	  for (k=nlast;k<nnow;k++) {
+	    OsiRowCut rc=cs.rowCut(k);
+	    if(debugger->invalidCut(rc)) {
+	      printf("itry %d, rhs %g, length %d\n",itry,rhs[itry],length);
+	      int i;
+	      for (i=0;i<length;i++) {
+		int iColumn = thisColumnIndex[i];
+		printf("column %d, coefficient %g, value %g, bounds %g %g\n",iColumn,
+		       thisElement[i],colsol[iColumn],colLower[iColumn],
+		       colUpper[iColumn]);
+	      }
+	      if (itry>1) {
+		int length = rowLength[rowIndex];
+		memcpy(thisColumnIndex,column+rowStart[rowIndex],
+		       length*sizeof(int));
+		memcpy(thisElement,elementByRow+rowStart[rowIndex],
+		       length*sizeof(double));
+		printf("Original row had rhs %g and length %d\n",
+		       (itry==2 ? rowLower[rowIndex] :rowUpper[rowIndex]),
+		       length);
+		for (i=0;i<length;i++) {
+		  int iColumn = thisColumnIndex[i];
+		  printf("column %d, coefficient %g, value %g, bounds %g %g\n",iColumn,
+			 thisElement[i],colsol[iColumn],colLower[iColumn],
+			 colUpper[iColumn]);
+		}
+	      }
+	      assert(!debugger->invalidCut(rc));
+	    }
+	  }
+	}
+	if (itry>1&&nnow-nlast>kcuts[itry-2]) {
+	  printf("itry %d gave %d cuts as against %d for itry %d\n",
+		 itry,nnow-nlast,kcuts[itry-2],itry-2);
+	}
+	kcuts[itry]=nnow-nlast;
+	nlast=nnow;
       }
-      printf("\n");
-    }
 #endif
-    
-    //////////////////////////////////////////////////////
-    // Look for a series of                             //
-    // different types of minimal covers.               //
-    // If a minimal cover is found,                     //
-    // lift the associated minimal cover inequality,    //
-    // uncomplement the vars                            //
-    // and add it to the cut set.                       //
-    // After the last type of cover is tried,           //
-    // restore xstar values                             //
-    //////////////////////////////////////////////////////
-    
-    //////////////////////////////////////////////////////
-    // Try to generate a violated                       //
-    // minimal cover greedily from fractional vars      //
-    //////////////////////////////////////////////////////
-
-    CoinPackedVector cover, remainder;  
-
-
-    if (findGreedyCover(rowIndex, krow, b, xstar, cover, remainder) == 1){
-
-      // Lift cover inequality and add to cut set 
-      if (!liftAndUncomplementAndAdd(si.getRowUpper()[rowIndex], krow, b,
-				     complement, rowIndex, cover, 
-				     remainder, cs)) {
-	// Reset local data and continue to the next iteration 
-	// of the rowIndex-loop
-        // I am not sure this is needed but I am just being careful
-	for(k=0; k<krow.getNumElements(); k++) {
-	  if (complement[krow.getIndices()[k]]){
-	    xstar[krow.getIndices()[k]]= 1.0-xstar[krow.getIndices()[k]];
-	    complement[krow.getIndices()[k]]=0;        
-	  }
-	}
-	krow.setVector(0,NULL,NULL);
-	continue;
-      }  
     }
-
-
-    //////////////////////////////////////////////////////
-    // Try to generate a violated                       //
-    // minimal cover using pseudo John and Ellis logic  //
-    //////////////////////////////////////////////////////
-
-    // Reset the cover and remainder
-    cover.setVector(0,NULL,NULL);
-    remainder.setVector(0,NULL,NULL);
-
-    if (findPseudoJohnAndEllisCover(rowIndex, krow, b,
-				    xstar, cover, remainder) == 1){
-
-      // (Sequence Independent) Lift cover inequality and add to cut set 
-      if (!liftAndUncomplementAndAdd(si.getRowUpper()[rowIndex], krow, b,
-				     complement, rowIndex, cover, 
-				     remainder, cs)) {
-	// Reset local data and continue to the next iteration 
-	// of the rowIndex-loop
-        // I am not sure this is needed but I am just being careful
-	for(k=0; k<krow.getNumElements(); k++) {
-	  if (complement[krow.getIndices()[k]]){
-	    xstar[krow.getIndices()[k]]= 1.0-xstar[krow.getIndices()[k]];
-	    complement[krow.getIndices()[k]]=0;        
-	  }
-	}
-	krow.setVector(0,NULL,NULL);
-	continue;
-      }  
-
-      // Skip experiment for now...
-#if 0
-      // experimenting here...
-      // (Sequence Dependent) Lift cover inequality and add to cut set
-      seqLiftAndUncomplementAndAdd(nCols, xstar, complement, rowIndex,
-				   krow.getNumElements(), b, cover, remainder,
-				   cs);
-#endif 
-    }  
-
-
-
-    //////////////////////////////////////////////////////
-    // Try to generate cuts using covers of unsat       //
-    // vars on reduced krows with John and Ellis logic  //
-    //////////////////////////////////////////////////////
-    CoinPackedVector atOnes;
-    CoinPackedVector fracCover; // different than cover
-    
-    // reset the remainder
-    remainder.setVector(0,NULL,NULL);
-    
-
-    if (findJohnAndEllisCover(rowIndex, krow, b,
-			      xstar, fracCover, atOnes, remainder) == 1){
-      
-      // experimenting here...
-      // Sequence Dependent Lifting up on remainders and lifting down on the
-      // atOnes 
-      liftUpDownAndUncomplementAndAdd(nCols, xstar, complement, rowIndex,
-				      krow.getNumElements(), b, fracCover,
-				      atOnes, remainder, cs);
-    }
-
-
-    //////////////////////////////////////////////////////
-    // Try to generate a violated                       //
-    // minimal cover by considering the                 //
-    // most violated cover problem                      //
-    //////////////////////////////////////////////////////
-
-
-    // reset cover and remainder
-    cover.setVector(0,NULL,NULL);
-    remainder.setVector(0,NULL,NULL);
-
-    // if the size of the krow is "small", 
-    //    use an exact algorithm to find the most violated (minimal) cover, 
-    // else, 
-    //    use an lp-relaxation to find the most violated (minimal) cover.
-    if(krow.getNumElements()<=15){
-      if (findExactMostViolatedMinCover(nCols, rowIndex, krow, b,
-					xstar, cover, remainder) == 1){
-        
-        // Lift cover inequality and add to cut set 
-	if (!liftAndUncomplementAndAdd(si.getRowUpper()[rowIndex], krow, b,
-				       complement, rowIndex, cover, remainder, cs)) {
-	  // Reset local data and continue to the next iteration 
-	  // of the rowIndex-loop
-	  // I am not sure this is needed but I am just being careful
-	  for(k=0; k<krow.getNumElements(); k++) {
-	    if (complement[krow.getIndices()[k]]){
-	      xstar[krow.getIndices()[k]]= 1.0-xstar[krow.getIndices()[k]];
-	      complement[krow.getIndices()[k]]=0;        
-	    }
-	  }
-	  krow.setVector(0,NULL,NULL);
-	  continue;
-	}  
-      }
-    } 
-    else {
-      if (findLPMostViolatedMinCover(nCols, rowIndex, krow, b,
-				     xstar, cover, remainder) == 1){
-        
-        // Lift cover inequality and add to cut set 
-	if (!liftAndUncomplementAndAdd(si.getRowUpper()[rowIndex], krow, b,
-				       complement, rowIndex, cover, remainder, cs)) {
-	  // Reset local data and continue to the next iteration 
-	  // of the rowIndex-loop
-	  // I am not sure this is needed but I am just being careful
-	  for(k=0; k<krow.getNumElements(); k++) {
-	    if (complement[krow.getIndices()[k]]){
-	      xstar[krow.getIndices()[k]]= 1.0-xstar[krow.getIndices()[k]];
-	      complement[krow.getIndices()[k]]=0;        
-	    }
-	  }
-	  krow.setVector(0,NULL,NULL);
-	  continue;
-	}  
-      }
-    } 
-
-
-
-    // Reset xstar and complement to their initialized values for the next
-    // go-around 
-    const double * rowupper = si.getRowUpper(); 
-    int k;
-    if (fabs(b-rowupper[rowIndex]) > epsilon_) {
-      for(k=0; k<krow.getNumElements(); k++) {
-        if (complement[krow.getIndices()[k]]){
-          xstar[krow.getIndices()[k]]= 1.0-xstar[krow.getIndices()[k]];
-          complement[krow.getIndices()[k]]=0;
-        }
-      }
-    }
-    krow.setVector(0,NULL,NULL);
   }
-  
   // Clean up: free allocated memory
   if (toCheck != rowsToCheck_)
      delete[] toCheck;
   delete[] xstar;
   delete[] complement;
- 
+  delete [] thisColumnIndex;
+  delete [] thisElement;
+  delete [] back;
+  delete [] vub;
+  delete [] vubRow;
+  delete [] vubValue;
+  delete [] effectiveLower;
+  delete [] effectiveUpper;
 }
 
 void
@@ -426,7 +728,7 @@ CglKnapsackCover::liftAndUncomplementAndAdd(
 
 //-------------------------------------------------------------------
 // deriveAKnapsack - returns 1 if the method is able to 
-//                  derive a cannonical knapsack inequality
+//                  derive a canonical knapsack inequality
 //                  in binary variables of the form ax<=b 
 //                  from the rowIndex-th row of the constraint matrix.
 //                  returns 0, otherwise.
@@ -437,61 +739,40 @@ CglKnapsackCover::deriveAKnapsack(
        const OsiSolverInterface & si, 
        OsiCuts & cs,
        CoinPackedVector & krow, 
+       bool treatAsLRow,
        double & b,
        int *  complement,
        double *  xstar,
        int rowIndex,
-       const CoinPackedVectorBase & matrixRow ) const
-
+       int numberElements,
+       const int * index,
+       const double * element) const
 {
   int i;
 
   krow.clear();
 
   // if the matrixRow represent a ge inequality, then
-  //     leMatrixRow == -matrixRow
-  // otherwise
+  //     leMatrixRow == -matrixRow  // otherwise
   //     leMatrixRow == matrixRow.
 
-  CoinPackedVector leMatrixRow(matrixRow); 
+  CoinPackedVector leMatrixRow(numberElements,index,element); 
 
   double maxKrowElement = -DBL_MAX;
   double minKrowElement = DBL_MAX;
   
-  // Get the sense of the row
-  const char  rowsense = si.getRowSense()[rowIndex];
-  
-  // Skip equality and unbounded rows 
-  if  (rowsense=='E' || rowsense=='N') {
-    return 0; 
-  }
-  
-  // le row  
-  if (rowsense=='L'){
-    b=si.getRightHandSide()[rowIndex];
-  }
 
-  // ge row  
-  if (rowsense=='G'){
-    b=-si.getRightHandSide()[rowIndex];
-#if 1
+  if (treatAsLRow) {
+    // treat as if L row
+  } else {
+    // treat as if G row
+    b=-b;
     std::transform(leMatrixRow.getElements(),
 		   leMatrixRow.getElements() + leMatrixRow.getNumElements(),
 		   leMatrixRow.getElements(),
 		   std::negate<double>());
-#else
-    for (i=0; i<leMatrixRow.getNumElements(); i++)
-      leMatrixRow.setElement(i,-leMatrixRow.getElements()[i]);
-#endif
   }
   
-  // Finite, but unequal row bounds. 
-  // Multiple ways to handle.  
-  // For now, use the le relationship as the default.
-  if  (rowsense=='R') {
-    b=si.getRightHandSide()[rowIndex];
-  }
-
   // nBinUnsat is a counter for the number of unsatisfied
   // (i.e. fractional) binary vars  
   int nBinUnsat =0;
@@ -500,7 +781,7 @@ CglKnapsackCover::deriveAKnapsack(
   
   // At this point, leMatrixRow and b represent a le inequality in general
   // variables. 
-  // To derive a cannonical knapsack inequality in free binary variable,
+  // To derive a canonical knapsack inequality in free binary variable,
   // process out the continuous & non-binary integer & fixed binary variables.
   // If the non-free-binary variables can be appropriately bounded, 
   // net them out of the constraint, otherwise abandon this row and return 0.
@@ -564,12 +845,35 @@ CglKnapsackCover::deriveAKnapsack(
   // If there's only one binary, return.  
   // ToDo: but why return if 2 binary? ...there was some assumption in the
   // findVioMinCover..(?)   
+  // Anyway probing will probably find something
   if (krow.getNumElements() < 3 ||
       nBinUnsat == 0 ||
-      maxKrowElement-minKrowElement < 1.0 ) {
+      maxKrowElement-minKrowElement < 1.0e-3*maxKrowElement ) {
     return 0;
   }
 
+  // However if we do decide to do when count is two - look carefully
+  if (krow.getNumElements()==2) {
+    const int * indices = krow.getIndices();
+    double * elements = krow.getElements();
+    double sum=0.0;
+    for(i=0; i<2; i++){
+      int iColumn = indices[i];
+      sum += elements[i]*xstar[iColumn];
+    }
+    if (sum<b-1.0e-4) {
+      return 0;
+    } else {
+      printf("*** Doubleton Row is ");
+      for(i=0; i<2; i++){
+	int iColumn = indices[i];
+	sum += elements[i]*xstar[iColumn];
+	printf("%d (coeff = %g, value = %g} ",indices[i],
+	       elements[i],xstar[iColumn]);
+      }
+      printf("<= %g - go for it\n",b);
+    }
+  }
 
 
   // At this point krow and b represent a le inequality in binary variables.  
@@ -643,7 +947,7 @@ CglKnapsackCover::deriveAKnapsack(
 
 //--------------------------------------------------
 // Find a violated minimal cover from 
-// a cannonical form knapsack inequality by
+// a canonical form knapsack inequality by
 // solving the lp relaxation of the 
 // -most- violated cover problem.
 // Postprocess to ensure minimality.
@@ -659,7 +963,7 @@ CglKnapsackCover::findLPMostViolatedMinCover(
       CoinPackedVector & remainder) const
 {
   
-  // Assumes krow and b describe a knapsack inequality in cannonical form
+  // Assumes krow and b describe a knapsack inequality in canonical form
 
   // Given a knapsack inequality sum a_jx_j <= b, and optimal lp solution
   // xstart, a violated minimal cover inequality exists if the following 0-1
@@ -699,7 +1003,7 @@ CglKnapsackCover::findLPMostViolatedMinCover(
   double elementSum = krow.sum();
 
   // Redundant/useless adjusted rows should have been trapped in the 
-  // transformation to the cannonical form of knapsack inequality
+  // transformation to the canonical form of knapsack inequality
   if (elementSum < b + epsilon_) {
     return -1; 
   }
@@ -863,7 +1167,7 @@ CglKnapsackCover::findExactMostViolatedMinCover(
         CoinPackedVector & remainder) const 
 {
   
-  // assumes the row is in cannonical knapsack form 
+  // assumes the row is in canonical knapsack form 
   
   // A violated min.cover inequality exists if the
   // opt obj func value (oofv) < 1: 
@@ -894,7 +1198,7 @@ CglKnapsackCover::findExactMostViolatedMinCover(
   double elementSum = krow.sum();
 
   // Redundant/useless adjusted rows should have been trapped in 
-  // transformation to cannonical form of knapsack inequality
+  // transformation to canonical form of knapsack inequality
   if (elementSum < b + epsilon_) {
 #ifdef PRINT_DEBUG
     printf("Redundant/useless adjusted row\n");
@@ -1043,7 +1347,7 @@ CglKnapsackCover::findPseudoJohnAndEllisCover(
   // going for functional now, will make efficient when working 
   
   // look at unstatisfied binary vars with nonzero row coefficients only
-  // get row in canonical form (here row is in cannonical form)
+  // get row in canonical form (here row is in canonical form)
   // if complement var, complement soln val too. (already done)
   // (*) sort in increasing value of soln val
   // track who is the biggest coef and it's index.
@@ -1090,12 +1394,12 @@ CglKnapsackCover::findPseudoJohnAndEllisCover(
   CoinPackedVector atOne;
   atOne.reserve(krow.getNumElements());
 
-  // partition the (binary) variables in the cannonical knapsack
+  // partition the (binary) variables in the canonical knapsack
   // into those at zero, those at fractions, and those at one. 
   // Note: no consideration given to whether variables are free
   // or fixed at binary values.
   // Note: continuous and integer vars have already been netted out
-  // to derive the cannonical knapsack form
+  // to derive the canonical knapsack form
   int i;
   for (i=0; i<krow.getNumElements(); i++){
 
@@ -1286,7 +1590,7 @@ CglKnapsackCover::findJohnAndEllisCover(
   // "functional before efficient" is my creed.
   
   // look at unstatisfied binary vars with nonzero row coefficients only
-  // get row in canonical form (here krow is in cannonical form)
+  // get row in canonical form (here krow is in canonical form)
   // if complement var, complement soln val too. (already done)
   // (*) sort in increasing value of soln val
   // track who is the biggest coef and it's index.
@@ -1327,7 +1631,7 @@ CglKnapsackCover::findJohnAndEllisCover(
   CoinPackedVector unsat;
   unsat.reserve(krow.getNumElements());
 
-  // partition the (binary) variables in the cannonical knapsack
+  // partition the (binary) variables in the canonical knapsack
   // into those at zero, those at fractions, and those at one. 
   // 
   // essentially, temporarily fix to one the free vars with lp soln value of
@@ -1335,7 +1639,7 @@ CglKnapsackCover::findJohnAndEllisCover(
   //
   // Note: continuous and integer vars, and variables fixed at 
   // binary values have already been netted out
-  // in deriving the cannonical knapsack form
+  // in deriving the canonical knapsack form
   int i;
   for (i=0; i<krow.getNumElements(); i++){
 
@@ -1871,7 +2175,7 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
 }
 
 //-------------------------------------------------------------------
-// seqLiftCoverCut:  Given a cannonical knapsack inequality and a
+// seqLiftCoverCut:  Given a canonical knapsack inequality and a
 //                cover, performs sequence-dependent lifting.
 //                Reference: Nemhauser & Wolsey
 //
@@ -1890,7 +2194,7 @@ CglKnapsackCover::seqLiftAndUncomplementAndAdd(
                                      //     and to index into row bounds
       int nRowElem,                  // number of elements in the row, aka row
                                      //     size, row length. 
-      double & b,                    // rhs of the cannonical knapsack
+      double & b,                    // rhs of the canonical knapsack
                                      //     inequality derived from row 
       CoinPackedVector & cover,       // need not be violated
       CoinPackedVector & remainder,
@@ -2060,7 +2364,7 @@ CglKnapsackCover::seqLiftAndUncomplementAndAdd(
 }
 
 //-------------------------------------------------------------------
-// liftCoverCut:  Given a cannonical knapsack inequality and a
+// liftCoverCut:  Given a canonical knapsack inequality and a
 //                cover, constructs a lift cover cut via
 //                sequence-independent lifting.
 //-------------------------------------------------------------------

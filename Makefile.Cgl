@@ -4,8 +4,8 @@ LibType := SHARED
 # Select optimization (-O or -g). -O will be automatically bumped up to the 
 # highest level of optimization the compiler supports. If want something in
 # between then specify the exact level you want, e.g., -O1 or -O2
-OptLevel := -O
-OptLevel := -g
+OptLevel := -O2
+#OptLevel := -g
 
 LIBNAME := Cgl
 
@@ -24,6 +24,10 @@ LIBSRC += CglSimpleRounding.cpp
 # The location of the customized Makefiles
 include ${MakefileDir}/Makefile.coin
 include ${MakefileDir}/Makefile.location
+ifeq ($(OptLevel),-g)
+#     CXXFLAGS += -DCGL_DEBUG
+endif
+#    CXXFLAGS += -DCGL_DEBUG
 
 export ExtraIncDir  := ${OsiIncDir} ${CoinIncDir} ${zlibIncDir} ${bzlibIncDir}
 export ExtraLibDir  := ${OsiLibDir} ${CoinLibDir} ${zlibLibDir} ${bzlibLibDir}

@@ -71,11 +71,14 @@ private:
     const OsiSolverInterface & si, 
     OsiCuts & cs,
     CoinPackedVector & krow,
+    bool treatAsLRow,
     double & b,
     int *  complement,
     double *  xstar,
     int rowIndex,
-    const CoinPackedVectorBase & matrixRow) const;
+    int numberElements,
+    const int * index,
+    const double * element) const;
 
   /** Find a violated minimal cover from 
  a canonical form knapsack inequality by
