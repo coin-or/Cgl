@@ -860,7 +860,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
 		  if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-		  cs.insert(rc);
+		  cs.insertIfNotDuplicate(rc);
 		}
 	      }
 	    }
@@ -888,7 +888,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
 		  if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-		  cs.insert(rc);
+		  cs.insertIfNotDuplicate(rc);
 		}
 	      }
 	    }
@@ -916,7 +916,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
 		  if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-		  cs.insert(rc);
+		  cs.insertIfNotDuplicate(rc);
 		}
 	      }
 	    }
@@ -944,7 +944,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
 		  if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-		  cs.insert(rc);
+		  cs.insertIfNotDuplicate(rc);
 		}
 	      }
 	    }
@@ -1619,7 +1619,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
 		      if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-		      cs.insert(rc);
+		      cs.insertIfNotDuplicate(rc);
 		    }
 		  }
 		  // lower disaggregation cut would be
@@ -1647,7 +1647,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
 		      if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-		      cs.insert(rc);
+		      cs.insertIfNotDuplicate(rc);
 #if 0
 		      printf("%d original bounds %g, %g new Lo %g sol= %g int %d sol= %g\n",icol,oldL,oldU,colLower[icol],colsol[icol], j, colsol[j]);
 		      printf("-1.0 * x(%d) + %g * y(%d) <= %g\n",
@@ -1709,7 +1709,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
 			if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-			cs.insert(rc);
+			cs.insertIfNotDuplicate(rc);
 		      }
 		    }
 		  }
@@ -1758,7 +1758,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
 			if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-			cs.insert(rc);
+			cs.insertIfNotDuplicate(rc);
 		      }
 		    }
 		  }
@@ -1871,7 +1871,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
 		      if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-		      cs.insert(rc);
+		      cs.insertIfNotDuplicate(rc);
 		    }
 		  }
 		  // lower disaggregation cut would be
@@ -1899,7 +1899,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
 		      if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-		      cs.insert(rc);
+		      cs.insertIfNotDuplicate(rc);
 		    }
 		  }
 		}
@@ -1956,7 +1956,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
 			if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-			cs.insert(rc);
+			cs.insertIfNotDuplicate(rc);
 		      }
 		    }
 		  }
@@ -2005,7 +2005,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
 			if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-			cs.insert(rc);
+			cs.insertIfNotDuplicate(rc);
 		      }
 		    }
 		  }

@@ -191,7 +191,7 @@ CglProbingUnitTest(
 	std::cout <<std::endl;
       }
     }
-    assert (osicuts.sizeRowCuts()>=8);
+    assert (osicuts.sizeRowCuts()>=7);
     delete siP;
   }
 
