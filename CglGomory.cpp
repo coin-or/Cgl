@@ -754,7 +754,7 @@ double CglGomory::getViolationTolerance() const
 CglGomory::CglGomory ()
 :
 CglCutGenerator(),
-violationTolerance_(0.001),
+violationTolerance_(0.00001),
 away_(0.05),
 limit_(50)
 {

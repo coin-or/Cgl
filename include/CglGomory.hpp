@@ -63,7 +63,9 @@ public:
   //@}
 
   /**@name Change criterion on whether a cut is sufficiently good
-   i.e. violation (default 0.001) */
+   i.e. violation (default 0.00001) 
+  At present this is not very useful as violation==away
+  */
   //@{
   /// Set
   void setViolationTolerance(double value);
