@@ -673,6 +673,30 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		rhs  += 1.0e-7*((double) (number/20));
 	      }
 	    }
+	    // Take off tiny elements
+	    // for first pass reject
+#define TINY_ELEMENT 1.0e-7
+	    {
+	      int i,number2=number;
+	      number=0;
+	      double largest=0.0;
+	      double smallest=1.0e30;
+	      for (i=0;i<number2;i++) {
+		double value=fabs(packed[i]);
+		if (value<TINY_ELEMENT) {
+		  // what happens if we set zero
+		  number=limit_+1;
+		  break;
+		} else {
+		  largest=max(largest,value);
+		  smallest=min(smallest,value);
+		  cutIndex[number]=cutIndex[i];
+		  packed[number++]=packed[i];
+		}
+	      }
+	      if (largest>1.0e9*smallest)
+		number=limit_+1; //reject
+	    }
 	    if (number<limit_||!numberNonInteger) {
 	      bounds[1]=rhs;
 	      {

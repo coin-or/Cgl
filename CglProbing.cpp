@@ -263,14 +263,14 @@ static int tighten(double *colLower, double * colUpper,
     for (j = 0; j < nCols; ++j) {
       if (intVar[j]) {
 	if (colUpper[j]-colLower[j]>1.0e-8) {
-	  if (floor(colUpper[j]+1.0e-6)<colUpper[j]) {
-	    colUpper[j]=floor(colUpper[j]+1.0e-6);
+	  if (floor(colUpper[j]+1.0e-4)<colUpper[j]) 
 	    nchange++;
-	  }
-	  if (ceil(colLower[j]-1.0e-6)>colLower[j]) {
-	    colLower[j]=ceil(colLower[j]-1.0e-6);
+	  // clean up anyway
+	  colUpper[j]=floor(colUpper[j]+1.0e-4);
+	  if (ceil(colLower[j]-1.0e-4)>colLower[j]) 
 	    nchange++;
-	  }
+	  // clean up anyway
+	  colLower[j]=ceil(colLower[j]-1.0e-4);
 	  if (colUpper[j]<colLower[j]) {
 	    /*printf("infeasible\n");*/
 	    ninfeas++;
@@ -572,14 +572,14 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	CoinPackedVector ubs;
 	for (i = 0; i < nCols; ++i) {
 	  if (intVar[i]) {
-	    colUpper[i] = min(upper[i],floor(colUpper[i]+1.0e-5));
+	    colUpper[i] = min(upper[i],floor(colUpper[i]+1.0e-4));
 	    if (colUpper[i]<upper[i]-1.0e-8) {
 	      if (colUpper[i]<colsol[i]-1.0e-8)
 		ifCut=1;
 	      ubs.insert(i,colUpper[i]);
 	      numberChanged++;
 	    }
-	    colLower[i] = max(lower[i],ceil(colLower[i]-1.0e-5));
+	    colLower[i] = max(lower[i],ceil(colLower[i]-1.0e-4));
 	    if (colLower[i]>lower[i]+1.0e-8) {
 	      if (colLower[i]>colsol[i]+1.0e-8)
 		ifCut=1;
@@ -1068,27 +1068,29 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	for (iway=0;iway<3;iway ++) {
 	  int fixThis=0;
 	  double objVal=current;
-	  bool goingToTrueBound=false;
+	  int goingToTrueBound=0;
 	  stackC[0]=j;
 	  markC[j]=way[iway];
 	  if (way[iway]==1) {
 	    movement=down-colUpper[j];
 	    assert(movement<-0.99999);
 	    if (fabs(down-colLower[j])<1.0e-7) {
-	      goingToTrueBound=true;
+	      goingToTrueBound=2;
 	      down=colLower[j];
 	    }
 	  } else {
 	    movement=up-colLower[j];
 	    assert(movement>0.99999);
 	    if (fabs(up-colUpper[j])<1.0e-7) {
-	      goingToTrueBound=true;
+	      goingToTrueBound=2;
 	      up=colUpper[j];
 	    }
 	  }
+	  if (goingToTrueBound&&(colUpper[j]-colLower[j]>1.5||colLower[j]))
+	    goingToTrueBound=1;
 	  // switch off disaggregation if not wanted
 	  if ((rowCuts&1)==0)
-	    goingToTrueBound=false;
+	    goingToTrueBound=0;
 #ifdef PRINT_DEBUG
 	  if (fabs(movement)>1.01) {
 	    printf("big %d %g %g %g\n",j,colLower[j],solval,colUpper[j]);
@@ -1204,7 +1206,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			if (dbound > colLower[kcol] + primalTolerance_) {
 			  if (intVar[kcol]) {
 			    markC[kcol] |= 2;
-			    newLower = ceil(dbound-0.5*primalTolerance_);
+			    newLower = ceil(dbound-primalTolerance_);
 			  } else {
 			    markC[kcol]=3;
 			    newLower=dbound;
@@ -1223,7 +1225,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			if (dbound < colUpper[kcol] - primalTolerance_) {
 			  if (intVar[kcol]) {
 			    markC[kcol] |= 1;
-			    newUpper = floor(dbound+0.5*primalTolerance_);
+			    newUpper = floor(dbound+primalTolerance_);
 			  } else {
 			    markC[kcol]=3;
 			    newUpper=dbound;
@@ -1244,7 +1246,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			if (dbound > colLower[kcol] + primalTolerance_) {
 			  if (intVar[kcol]) {
 			    markC[kcol] |= 2;
-			    newLower = ceil(dbound-0.5*primalTolerance_);
+			    newLower = ceil(dbound-primalTolerance_);
 			  } else {
 			    markC[kcol]=3;
 			    newLower=dbound;
@@ -1263,7 +1265,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			if (dbound < colUpper[kcol] - primalTolerance_) {
 			  if (intVar[kcol]) {
 			    markC[kcol] |= 1;
-			    newUpper = floor(dbound+0.5*primalTolerance_);
+			    newUpper = floor(dbound+primalTolerance_);
 			  } else {
 			    markC[kcol]=3;
 			    newUpper=dbound;
@@ -1318,7 +1320,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol])
-			newLower = max(colLower[kcol],ceil(newLower-1.0e-5));
+			newLower = max(colLower[kcol],ceil(newLower-1.0e-4));
 		      colLower[kcol]=newLower;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6)
 			markC[kcol]=3; // say fixed
@@ -1392,7 +1394,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol])
-			newUpper = min(colUpper[kcol],floor(newUpper+1.0e-5));
+			newUpper = min(colUpper[kcol],floor(newUpper+1.0e-4));
 		      colUpper[kcol]=newUpper;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6)
 			markC[kcol]=3; // say fixed
@@ -1467,7 +1469,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	    break;
 	  }
 	  if (notFeasible)
-	    goingToTrueBound=false;
+	    goingToTrueBound=0;
 	  if (iway==2||(iway==1&&feasible==2)) {
 	    /* keep */
 	    iway=3;
@@ -1479,7 +1481,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	      for (istackC=0;istackC<nstackC;istackC++) {
 		int icol=stackC[istackC];
 		if (intVar[icol]) {
-		  if (colUpper[icol]<currentColUpper[icol]-1.0e-5) {
+		  if (colUpper[icol]<currentColUpper[icol]-1.0e-4) {
 		    element[nFix]=colUpper[icol];
 		    index[nFix++]=icol;
 		    nInt++;
@@ -1498,7 +1500,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	      for (istackC=0;istackC<nstackC;istackC++) {
 		int icol=stackC[istackC];
 		if (intVar[icol]) {
-		  if (colLower[icol]>currentColLower[icol]+1.0e-5) {
+		  if (colLower[icol]>currentColLower[icol]+1.0e-4) {
 		    element[nFix]=colLower[icol];
 		    index[nFix++]=icol;
 		    nInt++;
@@ -1560,7 +1562,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		int icol=stackC[istackC];
 		double oldU=saveU[istackC];
 		double oldL=saveL[istackC];
-		if(goingToTrueBound&&istackC) {
+		if(goingToTrueBound==2&&istackC) {
 		  // upper disaggregation cut would be
 		  // xval < upper + (old_upper-upper) (jval-down)
 		  boundChange = oldU-colUpper[icol];
@@ -1668,7 +1670,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      }
 		      OsiRowCut rc;
 		      rc.setLb(-DBL_MAX);
-		      rc.setUb(rowUpper[irow]-gap);
+		      rc.setUb(rowUpper[irow]-gap*(colLower[j]+1.0));
 		      // effectiveness is how far j moves
 		      rc.setEffectiveness((sum-gap*colsol[j]-maxR[irow])/gap);
 		      if (rc.effectiveness()>1.0e-3) {
@@ -1716,7 +1718,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			element[n++]=gap;
 		      }
 		      OsiRowCut rc;
-		      rc.setLb(rowLower[irow]+gap);
+		      rc.setLb(rowLower[irow]+gap*(colLower[j]+1.0));
 		      rc.setUb(DBL_MAX);
 		      // effectiveness is how far j moves
 		      rc.setEffectiveness((minR[irow]-sum-gap*colsol[j])/gap);
@@ -1750,7 +1752,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		    int icol=stackC0[istackC];
 		    int istackC1=markC[icol]-1000;
 		    if (istackC1>=0) {
-		      if (min(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-5) {
+		      if (min(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
 			saveL[istackC1]=min(lo0[istackC],colLower[icol]);
 			if (intVar[icol]) {
 			  element[nFix]=saveL[istackC1];
@@ -1772,7 +1774,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		    int icol=stackC0[istackC];
 		    int istackC1=markC[icol]-1000;
 		    if (istackC1>=0) {
-		      if (max(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-5) {
+		      if (max(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
 			saveU[istackC1]=max(up0[istackC],colUpper[icol]);
 			if (intVar[icol]) {
 			  element[nFix]=saveU[istackC1];
@@ -1803,7 +1805,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		  }
 		}
 	      } else {
-		goingToTrueBound=false;
+		goingToTrueBound=0;
 	      }
 	      double solMove = up-solval;
 	      double boundChange;
@@ -1812,7 +1814,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		int icol=stackC[istackC];
 		double oldU=saveU[istackC];
 		double oldL=saveL[istackC];
-		if(goingToTrueBound&&istackC) {
+		if(goingToTrueBound==2&&istackC) {
 		  // upper disaggregation cut would be
 		  // xval < upper + (old_upper-upper) (up-jval)
 		  boundChange = oldU-colUpper[icol];
@@ -1915,7 +1917,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      }
 		      OsiRowCut rc;
 		      rc.setLb(-DBL_MAX);
-		      rc.setUb(rowUpper[irow]);
+		      rc.setUb(rowUpper[irow]+gap*(colUpper[j]-1.0));
 		      // effectiveness is how far j moves
 		      rc.setEffectiveness((sum+gap*colsol[j]-rowUpper[irow])/gap);
 		      if (rc.effectiveness()>1.0e-3) {
@@ -1963,7 +1965,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			element[n++]=-gap;
 		      }
 		      OsiRowCut rc;
-		      rc.setLb(rowLower[irow]);
+		      rc.setLb(rowLower[irow]-gap*(colUpper[j]-1));
 		      rc.setUb(DBL_MAX);
 		      // effectiveness is how far j moves
 		      rc.setEffectiveness((rowLower[irow]-sum+gap*colsol[j])/gap);
