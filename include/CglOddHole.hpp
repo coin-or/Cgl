@@ -85,6 +85,9 @@ public:
   CglOddHole (
     const CglOddHole &);
 
+  /// Clone
+  virtual CglCutGenerator * clone() const;
+
   /// Assignment operator 
   CglOddHole &
     operator=(

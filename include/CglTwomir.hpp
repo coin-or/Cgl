@@ -126,6 +126,9 @@ public:
   /// Copy constructor 
   CglTwomir (const CglTwomir &);
 
+  /// Clone
+  virtual CglCutGenerator * clone() const;
+
   /// Assignment operator 
   CglTwomir & operator=(const CglTwomir& rhs);
   

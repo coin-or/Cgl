@@ -201,6 +201,9 @@ public:
     CglFlowCover (
 	const CglFlowCover &);
 
+    /// Clone
+    virtual CglCutGenerator * clone() const;
+
     /// Assignment operator 
     CglFlowCover &
     operator=(

@@ -119,6 +119,15 @@ CglMixedIntegerRounding::CglMixedIntegerRounding (
 }
 
 
+//-------------------------------------------------------------------
+// Clone
+//-------------------------------------------------------------------
+CglCutGenerator *
+CglMixedIntegerRounding::clone() const
+{
+  return new CglMixedIntegerRounding(*this);
+}
+
 //------------------------------------------------------------------
 // Assignment operator 
 //-------------------------------------------------------------------

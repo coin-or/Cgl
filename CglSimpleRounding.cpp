@@ -438,6 +438,15 @@ epsilon_(source.epsilon_)
 
 
 //-------------------------------------------------------------------
+// Clone
+//-------------------------------------------------------------------
+CglCutGenerator *
+CglSimpleRounding::clone() const
+{
+  return new CglSimpleRounding(*this);
+}
+
+//-------------------------------------------------------------------
 // Destructor 
 //-------------------------------------------------------------------
 CglSimpleRounding::~CglSimpleRounding ()

@@ -47,6 +47,9 @@ public:
   CglSimpleRounding (
     const CglSimpleRounding &);
 
+  /// Clone
+  virtual CglCutGenerator * clone() const;
+
   /// Assignment operator 
   CglSimpleRounding &
     operator=(

@@ -2713,6 +2713,15 @@ CglKnapsackCover::CglKnapsackCover (const CglKnapsackCover & source) :
 }
 
 //-------------------------------------------------------------------
+// Clone
+//-------------------------------------------------------------------
+CglCutGenerator *
+CglKnapsackCover::clone() const
+{
+  return new CglKnapsackCover(*this);
+}
+
+//-------------------------------------------------------------------
 // Destructor 
 //-------------------------------------------------------------------
 CglKnapsackCover::~CglKnapsackCover ()

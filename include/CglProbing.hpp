@@ -177,6 +177,9 @@ public:
   CglProbing (
     const CglProbing &);
 
+  /// Clone
+  virtual CglCutGenerator * clone() const;
+
   /// Assignment operator 
   CglProbing &
     operator=(

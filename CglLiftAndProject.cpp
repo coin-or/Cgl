@@ -346,6 +346,15 @@ CglLiftAndProject::CglLiftAndProject (const CglLiftAndProject & source) :
 }
 
 //-------------------------------------------------------------------
+// Clone
+//-------------------------------------------------------------------
+CglCutGenerator *
+CglLiftAndProject::clone() const
+{
+  return new CglLiftAndProject(*this);
+}
+
+//-------------------------------------------------------------------
 // Destructor 
 //-------------------------------------------------------------------
 CglLiftAndProject::~CglLiftAndProject ()

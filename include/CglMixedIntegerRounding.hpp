@@ -145,6 +145,9 @@ public:
   CglMixedIntegerRounding (
     const CglMixedIntegerRounding &);
 
+  /// Clone
+  virtual CglCutGenerator * clone() const;
+
   /// Assignment operator 
   CglMixedIntegerRounding &
     operator=(

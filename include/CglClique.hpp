@@ -12,6 +12,9 @@ class CglClique : public CglCutGenerator {
 private:
    /// Copy constructor
    CglClique(const CglClique& rhs);
+   /// Clone
+   virtual CglCutGenerator * clone() const;
+
    /// Assignment operator
    CglClique& operator=(const CglClique& rhs);
    

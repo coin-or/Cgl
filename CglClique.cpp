@@ -9,6 +9,7 @@
 /*****************************************************************************/
 
 CglClique::CglClique(bool setPacking) :
+  CglCutGenerator(),
    setPacking_(setPacking),
    sp_numrows(0),
    sp_orig_row_ind(0),
@@ -35,6 +36,36 @@ CglClique::CglClique(bool setPacking) :
    cl_del_indices(0),
    cl_del_length(0)
 {}
+// Copy constructor
+CglClique::CglClique(const CglClique& rhs)
+  : CglCutGenerator(rhs),
+    setPacking_(rhs.setPacking_),
+    sp_numrows(rhs.sp_numrows),
+    sp_orig_row_ind(rhs.sp_orig_row_ind),
+    sp_numcols(rhs.sp_numcols),
+    sp_orig_col_ind(rhs.sp_orig_col_ind),
+    sp_colsol(rhs.sp_colsol),
+    sp_col_start(rhs.sp_col_start),
+    sp_col_ind(rhs.sp_col_ind),
+    sp_row_start(rhs.sp_row_start),
+    sp_row_ind(rhs.sp_row_ind),
+    node_node(rhs.node_node),
+    petol(rhs.petol),
+    do_row_clique(rhs.do_row_clique),
+    do_star_clique(rhs.do_star_clique),
+    scl_next_node_rule(rhs.scl_next_node_rule),
+    scl_candidate_length_threshold(rhs.scl_candidate_length_threshold),
+    scl_report_result(rhs.scl_report_result),
+    rcl_candidate_length_threshold(rhs.rcl_candidate_length_threshold),
+    rcl_report_result(rhs.rcl_report_result),
+    cl_perm_indices(rhs.cl_perm_indices),
+    cl_perm_length(rhs.cl_perm_length),
+    cl_indices(rhs.cl_indices),
+    cl_length(rhs.cl_length),
+    cl_del_indices(rhs.cl_del_indices),
+    cl_del_length(rhs.cl_del_length)
+{
+}
 
 /*****************************************************************************/
 
@@ -659,6 +690,15 @@ CglClique::recordClique(const int len, int* indices, OsiCuts& cs) const
    rowcut->setUb(1.0);
    cs.insert(rowcut);
    delete[] coef;
+}
+
+//-------------------------------------------------------------------
+// Clone
+//-------------------------------------------------------------------
+CglCutGenerator *
+CglClique::clone() const
+{
+  return new CglClique(*this);
 }
 
 /*****************************************************************************/

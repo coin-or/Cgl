@@ -54,6 +54,9 @@ public:
   /// Copy constructor 
   CglCutGenerator ( const CglCutGenerator &);
 
+  /// Clone
+  virtual CglCutGenerator * clone() const = 0;
+
   /// Assignment operator 
   CglCutGenerator & operator=(const CglCutGenerator& rhs);
 

@@ -34,6 +34,9 @@ public:
   CglKnapsackCover (
     const CglKnapsackCover &);
 
+  /// Clone
+  virtual CglCutGenerator * clone() const;
+
   /// Assignment operator 
   CglKnapsackCover &
     operator=(

@@ -72,6 +72,9 @@ public:
   CglGomory (
     const CglGomory &);
 
+  /// Clone
+  virtual CglCutGenerator * clone() const;
+
   /// Assignment operator 
   CglGomory &
     operator=(

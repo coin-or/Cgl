@@ -53,6 +53,9 @@ public:
   CglLiftAndProject (
     const CglLiftAndProject &);
 
+  /// Clone
+  virtual CglCutGenerator * clone() const;
+
   /// Assignment operator 
   CglLiftAndProject &
     operator=(
