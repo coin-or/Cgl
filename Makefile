@@ -33,14 +33,14 @@ OslLibDir := PROBE
 OslLibName := libosl.so
 
 # Vol
-VolIncDir := NONE
-#VolIncDir := PROBE
+#VolIncDir := NONE
+VolIncDir := PROBE
 VolLibDir := PROBE
 VolLibName := libvol.so
 
 # Xpr
-XprIncDir := NONE
-#XprIncDir := PROBE
+#XprIncDir := NONE
+XprIncDir := PROBE
 XprLibDir := PROBE
 XprLibName := libxosl.so libmp-opt.so
 
