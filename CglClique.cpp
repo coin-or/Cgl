@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cassert>
 
+#include "CoinHelperFunctions.hpp"
 #include "OsiCuts.hpp"
 #include "OsiRowCut.hpp"
 #include "CglClique.hpp"
@@ -151,7 +152,7 @@ CglClique::find_rcl(OsiCuts& cs)
       for (k = 0; k < nodenum; k++)
 	 if (cand[k])
 	    cl_indices[cl_length++] = k;
-      largest_length = std::max(cl_length, largest_length);
+      largest_length = CoinMax(cl_length, largest_length);
 
       /* if there is anything in indices, enumerate (or greedily find)
 	 maximal cliques */
@@ -263,7 +264,7 @@ CglClique::find_scl(OsiCuts& cs)
 	 v = current_indices[best_ind];
 	 v_deg = current_degrees[best_ind];
 	 v_val = current_values[best_ind];
-	 largest_star_size = std::max(largest_star_size, v_deg);
+	 largest_star_size = CoinMax(largest_star_size, v_deg);
 	 continue;
       }
 
@@ -322,7 +323,7 @@ CglClique::find_scl(OsiCuts& cs)
       v = current_indices[best_ind];
       v_deg = current_degrees[best_ind];
       v_val = current_values[best_ind];
-      largest_star_size = std::max(largest_star_size, v_deg);
+      largest_star_size = CoinMax(largest_star_size, v_deg);
    }
 
    const int clique_cnt = clique_cnt_e + clique_cnt_g;
