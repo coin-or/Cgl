@@ -19,7 +19,7 @@ TESTSRC += unitTest.cpp
 
 export IncDir  := ${CglIncDir}  ${OsiIncDir} ${CoinIncDir} ${zlibIncDir} ${bzlibIncDir} $(ClpIncDir) $(lapackIncDir)
 export LibDir  := ${CglLibDir}  ${OsiLibDir} ${CoinLibDir} ${zlibLibDir} ${bzlibLibDir} $(ClpLibDir) $(lapackLibDir)
-export LibName := ${CglLibName} ${OsiLibName} ${CoinLibName} ${zlibLibName} ${bzlibLibName} $(ClpLibName) $(OsiClpLibName) $(lapackLibName)
+export LibName := $(OsiClpLibName) ${CglLibName} ${OsiLibName} ${zlibLibName} ${bzlibLibName} $(ClpLibName) $(CoinLibName) $(lapackLibName)
 export Define  := ${CglDefine}  ${OsiDefine} ${CoinDefine} ${zlibDefine} ${bzlibDefine} $(ClpDefine) $(lapackDefine)
 
 ##############################################################################

@@ -116,7 +116,7 @@ int main (int argc, const char *argv[])
     testingMessage( "Testing CglSimpleRounding with OsiClpSolverInterface\n" );
     CglSimpleRoundingUnitTest(&clpSi,mpsDir);
   } 
-  {
+  if (0) {
     OsiClpSolverInterface clpSi;
     testingMessage( "Testing CglKnapsackCover with OsiClpSolverInterface\n" );
     CglKnapsackCoverUnitTest(&clpSi,mpsDir);

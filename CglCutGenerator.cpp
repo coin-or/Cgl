@@ -16,6 +16,7 @@
 // Default Constructor 
 //-------------------------------------------------------------------
 CglCutGenerator::CglCutGenerator ()
+  : aggressive_(0)
 {
   // nothing to do here
 }
@@ -25,6 +26,7 @@ CglCutGenerator::CglCutGenerator ()
 //-------------------------------------------------------------------
 CglCutGenerator::CglCutGenerator (
                   const CglCutGenerator & source)         
+  : aggressive_(source.aggressive_)
 {  
   // nothing to do here
 }
@@ -46,7 +48,7 @@ CglCutGenerator::operator=(
                    const CglCutGenerator& rhs)
 {
   if (this != &rhs) {
-    // nothing to do here
+    aggressive_ = rhs.aggressive_;
   }
   return *this;
 }

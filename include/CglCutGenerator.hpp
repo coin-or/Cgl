@@ -50,12 +50,33 @@ public:
   virtual void refreshSolver(OsiSolverInterface * solver) {};
   //@}
   
+  /**@name Gets and Sets */
+  //@{
+  /**
+     Get Aggressiveness - 0 = neutral, 100 is normal root node.
+     Really just a hint to cut generator
+  */
+  inline int getAggressiveness() const
+  { return aggressive_;};
+
+  /**
+     Set Aggressiveness - 0 = neutral, 100 is normal root node.
+     Really just a hint to cut generator
+  */
+  inline void setAggressiveness(int value)
+  { aggressive_=value;};
+  //@}
+  
   // test this class
   //static void unitTest();
   
 // private:
   
- // Presently there is no private member data
+  /**
+     Aggressiveness - 0 = neutral, 100 is normal root node.
+     Really just a hint to cut generator
+  */
+  int aggressive_;
 };
 
 
