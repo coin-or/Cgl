@@ -1172,7 +1172,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	    int jway;
 	    jcol=stackC[istackC];
 	    jway=markC[jcol];
-	    if (jway==3) {
+	    // If not first and fixed then skip
+	    if (jway==3&&istackC) {
 	      istackC++;
 	      continue;
 	    }

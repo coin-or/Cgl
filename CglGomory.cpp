@@ -319,9 +319,13 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	type=2;
 	rhs=rowLower[iRow];
       } else {
-	// wrong
+	// wrong - but probably large rhs
+#ifdef CGL_DEBUG
 	assert (min(rowUpper[iRow]-rowActivity[iRow],
 		    rowActivity[iRow]-rowUpper[iRow])<1.0e-7);
+#else
+	continue;
+#endif
       }
       if (above_integer(rhs)<1.0e-10) {
 	// could be integer slack
@@ -413,7 +417,9 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	    value += columnElements[k]*arrayElements[iRow];
 	  }
 	  // should be 1
+#ifdef CGL_DEBUG
 	  assert (fabs(value-1.0) < 1.0e-7);
+#endif
 	}
 	//reducedValue=colsol[iColumn];
 	// coding from pg 130 of Wolsey 
