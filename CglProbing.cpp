@@ -1196,7 +1196,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	      /* up */
 	      if (value>0.0) {
 		/* up does not change - down does */
-		minR[irow] += value;
+                if (minR[irow]>-1.0e10)
+                  minR[irow] += value;
 		if (minR[irow]>rowUpper[irow]+1.0e-5) {
 		  notFeasible=1;
 		  istackC=1;
@@ -1204,7 +1205,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		}
 	      } else {
 		/* down does not change - up does */
-		maxR[irow] += value;
+                if (maxR[irow]<1.0e10)
+                  maxR[irow] += value;
 		if (maxR[irow]<rowLower[irow]-1.0e-5) {
 		  notFeasible=1;
 		  istackC=1;
@@ -1215,7 +1217,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	      /* down */
 	      if (value<0.0) {
 		/* up does not change - down does */
-		minR[irow] -= value;
+                if (minR[irow]>-1.0e10)
+                  minR[irow] -= value;
 		if (minR[irow]>rowUpper[irow]+1.0e-5) {
 		  notFeasible=1;
 		  istackC=1;
@@ -1223,7 +1226,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		}
 	      } else {
 		/* down does not change - up does */
-		maxR[irow] -= value;
+                if (maxR[irow]<1.0e10)
+                  maxR[irow] -= value;
 		if (maxR[irow]<rowLower[irow]-1.0e-5) {
 		  notFeasible=1;
 		  istackC=1;
@@ -1291,14 +1295,16 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			  /* up */
 			  if (value>0.0) {
 			    /* up does not change - down does */
-			    minR[krow] += value;
+                            if (minR[krow]>-1.0e10)
+                              minR[krow] += value;
 			    if (minR[krow]>rowUpper[krow]+1.0e-5) {
 			      colUpper[kcol]=-1.0e50; /* force infeasible */
 			      break;
 			    }
 			  } else {
 			    /* down does not change - up does */
-			    maxR[krow] += value;
+                            if (maxR[krow]<1.0e10)
+                              maxR[krow] += value;
 			    if (maxR[krow]<rowLower[krow]-1.0e-5) {
 			      notFeasible=1;
 			      break;
@@ -1327,14 +1333,16 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			  /* down */
 			  if (value<0.0) {
 			    /* up does not change - down does */
-			    minR[krow] -= value;
+                            if (minR[krow]>-1.0e10)
+                              minR[krow] -= value;
 			    if (minR[krow]>rowUpper[krow]+1.0e-5) {
 			      notFeasible=1;
 			      break;
 			    }
 			  } else {
 			    /* down does not change - up does */
-			    maxR[krow] -= value;
+                            if (maxR[krow]<1.0e10)
+                              maxR[krow] -= value;
 			    if (maxR[krow]<rowLower[krow]-1.0e-5) {
 			      notFeasible=1;
 			      break;
@@ -1535,14 +1543,16 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			/* up */
 			if (value>0.0) {
 			  /* up does not change - down does */
-			  minR[krow] += value*moveUp;
+                          if (minR[krow]>-1.0e10)
+                            minR[krow] += value*moveUp;
 			  if (minR[krow]>rowUpper[krow]+1.0e-5) {
 			    colUpper[kcol]=-1.0e50; /* force infeasible */
 			    break;
 			  }
 			} else {
 			  /* down does not change - up does */
-			  maxR[krow] += value*moveUp;
+                          if (maxR[krow]<1.0e10)
+                            maxR[krow] += value*moveUp;
 			  if (maxR[krow]<rowLower[krow]-1.0e-5) {
 			    colUpper[kcol]=-1.0e50; /* force infeasible */
 			    break;
@@ -1609,14 +1619,16 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			/* down */
 			if (value<0.0) {
 			  /* up does not change - down does */
-			  minR[krow] += value*moveDown;
+                          if (minR[krow]>-1.0e10)
+                            minR[krow] += value*moveDown;
 			  if (minR[krow]>rowUpper[krow]+1.0e-5) {
 			    colUpper[kcol]=-1.0e50; /* force infeasible */
 			    break;
 			  }
 			} else {
 			  /* down does not change - up does */
-			  maxR[krow] += value*moveDown;
+                          if (maxR[krow]<1.0e10)
+                            maxR[krow] += value*moveDown;
 			  if (maxR[krow]<rowLower[krow]-1.0e-5) {
 			    colUpper[kcol]=-1.0e50; /* force infeasible */
 			    break;
