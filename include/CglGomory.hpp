@@ -62,18 +62,6 @@ public:
   double getAway() const;
   //@}
 
-  /**@name Change criterion on whether a cut is sufficiently good
-   i.e. violation (default 0.00001) 
-  At present this is not very useful as violation==away
-  */
-  //@{
-  /// Set
-  void setViolationTolerance(double value);
-  /// Get
-  double getViolationTolerance() const;
-  //@}
-
-
 
   /**@name Constructors and destructors */
   //@{
@@ -102,7 +90,6 @@ private:
 
   /**@name Private member data */
   //@{
-  double violationTolerance_;
   /// Only investigate if more than this away from integrality
   double away_;
   /// Limit - only generate if fewer than this in cut

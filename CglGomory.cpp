@@ -10,7 +10,7 @@
 #include <cfloat>
 #include <cassert>
 #include <iostream>
-
+//#define CGL_DEBUG
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedVector.hpp"
 #include "CoinPackedMatrix.hpp"
@@ -440,8 +440,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		//reducedValue -= value*colLower[j];
 	      }
 #if CGL_DEBUG>1
-	      if (iColumn==314) printf("value %g reduced %g int %d rhs %g swap %d\n",
-		     value,reducedValue,intVar[j],rhs,swap[j]);
+	      if (iColumn==348) printf("%d value %g reduced %g int %d rhs %g swap %d\n",
+		     j,value,reducedValue,intVar[j],rhs,swap[j]);
 #endif
 	      double coefficient;
 	      if (intVar[j]) {
@@ -469,11 +469,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      }
 	      if (fabs(coefficient)>= COIN_INDEXED_TINY_ELEMENT) {
 		 cutElement[j] = coefficient;
-	      } else {
-		 cutElement[j] = 1.0e-100;
+		 cutIndex[number++]=j;
 	      }
-	      //	      cutElement[j]=coefficient;
-	      cutIndex[number++]=j;
 	    }
 	  } else {
 	    // basic
@@ -485,264 +482,288 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	//reducedValue=above_integer(reducedValue);
 	rhs += reducedValue;
 	double violation = reducedValue;
-	if (violation>violationTolerance_) {
 #ifdef CGL_DEBUG
-	  std::cout<<"cut has violation of "<<violation
-		   <<" value "<<colsol[iColumn]<<std::endl;
+	std::cout<<"cut has violation of "<<violation
+		 <<" value "<<colsol[iColumn]<<std::endl;
 #endif
-	  // now do slacks part
-	  for (j=0;j<numberInArray;j++) {
-	    iRow=arrayRows[j];
-	    double value = arrayElements[iRow];
-	    int type=rowType[iRow];
-	    if (type&&fabs(value)>=1.0e-16) {
-	      if ((type&1)==0) {
-		// negate to get correct coefficient
-		value = - value;
-	      }
-	      double coefficient;
-	      if ((type&4)!=0) {
-		// integer
-		coefficient = above_integer(value);
-		if (coefficient > reducedValue) {
-		  coefficient = ratio * (1.0-coefficient);
-		} 
+	// now do slacks part
+	for (j=0;j<numberInArray;j++) {
+	  iRow=arrayRows[j];
+	  double value = arrayElements[iRow];
+	  int type=rowType[iRow];
+	  if (type&&fabs(value)>=1.0e-16) {
+	    if ((type&1)==0) {
+	      // negate to get correct coefficient
+	      value = - value;
+	    }
+	    double coefficient;
+	    if ((type&4)!=0) {
+	      // integer
+	      coefficient = above_integer(value);
+	      if (coefficient > reducedValue) {
+		coefficient = ratio * (1.0-coefficient);
+	      } 
+	    } else {
+	      numberNonInteger++;
+	      // continuous
+	      if (value > 0.0) {
+		coefficient = value;
 	      } else {
-		numberNonInteger++;
-		// continuous
-		if (value > 0.0) {
-		  coefficient = value;
-		} else {
-		  coefficient = -ratio*value;
-		}
+		coefficient = -ratio*value;
 	      }
-	      if ((type&1)!=0) {
-		// slack at ub - treat as +1.0
-		rhs -= coefficient*rowUpper[iRow];
-	      } else {
-		// negate yet again
-		coefficient = - coefficient;
-		rhs -= coefficient*rowLower[iRow];
-	      }
-	      int k;
-	      for (k=rowStart[iRow];
-		   k<rowStart[iRow]+rowLength[iRow];k++) {
-		int jColumn=column[k];
-		double value=rowElements[k];
-		cutVector.add(jColumn,-coefficient*value);
-	      }
+	    }
+	    if ((type&1)!=0) {
+	      // slack at ub - treat as +1.0
+	      rhs -= coefficient*rowUpper[iRow];
+	    } else {
+	      // negate yet again ?
+	      coefficient = - coefficient;
+	      rhs -= coefficient*rowLower[iRow];
+	    }
+	    int k;
+	    for (k=rowStart[iRow];
+		 k<rowStart[iRow]+rowLength[iRow];k++) {
+	      int jColumn=column[k];
+	      double value=rowElements[k];
+	      cutVector.add(jColumn,-coefficient*value);
 	    }
 	  }
-	  //check again and pack down
-	  // also change signs
-	  // also zero cutElement
-	  double sum=0.0;
-	  rhs = - rhs;
-	  int n = cutVector.getNumElements();
-	  number=0;
-	  for (j=0;j<n;j++) {
-	    int jColumn =cutIndex[j];
-	    double value=-cutElement[jColumn];
-	    cutElement[jColumn]=0.0;
-	    if (fabs(value)>1.0e-16) {
-	      sum+=value*colsol[jColumn];
-	      packed[number]=value;
-	      cutIndex[number++]=jColumn;
-	    }
+	}
+	//check again and pack down
+	// also change signs
+	// also zero cutElement
+	double sum=0.0;
+	rhs = - rhs;
+	int n = cutVector.getNumElements();
+	number=0;
+	for (j=0;j<n;j++) {
+	  int jColumn =cutIndex[j];
+	  double value=-cutElement[jColumn];
+	  cutElement[jColumn]=0.0;
+	  if (fabs(value)>1.0e-13) {
+	    sum+=value*colsol[jColumn];
+	    packed[number]=value;
+	    cutIndex[number++]=jColumn;
 	  }
-	  // say zeroed out
-	  cutVector.setNumElements(0);
-	  if (sum >rhs+0.9*violationTolerance_&&
-	      fabs((sum-rhs)-violation)<1.0e-6) {
-	    //#ifdef CGL_DEBUG
-#if 1
-#if CGL_DEBUG<=1
-	    if (number<=-10) {
-#endif
-	      for (j=0;j<number;j++) {
-		std::cout<<" ["<<cutIndex[j]<<","<<packed[j]<<"]";
-	      }
-	      std::cout<<" <= "<<rhs<<std::endl;
-#if CGL_DEBUG<=1
-	    }
-#endif
-#endif
-	    if (!numberNonInteger&&number) {
+	}
+	// say zeroed out
+	cutVector.setNumElements(0);
+	if (sum >rhs+0.9*away_&&
+	    fabs((sum-rhs)-violation)<1.0e-6) {
+	  //#ifdef CGL_DEBUG
 #ifdef CGL_DEBUG
-	      assert (sizeof(Rational)==sizeof(double));
+#if CGL_DEBUG<=1
+	  if (number<=-10) {
 #endif
-	      Rational * cleaned = (Rational *) cutElement;
-	      int * xInt = (int *) cutElement;
-	      // cut should have an integer slack so try and simplify
-	      // add in rhs and put in cutElements (remember to zero later)
-	      cutIndex[number]=numberColumns+1;
-	      packed[number]=rhs;
-	      int lcm = 1;
+	    for (j=0;j<number;j++) {
+	      std::cout<<" ["<<cutIndex[j]<<","<<packed[j]<<"]";
+	    }
+	    std::cout<<" <= "<<rhs<<std::endl;
+#if CGL_DEBUG<=1
+	  }
+#endif
+#endif
+	  if (!numberNonInteger&&number) {
+#ifdef CGL_DEBUG
+	    assert (sizeof(Rational)==sizeof(double));
+#endif
+	    Rational * cleaned = (Rational *) cutElement;
+	    int * xInt = (int *) cutElement;
+	    // cut should have an integer slack so try and simplify
+	    // add in rhs and put in cutElements (remember to zero later)
+	    cutIndex[number]=numberColumns+1;
+	    packed[number]=rhs;
+	    int numberNonSmall=0;
+	    int lcm = 1;
+	    
+	    for (j=0;j<number+1;j++) {
+	      double value=above_integer(fabs(packed[j]));
+	      if (fabs(value)<1.0e-4) {
+		// too small
+		continue;
+	      } else {
+		numberNonSmall++;
+	      }
 	      
-	      for (j=0;j<number+1;j++) {
-		double value=above_integer(fabs(packed[j]));
-		cleaned[j]=nearestRational(value,100000);
-		if (cleaned[j].denominator<0) {
-		  // bad rational
-		  lcm=-1;
+	      cleaned[j]=nearestRational(value,100000);
+	      if (cleaned[j].denominator<0) {
+		// bad rational
+		lcm=-1;
+		break;
+	      }
+	      int thisGcd = gcd(lcm,cleaned[j].denominator);
+	      // may need to check for overflow
+	      lcm /= thisGcd;
+	      lcm *= cleaned[j].denominator;
+	    }
+	    if (lcm>0&&numberNonSmall) {
+	      double multiplier = lcm;
+	      int nOverflow = 0; 
+	      for (j=0; j<number+1;j++) {
+		double value = fabs(packed[j]);
+		double dxInt = value*multiplier;
+		xInt[j]= (int) (dxInt+0.5); 
+#if CGL_DEBUG>1
+		printf("%g => %g   \n",value,dxInt);
+#endif
+		if (dxInt>1.0e9||fabs(dxInt-xInt[j])> 1.0e-8) {
+		  nOverflow++;
 		  break;
 		}
-		int thisGcd = gcd(lcm,cleaned[j].denominator);
-		// may need to check for overflow
-		lcm /= thisGcd;
-		lcm *= cleaned[j].denominator;
 	      }
-	      if (lcm>0) {
-		double multiplier = lcm;
-		int nOverflow = 0; 
-		for (j=0; j<number+1;j++) {
-		  double value = fabs(packed[j]);
-		  double dxInt = value*multiplier;
-		  xInt[j]= (int) (dxInt+0.5); 
-#if CGL_DEBUG>1
-		  printf("%g => %g   \n",value,dxInt);
-#endif
-		  if (dxInt>1.0e9||fabs(dxInt-xInt[j])> 1.0e-8) {
-		    nOverflow++;
-		    break;
-		  }
-		}
-
-		if (nOverflow){
+	      
+	      if (nOverflow){
 #ifdef CGL_DEBUG
-		  printf("Gomory Scaling: Warning: Overflow detected \n");
+		printf("Gomory Scaling: Warning: Overflow detected \n");
 #endif
-		  numberNonInteger=-1;
-		} else {
-		  
-		  // find greatest common divisor of the elements
-		  int thisGcd = gcd(xInt[0],xInt[1]);
-		  for (j=2;j<number+1;j++) {
+		numberNonInteger=-1;
+	      } else {
+		
+		// find greatest common divisor of the elements
+		j=0;
+		while (!xInt[j])
+		  j++; // skip zeros
+		int thisGcd = gcd(xInt[j],xInt[j+1]);
+		j++;
+		for (;j<number+1;j++) {
+		  if (xInt[j])
 		    thisGcd = gcd(thisGcd,xInt[j]);
-		  }
-		  
-#if CGL_DEBUG>1
-		  printf("The gcd of xInt is %i\n",thisGcd);    
-#endif
-		  
-		  // construct new cut by dividing through by gcd and 
-		  double minMultiplier=1.0e100;
-		  double maxMultiplier=0.0;
-		  for (j=0; j<number+1;j++) {
-		    double old=packed[j];
-		    if (old>0.0) {
-		      packed[j]=xInt[j]/thisGcd;
-		    } else {
-		      packed[j]=-xInt[j]/thisGcd;
-		    }
-#if CGL_DEBUG>1
-		    printf("%g => %g   \n",old,packed[j]);
-#endif
-		    if (packed[j]) {
-		      if (fabs(packed[j])>maxMultiplier*fabs(old))
-			maxMultiplier = packed[j]/old;
-		      if (fabs(packed[j])<minMultiplier*fabs(old))
-			minMultiplier = packed[j]/old;
-		    }
-		  }
-		  rhs = packed[number];
-		  double ratio=maxMultiplier/minMultiplier;
-#ifdef CGL_DEBUG
-		  printf("min, max multipliers - %g, %g\n",
-			 minMultiplier,maxMultiplier);
-#endif
-		  assert(ratio>0.9999&&ratio<1.0001);
 		}
-	      }
-	      // erase cutElement
-	      CoinFillN(cutElement,number+1,0.0);
-	    } else {
-	      // relax rhs a tiny bit
-	      rhs += 1.0e-8;
-	      // relax if lots of elements for mixed gomory
-	      if (number>=20) {
-		rhs  += 1.0e-7*((double) (number/20));
-	      }
-	    }
-	    // Take off tiny elements
-	    // for first pass reject
-#define TINY_ELEMENT 1.0e-7
-	    {
-	      int i,number2=number;
-	      number=0;
-	      double largest=0.0;
-	      double smallest=1.0e30;
-	      for (i=0;i<number2;i++) {
-		double value=fabs(packed[i]);
-		if (value<TINY_ELEMENT) {
-		  int iColumn = cutIndex[i];
-		  if (colUpper[iColumn]-colLower[iColumn]<10.0) {
-		    // weaken cut
-		    if (packed[i]>0.0) 
-		      rhs -= value*colLower[iColumn];
-		    else
-		      rhs += value*colUpper[iColumn];
+#if 0
+		// Check nothing too illegal - FIX this
+		for (j=0;j<number+1;j++) {
+		  double old = lcm*packed[j];
+		  int newOne;
+		  if (old>0.0)
+		    newOne=xInt[j]/thisGcd;
+		  else
+		    newOne=-xInt[j]/thisGcd;
+		  if (fabs(((double) newOne)-old)>
+		      1.0e-10*(fabs(newOne)+1.0)) {
+		    // say no good - first see if happens
+		    printf("Fix this test 456 - just skip\n");
+		    abort();
+		  }
+		} 
+#endif		  
+#if CGL_DEBUG>1
+		printf("The gcd of xInt is %i\n",thisGcd);    
+#endif
+		
+		// construct new cut by dividing through by gcd and 
+		double minMultiplier=1.0e100;
+		double maxMultiplier=0.0;
+		for (j=0; j<number+1;j++) {
+		  double old=packed[j];
+		  if (old>0.0) {
+		    packed[j]=xInt[j]/thisGcd;
 		  } else {
-		    // throw away
-		    number=limit_+1;
-		    numberNonInteger=1;
-		    break;
+		    packed[j]=-xInt[j]/thisGcd;
 		  }
-		} else {
-		  largest=max(largest,value);
-		  smallest=min(smallest,value);
-		  cutIndex[number]=cutIndex[i];
-		  packed[number++]=packed[i];
+#if CGL_DEBUG>1
+		  printf("%g => %g   \n",old,packed[j]);
+#endif
+		  if (packed[j]) {
+		    if (fabs(packed[j])>maxMultiplier*fabs(old))
+		      maxMultiplier = packed[j]/old;
+		    if (fabs(packed[j])<minMultiplier*fabs(old))
+		      minMultiplier = packed[j]/old;
+		  }
 		}
-	      }
-	      if (largest>1.0e9*smallest) {
-		number=limit_+1; //reject
-		numberNonInteger=1;
+		rhs = packed[number];
+		double ratio=maxMultiplier/minMultiplier;
+#ifdef CGL_DEBUG
+		printf("min, max multipliers - %g, %g\n",
+		       minMultiplier,maxMultiplier);
+#endif
+		assert(ratio>0.9999&&ratio<1.0001);
 	      }
 	    }
-	    if (number<limit_||!numberNonInteger) {
-	      bounds[1]=rhs;
-	      {
-		OsiRowCut rc;
-		rc.setRow(number,cutIndex,packed);
-		rc.setLb(bounds[0]);
-		rc.setUb(bounds[1]);   
-		cs.insert(rc);
-#ifdef CGL_DEBUG
-	      if (!number)
-		std::cout<<"******* Empty cut - infeasible"<<std::endl;
-		if (debugger) 
-		  assert(!debugger->invalidCut(rc)); 
-#endif
-	      }
-	      numberAdded++;
-	    } else {
-#ifdef CGL_DEBUG
-	      std::cout<<"cut has "<<number<<" entries - skipped"
-		     <<std::endl;
-	      if (!number)
-		std::cout<<"******* Empty cut - infeasible"<<std::endl;
-#endif
-	    }
+	    // erase cutElement
+	    CoinFillN(cutElement,number+1,0.0);
 	  } else {
-	    // why dropped?
-#ifdef CGL_DEBUG
-	    std::cout<<"first violation "<<violation<<" now "
-		     <<sum-rhs<<" why?, rhs= "<<rhs<<std::endl;
-	    
-	    for (j=0;j<number;j++) {
-	      int jColumn =cutIndex[j];
-	      double value=packed[j];
-	      std::cout<<"("<<jColumn<<","<<value<<","<<colsol[jColumn]
-		       <<") ";
+	    // relax rhs a tiny bit
+	    rhs += 1.0e-8;
+	    // relax if lots of elements for mixed gomory
+	    if (number>=20) {
+	      rhs  += 1.0e-7*((double) (number/20));
 	    }
-	    std::cout<<std::endl;
-	    abort();
+	  }
+	  // Take off tiny elements
+	  // for first pass reject
+#define TINY_ELEMENT 1.0e-7
+	  {
+	    int i,number2=number;
+	    number=0;
+	    double largest=0.0;
+	    double smallest=1.0e30;
+	    for (i=0;i<number2;i++) {
+	      double value=fabs(packed[i]);
+	      if (value<TINY_ELEMENT) {
+		int iColumn = cutIndex[i];
+		if (colUpper[iColumn]-colLower[iColumn]<10.0) {
+		  // weaken cut
+		  if (packed[i]>0.0) 
+		    rhs -= value*colLower[iColumn];
+		  else
+		    rhs += value*colUpper[iColumn];
+		} else {
+		  // throw away
+		  number=limit_+1;
+		  numberNonInteger=1;
+		  break;
+		}
+	      } else {
+		largest=max(largest,value);
+		smallest=min(smallest,value);
+		cutIndex[number]=cutIndex[i];
+		packed[number++]=packed[i];
+	      }
+	    }
+	    if (largest>1.0e9*smallest) {
+	      number=limit_+1; //reject
+	      numberNonInteger=1;
+	    }
+	  }
+	  if (number<limit_||!numberNonInteger) {
+	    bounds[1]=rhs;
+	    {
+	      OsiRowCut rc;
+	      rc.setRow(number,cutIndex,packed);
+	      rc.setLb(bounds[0]);
+	      rc.setUb(bounds[1]);   
+	      cs.insert(rc);
+#ifdef CGL_DEBUG
+	      if (!number)
+		std::cout<<"******* Empty cut - infeasible"<<std::endl;
+	      if (debugger) 
+		assert(!debugger->invalidCut(rc)); 
+#endif
+	    }
+	    numberAdded++;
+	  } else {
+#ifdef CGL_DEBUG
+	    std::cout<<"cut has "<<number<<" entries - skipped"
+		     <<std::endl;
+	    if (!number)
+	      std::cout<<"******* Empty cut - infeasible"<<std::endl;
 #endif
 	  }
 	} else {
-	  // clean anyway
-	  cutVector.clear();
+	  // why dropped?
+#ifdef CGL_DEBUG
+	  std::cout<<"first violation "<<violation<<" now "
+		   <<sum-rhs<<" why?, rhs= "<<rhs<<std::endl;
+	  
+	  for (j=0;j<number;j++) {
+	    int jColumn =cutIndex[j];
+	    double value=packed[j];
+	    std::cout<<"("<<jColumn<<","<<value<<","<<colsol[jColumn]
+		     <<") ";
+	  }
+	  std::cout<<std::endl;
+	  abort();
+#endif
 	}
       }
     } else {
@@ -798,24 +819,12 @@ double CglGomory::getAway() const
   return away_;
 }
 
-// ViolationTolerance stuff
-void CglGomory::setViolationTolerance(double value)
-{
-  if (value>0.0&&value<=0.5)
-    violationTolerance_=value;
-}
-double CglGomory::getViolationTolerance() const
-{
-  return violationTolerance_;
-}
-
 //-------------------------------------------------------------------
 // Default Constructor 
 //-------------------------------------------------------------------
 CglGomory::CglGomory ()
 :
 CglCutGenerator(),
-violationTolerance_(0.00001),
 away_(0.05),
 limit_(50)
 {
@@ -827,7 +836,6 @@ limit_(50)
 //-------------------------------------------------------------------
 CglGomory::CglGomory (const CglGomory & source) :
   CglCutGenerator(source),
-  violationTolerance_(source.violationTolerance_),
   away_(source.away_),
   limit_(source.limit_)
 {  
@@ -848,7 +856,6 @@ CglGomory::operator=(const CglGomory& rhs)
 {
   if (this != &rhs) {
     CglCutGenerator::operator=(rhs);
-    violationTolerance_=rhs.violationTolerance_;
     away_=rhs.away_;
     limit_=rhs.limit_;
   }
