@@ -345,6 +345,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
     }
   }
 
+  int j;
   // two vectors for updating (one is work)
   OsiIndexedVector work;
   OsiIndexedVector array;
@@ -368,7 +369,6 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
     double ratio=reducedValue/(1.0-reducedValue);
     if (iBasic>=0) {
 #ifdef CGL_DEBUG
-      int j;
       {
 	// put column into array
 	array.setVector(columnLength[iColumn],row+columnStart[iColumn],
@@ -703,7 +703,6 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
       }
     } else {
       // not basic
-      int j;
 #if CGL_DEBUG>1
       {
 	// put column into array
