@@ -16,6 +16,9 @@
 #ifdef COIN_USE_OSL
 #include <OsiOslSolverInterface.hpp>
 #endif
+#ifdef COIN_USE_CLP
+#include <OsiClpSolverInterface.hpp>
+#endif
 #ifdef COIN_USE_XPR
 #include <OsiXprSolverInterface.hpp>
 #endif
@@ -99,6 +102,39 @@ int main (int argc, const char *argv[])
     OsiXprSolverInterface xprSi;
     //    testingMessage( "Testing CglFlowCover with OsiXprSolverInterface\n" );
     //    CglFlowCoverUnitTest(&xprSi,mpsDir);
+  }
+
+#endif
+#ifdef COIN_USE_CLP
+  {
+    OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglGomory with OsiClpSolverInterface\n" );
+    CglGomoryUnitTest(&clpSi,mpsDir);
+  }  
+  {
+    OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglSimpleRounding with OsiClpSolverInterface\n" );
+    CglSimpleRoundingUnitTest(&clpSi,mpsDir);
+  } 
+  {
+    OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglKnapsackCover with OsiClpSolverInterface\n" );
+    CglKnapsackCoverUnitTest(&clpSi,mpsDir);
+  }  
+  {
+    OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglOddHole with OsiClpSolverInterface\n" );
+    CglOddHoleUnitTest(&clpSi,mpsDir);
+  }  
+  {
+    OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglProbing with OsiClpSolverInterface\n" );
+    CglProbingUnitTest(&clpSi,mpsDir);
+  }  
+  {
+    OsiClpSolverInterface clpSi;
+    //    testingMessage( "Testing CglFlowCover with OsiClpSolverInterface\n" );
+    //    CglFlowCoverUnitTest(&clpSi,mpsDir);
   }
 
 #endif

@@ -402,7 +402,7 @@ CglKnapsackCoverUnitTest(
 	complement[i]=0;
       }
       int row = ( siP->getRowSense()[0] == 'N' ) ? 1 : 0;
-      // transform row into cannonical knapsack form
+      // transform row into canonical knapsack form
       if (kccg.deriveAKnapsack(*siP, cuts, krow, b, complement, xstar, row,siP->getMatrixByRow()->getVector(row))){
         CoinPackedVector cover, remainder;  
         // apply greedy logic to detect violated minimal cover inequalities
@@ -530,6 +530,84 @@ CglKnapsackCoverUnitTest(
   
     delete siP;
   } 
+
+  // if a debug file is there then look at it
+  {
+    FILE * fp = fopen("knapsack.debug","r");
+    if (fp) {
+      int ncol,nel;
+      double up;
+      fscanf(fp,"%d %d %lg",&ncol,&nel,&up);
+      printf("%d columns, %d elements, upper %g\n",ncol,nel,up);
+      double * sol1 = new double[nel];
+      double * el1 = new double[nel];
+      int * col1 = new int[nel];
+      int * start = new int[ncol+1];
+      memset(start,0,ncol*sizeof(int));
+      int * row = new int[nel];
+      int i;
+      for (i=0;i<nel;i++) {
+	fscanf(fp,"%d %lg %lg",col1+i,el1+i,sol1+i);
+	printf("[%d, e=%g, v=%g] ",col1[i],el1[i],sol1[i]);
+	start[col1[i]]=1;
+	row[i]=0;
+      }
+      printf("\n");
+      // Setup
+      OsiSolverInterface  * siP = baseSiP->clone();
+      
+      double lo=-1.0e30;
+      double * upper = new double[ncol];
+      start[ncol]=nel;
+      int last=0;
+      for (i=0;i<ncol;i++) {
+	upper[i]=1.0;
+	int marked=start[i];
+	start[i]=last;
+	if (marked)
+	  last++;
+      }
+      siP->loadProblem(ncol,1,start,row,el1,NULL,upper,NULL,&lo,&up);
+      // use upper for solution
+      memset(upper,0,ncol*sizeof(double));
+      for (i=0;i<nel;i++) {
+	int icol=col1[i];
+	upper[icol]=sol1[i];
+	siP->setInteger(icol);
+      }
+      siP->setColSolution(upper);
+      delete [] sol1;
+      delete [] el1;
+      delete [] col1;
+      delete [] start;
+      delete [] row;
+      delete [] upper;
+      CglKnapsackCover kccg;
+      
+      OsiCuts cuts;    
+      
+      // Test generateCuts method
+      kccg.generateCuts(*siP,cuts);
+      // print out and compare to known cuts
+      int numberCuts = cuts.sizeRowCuts();
+      if (numberCuts) {
+	for (i=0;i<numberCuts;i++) {
+	  OsiRowCut * thisCut = cuts.rowCutPtr(i);
+	  int n=thisCut->row().getNumElements();
+	  printf("Cut %d has %d entries, rhs %g %g =>",i,n,thisCut->lb(),
+		 thisCut->ub());
+	  int j;
+	  const int * index = thisCut->row().getIndices();
+	  const double * element = thisCut->row().getElements();
+	  for (j=0;j<n;j++) {
+	    printf(" (%d,%g)",index[j],element[j]);
+	  }
+	  printf("\n");
+	}
+      }
+      fclose(fp);
+    }
+  }
 
   // Testcase /u/rlh/osl2/mps/p0201
   // Miplib3 problem p0282

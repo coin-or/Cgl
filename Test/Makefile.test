@@ -17,10 +17,10 @@ TESTSRC += CglProbingTest.cpp
 TESTSRC += CglSimpleRoundingTest.cpp
 TESTSRC += unitTest.cpp
 
-export IncDir  := ${CglIncDir}  ${OsiIncDir} ${CoinIncDir} ${zlibIncDir} ${bzlibIncDir}
-export LibDir  := ${CglLibDir}  ${OsiLibDir} ${CoinLibDir} ${zlibLibDir} ${bzlibLibDir}
-export LibName := ${CglLibName} ${OsiLibName} ${CoinLibName} ${zlibLibName} ${bzlibLibName}
-export Define  := ${CglDefine}  ${OsiDefine} ${CoinDefine} ${zlibDefine} ${bzlibDefine}
+export IncDir  := ${CglIncDir}  ${OsiIncDir} ${CoinIncDir} ${zlibIncDir} ${bzlibIncDir} $(ClpIncDir)
+export LibDir  := ${CglLibDir}  ${OsiLibDir} ${CoinLibDir} ${zlibLibDir} ${bzlibLibDir} $(ClpLibDir)
+export LibName := ${CglLibName} ${OsiLibName} ${CoinLibName} ${zlibLibName} ${bzlibLibName} $(ClpLibName) $(OsiClpLibName)
+export Define  := ${CglDefine}  ${OsiDefine} ${CoinDefine} ${zlibDefine} ${bzlibDefine} $(ClpDefine)
 
 ##############################################################################
 # You should not need to edit below this line.
