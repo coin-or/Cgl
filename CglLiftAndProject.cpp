@@ -28,11 +28,41 @@
 void CglLiftAndProject::generateCuts(const OsiSolverInterface & si, 
 						OsiCuts & cs ) const
 {
-  // Get basic problem information
-  int nRows=si.getNumRows(); 
-  int nCols=si.getNumCols(); 
+  // Assumes the mixed 0-1 problem 
+  //
+  //   min {cx: <Atilde,x> >= btilde} 
+  //
+  // is in cannonical form with all bounds,
+  // including x_t>=0, -x_t>=-1 for x_t binary,
+  // explicitly stated in the constraint matrix. 
+  // See ~/COIN/Examples/Cgl2/cgl2.cpp 
+  // for a general purpose "convert" function. 
 
-  // Create working space for "cannonical" knapsack inequality
+  // Reference [BCC]: Balas, Ceria, and Corneujols,
+  // "A lift-and-project cutting plane algorithm
+  // for mixed 0-1 program", Math Prog 58, (1993) 
+  // 295-324.
+
+  // This implementation uses Normalization 1.
+
+  // Given cannonical problem and
+  // the lp-relaxation solution, x,
+  // the LAP cut generator attempts to construct
+  // a cut for every x_j such that 0<x_j<1
+  // [BCC:307]
+ 
+
+  // Get basic problem information
+  // let Atilde be an aNRows by aNCols matrix
+  const int aNRows=si.getNumRows(); 
+  const int aNCols=si.getNumCols(); 
+  const double * x = si.getColSolution();
+
+  // Set up memory for system (10) [BCC:307]
+  // (the problem over the polar cone)
+
+
+  // ---------JUNK ---------------------------
   // - krow will contain the coefficients and indices of the 
   // (potentially complemented) variables in the knapsack inequality.
   // - b is the rhs of knapsack inequality.
