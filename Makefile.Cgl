@@ -11,6 +11,7 @@ LIBNAME := Cgl
 
 LIBSRC := 
 LIBSRC += CglCutGenerator.cpp
+LIBSRC += CglFlowCover.cpp
 LIBSRC += CglGomory.cpp
 LIBSRC += CglKnapsackCover.cpp
 LIBSRC += CglLiftAndProject.cpp
