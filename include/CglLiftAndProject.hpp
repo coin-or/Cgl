@@ -24,13 +24,16 @@ public:
   */
   virtual void generateCuts(const OsiSolverInterface & si, OsiCuts & cs) const;
 
-  /** Get/Set the normalization : Either beta=+1 or beta=-1.
+  /** Get the normalization : Either beta=+1 or beta=-1.
   */
 
   double getBeta() const {
     return beta_;
   }
 
+  /** Set the normalization : Either beta=+1 or beta=-1.
+      Default value is 1.
+  */
   void setBeta(int oneOrMinusOne){
     if (oneOrMinusOne==1 || oneOrMinusOne==-1){
       beta_= (double)oneOrMinusOne;

@@ -76,22 +76,22 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   // 
   // min <<x^T,Atilde^T>,u> + x_ju_0
   // s.t.
-  //     <B,w> = 0
+  //     <B,w> = (0,...,0,beta_,beta)^T
   //        w   >= 0
   // where 
-  // w = (u,v,beta,v_0,u_0)in BCC notation 
+  // w = (u,v,v_0,u_0)in BCC notation 
   //      u and v are m-vectors
-  //      beta,v_0 and u_0 are scalars, and
+  //      v_0 and u_0 are scalars, and
   //  
-  // B = Atilde^T  -Atilde^T  e_0 -e_j e_j
-  //     btilde^T   e_0^T     -1   0   0
-  //     e_0^T      btilde^T  -1   1   0
+  // B = Atilde^T  -Atilde^T  -e_j e_j
+  //     btilde^T   e_0^T      0   0
+  //     e_0^T      btilde^T   1   0
 
   // ^T indicates Transpose
   // e_0 is a (AtildeNCols x 1) vector of all zeros 
   // e_j is e_0 with a 1 in the jth position
 
-  // Storing B in column order. B is a (n+2 x 2m+3) matrix 
+  // Storing B in column order. B is a (n+2 x 2m+2) matrix 
   // But need to allow for possible gaps in Atilde.
   // At each iteration, only need to change 2 cols and objfunc
   // Sane design of OsiSolverInterface does not permit mucking
@@ -104,10 +104,12 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   // Initially allocating B with space for v_0 and u_O cols
   // but not populating.
 
+  // B without u_0 and v_0 is a (n+2 x 2m) size matrix.
+
   int twoM = 2*m;
   int BNumRows = n+2;
-  int BNumCols = twoM+3;
-  int BFullSize = 2*AtildeFullSize+twoM+5;
+  int BNumCols = twoM+2;
+  int BFullSize = 2*AtildeFullSize+twoM+3;
   double * BElements = new double[BFullSize];
   int * BIndices = new int[BFullSize];
   int * BStarts = new int[BNumCols+1];
@@ -138,18 +140,20 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   }
 
   // Store column coresponding to beta
-  k += offset;
-  BElements[k]=-1;
-  BIndices[k]=n;
-  k++;
-  BElements[k]=-1;
-  BIndices[k]=nPlus1;
-  k++;
-  BStarts[twoM]=BStarts[twoM-1]+BLengths[twoM-1]; 
-  BLengths[twoM]= 2;
+  //  k += offset;
+  //BElements[k]=-1;
+  //BIndices[k]=n;
+  //k++;
+  //BElements[k]=-1;
+  //BIndices[k]=nPlus1;
+  //k++;
+  //BStarts[twoM]=BStarts[twoM-1]+BLengths[twoM-1]; 
+  //BLengths[twoM]= 2;
 
   // Mark end of BStarts
-  BStarts[twoM+1]=BStarts[twoM]+2;
+  //BStarts[twoM+1]=BStarts[twoM]+2;
+
+  BStarts[twoM+1]=BStarts[twoM]+BLengths[twoM];
 
   // Cols that will be deleted each iteration
   int BNumColsLessOne=BNumCols-1;
@@ -164,11 +168,18 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   CoinFillN(BColLowers,BNumCols,0.0);  
   CoinFillN(BColUppers,BNumCols,INFINITY);  
 
-  // Set row lowers and uppers to zero
+  // Set row lowers and uppers.
+  // The rhs is zero, for but the last two rows.
+  // For these the rhs is beta_
   double * BRowLowers = new double[BNumRows];
   double * BRowUppers = new double[BNumRows];
   CoinFillN(BRowLowers,BNumRows,0.0);  
-  CoinFillN(BRowUppers,BNumRows,0.0);  
+  CoinFillN(BRowUppers,BNumRows,0.0);
+  BRowLowers[BNumRows-2]=beta_;
+  BRowUppers[BNumRows-2]=beta_;
+  BRowLowers[BNumRows-1]=beta_;
+  BRowUppers[BNumRows-1]=beta_;
+
 
   // Calculate base objective <<x^T,Atilde^T>,u>
   // Note: at each iteration coefficient u_0
@@ -183,7 +194,6 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
 
   // Number of cols and size of Elements vector
   // in B without v_0 and u_0 cols
-  //  int BNumColsLessTwo = BNumCols-2;
   int BFullSizeLessThree = BFullSize-3;
 
   // Load B matrix into a column orders OsiPackedMatrix
