@@ -744,6 +744,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	  }
 	  if (number<limit_||!numberNonInteger) {
 	    bounds[1]=rhs;
+	    if (number>50&&numberNonInteger)
+	      bounds[1] += 1.0e-6; // weaken
 	    {
 	      OsiRowCut rc;
 	      rc.setRow(number,cutIndex,packed);
