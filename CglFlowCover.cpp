@@ -833,7 +833,8 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 		if( i == 0 ) 
 		    rho[i] = mt[i] - mt[i+1];
 		else 
-		    rho[i] = mt[i] - mt[i+1] + rho[i-1];
+		    rho[i] = mt[i-1] - mt[i] + rho[i-1];
+//		    rho[i] = mt[i] - mt[i+1] + rho[i-1];
 		
 		if( rho[i] > lambda ) 
 		    rho[i] = lambda;
