@@ -88,21 +88,27 @@ public:
 			     OsiCuts & cs);
   //@}
 
-  /**@name snapshot */
+  /**@name snapshot etc */
   //@{
-  /// Create a copy of matrix which is to be used
-  /// this is to speed up process and to give global cuts
-  /// Can give an array with 1 set to select, 0 to ignore
-  /// column bounds are tightened
-  /// If array given then values of 1 will be set to 0 if redundant
+  /** Create a copy of matrix which is to be used
+      this is to speed up process and to give global cuts
+      Can give an array with 1 set to select, 0 to ignore
+      column bounds are tightened
+      If array given then values of 1 will be set to 0 if redundant
+  */
   void snapshot ( const OsiSolverInterface & si,
 		  char * possible=NULL);
-  //@}
-
-  /**@name deleteSnapshot */
-  //@{
   /// Deletes snapshot
   void deleteSnapshot ( );
+  /** Creates cliques for use by probing.
+      Only cliques >= minimumSize and < maximumSize created
+      Can also try and extend cliques as a result of probing (root node).
+      Returns number of cliques found.
+  */
+  int createCliques( OsiSolverInterface & si, 
+		    int minimumSize=2, int maximumSize=100, bool extendCliques=false);
+  /// Delete all clique information
+  void deleteCliques();
   //@}
 
   /**@name Get tighter column bounds */
@@ -225,7 +231,9 @@ private:
   int numberColumns_;
   /// Tolerance to see if infeasible
   double primalTolerance_;
-  /// Mode - 0 lazy using snapshot, 1 just unsatisfied, 2 all
+  /** Mode - 0 lazy using snapshot, 1 just unsatisfied, 2 all.
+      16 bit set if want to extend cliques at root node
+  */
   int mode_;
   /// Row cuts flag
   /// 0 no cuts, 1 just disaggregation type, 2 coefficient ( 3 both)
@@ -241,7 +249,7 @@ private:
   /// Number of integer variables
   int numberIntegers_;
   /// Disaggregation cuts
-  typedef struct{
+  typedef struct {
     int sequence; // integer variable
     // newValue will be NULL if no probing done yet
     // lastLBWhenAt1 gives length of newValue;
@@ -253,6 +261,32 @@ private:
     double * newValue; // new values 
   } disaggregation;
   disaggregation * cutVector_;
+  /// Cliques
+  /// Number of cliques
+  int numberCliques_;
+  /// Clique type
+  typedef struct {
+    unsigned int equality:1; //  nonzero if clique is ==
+  } cliqueType;
+  cliqueType * cliqueType_;
+  /// Start of each clique
+  int * cliqueStart_;
+  /// Entries for clique
+  typedef struct {
+    unsigned int oneFixes:1; //  nonzero if variable to 1 fixes all
+    unsigned int sequence:31; //  variable (in matrix)
+  } cliqueEntry;
+  cliqueEntry * cliqueEntry_;
+  /** Start of oneFixes cliques for a column in matrix or -1 if not
+      in any clique */
+  int * oneFixStart_;
+  /** Start of zeroFixes cliques for a column in matrix or -1 if not
+      in any clique */
+  int * zeroFixStart_;
+  /// End of fixes for a column
+  int * endFixStart_;
+  /// Clique numbers for one or zero fixes
+  int * whichClique_;
   //@}
 };
 

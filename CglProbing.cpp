@@ -470,12 +470,17 @@ int CglProbing::generateCutsAndModify(const OsiSolverInterface & si,
 
   mode_=saveMode;
   // move bounds so can be used by user
-  delete [] rowLower_;
-  delete [] rowUpper_;
+  if (mode_==3) {
+    delete [] rowLower_;
+    delete [] rowUpper_;
+    rowLower_ = rowLower;
+    rowUpper_ = rowUpper;
+  } else {
+    delete [] rowLower;
+    delete [] rowUpper;
+  }
   delete [] colLower_;
   delete [] colUpper_;
-  rowLower_ = rowLower;
-  rowUpper_ = rowUpper;
   colLower_	= colLower;
   colUpper_	= colUpper;
   return ninfeas;
@@ -567,19 +572,8 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     } else {
       rowUpper[nRows-1]=DBL_MAX;
     }
-    memcpy(colLower,colLower_,nCols*sizeof(double));
-    memcpy(colUpper,colUpper_,nCols*sizeof(double));
-    if (mode) {
-      // tighten bounds to reflect state of problem
-      const double * lower = si.getColLower();
-      const double * upper = si.getColUpper();
-      for (i=0;i<nCols;i++) {
-	if (colLower[i]<lower[i])
-	  colLower[i]=lower[i];
-	if (colUpper[i]>upper[i])
-	  colUpper[i]=upper[i];
-      }
-    }
+    memcpy(colLower,si.getColLower(),nCols*sizeof(double));
+    memcpy(colUpper,si.getColUpper(),nCols*sizeof(double));
   }
 #ifdef CGL_DEBUG
   const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
@@ -1226,6 +1220,145 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	      istackC++;
 	      continue;
 	    }
+	    // Do cliques
+	    if (oneFixStart_&&oneFixStart_[jcol]>=0) {
+	      int start;
+	      int end;
+	      if (colLower[jcol]>saveL[istackC]) {
+		// going up
+		start = oneFixStart_[jcol];
+		end = zeroFixStart_[jcol];
+	      } else {
+		assert (colUpper[jcol]<saveU[istackC]);
+		// going down
+		start = zeroFixStart_[jcol];
+		end = endFixStart_[jcol];
+	      }
+	      for (int i=start;i<end;i++) {
+		int iClique = whichClique_[i];
+		for (int k=cliqueStart_[iClique];k<cliqueStart_[iClique+1];k++) {
+		  int kcol = cliqueEntry_[k].sequence;
+		  int kway = cliqueEntry_[k].oneFixes;
+		  if (!markC[kcol]) {
+		    // not on list yet
+		    if (nstackC<2*maxStack_) {
+		      markC[kcol] = 3; // say fixed
+		      fixThis++;
+		      stackC[nstackC]=kcol;
+		      saveL[nstackC]=colLower[kcol];
+		      saveU[nstackC]=colUpper[kcol];
+		      nstackC++;
+		      if (!kway) {
+			// going up
+			assert (djs[kcol]>=0.0);
+			objVal += djs[kcol];
+			colLower[kcol]=1.0;
+			/* update immediately */
+			for (jj=columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
+			  krow = row[jj];
+			  value = columnElements[jj];
+			  if (markR[krow]==-1) {
+			    stackR[nstackR]=krow;
+			    markR[krow]=nstackR;
+			    saveMin[nstackR]=minR[krow];
+			    saveMax[nstackR]=maxR[krow];
+			    nstackR++;
+			  } else if (markR[krow]==-2) {
+			    continue;
+			  }
+			  /* could check immediately if violation */
+			  /* up */
+			  if (value>0.0) {
+			    /* up does not change - down does */
+			    minR[krow] += value;
+			    if (minR[krow]>rowUpper[krow]+1.0e-5) {
+			      colUpper[kcol]=-1.0e50; /* force infeasible */
+			      break;
+			    }
+			  } else {
+			    /* down does not change - up does */
+			    maxR[krow] += value;
+			    if (maxR[krow]<rowLower[krow]-1.0e-5) {
+			      notFeasible=1;
+			      break;
+			    }
+			  }
+			}
+		      } else {
+			// going down
+			assert (djs[kcol]<=0.0);
+			objVal -= djs[kcol];
+			colUpper[kcol]=0.0;
+			/* update immediately */
+			for (jj=columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
+			  krow = row[jj];
+			  value = columnElements[jj];
+			  if (markR[krow]==-1) {
+			    stackR[nstackR]=krow;
+			    markR[krow]=nstackR;
+			    saveMin[nstackR]=minR[krow];
+			    saveMax[nstackR]=maxR[krow];
+			    nstackR++;
+			  } else if (markR[krow]==-2) {
+			    continue;
+			  }
+			  /* could check immediately if violation */
+			  /* down */
+			  if (value<0.0) {
+			    /* up does not change - down does */
+			    minR[krow] -= value;
+			    if (minR[krow]>rowUpper[krow]+1.0e-5) {
+			      notFeasible=1;
+			      break;
+			    }
+			  } else {
+			    /* down does not change - up does */
+			    maxR[krow] -= value;
+			    if (maxR[krow]<rowLower[krow]-1.0e-5) {
+			      notFeasible=1;
+			      break;
+			    }
+			  }
+			}
+		      }
+		    }
+		  } else if (markC[kcol]==1) {
+		    // marked as going to 0
+		    assert (!colUpper[kcol]);
+		    if (!kway) {
+		      // contradiction
+		      notFeasible=1;
+		      break;
+		    }
+		  } else if (markC[kcol]==2) {
+		    // marked as going to 1
+		    assert (colLower[kcol]);
+		    if (kway) {
+		      // contradiction
+		      notFeasible=1;
+		      break;
+		    }
+		  } else {
+		    // marked as fixed
+		    assert (markC[kcol]==3);
+		    int jkway;
+		    if (colLower[kcol])
+		      jkway=1;
+		    else
+		      jkway=0;
+		    if (kway==jkway) {
+		      // contradiction
+		      notFeasible=1;
+		      break;
+		    }
+		  }
+		}
+		if (notFeasible)
+		  break;
+	      }
+	      if (notFeasible)
+		istackC=nstackC+1;
+	    }
 	    for (k=columnStart[jcol];k<columnStart[jcol]+columnLength[jcol];k++) {
 	      // break if found not feasible
 	      if (notFeasible)
@@ -1382,6 +1515,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			if (value>0.0) {
 			  /* up does not change - down does */
 			  minR[krow] += value*moveUp;
+			  if (minR[krow]>rowUpper[krow]+1.0e-5) {
+			    colUpper[kcol]=-1.0e50; /* force infeasible */
+			    break;
+			  }
 			} else {
 			  /* down does not change - up does */
 			  maxR[krow] += value*moveUp;
@@ -2179,12 +2316,15 @@ void CglProbing::deleteSnapshot()
 // Mode stuff
 void CglProbing::setMode(int mode)
 {
-  if (mode>=0&&mode<3)
-    mode_=mode;
+  if (mode>=0&&mode<3) {
+    // take off bottom bit
+    mode_ &= ~15;
+    mode_ |= mode;
+  }
 }
 int CglProbing::getMode() const
 {
-  return mode_;
+  return mode_&15;
 }
 // Set maximum number of passes per node
 void CglProbing::setMaxPass(int value)
@@ -2286,45 +2426,54 @@ usingObjective_(false)
   colUpper_=NULL;
   numberIntegers_=0;
   cutVector_=NULL;
+  numberCliques_=0;
+  cliqueType_=NULL;
+  cliqueStart_=NULL;
+  cliqueEntry_=NULL;
+  oneFixStart_=NULL;
+  zeroFixStart_=NULL;
+  endFixStart_=NULL;
+  whichClique_=NULL;
 }
 
 //-------------------------------------------------------------------
 // Copy constructor 
 //-------------------------------------------------------------------
-CglProbing::CglProbing (  const CglProbing & source)
+CglProbing::CglProbing (  const CglProbing & rhs)
                                                               :
-  CglCutGenerator(source),
-  primalTolerance_(source.primalTolerance_),
-  mode_(source.mode_),
-  rowCuts_(source.rowCuts_),
-  maxPass_(source.maxPass_),
-  maxProbe_(source.maxProbe_),
-  maxStack_(source.maxStack_),
-  usingObjective_(source.usingObjective_)
+  CglCutGenerator(rhs),
+  primalTolerance_(rhs.primalTolerance_),
+  mode_(rhs.mode_),
+  rowCuts_(rhs.rowCuts_),
+  maxPass_(rhs.maxPass_),
+  maxProbe_(rhs.maxProbe_),
+  maxStack_(rhs.maxStack_),
+  usingObjective_(rhs.usingObjective_)
 {  
-  numberRows_=source.numberRows_;
-  numberColumns_=source.numberColumns_;
+  numberRows_=rhs.numberRows_;
+  numberColumns_=rhs.numberColumns_;
+  numberCliques_=rhs.numberCliques_;
   if (numberRows_>0) {
-    rowCopy_= new CoinPackedMatrix(*(source.rowCopy_));
+    rowCopy_= new CoinPackedMatrix(*(rhs.rowCopy_));
     rowLower_=new double[numberRows_];
-    memcpy(rowLower_,source.rowLower_,numberRows_*sizeof(double));
+    memcpy(rowLower_,rhs.rowLower_,numberRows_*sizeof(double));
     rowUpper_=new double[numberRows_];
-    memcpy(rowUpper_,source.rowUpper_,numberRows_*sizeof(double));
+    memcpy(rowUpper_,rhs.rowUpper_,numberRows_*sizeof(double));
     colLower_=new double[numberColumns_];
-    memcpy(colLower_,source.colLower_,numberColumns_*sizeof(double));
+    memcpy(colLower_,rhs.colLower_,numberColumns_*sizeof(double));
     colUpper_=new double[numberColumns_];
-    memcpy(colUpper_,source.colUpper_,numberColumns_*sizeof(double));
+    memcpy(colUpper_,rhs.colUpper_,numberColumns_*sizeof(double));
     int i;
-    numberIntegers_=source.numberIntegers_;
+    numberIntegers_=rhs.numberIntegers_;
     cutVector_=new disaggregation [numberIntegers_];
-    memcpy(cutVector_,source.cutVector_,numberIntegers_*sizeof(disaggregation));
+    memcpy(cutVector_,rhs.cutVector_,numberIntegers_*sizeof(disaggregation));
     for (i=0;i<numberIntegers_;i++) {
       if (cutVector_[i].newValue) {
 	cutVector_[i].newValue = new double [cutVector_[i].lastLBWhenAt1];
-	memcpy(cutVector_[i].newValue,source.cutVector_[i].newValue,
+	memcpy(cutVector_[i].newValue,rhs.cutVector_[i].newValue,
 	       cutVector_[i].lastLBWhenAt1*sizeof(double));
 	cutVector_[i].index = new int [cutVector_[i].lastLBWhenAt1];
-	memcpy(cutVector_[i].index,source.cutVector_[i].index,
+	memcpy(cutVector_[i].index,rhs.cutVector_[i].index,
 	       cutVector_[i].lastLBWhenAt1*sizeof(int));
       }
     }
@@ -2336,6 +2485,39 @@ CglProbing::CglProbing (  const CglProbing & source)
     colUpper_=NULL;
     numberIntegers_=0;
     cutVector_=NULL;
+  }
+  if (numberCliques_) {
+    cliqueType_ = new cliqueType [numberCliques_];
+    memcpy(cliqueType_,rhs.cliqueType_,numberCliques_*sizeof(cliqueType));
+    cliqueStart_ = new int [numberCliques_+1];
+    memcpy(cliqueStart_,rhs.cliqueStart_,(numberCliques_+1)*sizeof(int));
+    int n = cliqueStart_[numberCliques_];
+    cliqueEntry_ = new cliqueEntry [n];
+    memcpy(cliqueEntry_,rhs.cliqueEntry_,n*sizeof(cliqueEntry));
+    oneFixStart_ = new int [numberColumns_];
+    memcpy(oneFixStart_,rhs.oneFixStart_,numberColumns_*sizeof(int));
+    zeroFixStart_ = new int [numberColumns_];
+    memcpy(zeroFixStart_,rhs.zeroFixStart_,numberColumns_*sizeof(int));
+    endFixStart_ = new int [numberColumns_];
+    memcpy(endFixStart_,rhs.endFixStart_,numberColumns_*sizeof(int));
+    int n2=-1;
+    for (int i=numberColumns_-1;i>=0;i--) {
+      if (oneFixStart_[i]>=0) {
+	n2=endFixStart_[i];
+	break;
+      }
+    }
+    assert (n==n2);
+    whichClique_ = new int [n];
+    memcpy(whichClique_,rhs.whichClique_,n*sizeof(int));
+  } else {
+    cliqueType_=NULL;
+    cliqueStart_=NULL;
+    cliqueEntry_=NULL;
+    oneFixStart_=NULL;
+    zeroFixStart_=NULL;
+    endFixStart_=NULL;
+    whichClique_=NULL;
   }
 }
 
@@ -2350,6 +2532,13 @@ CglProbing::~CglProbing ()
   delete [] colLower_;
   delete [] colUpper_;
   delete rowCopy_;
+  delete [] cliqueType_;
+  delete [] cliqueStart_;
+  delete [] cliqueEntry_;
+  delete [] oneFixStart_;
+  delete [] zeroFixStart_;
+  delete [] endFixStart_;
+  delete [] whichClique_;
   int i;
   for (i=0;i<numberIntegers_;i++) {
     delete cutVector_[i].newValue;
@@ -2375,12 +2564,20 @@ CglProbing::operator=(
     delete [] colLower_;
     delete [] colUpper_;
     delete rowCopy_;
+    delete [] cliqueType_;
+    delete [] cliqueStart_;
+    delete [] cliqueEntry_;
+    delete [] oneFixStart_;
+    delete [] zeroFixStart_;
+    delete [] endFixStart_;
+    delete [] whichClique_;
     mode_=rhs.mode_;
     rowCuts_=rhs.rowCuts_;
     maxPass_=rhs.maxPass_;
     maxProbe_=rhs.maxProbe_;
     maxStack_=rhs.maxStack_;
     usingObjective_=rhs.usingObjective_;
+    numberCliques_=rhs.numberCliques_;
     if (numberRows_>0) {
       rowCopy_= new CoinPackedMatrix(*(rhs.rowCopy_));
       rowLower_=new double[numberRows_];
@@ -2414,6 +2611,39 @@ CglProbing::operator=(
       numberIntegers_=0;
       cutVector_=NULL;
     }
+    if (numberCliques_) {
+      cliqueType_ = new cliqueType [numberCliques_];
+      memcpy(cliqueType_,rhs.cliqueType_,numberCliques_*sizeof(cliqueType));
+      cliqueStart_ = new int [numberCliques_+1];
+      memcpy(cliqueStart_,rhs.cliqueStart_,(numberCliques_+1)*sizeof(int));
+      int n = cliqueStart_[numberCliques_];
+      cliqueEntry_ = new cliqueEntry [n];
+      memcpy(cliqueEntry_,rhs.cliqueEntry_,n*sizeof(cliqueEntry));
+      oneFixStart_ = new int [numberColumns_];
+      memcpy(oneFixStart_,rhs.oneFixStart_,numberColumns_*sizeof(int));
+      zeroFixStart_ = new int [numberColumns_];
+      memcpy(zeroFixStart_,rhs.zeroFixStart_,numberColumns_*sizeof(int));
+      endFixStart_ = new int [numberColumns_];
+      memcpy(endFixStart_,rhs.endFixStart_,numberColumns_*sizeof(int));
+      int n2=-1;
+      for (int i=numberColumns_-1;i>=0;i--) {
+	if (oneFixStart_[i]>=0) {
+	  n2=endFixStart_[i];
+	  break;
+	}
+      }
+      assert (n==n2);
+      whichClique_ = new int [n];
+      memcpy(whichClique_,rhs.whichClique_,n*sizeof(int));
+    } else {
+      cliqueType_=NULL;
+      cliqueStart_=NULL;
+      cliqueEntry_=NULL;
+      oneFixStart_=NULL;
+      zeroFixStart_=NULL;
+      endFixStart_=NULL;
+      whichClique_=NULL;
+    }
   }
   return *this;
 }
@@ -2422,4 +2652,321 @@ CglProbing::operator=(
 void 
 CglProbing::refreshSolver(OsiSolverInterface * solver)
 {
+}
+/* Creates cliques for use by probing.
+   Can also try and extend cliques as a result of probing (root node).
+   Returns number of cliques found.
+*/
+int 
+CglProbing::createCliques( OsiSolverInterface & si, 
+			  int minimumSize, int maximumSize, bool extendCliques)
+{
+  // get rid of what is there
+  deleteCliques();
+  CoinPackedMatrix matrixByRow(*si.getMatrixByRow());
+  numberRows_ = si.getNumRows();
+  numberColumns_ = si.getNumCols();
+
+  numberCliques_=0;
+  int numberEntries=0;
+  int numberIntegers=0;
+  int * lookup = new int[numberColumns_];
+  int i;
+  for (i=0;i<numberColumns_;i++) {
+    if (si.isBinary(i))
+      lookup[i]=numberIntegers++;
+    else
+      lookup[i]=-1;
+  }
+
+  int * which = new int[numberColumns_];
+  int * whichRow = new int[numberRows_];
+  // Statistics
+  int totalP1=0,totalM1=0;
+  int numberBig=0,totalBig=0;
+  int numberFixed=0;
+
+  // Row copy
+  const double * elementByRow = matrixByRow.getElements();
+  const int * column = matrixByRow.getIndices();
+  const CoinBigIndex * rowStart = matrixByRow.getVectorStarts();
+  const int * rowLength = matrixByRow.getVectorLengths();
+
+  // Column lengths for slacks
+  const int * columnLength = si.getMatrixByCol()->getVectorLengths();
+
+  const double * lower = si.getColLower();
+  const double * upper = si.getColUpper();
+  const double * rowLower = si.getRowLower();
+  const double * rowUpper = si.getRowUpper();
+  int iRow;
+  for (iRow=0;iRow<numberRows_;iRow++) {
+    int numberP1=0, numberM1=0;
+    int j;
+    double upperValue=rowUpper[iRow];
+    double lowerValue=rowLower[iRow];
+    bool good=true;
+    int slack = -1;
+    for (j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+      int iColumn = column[j];
+      int iInteger=lookup[iColumn];
+      if (upper[iColumn]-lower[iColumn]<1.0e-8) {
+	// fixed
+	upperValue -= lower[iColumn]*elementByRow[j];
+	lowerValue -= lower[iColumn]*elementByRow[j];
+	continue;
+      } else if (upper[iColumn]!=1.0||lower[iColumn]!=0.0) {
+	good = false;
+	break;
+      } else if (iInteger<0) {
+	good = false;
+	break;
+      } else {
+	if (columnLength[iColumn]==1)
+	  slack = iInteger;
+      }
+      if (fabs(elementByRow[j])!=1.0) {
+	good=false;
+	break;
+      } else if (elementByRow[j]>0.0) {
+	which[numberP1++]=iColumn;
+      } else {
+	numberM1++;
+	which[numberIntegers_-numberM1]=iColumn;
+      }
+    }
+    int iUpper = (int) floor(upperValue+1.0e-5);
+    int iLower = (int) ceil(lowerValue-1.0e-5);
+    int state=0;
+    if (upperValue<1.0e6) {
+      if (iUpper==1-numberM1)
+	state=1;
+      else if (iUpper==-numberM1)
+	state=2;
+      else if (iUpper<-numberM1)
+	state=3;
+    }
+    if (!state&&lowerValue>-1.0e6) {
+      if (-iLower==1-numberP1)
+	state=-1;
+      else if (-iLower==-numberP1)
+	state=-2;
+      else if (-iLower<-numberP1)
+	state=-3;
+    }
+    if (good&&state) {
+      if (abs(state)==3) {
+	// infeasible
+	numberCliques_ = -99999;
+	break;
+      } else if (abs(state)==2) {
+	// we can fix all
+	numberFixed += numberP1+numberM1;
+	if (state>0) {
+	  // fix all +1 at 0, -1 at 1
+	  for (i=0;i<numberP1;i++)
+	    si.setColUpper(which[i],0.0);
+	  for (i=0;i<numberM1;i++)
+	    si.setColLower(which[numberIntegers_-i-1],
+				 1.0);
+	} else {
+	  // fix all +1 at 1, -1 at 0
+	  for (i=0;i<numberP1;i++)
+	    si.setColLower(which[i],1.0);
+	  for (i=0;i<numberM1;i++)
+	    si.setColUpper(which[numberIntegers_-i-1],
+				 0.0);
+	}
+      } else {
+	int length = numberP1+numberM1;
+	if (length >= minimumSize&&length<maximumSize) {
+	  whichRow[numberCliques_++]=iRow;
+	  numberEntries += length;
+	} else if (numberP1+numberM1 >= maximumSize) {
+	  // too big
+	  numberBig++;
+	  totalBig += numberP1+numberM1;
+	}
+      }
+    }
+  }
+  if (numberCliques_<0) {
+    printf("*** Problem infeasible\n");
+  } else {
+    if (numberCliques_)
+      printf("%d cliques of average size %g found, %d P1, %d M1\n",
+	     numberCliques_,
+	     ((double)(totalP1+totalM1))/((double) numberCliques_),
+	     totalP1,totalM1);
+    else
+      printf("No cliques found\n");
+    if (numberBig)
+      printf("%d large cliques ( >= %d) found, total %d\n",
+	     numberBig,maximumSize,totalBig);
+    if (numberFixed)
+      printf("%d variables fixed\n",numberFixed);
+  }
+  if (numberCliques_>0) {
+    cliqueType_ = new cliqueType [numberCliques_];
+    cliqueStart_ = new int [numberCliques_+1];
+    cliqueEntry_ = new cliqueEntry [numberEntries];
+    oneFixStart_ = new int [numberColumns_];
+    zeroFixStart_ = new int [numberColumns_];
+    endFixStart_ = new int [numberColumns_];
+    whichClique_ = new int [numberEntries];
+    numberEntries=0;
+    cliqueStart_[0]=0;
+    for (i=0;i<numberColumns_;i++) {
+      oneFixStart_[i]=-1;
+      zeroFixStart_[i]=-1;
+      endFixStart_[i]=-1;
+    }
+    int iClique;
+    for (iClique=0;iClique<numberCliques_;iClique++) {
+      int iRow=whichRow[iClique];
+      int numberP1=0, numberM1=0;
+      int j;
+      double upperValue=rowUpper[iRow];
+      double lowerValue=rowLower[iRow];
+      for (j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+	int iColumn = column[j];
+	if (upper[iColumn]-lower[iColumn]<1.0e-8) {
+	  // fixed
+	  upperValue -= lower[iColumn]*elementByRow[j];
+	  lowerValue -= lower[iColumn]*elementByRow[j];
+	  continue;
+	}
+	if (elementByRow[j]>0.0) {
+	  which[numberP1++]=iColumn;
+	} else {
+	  numberM1++;
+	  which[numberIntegers_-numberM1]=iColumn;
+	}
+      }
+      int iUpper = (int) floor(upperValue+1.0e-5);
+      int iLower = (int) ceil(lowerValue-1.0e-5);
+      int state=0;
+      if (upperValue<1.0e6) {
+	if (iUpper==1-numberM1)
+	  state=1;
+      }
+      if (!state&&lowerValue>-1.0e6) {
+	state=-1;
+      }
+      assert (abs(state)==1);
+      if (iLower==iUpper) {
+	cliqueType_[iClique].equality=1;
+      } else {
+	cliqueType_[iClique].equality=0;
+      }
+      if (state>0) {
+	for (i=0;i<numberP1;i++) {
+	  // 1 is strong branch
+	  int iColumn = which[i];
+	  cliqueEntry_[numberEntries].sequence=iColumn;
+	  cliqueEntry_[numberEntries].oneFixes=1;
+	  numberEntries++;
+	  // zero counts
+	  oneFixStart_[iColumn]=0;
+	  zeroFixStart_[iColumn]=0;
+	}
+	for (i=0;i<numberM1;i++) {
+	  // 0 is strong branch
+	  int iColumn = which[numberIntegers_-i-1];
+	  cliqueEntry_[numberEntries].sequence=iColumn;
+	  cliqueEntry_[numberEntries].oneFixes=0;
+	  numberEntries++;
+	  // zero counts
+	  oneFixStart_[iColumn]=0;
+	  zeroFixStart_[iColumn]=0;
+	}
+      } else {
+	for (i=0;i<numberP1;i++) {
+	  // 0 is strong branch
+	  int iColumn = which[i];
+	  cliqueEntry_[numberEntries].sequence=iColumn;
+	  cliqueEntry_[numberEntries].oneFixes=0;
+	  numberEntries++;
+	  // zero counts
+	  oneFixStart_[iColumn]=0;
+	  zeroFixStart_[iColumn]=0;
+	}
+	for (i=0;i<numberM1;i++) {
+	  // 1 is strong branch
+	  int iColumn = which[numberIntegers_-i-1];
+	  cliqueEntry_[numberEntries].sequence=iColumn;
+	  cliqueEntry_[numberEntries].oneFixes=1;
+	  numberEntries++;
+	  // zero counts
+	  oneFixStart_[iColumn]=0;
+	  zeroFixStart_[iColumn]=0;
+	}
+      }
+      cliqueStart_[iClique+1]=numberEntries;
+    }
+    // Now do column lists
+    // First do counts
+    for (iClique=0;iClique<numberCliques_;iClique++) {
+      for (int j=cliqueStart_[iClique];j<cliqueStart_[iClique+1];j++) {
+	int iColumn = cliqueEntry_[j].sequence;
+	if (cliqueEntry_[j].oneFixes)
+	  oneFixStart_[iColumn]++;
+	else
+	  zeroFixStart_[iColumn]++;
+      }
+    }
+    // now get starts and use which and end as counters
+    numberEntries=0;
+    for (int iColumn=0;iColumn<numberColumns_;iColumn++) {
+      if (oneFixStart_[iColumn]>=0) {
+	int n1=oneFixStart_[iColumn];
+	int n2=zeroFixStart_[iColumn];
+	oneFixStart_[iColumn]=numberEntries;
+	which[iColumn]=numberEntries;
+	numberEntries += n1;
+	zeroFixStart_[iColumn]=numberEntries;
+	endFixStart_[iColumn]=numberEntries;
+	numberEntries += n2;
+      }
+    }
+    // now put in
+    for (iClique=0;iClique<numberCliques_;iClique++) {
+      for (int j=cliqueStart_[iClique];j<cliqueStart_[iClique+1];j++) {
+	int iColumn = cliqueEntry_[j].sequence;
+	if (cliqueEntry_[j].oneFixes) {
+	  int put = which[iColumn];
+	  which[iColumn]++;
+	  whichClique_[put]=iClique;
+	} else {
+	  int put = endFixStart_[iColumn];
+	  endFixStart_[iColumn]++;
+	  whichClique_[put]=iClique;
+	}
+      }
+    }
+  }
+  delete [] which;
+  delete [] whichRow;
+  delete [] lookup;
+  return numberCliques_;
+}
+// Delete all clique information
+void 
+CglProbing::deleteCliques()
+{
+  delete [] cliqueType_;
+  delete [] cliqueStart_;
+  delete [] cliqueEntry_;
+  delete [] oneFixStart_;
+  delete [] zeroFixStart_;
+  delete [] endFixStart_;
+  delete [] whichClique_;
+  cliqueType_=NULL;
+  cliqueStart_=NULL;
+  cliqueEntry_=NULL;
+  oneFixStart_=NULL;
+  zeroFixStart_=NULL;
+  endFixStart_=NULL;
+  whichClique_=NULL;
+  numberCliques_=0;
 }
