@@ -156,7 +156,7 @@ public:
      without worrying code.
      Default is true
   */
-  bool mayGenerateRowCutsInTree() const;
+  virtual bool mayGenerateRowCutsInTree() const;
   //@}
 
   /**@name Stop or restart row cuts (otherwise just fixing from probing) */

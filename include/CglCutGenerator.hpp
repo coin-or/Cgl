@@ -92,7 +92,7 @@ public:
      without worrying code.
      Default is true
   */
-  bool mayGenerateRowCutsInTree() const;
+  virtual bool mayGenerateRowCutsInTree() const;
   //@}
   
   // test this class
