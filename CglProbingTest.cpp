@@ -55,9 +55,9 @@ CglProbingUnitTest(
     test1.generateCuts(*siP,osicuts);
     nColCuts = osicuts.sizeColCuts();
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" probing cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" probing cuts"<<std::endl;
     {
-      cout<<"there are "<<nColCuts<<" probing column cuts"<<endl;
+      std::cout<<"there are "<<nColCuts<<" probing column cuts"<<std::endl;
       const double * lo = siP->getColLower();
       const double * up = siP->getColUpper();
       for (i=0; i<nColCuts; i++){
@@ -72,8 +72,8 @@ CglProbingUnitTest(
 	for (j=0;j<n;j++) {
 	  int icol=indices[j];
 	  if (elements[j]>lo[icol])
-	    cout<<"Can increase lb on "<<icol<<" from "<<lo[icol]<<
-	      " to "<<elements[j]<<endl;
+	    std::cout<<"Can increase lb on "<<icol<<" from "<<lo[icol]<<
+	      " to "<<elements[j]<<std::endl;
 	}
 	cpv = ccut.ubs();
 	n = cpv.getNumElements();
@@ -82,8 +82,8 @@ CglProbingUnitTest(
 	for (j=0;j<n;j++) {
 	  int icol=indices[j];
 	  if (elements[j]<up[icol])
-	    cout<<"Can decrease ub on "<<icol<<" from "<<up[icol]<<
-	      " to "<<elements[j]<<endl;
+	    std::cout<<"Can decrease ub on "<<icol<<" from "<<up[icol]<<
+	      " to "<<elements[j]<<std::endl;
 	}
       }
     }
@@ -105,13 +105,13 @@ CglProbingUnitTest(
 	sum2 += colsol[column]*elements[k];
       }
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
-	cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<endl;
+	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
 	  int column=indices[k];
-	  cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
+	  std::cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
 	    colsol[column]<<") ";
 	}
-	cout <<endl;
+	std::cout <<std::endl;
       }
     }
     OsiPackedVector check;
@@ -130,9 +130,9 @@ CglProbingUnitTest(
     test1.generateCuts(*siP,osicuts);
     nColCuts = osicuts.sizeColCuts();
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" probing cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" probing cuts"<<std::endl;
     {
-      cout<<"there are "<<nColCuts<<" probing column cuts"<<endl;
+      std::cout<<"there are "<<nColCuts<<" probing column cuts"<<std::endl;
       const double * lo = siP->getColLower();
       const double * up = siP->getColUpper();
       for (i=0; i<nColCuts; i++){
@@ -147,8 +147,8 @@ CglProbingUnitTest(
 	for (j=0;j<n;j++) {
 	  int icol=indices[j];
 	  if (elements[j]>lo[icol])
-	    cout<<"Can increase lb on "<<icol<<" from "<<lo[icol]<<
-	      " to "<<elements[j]<<endl;
+	    std::cout<<"Can increase lb on "<<icol<<" from "<<lo[icol]<<
+	      " to "<<elements[j]<<std::endl;
 	}
 	cpv = ccut.ubs();
 	n = cpv.getNumElements();
@@ -157,8 +157,8 @@ CglProbingUnitTest(
 	for (j=0;j<n;j++) {
 	  int icol=indices[j];
 	  if (elements[j]<up[icol])
-	    cout<<"Can decrease ub on "<<icol<<" from "<<up[icol]<<
-	      " to "<<elements[j]<<endl;
+	    std::cout<<"Can decrease ub on "<<icol<<" from "<<up[icol]<<
+	      " to "<<elements[j]<<std::endl;
 	}
       }
     }
@@ -180,13 +180,13 @@ CglProbingUnitTest(
 	sum2 += colsol[column]*elements[k];
       }
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
-	cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<endl;
+	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
 	  int column=indices[k];
-	  cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
+	  std::cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
 	    colsol[column]<<") ";
 	}
-	cout <<endl;
+	std::cout <<std::endl;
       }
     }
     assert (osicuts.sizeRowCuts()==10);

@@ -100,7 +100,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==2);
     // cuts always <=
     int testCut=0; // test first cut as stronger
@@ -125,13 +125,13 @@ CglGomoryUnitTest(
 	sum2 += colsol[column]*elements[k];
       }
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
-	cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<endl;
+	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
 	  int column=indices[k];
-	  cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
+	  std::cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
 	    colsol[column]<<") ";
 	}
-	cout <<endl;
+	std::cout <<std::endl;
       }
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
@@ -176,7 +176,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts-nOldCuts==2);
     // cuts always <=
     testCut=0; // test first cut as stronger
@@ -201,13 +201,13 @@ CglGomoryUnitTest(
 	sum2 += colsol[column]*elements[k];
       }
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
-	cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<endl;
+	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
 	  int column=indices[k];
-	  cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
+	  std::cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
 	    colsol[column]<<") ";
 	}
-	cout <<endl;
+	std::cout <<std::endl;
       }
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
@@ -252,7 +252,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==nOldCuts);
     
   }
@@ -308,7 +308,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==2);
     // cuts always <=
     int testCut=0; // test first cut as stronger
@@ -333,13 +333,13 @@ CglGomoryUnitTest(
 	sum2 += colsol[column]*elements[k];
       }
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
-	cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<endl;
+	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
 	  int column=indices[k];
-	  cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
+	  std::cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
 	    colsol[column]<<") ";
 	}
-	cout <<endl;
+	std::cout <<std::endl;
       }
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
@@ -384,7 +384,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts-nOldCuts==2);
     // cuts always <=
     testCut=0; // test first cut as stronger
@@ -409,13 +409,13 @@ CglGomoryUnitTest(
 	sum2 += colsol[column]*elements[k];
       }
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
-	cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<endl;
+	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
 	  int column=indices[k];
-	  cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
+	  std::cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
 	    colsol[column]<<") ";
 	}
-	cout <<endl;
+	std::cout <<std::endl;
       }
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
@@ -460,7 +460,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==nOldCuts);
     
   }
@@ -516,7 +516,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==1);
     // cuts always <=
     int testCut=0; // test first cut as stronger
@@ -541,13 +541,13 @@ CglGomoryUnitTest(
 	sum2 += colsol[column]*elements[k];
       }
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
-	cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<endl;
+	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
 	  int column=indices[k];
-	  cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
+	  std::cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
 	    colsol[column]<<") ";
 	}
-	cout <<endl;
+	std::cout <<std::endl;
       }
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
@@ -589,7 +589,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts-nOldCuts==1);
     // cuts always <=
     testCut=0; // test first cut as stronger
@@ -614,13 +614,13 @@ CglGomoryUnitTest(
 	sum2 += colsol[column]*elements[k];
       }
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
-	cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<endl;
+	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
 	  int column=indices[k];
-	  cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
+	  std::cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
 	    colsol[column]<<") ";
 	}
-	cout <<endl;
+	std::cout <<std::endl;
       }
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
@@ -662,7 +662,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==nOldCuts);
     
   }
@@ -718,7 +718,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==1);
     // cuts always <=
     int testCut=0; // test first cut as stronger
@@ -743,13 +743,13 @@ CglGomoryUnitTest(
 	sum2 += colsol[column]*elements[k];
       }
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
-	cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<endl;
+	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
 	  int column=indices[k];
-	  cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
+	  std::cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
 	    colsol[column]<<") ";
 	}
-	cout <<endl;
+	std::cout <<std::endl;
       }
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
@@ -791,7 +791,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts-nOldCuts==1);
     // cuts always <=
     testCut=0; // test first cut as stronger
@@ -816,13 +816,13 @@ CglGomoryUnitTest(
 	sum2 += colsol[column]*elements[k];
       }
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
-	cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<endl;
+	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
 	  int column=indices[k];
-	  cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
+	  std::cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
 	    colsol[column]<<") ";
 	}
-	cout <<endl;
+	std::cout <<std::endl;
       }
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
@@ -864,7 +864,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==nOldCuts);
     
   }
@@ -925,7 +925,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==1);
     // cuts always <=
     int testCut=0; // test first cut as stronger
@@ -950,13 +950,13 @@ CglGomoryUnitTest(
 	sum2 += colsol[column]*elements[k];
       }
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
-	cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<endl;
+	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
 	  int column=indices[k];
-	  cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
+	  std::cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
 	    colsol[column]<<") ";
 	}
-	cout <<endl;
+	std::cout <<std::endl;
       }
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
@@ -1001,7 +1001,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==nOldCuts);
     
   }
@@ -1057,7 +1057,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==1);
     // cuts always <=
     int testCut=0; 
@@ -1082,13 +1082,13 @@ CglGomoryUnitTest(
 	sum2 += colsol[column]*elements[k];
       }
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
-	cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<endl;
+	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
 	  int column=indices[k];
-	  cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
+	  std::cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
 	    colsol[column]<<") ";
 	}
-	cout <<endl;
+	std::cout <<std::endl;
       }
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
@@ -1133,7 +1133,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==nOldCuts);
     
   }
@@ -1189,7 +1189,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==1);
     // cuts always <=
     int testCut=0; // test first cut as stronger
@@ -1214,13 +1214,13 @@ CglGomoryUnitTest(
 	sum2 += colsol[column]*elements[k];
       }
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
-	cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<endl;
+	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
 	  int column=indices[k];
-	  cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
+	  std::cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
 	    colsol[column]<<") ";
 	}
-	cout <<endl;
+	std::cout <<std::endl;
       }
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
@@ -1262,7 +1262,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==nOldCuts);
     
   }
@@ -1318,7 +1318,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==1);
     // cuts always <=
     int testCut=0; // test first cut as stronger
@@ -1343,13 +1343,13 @@ CglGomoryUnitTest(
 	sum2 += colsol[column]*elements[k];
       }
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
-	cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<endl;
+	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
 	  int column=indices[k];
-	  cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
+	  std::cout<<"(col="<<column<<",el="<<elements[k]<<",sol="<<
 	    colsol[column]<<") ";
 	}
-	cout <<endl;
+	std::cout <<std::endl;
       }
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
@@ -1391,7 +1391,7 @@ CglGomoryUnitTest(
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
-    cout<<"There are "<<nRowCuts<<" gomory cuts"<<endl;
+    std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==nOldCuts);
     
   }
