@@ -467,7 +467,12 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      } else {
 		rhs += colLower[j]*coefficient;
 	      }
-	      cutElement[j]=coefficient;
+	      if (fabs(coefficient)>= OSI_INDEXED_TINY_ELEMENT) {
+		 cutElement[j] = coefficient;
+	      } else {
+		 cutElement[j] = 1.0e-100;
+	      }
+	      //	      cutElement[j]=coefficient;
 	      cutIndex[number++]=j;
 	    }
 	  } else {
