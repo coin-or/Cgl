@@ -170,7 +170,7 @@ private:
 /******************** DEBUG DEFINITIONS ***************************************/
 
 #define DGG_DEBUG_DGG 1
-#define DGG_TRACE_ERRORS 1
+#define DGG_TRACE_ERRORS 0
 #define DGG_DISPLAY   0
 #define DGG_AUTO_CHECK_CUT_OFF_OPTIMAL 1
 
@@ -316,16 +316,21 @@ private:
 #define DGG_TEST(A,B,REST...) {\
  if(A) DGG_THROW(B,##REST) }
 
-#endif
+#define DGG_TEST2(A,B,C,REST)   {DGG_TEST(A,B,C,REST) }
+#define DGG_TEST3(A,B,C,D,REST) {DGG_TEST(A,B,C,D,REST) }
 
-#if !DGG_TRACE_ERRORS
+#else
 
-#define DGG_THROW(A,REST...) return(A)
+#define DGG_IF_EXIT(A,B,REST) {if(A) {fprintf(stdout, REST);exit(B);}}
 
-#define DGG_CHECKRVAL(A,B) {\
-  if(A) return(B); }
+#define DGG_THROW(A,B) return(A)
 
-#define DGG_TEST(A,B,REST...) { }
+#define DGG_CHECKRVAL(A,B) {  if(A) return(B); }
+#define DGG_CHECKRVAL1(A,B){ if(A) { rval = B; goto CLEANUP; } }
+
+#define DGG_TEST(A,B,REST) { if(A) return(B);}
+#define DGG_TEST2(A,B,REST,C) { DGG_TEST(A,B,REST) }
+#define DGG_TEST3(A,B,REST,C,D) { DGG_TEST(A,B,REST) }
 
 #endif
 

@@ -522,7 +522,7 @@ DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
   factorization.increasingRows(2); /* ??? */
   rval = factorization.factorize(*colMatrixPtr, rowIsBasic, colIsBasic); 
   /* 0 = okay. -1 = singular. -2 = too many in basis. -99 = memory. */
-  DGG_TEST(rval, 1, "factorization error = %d", rval);
+  DGG_TEST2(rval, 1, "factorization error = %d", rval);
 
   /* obtain the tableau row coefficients for all variables */
   /* note: we could speed this up by only computing non-basic variables */
@@ -1444,11 +1444,11 @@ int DGG_build2step( double alpha,
   rho = bht - alpha*floor(bht/alpha);
 
   /* ensure bht > alpha > 0 */
-  DGG_TEST( (bht <= alpha) || (alpha <= 0.0), 1, "bad alpha (%lf) / bht (%lf) pair", alpha, bht);
+  DGG_TEST3( (bht <= alpha) || (alpha <= 0.0), 1, "bad alpha (%lf) / bht (%lf) pair", alpha, bht);
   /* ensure that we are not in a limiting case */
   DGG_TEST( DGG_is_a_multiple_of_b(alpha, bht), 1, "can't generate simple 2mir in limiting case");
   /* ensure that rho is not zero */
-  DGG_TEST( rho < DGG_MIN_RHO, 1, "rho (%lf) too small", rho);
+  DGG_TEST2( rho < DGG_MIN_RHO, 1, "rho (%lf) too small", rho);
 
   /* initialize constraint */
   tmir = DGG_newConstraint( base->nz );
