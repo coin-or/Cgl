@@ -1111,6 +1111,9 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   int maxProbe = info.inTree ? maxProbe_ : maxProbeRoot_;
   int maxElements = info.inTree ? maxElements_ : maxElementsRoot_;
 
+  // Get objective offset
+  double offset;
+  si.getDblParam(OsiObjOffset,offset);
   // see if using cached copy or not
   if (!rowCopy_) {
     // create from current
@@ -1139,7 +1142,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       memcpy(rowLower,si.getRowLower(),nRows*sizeof(double));
       memcpy(rowUpper,si.getRowUpper(),nRows*sizeof(double));
       rowLower[nRows]=-DBL_MAX;
-      rowUpper[nRows]=cutoff;
+      rowUpper[nRows]=cutoff+offset;
       nRows++;
     } else {
       memcpy(rowLower,si.getRowLower(),nRows*sizeof(double));
@@ -1160,7 +1163,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     memcpy(rowUpper,rowUpper_,nRows*sizeof(double));
     rowLower[nRows-1]=-DBL_MAX;
     if (usingObjective_) {
-      rowUpper[nRows-1]=cutoff;
+      rowUpper[nRows-1]=cutoff+offset;
     } else {
       rowUpper[nRows-1]=DBL_MAX;
     }

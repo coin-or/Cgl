@@ -224,6 +224,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     OsiSolverInterface * oldModel = startModel_;
     for (int iPass=0;iPass<numberSolvers_;iPass++) {
       OsiPresolve * pinfo = new OsiPresolve();
+      // Allow dual stuff on integers
+      pinfo->setPresolveActions(1);
       presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-8,true,5);
       if (!presolvedModel) {
         returnModel=NULL;
