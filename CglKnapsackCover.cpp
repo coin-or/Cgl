@@ -945,6 +945,42 @@ CglKnapsackCover::deriveAKnapsack(
 }
 
 
+//-------------------------------------------------------------------
+// deriveAKnapsack - returns 1 if the method is able to 
+//                  derive a cannonical knapsack inequality
+//                  in binary variables of the form ax<=b 
+//                  from the rowIndex-th row of the constraint matrix.
+//                  returns 0, otherwise.
+//  Precondition: complement must be 0'd out!!!
+//-------------------------------------------------------------------
+int 
+CglKnapsackCover::deriveAKnapsack(
+       const OsiSolverInterface & si, 
+       OsiCuts & cs,
+       CoinPackedVector & krow, 
+       double & b,
+       int *  complement,
+       double *  xstar,
+       int rowIndex,
+       const CoinPackedVectorBase & matrixRow ) const
+{
+  // Get the sense of the row
+  const char  rowsense = si.getRowSense()[rowIndex];
+  
+  // Skip equality and unbounded rows 
+  if  (rowsense=='E' || rowsense=='N') {
+    return 0; 
+  }
+  
+  bool treatAsLRow =  (rowsense=='L');
+  const int * indices = matrixRow.getIndices();
+  const double * elements = matrixRow.getElements();
+  int numberElements = matrixRow.getNumElements();
+  return deriveAKnapsack( si, cs, krow, treatAsLRow, b, complement,
+			  xstar, rowIndex, numberElements, indices,
+			  elements);
+}
+
 //--------------------------------------------------
 // Find a violated minimal cover from 
 // a canonical form knapsack inequality by

@@ -80,6 +80,16 @@ private:
     const int * index,
     const double * element) const;
 
+  int deriveAKnapsack(
+    const OsiSolverInterface & si, 
+    OsiCuts & cs,
+    CoinPackedVector & krow,
+    double & b,
+    int *  complement,
+    double *  xstar,
+    int rowIndex,
+    const CoinPackedVectorBase & matrixRow) const;
+
   /** Find a violated minimal cover from 
  a canonical form knapsack inequality by
  solving the -most- violated cover problem
