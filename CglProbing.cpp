@@ -2682,6 +2682,10 @@ CglProbing::operator=(
 void 
 CglProbing::refreshSolver(OsiSolverInterface * solver)
 {
+  if (numberRows_) {
+    // snapshot existed - redo
+    snapshot(*solver,NULL);
+  }
 }
 /* Creates cliques for use by probing.
    Can also try and extend cliques as a result of probing (root node).
