@@ -17,6 +17,8 @@ LIBSRC += CglLiftAndProject.cpp
 LIBSRC += CglOddHole.cpp
 LIBSRC += CglProbing.cpp
 LIBSRC += CglSimpleRounding.cpp
+LIBSRC += CglClique.cpp
+LIBSRC += CglCliqueHelper.cpp
 
 ##############################################################################
 # You should not need to edit below this line.
