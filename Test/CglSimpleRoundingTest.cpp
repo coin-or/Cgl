@@ -74,8 +74,8 @@ CglSimpleRoundingUnitTest(
     CglSimpleRounding cg;
     
     OsiSolverInterface * siP = baseSiP->clone();
-    std::string fn = mpsDir+"exmip1.5";
-    siP->readMps(fn.c_str(),"mps");
+    std::string fn = mpsDir+"exmip1.5.mps";
+    siP->readMps(fn.c_str(),"");
     OsiCuts cuts;
     cg.generateCuts(*siP,cuts);
 
