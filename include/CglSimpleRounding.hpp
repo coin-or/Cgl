@@ -6,7 +6,7 @@
 #include <string>
 
 #include "CglCutGenerator.hpp"
-#include "OsiPackedMatrix.hpp"
+#include "CoinPackedMatrix.hpp"
 
 /** Simple Rounding Cut Generator Class<br> 
 
@@ -67,8 +67,8 @@ private:
   bool deriveAnIntegerRow(
                           const OsiSolverInterface & si,
                           int rowIndex,
-                          const OsiShallowPackedVector & matrixRow, 
-                          OsiPackedVector & irow,
+                          const CoinShallowPackedVector & matrixRow, 
+                          CoinPackedVector & irow,
                           double & b,
                           bool * negative) const;
   

@@ -92,7 +92,7 @@ private:
   /// Generate cuts from matrix copy and solution
   /// If packed true then <=1 rows, otherwise >=1 rows.
   void generateCuts(const OsiRowCutDebugger * debugger, 
-		    const OsiPackedMatrix & rowCopy,
+		    const CoinPackedMatrix & rowCopy,
 		    const double * solution,
 		    OsiCuts & cs, const int * suitableRow,
 		    const int * fixedColumn,

@@ -11,9 +11,9 @@
 #include <cassert>
 
 #include "CglSimpleRounding.hpp" 
-#include "OsiPackedVector.hpp"
+#include "CoinPackedVector.hpp"
 #include "CoinSort.hpp"
-#include "OsiPackedMatrix.hpp"
+#include "CoinPackedMatrix.hpp"
 
 //-------------------------------------------------------------
 void
@@ -24,7 +24,7 @@ CglSimpleRounding::generateCuts(const OsiSolverInterface & si,
   int nCols=si.getNumCols(); // number of columns in the coefficient matrix
   int rowIndex;             // index into the constraint matrix stored in row
                             // order 
-  OsiPackedVector irow;     // "integer row": working space to hold the integer
+  CoinPackedVector irow;     // "integer row": working space to hold the integer
                             // <= inequality derived from the rowIndex-th
                             // constraint 
   double b=0;             // working space for the rhs of integer <= inequality
@@ -34,7 +34,7 @@ CglSimpleRounding::generateCuts(const OsiSolverInterface & si,
   int k;                  // dummy iterator variable 
   for ( k=0; k<nCols; k++ ) negative[k] = false;
   
-  const OsiPackedMatrix * rowCopy = 
+  const CoinPackedMatrix * rowCopy = 
     si.getMatrixByRow(); // row copy: matrix stored in row order
 
   /////////////////////////////////////////////////////////////////////////////
@@ -127,7 +127,7 @@ CglSimpleRounding::generateCuts(const OsiSolverInterface & si,
 
     // construct new cut by dividing through by gcd and 
     // rounding down rhs and accounting for negatives
-    OsiPackedVector cut;
+    CoinPackedVector cut;
     for (k=0; k<irow.getNumElements(); k++){
         cut.insert(irow.getIndices()[k],xInt[k]/gcd);
     }
@@ -188,8 +188,8 @@ bool
 CglSimpleRounding::deriveAnIntegerRow(
        const OsiSolverInterface & si, 
        int rowIndex,
-       const OsiShallowPackedVector & matrixRow,
-       OsiPackedVector & irow, 
+       const CoinShallowPackedVector & matrixRow,
+       CoinPackedVector & irow, 
        double & b,
        bool * negative) const
 {

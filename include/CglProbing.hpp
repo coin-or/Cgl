@@ -190,7 +190,7 @@ private:
   int probe( const OsiSolverInterface & si, 
 	     const OsiRowCutDebugger * debugger, 
 	     OsiCuts & cs, 
-	     double * colLower, double * colUpper, OsiPackedMatrix *rowCopy,
+	     double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
 	     double * rowLower, double * rowUpper,
 	     char * intVar, double * minR, double * maxR, int * markR, 
 	     int * look, int nlook) const;
@@ -207,7 +207,7 @@ private:
   /**@name Private member data */
   //@{
   /// Row copy
-  OsiPackedMatrix * rowCopy_;
+  CoinPackedMatrix * rowCopy_;
   /// Lower bounds on rows
   double * rowLower_;
   /// Upper bounds on rows

@@ -9,12 +9,15 @@
 
 #include <string>
 #include <cstring>
-#include <assert.h>
-#include <iostream.h>
-#include <stdlib.h>
+#include <cassert>
+#include <iostream>
+#include <cstdlib>
 
 #ifdef COIN_USE_OSL
 #include <OsiOslSolverInterface.hpp>
+#endif
+#ifdef COIN_USE_CLP
+#include <OsiClpSolverInterface.hpp>
 #endif
 #ifdef COIN_USE_XPR
 #include <OsiXprSolverInterface.hpp>
@@ -102,6 +105,39 @@ int main (int argc, const char *argv[])
   }
 
 #endif
+#ifdef COIN_USE_CLP
+  {
+    OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglGomory with OsiClpSolverInterface\n" );
+    CglGomoryUnitTest(&clpSi,mpsDir);
+  }  
+  {
+    OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglSimpleRounding with OsiClpSolverInterface\n" );
+    CglSimpleRoundingUnitTest(&clpSi,mpsDir);
+  } 
+  {
+    OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglKnapsackCover with OsiClpSolverInterface\n" );
+    CglKnapsackCoverUnitTest(&clpSi,mpsDir);
+  }  
+  {
+    OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglOddHole with OsiClpSolverInterface\n" );
+    CglOddHoleUnitTest(&clpSi,mpsDir);
+  }  
+  {
+    OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglProbing with OsiClpSolverInterface\n" );
+    CglProbingUnitTest(&clpSi,mpsDir);
+  }  
+  {
+    OsiClpSolverInterface clpSi;
+    //    testingMessage( "Testing CglFlowCover with OsiClpSolverInterface\n" );
+    //    CglFlowCoverUnitTest(&clpSi,mpsDir);
+  }
+
+#endif
   testingMessage( "All tests completed successfully\n" );
   return 0;
 }
@@ -110,7 +146,7 @@ int main (int argc, const char *argv[])
 // Display message on stdout and stderr
 void testingMessage( const char * const msg )
 {
-   cerr <<msg;
+   std::cerr <<msg;
    //cout <<endl <<"*****************************************"
    //     <<endl <<msg <<endl;
 }

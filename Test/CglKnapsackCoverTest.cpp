@@ -9,7 +9,7 @@
 #include <cassert>
 
 #include "CglKnapsackCover.hpp"
-#include "OsiPackedMatrix.hpp"
+#include "CoinPackedMatrix.hpp"
 
 #ifdef NDEBUG
 #undef NDEBUG
@@ -22,7 +22,7 @@ CglKnapsackCoverUnitTest(
   const std::string mpsDir )
 {
   int i;
-  OsiRelFltEq eq(0.000001);
+  CoinRelFltEq eq(0.000001);
 
   // Test default constructor
   {
@@ -120,7 +120,7 @@ CglKnapsackCoverUnitTest(
       if ( siP->isInteger(i) ) 
         assert(siP->getColUpper()[i]==1.0 && siP->isBinary(i));  
     OsiCuts cs;
-    OsiPackedVector krow;
+    CoinPackedVector krow;
     double b=0;
     int nCols=siP->getNumCols();
     int * complement=new int [nCols];
@@ -150,14 +150,14 @@ CglKnapsackCoverUnitTest(
     assert(complement[2]==1);
     int inx[3] = {0,1,2};
     double el[3] = {161, 120, 68};
-    OsiPackedVector r;
+    CoinPackedVector r;
     r.setVector(3,inx,el);
     assert (krow == r);
     assert (b == 183.0);
 
     
     // test findGreedyCover 
-    OsiPackedVector cover,remainder;
+    CoinPackedVector cover,remainder;
 #if 0
     int findgreedy =  kccg.findGreedyCover( 0, krow, b, xstar, cover, remainder );
     assert( findgreedy == 1 );
@@ -173,7 +173,7 @@ CglKnapsackCoverUnitTest(
     assert( remainder.getElements()[0] == 68.0);
 
     // test liftCoverCut
-    OsiPackedVector cut;
+    CoinPackedVector cut;
     double * rowupper = ekk_rowupper(model);
     double cutRhs = cover.getNumElements() - 1.0;
     kccg.liftCoverCut(b, krow.getNumElements(),
@@ -194,7 +194,7 @@ CglKnapsackCoverUnitTest(
     int sizerowcuts = cuts.sizeRowCuts();
     assert ( sizerowcuts== 1 );
     OsiRowCut testRowCut = cuts.rowCut(0);
-    OsiPackedVector testRowPV = testRowCut.row(); 
+    CoinPackedVector testRowPV = testRowCut.row(); 
     OsiRowCut sampleRowCut;
     const int sampleSize = 3;
     int sampleCols[sampleSize]={0,1,2};
@@ -202,7 +202,7 @@ CglKnapsackCoverUnitTest(
     sampleRowCut.setRow(sampleSize,sampleCols,sampleElems);
     sampleRowCut.setLb(-DBL_MAX);
     sampleRowCut.setUb(-0.087719);
-    bool equiv =  testRowPV.equivalent(sampleRowCut.row(),OsiRelFltEq(1.0e-05) );
+    bool equiv =  testRowPV.equivalent(sampleRowCut.row(),CoinRelFltEq(1.0e-05) );
     assert ( equiv );
 #endif
     
@@ -226,7 +226,7 @@ CglKnapsackCoverUnitTest(
     assert (cuts.sizeRowCuts() == 1 );
 
     OsiRowCut testRowCut = cuts.rowCut(0);
-    OsiPackedVector testRowPV = testRowCut.row();
+    CoinPackedVector testRowPV = testRowCut.row();
 
 
     const int sampleSize = 3;
@@ -238,7 +238,7 @@ CglKnapsackCoverUnitTest(
     sampleRowCut.setUb(-1.0);
     
     // test for 'close enough'
-    assert( testRowPV.isEquivalent(sampleRowCut.row(),OsiRelFltEq(1.0e-05) ) );
+    assert( testRowPV.isEquivalent(sampleRowCut.row(),CoinRelFltEq(1.0e-05) ) );
     // Reset complement & test next row
     for (i=0; i<nCols; i++){
       complement[i]=0;
@@ -324,7 +324,7 @@ CglKnapsackCoverUnitTest(
       // minimal cover finders are added
       assert( cuts.sizeRowCuts() == 1 );
       OsiRowCut testRowCut = cuts.rowCut(0);
-      OsiPackedVector testRowPV = testRowCut.row();
+      CoinPackedVector testRowPV = testRowCut.row();
       
       OsiRowCut sampleRowCut;
       const int sampleSize = 6;
@@ -333,8 +333,8 @@ CglKnapsackCoverUnitTest(
       sampleRowCut.setRow(sampleSize,sampleCols,sampleElems);
       sampleRowCut.setLb(-DBL_MAX);
       sampleRowCut.setUb(3.0);
-      bool equiv = testRowPV.equivalent(sampleRowCut.row(),OsiRelFltEq(1.0e-05) );
-      assert( testRowPV.equivalent(sampleRowCut.row(),OsiRelFltEq(1.0e-05) ) );
+      bool equiv = testRowPV.equivalent(sampleRowCut.row(),CoinRelFltEq(1.0e-05) );
+      assert( testRowPV.equivalent(sampleRowCut.row(),CoinRelFltEq(1.0e-05) ) );
     }
     
     // Exit out of OSL
@@ -391,7 +391,7 @@ CglKnapsackCoverUnitTest(
     else {
       // set up
       OsiCuts cuts;    
-      OsiPackedVector krow;
+      CoinPackedVector krow;
       double b=0.0;
       int * complement=new int[nCols];
       double * xstar=new double[nCols];
@@ -402,9 +402,9 @@ CglKnapsackCoverUnitTest(
 	complement[i]=0;
       }
       int row = ( siP->getRowSense()[0] == 'N' ) ? 1 : 0;
-      // transform row into cannonical knapsack form
+      // transform row into canonical knapsack form
       if (kccg.deriveAKnapsack(*siP, cuts, krow, b, complement, xstar, row,siP->getMatrixByRow()->getVector(row))){
-        OsiPackedVector cover, remainder;  
+        CoinPackedVector cover, remainder;  
         // apply greedy logic to detect violated minimal cover inequalities
         if (kccg.findGreedyCover(row, krow, b, xstar, cover, remainder) == 1){
           // lift, uncomplements, and add cut to cut set
@@ -438,7 +438,7 @@ CglKnapsackCoverUnitTest(
       assert( lpRelaxBefore < lpRelaxAfter );
       assert( cuts.sizeRowCuts() == 1 );
       OsiRowCut testRowCut = cuts.rowCut(0);
-      OsiPackedVector testRowPV = testRowCut.row();
+      CoinPackedVector testRowPV = testRowCut.row();
       OsiRowCut sampleRowCut;
       const int sampleSize = 6;
       int sampleCols[sampleSize]={0,1,2,3,4,5};
@@ -446,7 +446,7 @@ CglKnapsackCoverUnitTest(
       sampleRowCut.setRow(sampleSize,sampleCols,sampleElems);
       sampleRowCut.setLb(-DBL_MAX);
       sampleRowCut.setUb(3.0);
-      assert(testRowPV.isEquivalent(sampleRowCut.row(),OsiRelFltEq(1.0e-05)));
+      assert(testRowPV.isEquivalent(sampleRowCut.row(),CoinRelFltEq(1.0e-05)));
     }
     
     delete siP;
@@ -501,12 +501,12 @@ CglKnapsackCoverUnitTest(
 #endif
     assert( lpRelaxBefore < lpRelaxAfter );
     
-    // the OsiPackedVector p0033 is the optimal
+    // the CoinPackedVector p0033 is the optimal
     // IP solution to the miplib problem p0033
     int objIndices[14] = { 
        0,  6,  7,  9, 13, 17, 18,
       22, 24, 25, 26, 27, 28, 29 };
-    OsiPackedVector p0033(14,objIndices,1.0);
+    CoinPackedVector p0033(14,objIndices,1.0);
 
     // Sanity check
     const double *  objective=siP->getObjCoefficients();
@@ -515,12 +515,12 @@ CglKnapsackCoverUnitTest(
     for (r=0; r<nCols; r++){
       ofv=ofv + p0033[r]*objective[r];
     }
-    OsiRelFltEq eq;
+    CoinRelFltEq eq;
     assert( eq(ofv,3089.0) );
 
     int nRowCuts = cuts.sizeRowCuts();
     OsiRowCut rcut;
-    OsiPackedVector rpv;
+    CoinPackedVector rpv;
     for (i=0; i<nRowCuts; i++){
       rcut = cuts.rowCut(i);
       rpv = rcut.row();
@@ -530,6 +530,84 @@ CglKnapsackCoverUnitTest(
   
     delete siP;
   } 
+
+  // if a debug file is there then look at it
+  {
+    FILE * fp = fopen("knapsack.debug","r");
+    if (fp) {
+      int ncol,nel;
+      double up;
+      fscanf(fp,"%d %d %lg",&ncol,&nel,&up);
+      printf("%d columns, %d elements, upper %g\n",ncol,nel,up);
+      double * sol1 = new double[nel];
+      double * el1 = new double[nel];
+      int * col1 = new int[nel];
+      int * start = new int[ncol+1];
+      memset(start,0,ncol*sizeof(int));
+      int * row = new int[nel];
+      int i;
+      for (i=0;i<nel;i++) {
+	fscanf(fp,"%d %lg %lg",col1+i,el1+i,sol1+i);
+	printf("[%d, e=%g, v=%g] ",col1[i],el1[i],sol1[i]);
+	start[col1[i]]=1;
+	row[i]=0;
+      }
+      printf("\n");
+      // Setup
+      OsiSolverInterface  * siP = baseSiP->clone();
+      
+      double lo=-1.0e30;
+      double * upper = new double[ncol];
+      start[ncol]=nel;
+      int last=0;
+      for (i=0;i<ncol;i++) {
+	upper[i]=1.0;
+	int marked=start[i];
+	start[i]=last;
+	if (marked)
+	  last++;
+      }
+      siP->loadProblem(ncol,1,start,row,el1,NULL,upper,NULL,&lo,&up);
+      // use upper for solution
+      memset(upper,0,ncol*sizeof(double));
+      for (i=0;i<nel;i++) {
+	int icol=col1[i];
+	upper[icol]=sol1[i];
+	siP->setInteger(icol);
+      }
+      siP->setColSolution(upper);
+      delete [] sol1;
+      delete [] el1;
+      delete [] col1;
+      delete [] start;
+      delete [] row;
+      delete [] upper;
+      CglKnapsackCover kccg;
+      
+      OsiCuts cuts;    
+      
+      // Test generateCuts method
+      kccg.generateCuts(*siP,cuts);
+      // print out and compare to known cuts
+      int numberCuts = cuts.sizeRowCuts();
+      if (numberCuts) {
+	for (i=0;i<numberCuts;i++) {
+	  OsiRowCut * thisCut = cuts.rowCutPtr(i);
+	  int n=thisCut->row().getNumElements();
+	  printf("Cut %d has %d entries, rhs %g %g =>",i,n,thisCut->lb(),
+		 thisCut->ub());
+	  int j;
+	  const int * index = thisCut->row().getIndices();
+	  const double * element = thisCut->row().getElements();
+	  for (j=0;j<n;j++) {
+	    printf(" (%d,%g)",index[j],element[j]);
+	  }
+	  printf("\n");
+	}
+      }
+      fclose(fp);
+    }
+  }
 
   // Testcase /u/rlh/osl2/mps/p0201
   // Miplib3 problem p0282
@@ -589,7 +667,7 @@ CglKnapsackCoverUnitTest(
     int objIndices[22] = { 8, 10,  21,  38,  39,  56,
       60,   74, 79,  92, 94, 110, 111, 128, 132, 146, 
       151,164, 166, 182,183, 200 };
-    OsiPackedVector p0201(22,objIndices,1.0);
+    CoinPackedVector p0201(22,objIndices,1.0);
     
     // Sanity check
     const double *  objective=siP->getObjCoefficients();
@@ -598,13 +676,13 @@ CglKnapsackCoverUnitTest(
     for (r=0; r<nCols; r++){
       ofv=ofv + p0201[r]*objective[r];
     }
-    OsiRelFltEq eq;
+    CoinRelFltEq eq;
     assert( eq(ofv,7615.0) );
     //printf("p0201 optimal ofv = %g\n",ofv); 
 
     int nRowCuts = cuts.sizeRowCuts();
     OsiRowCut rcut;
-    OsiPackedVector rpv;
+    CoinPackedVector rpv;
     for (i=0; i<nRowCuts; i++){
       rcut = cuts.rowCut(i);
       rpv = rcut.row();
@@ -655,7 +733,7 @@ CglKnapsackCoverUnitTest(
     
     int nRowCuts = cuts.sizeRowCuts();
     OsiRowCut rcut;
-    OsiPackedVector rpv;
+    CoinPackedVector rpv;
     for (i=0; i<nRowCuts; i++){
       rcut = cuts.rowCut(i);
       rpv = rcut.row();
@@ -711,14 +789,14 @@ CglKnapsackCoverUnitTest(
   {
     int nCols = 2;
     int row = 1;
-    OsiPackedVector krow;
+    CoinPackedVector krow;
     double e[2] = {5,10};
     int ii[2] = {0,1};
     krow.setVector(nCols,ii,e);
     double b=11;
     double xstar[2] = {.2,.9};
-    OsiPackedVector cover;
-    OsiPackedVector remainder;
+    CoinPackedVector cover;
+    CoinPackedVector remainder;
     CglKnapsackCover kccg;
     kccg.findLPMostViolatedMinCover(nCols, row, krow, b, xstar, cover, remainder);
     printf("num in cover = %i\n",cover.getNumElements());
@@ -734,14 +812,14 @@ CglKnapsackCoverUnitTest(
   {
     int nCols = 5;
     int row = 1;
-    OsiPackedVector krow;
+    CoinPackedVector krow;
     double e[5] = {1,1,1,1,10};
     int ii[5] = {0,1,2,3,4};
     krow.setVector(nCols,ii,e);
     double b=11;
     double xstar[5] = {.9,.9,1,1,.1};
-    OsiPackedVector cover;
-    OsiPackedVector remainder;
+    CoinPackedVector cover;
+    CoinPackedVector remainder;
     CglKnapsackCover kccg;
     kccg.findLPMostViolatedMinCover(nCols, row, krow, b, xstar, cover, remainder);
     printf("num in cover = %i\n",cover.getNumElements());

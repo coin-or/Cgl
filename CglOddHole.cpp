@@ -11,8 +11,8 @@
 #include <iostream>
 
 #include "CoinHelperFunctions.hpp"
-#include "OsiPackedVector.hpp"
-#include "OsiPackedMatrix.hpp"
+#include "CoinPackedVector.hpp"
+#include "CoinPackedMatrix.hpp"
 #include "OsiRowCutDebugger.hpp"
 #include "CglOddHole.hpp"
 
@@ -26,7 +26,7 @@ void CglOddHole::generateCuts(const OsiSolverInterface & si,
   int nRows=si.getNumRows(); 
   int nCols=si.getNumCols(); 
   
-  const OsiPackedMatrix * rowCopy = si.getMatrixByRow();
+  const CoinPackedMatrix * rowCopy = si.getMatrixByRow();
 
   // Could do cliques and extra OSL cliques
   // For moment just easy ones
@@ -133,13 +133,13 @@ void CglOddHole::generateCuts(const OsiSolverInterface & si,
     
 }
 void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
-			      const OsiPackedMatrix & rowCopy, 
+			      const CoinPackedMatrix & rowCopy, 
 				 const double * solution, OsiCuts & cs,
 				 const int * suitableRow,
 			      const int * fixedColumn,
 			      bool packed)
 {
-  OsiPackedMatrix columnCopy = rowCopy;
+  CoinPackedMatrix columnCopy = rowCopy;
   columnCopy.reverseOrdering();
 
   // Get basic problem information
@@ -481,7 +481,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 	      value += check[icol]*element[j];
 	    }
 #else
-            OsiPackedVector candidatePv(ii,candidate,element);
+            CoinPackedVector candidatePv(ii,candidate,element);
             candidatePv.sortIncrIndex();
             double value = candidatePv.dotProduct(check);
 #endif
@@ -538,7 +538,7 @@ void CglOddHole::createRowList( const OsiSolverInterface & si,
   // Get basic problem information
   int nRows=si.getNumRows(); 
   
-  const OsiPackedMatrix * rowCopy = si.getMatrixByRow();
+  const CoinPackedMatrix * rowCopy = si.getMatrixByRow();
 
   const int * column = rowCopy->getIndices();
   const int * rowStart = rowCopy->getVectorStarts();

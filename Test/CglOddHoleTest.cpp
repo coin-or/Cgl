@@ -8,7 +8,7 @@
 #include <cstdio>
 #include <cassert>
 
-#include "OsiPackedMatrix.hpp"
+#include "CoinPackedMatrix.hpp"
 #include "CglOddHole.hpp"
 
 
@@ -23,7 +23,7 @@ CglOddHoleUnitTest(
   const OsiSolverInterface * baseSiP,
   const std::string mpsDir )
 {
-  OsiRelFltEq eq(0.000001);
+  CoinRelFltEq eq(0.000001);
 
   // Test default constructor
   {
@@ -50,21 +50,21 @@ CglOddHoleUnitTest(
     const int row[]={0,1,0,2,1,2};
     const int start[]={0,2,4};
     const int len[]={2,2,2};
-    OsiPackedMatrix matrix(true,nRows,nCols,nEls,elem,row,start,len);
+    CoinPackedMatrix matrix(true,nRows,nCols,nEls,elem,row,start,len);
     const double sol[]={0.5,0.5,0.5};
     const int which[]={1,1,1};
     const int fixed[]={0,0,0};
     OsiCuts cs;
     CglOddHole test1;
     test1.generateCuts(NULL,matrix,sol,cs,which,fixed,1);
-    OsiPackedVector check;
+    CoinPackedVector check;
     int index[] = {0,1,2};
     double el[] = {1,1,1};
     check.setVector(3,index,el);
     //assert (cs.sizeRowCuts()==2);
     assert (cs.sizeRowCuts()==1);
     // sort Elements in increasing order
-    OsiPackedVector rpv=cs.rowCut(0).row();
+    CoinPackedVector rpv=cs.rowCut(0).row();
     rpv.sortIncrIndex();
     assert (check==rpv);
   }

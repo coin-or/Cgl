@@ -70,12 +70,12 @@ private:
   int deriveAKnapsack(
     const OsiSolverInterface & si, 
     OsiCuts & cs,
-    OsiPackedVector & krow,
+    CoinPackedVector & krow,
     double & b,
     int *  complement,
     double *  xstar,
     int rowIndex,
-    const OsiPackedVectorBase & matrixRow) const;
+    const CoinPackedVectorBase & matrixRow) const;
 
   /** Find a violated minimal cover from 
  a canonical form knapsack inequality by
@@ -85,11 +85,11 @@ private:
   int findExactMostViolatedMinCover(
       int nCols, 
       int row,
-      OsiPackedVector & krow,
+      CoinPackedVector & krow,
       double b, 
       double *  xstar, 
-      OsiPackedVector & cover,
-      OsiPackedVector & remainder) const ;
+      CoinPackedVector & cover,
+      CoinPackedVector & remainder) const ;
 
   /** Find the most violate minimum cover by solving the lp-relaxation of the
       most-violate-min-cover problem 
@@ -97,39 +97,39 @@ private:
   int findLPMostViolatedMinCover(
       int nCols,
       int row,
-      OsiPackedVector & krow,
+      CoinPackedVector & krow,
       double & b,
       double * xstar, 
-      OsiPackedVector & cover,
-      OsiPackedVector & remainder) const;  
+      CoinPackedVector & cover,
+      CoinPackedVector & remainder) const;  
   
 /// find a minimum cover by a simple greedy approach
   int findGreedyCover(
       int row,
-      OsiPackedVector & krow,
+      CoinPackedVector & krow,
       double & b,
       double * xstar,
-      OsiPackedVector & cover,
-      OsiPackedVector & remainder
+      CoinPackedVector & cover,
+      CoinPackedVector & remainder
       ) const;
 
   /// lift the cover inequality
   int liftCoverCut(
      double & b,
      int nRowElem,
-     OsiPackedVector & cover,
-     OsiPackedVector & remainder,
-     OsiPackedVector & cut ) const;
+     CoinPackedVector & cover,
+     CoinPackedVector & remainder,
+     CoinPackedVector & cut ) const;
  
   /// sequence-independent lift and uncomplement and add the resulting cut to the cut set
   int liftAndUncomplementAndAdd(
      double rowub,
-     OsiPackedVector & krow,
+     CoinPackedVector & krow,
      double & b,
      int * complement,
      int row,
-     OsiPackedVector & cover,
-     OsiPackedVector & remainder,
+     CoinPackedVector & cover,
+     CoinPackedVector & remainder,
      OsiCuts & cs) const;
 
   /// sequence-dependent lift, uncomplement and add the resulting cut to the cut set
@@ -140,8 +140,8 @@ void seqLiftAndUncomplementAndAdd(
       int row,
       int nRowElem,
       double & b,
-      OsiPackedVector & cover,      // need not be violated
-      OsiPackedVector & remainder,
+      CoinPackedVector & cover,      // need not be violated
+      CoinPackedVector & remainder,
       OsiCuts & cs) const;
 
   /// sequence-dependent lift binary variables either up or down, uncomplement and add to the cut set
@@ -154,31 +154,31 @@ void liftUpDownAndUncomplementAndAdd(
          double & b,
 
          // the following 3 packed vectors partition the krow:
-         OsiPackedVector & fracCover, // vars have frac soln values in lp relaxation
+         CoinPackedVector & fracCover, // vars have frac soln values in lp relaxation
                                        // and form cover with the vars atOne
-         OsiPackedVector & atOne,     // vars have soln value of 1 in lp relaxation
+         CoinPackedVector & atOne,     // vars have soln value of 1 in lp relaxation
                                        // and together with fracCover form minimal (?) cover. 
-         OsiPackedVector & remainder,
+         CoinPackedVector & remainder,
          OsiCuts & cs ) const;
 
   /// find a cover using a variation of the logic found in OSL (w/o SOS)
   int findPseudoJohnAndEllisCover (
      int row,
-     OsiPackedVector & krow,
+     CoinPackedVector & krow,
      double & b,
      double * xstar,                     
-     OsiPackedVector & cover,  
-     OsiPackedVector & remainder) const;
+     CoinPackedVector & cover,  
+     CoinPackedVector & remainder) const;
 
   /// find a cover using the basic logic found in OSL (w/o SOS)
   int findJohnAndEllisCover (
      int row,
-     OsiPackedVector & krow,
+     CoinPackedVector & krow,
      double & b,
      double * xstar,                     
-     OsiPackedVector & fracCover,  
-     OsiPackedVector & atOnes,  
-     OsiPackedVector & remainder) const;
+     CoinPackedVector & fracCover,  
+     CoinPackedVector & atOnes,  
+     CoinPackedVector & remainder) const;
 
 
   /** A C-style implementation of the Horowitz-Sahni exact solution 
@@ -204,6 +204,8 @@ void liftUpDownAndUncomplementAndAdd(
   //@{
   /// epsilon
   double epsilon_;  
+  /// Tolerance to use for violation - bigger than epsilon_
+  double epsilon2_;
   /// 1-epsilon
   double onetol_;  
   /// Maximum in knapsack

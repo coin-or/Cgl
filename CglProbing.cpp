@@ -1,3 +1,4 @@
+
 // Copyright (C) 2002, International Business Machines
 // Corporation and others.  All Rights Reserved.
 #if defined(_MSC_VER)
@@ -11,8 +12,8 @@
 #include <iostream>
 
 #include "CoinHelperFunctions.hpp"
-#include "OsiPackedVector.hpp"
-#include "OsiPackedMatrix.hpp"
+#include "CoinPackedVector.hpp"
+#include "CoinPackedMatrix.hpp"
 #include "OsiRowCutDebugger.hpp"
 #include "CglProbing.hpp"
 using std::max;
@@ -37,7 +38,7 @@ static void checkBounds(const OsiRowCutDebugger * debugger,OsiColCut & cut)
     int nIndex;
     const double * values;
     const int * index;
-    const OsiPackedVector & lbs = cut.lbs();
+    const CoinPackedVector & lbs = cut.lbs();
     values = lbs.getElements();
     nIndex = lbs.getNumElements();
     index = lbs.getIndices();
@@ -47,7 +48,7 @@ static void checkBounds(const OsiRowCutDebugger * debugger,OsiColCut & cut)
       printf("%d optimal %g lower %g\n",iColumn,optimal[iColumn],value);
       assert(value<=optimal[iColumn]+1.0e-5);
     }
-    const OsiPackedVector & ubs = cut.ubs();
+    const CoinPackedVector & ubs = cut.ubs();
     values = ubs.getElements();
     nIndex = ubs.getNumElements();
     index = ubs.getIndices();
@@ -59,6 +60,7 @@ static void checkBounds(const OsiRowCutDebugger * debugger,OsiColCut & cut)
     }
   }
 }
+
 // This tightens column bounds (and can declare infeasibility)
 // It may also declare rows to be redundant
 static int tighten(double *colLower, double * colUpper,
@@ -448,7 +450,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   // Get basic problem information
   int nRows;
   
-  OsiPackedMatrix * rowCopy=NULL;
+  CoinPackedMatrix * rowCopy=NULL;
 
   // get branch and bound cutoff
   double cutoff;
@@ -481,7 +483,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     // mode==0 is invalid if going from current matrix
     if (mode==0)
       mode=1;
-    rowCopy = new OsiPackedMatrix(*si.getMatrixByRow());
+    rowCopy = new CoinPackedMatrix(*si.getMatrixByRow());
     // add in objective if there is a cutoff
     if (cutoff<1.0e30&&usingObjective_) {
       int * columns = new int[nCols];
@@ -563,8 +565,8 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	const double * upper = si.getColUpper();
 	const double * colsol = si.getColSolution();
 	int numberChanged=0,ifCut=0;
-	OsiPackedVector lbs;
-	OsiPackedVector ubs;
+	CoinPackedVector lbs;
+	CoinPackedVector ubs;
 	for (i = 0; i < nCols; ++i) {
 	  if (intVar[i]) {
 	    colUpper[i] = min(upper[i],floor(colUpper[i]+1.0e-5));
@@ -691,7 +693,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       // we know initialized to zero
       for (iCut=0;iCut<nCuts;iCut++) {
 	OsiRowCut rcut;
-	OsiPackedVector rpv;
+	CoinPackedVector rpv;
 	rcut = csNew.rowCut(iCut);
 	rpv = rcut.row();
 	assert(rpv.getNumElements()==2);
@@ -738,7 +740,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       // now put in
       for (iCut=0;iCut<nCuts;iCut++) {
 	OsiRowCut rcut;
-	OsiPackedVector rpv;
+	CoinPackedVector rpv;
 	int iput;
 	rcut = csNew.rowCut(iCut);
 	rpv = rcut.row();
@@ -932,7 +934,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		       const OsiRowCutDebugger * debugger, 
 		       OsiCuts & cs, 
 		       double * colLower, double * colUpper, 
-		       OsiPackedMatrix *rowCopy,
+		       CoinPackedMatrix *rowCopy,
 		       double * rowLower, double * rowUpper,
 		       char * intVar, double * minR, double * maxR, 
 		       int * markR, 
@@ -955,7 +957,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
   double * saveMax = new double [nRows];
   double * element = new double[nCols];
   int * index = new int[nCols];
-  OsiPackedMatrix columnCopy = * rowCopy;
+  CoinPackedMatrix columnCopy = * rowCopy;
   columnCopy.reverseOrdering();
   const int * column = rowCopy->getIndices();
   const int * rowStart = rowCopy->getVectorStarts();
@@ -2039,7 +2041,7 @@ void CglProbing::snapshot ( const OsiSolverInterface & si,
     }
   }
     
-  rowCopy_ = new OsiPackedMatrix(*si.getMatrixByRow());
+  rowCopy_ = new CoinPackedMatrix(*si.getMatrixByRow());
 
   const int * column = rowCopy_->getIndices();
   const int * rowStart = rowCopy_->getVectorStarts();
@@ -2255,7 +2257,7 @@ CglProbing::CglProbing (
   numberRows_=source.numberRows_;
   numberColumns_=source.numberColumns_;
   if (numberRows_>0) {
-    rowCopy_= new OsiPackedMatrix(*(source.rowCopy_));
+    rowCopy_= new CoinPackedMatrix(*(source.rowCopy_));
     rowLower_=new double[numberRows_];
     memcpy(rowLower_,source.rowLower_,numberRows_*sizeof(double));
     rowUpper_=new double[numberRows_];
@@ -2332,7 +2334,7 @@ CglProbing::operator=(
     maxStack_=rhs.maxStack_;
     usingObjective_=rhs.usingObjective_;
     if (numberRows_>0) {
-      rowCopy_= new OsiPackedMatrix(*(rhs.rowCopy_));
+      rowCopy_= new CoinPackedMatrix(*(rhs.rowCopy_));
       rowLower_=new double[numberRows_];
       memcpy(rowLower_,rhs.rowLower_,numberRows_*sizeof(double));
       rowUpper_=new double[numberRows_];
