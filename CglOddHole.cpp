@@ -711,8 +711,12 @@ onetol_(source.onetol_)
 {  
   // copy list of suitable rows
   numberRows_=source.numberRows_;
-  suitableRows_=new int[numberRows_];
-  memcpy(suitableRows_,source.suitableRows_,numberRows_*sizeof(int));
+  if (numberRows_) {
+    suitableRows_=new int[numberRows_];
+    memcpy(suitableRows_,source.suitableRows_,numberRows_*sizeof(int));
+  } else {
+    suitableRows_=NULL;
+  }
   // copy list of cliques
   numberCliques_=source.numberCliques_;
   if (numberCliques_) {

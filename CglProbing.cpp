@@ -706,10 +706,12 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	     rowStart, rowLength, rowLower, rowUpper,
 	     minR , maxR , markR, nRows, nCols);
     OsiCuts csNew;
-    ninfeas= probe(si, debugger, csNew, colLower, colUpper, rowCopy,
-		   rowLower, rowUpper,
-		       intVar, minR, maxR, markR,
-		   look,nLook);
+    // don't do cuts at all if 0 (i.e. we are just checking bounds)
+    if (rowCuts_)
+      ninfeas= probe(si, debugger, csNew, colLower, colUpper, rowCopy,
+		     rowLower, rowUpper,
+		     intVar, minR, maxR, markR,
+		     look,nLook);
     if (!ninfeas) {
       // go through row cuts
       int nCuts = csNew.sizeRowCuts();
