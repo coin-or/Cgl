@@ -23,7 +23,7 @@
 #include "OsiPackedMatrix.hpp"
 
 //-----------------------------------------------------------------------------
-// Generate knapsack cover cuts
+// Generate Lift-and-Project cuts
 //------------------------------------------------------------------- 
 void CglLiftAndProject::generateCuts(const OsiSolverInterface & si, 
 						OsiCuts & cs ) const
@@ -167,8 +167,8 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   // Set row lowers and uppers to zero
   double * BRowLowers = new double[BNumRows];
   double * BRowUppers = new double[BNumRows];
-  CoinFillN(BRowLowers,BNumCols,0.0);  
-  CoinFillN(BRowUppers,BNumCols,0.0);  
+  CoinFillN(BRowLowers,BNumRows,0.0);  
+  CoinFillN(BRowUppers,BNumRows,0.0);  
 
   // Calculate base objective <<x^T,Atilde^T>,u>
   // Note: at each iteration coefficient u_0
@@ -176,7 +176,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   //       w=(u,v,beta,v_0,u_0) size 2m+3
   //       So, BOjective[2m+2]=x[j]
   double * BObjective= new double[BNumCols];
-  double * Atildex = new double[n];
+  double * Atildex = new double[m];
   CoinFillN(BObjective,BNumCols,0.0);
   Atilde->times(x,Atildex); // Atildex is size m, x is size n
   CoinDisjointCopyN(Atildex,m,BObjective); 
@@ -276,7 +276,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   // return 0;
 
   int * nVectorIndices = new int[n];
-  CoinIotaN(nVectorIndices, m, 0);
+  CoinIotaN(nVectorIndices, n, 0);
 
   bool haveWarmStart = false;
   bool equalObj1, equalObj2;
@@ -358,7 +358,6 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   delete [] nVectorIndices;
   // BMatrix, BColLowers,BColUppers, BObjective, BRowLowers, BRowUppers
   // are all freed by OsiSolverInterface destructor (?)
-  delete [] Atilde;
   delete [] BLengths;
   delete [] BStarts;
   delete [] BIndices;
