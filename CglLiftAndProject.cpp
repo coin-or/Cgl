@@ -68,7 +68,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   const int * AtildeIndices =  Atilde->getIndices();
   const int * AtildeStarts = Atilde->getVectorStarts();
   const int * AtildeLengths = Atilde->getVectorLengths();  
-  const int AtildeFullSize = AtildeStarts[m+1];
+  const int AtildeFullSize = AtildeStarts[m];
   const double * btilde = si.getRowLower();
 
   // Set up memory for system (10) [BCC:307]
@@ -116,7 +116,6 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
 
   int i, ij, k=0;
   int nPlus1=n+1;
-  int nPlus2=n+2;
   int offset = AtildeStarts[m]+m;
   for (i=0; i<m; i++){
     for (ij=AtildeStarts[i];ij<AtildeStarts[i]+AtildeLengths[i];ij++){
@@ -129,49 +128,28 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
     }
     BElements[k]=btilde[i];
     BElements[k+offset]=btilde[i];
-    BIndices[k]=nPlus1;
-    BIndices[k+offset]=nPlus2;
+    BIndices[k]=n;
+    BIndices[k+offset]=nPlus1;
     BStarts[i]= AtildeStarts[i]+i;
     BStarts[i+m]=offset+BStarts[i];// = AtildeStarts[m]+m+AtildeStarts[i]+i
     BLengths[i]= AtildeLengths[i]+1;
     BLengths[i+m]= AtildeLengths[i]+1;
     k++;
   }
-  i=twoM;
-
-  ////// Commented out b/c rearranging u_0 and v_0 vectors.
-  // Store column corresponding to u_0
-  // BElements[k]=1;
-  // BIndices[k]=j;
-  // k++;
-  // BStarts[i]=BStarts[i-1]+AtildeLengths[m-1];
-  // BLengths[i]= 1;
-  // i++;
-
-  // Store column corresponding to v_0
-  // BElements[k]=-1;
-  // BIndices[k]=j;
-  // k++;
-  // BElements[k]=1;
-  // BIndices[k]=nPlus2;
-  // k++
-  // BStarts[i]=BStarts[i-1]+1;
-  // BLengths[i]= 2;
-  // i++;
 
   // Store column coresponding to beta
+  k += offset;
+  BElements[k]=-1;
+  BIndices[k]=n;
+  k++;
   BElements[k]=-1;
   BIndices[k]=nPlus1;
   k++;
-  BElements[k]=-1;
-  BIndices[k]=nPlus2;
-  k++;
-  BStarts[i]=BStarts[i-1]+AtildeLengths[m-1]; // only line that change w/rearr.
-  BLengths[i]= 2;
-  i++;
+  BStarts[twoM]=BStarts[twoM-1]+BLengths[twoM-1]; 
+  BLengths[twoM]= 2;
 
   // Mark end of BStarts
-  BStarts[i]=BStarts[i-1]+2;
+  BStarts[twoM+1]=BStarts[twoM]+2;
 
   // Cols that will be deleted each iteration
   int BNumColsLessOne=BNumCols-1;
@@ -306,11 +284,8 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
 
   // Is this temp? Or permanent??
   double v_0Elements[2] = {-1,1};
-  //int v_0Indices[2] = {0,nPlus2} // the "0" will be replaced with "j"
   double u_0Elements[1] = {1};
-  //int u_0Indices[1] = {0} // the "O" will be replaced with "j"
-  //OsiPackedVector v_0(2,v_0Elements,v_0Indices);
-  //OsiPackedVector u_0(1,u_0Elements,u_0Indices);
+
   OsiWarmStart * warmStart;
 
   double * ustar = new double[m];
@@ -329,7 +304,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
     // AskLL:wanted to declare u_0 and v_0 packedVec outside loop
     // and setIndices, but didn't see a method to do that(?)
     // (Could "insert". Seems inefficient)
-    int v_0Indices[2]={j,nPlus2};
+    int v_0Indices[2]={j,nPlus1};
     int u_0Indices[1]={j};
     OsiPackedVector  v_0(1,v_0Elements,v_0Indices);
     OsiPackedVector  u_0(1,u_0Elements,u_0Indices);
