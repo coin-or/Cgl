@@ -21,6 +21,7 @@ LIBSRC += CglSimpleRounding.cpp
 LIBSRC += CglClique.cpp
 LIBSRC += CglCliqueHelper.cpp
 LIBSRC += CglMixedIntegerRounding.cpp
+LIBSRC += CglTwomir.cpp
 
 ##############################################################################
 # You should not need to edit below this line.
