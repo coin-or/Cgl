@@ -491,8 +491,10 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 
   // get branch and bound cutoff
   double cutoff;
-  assert(si.getDblParam(OsiDualObjectiveLimit,cutoff));
-  
+  si.getDblParam(OsiDualObjectiveLimit,cutoff);
+  cutoff *= si.getObjSense();
+  if (fabs(cutoff)>1.0e30)
+    assert (cutoff>1.0e30);
   int mode=mode_;
   
   int nCols=si.getNumCols(); 
@@ -1047,7 +1049,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
   int ipass=0,nfixed=-1;
 
   double cutoff;
-  assert(si.getDblParam(OsiDualObjectiveLimit,cutoff));
+  si.getDblParam(OsiDualObjectiveLimit,cutoff);
+  cutoff *= si.getObjSense();
+  if (fabs(cutoff)>1.0e30)
+    assert (cutoff>1.0e30);
   double current = si.getObjValue();
   // make irrelevant if mode is 0
   if (!mode_)
