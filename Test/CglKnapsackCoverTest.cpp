@@ -6,14 +6,14 @@
 #endif
 
 #include <cstdio>
-#include <cassert>
-
-#include "CglKnapsackCover.hpp"
-#include "CoinPackedMatrix.hpp"
 
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
+#include <cassert>
+
+#include "CglKnapsackCover.hpp"
+#include "CoinPackedMatrix.hpp"
 
 //--------------------------------------------------------------------------
 void

@@ -6,6 +6,11 @@
 #endif
 
 #include <cstdio>
+
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 #include <cassert>
 
 #include "CoinPackedMatrix.hpp"
@@ -13,10 +18,6 @@
 #include "CoinWarmStartBasis.hpp"
 #include "CglGomory.hpp"
 
-
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
 
 //--------------------------------------------------------------------------
 // ** At present this does not use any solver

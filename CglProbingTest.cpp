@@ -6,16 +6,17 @@
 #endif
 
 #include <cstdio>
+
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 #include <cassert>
 #include <iostream>
 
 #include "CoinPackedMatrix.hpp"
 #include "CglProbing.hpp"
 
-
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
 
 //--------------------------------------------------------------------------
 // test EKKsolution methods.

@@ -6,6 +6,11 @@
 #endif
 
 #include <cstdio>
+
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 #include <cassert>
 #include <iostream>
 
@@ -13,11 +18,6 @@
 #include "OsiCuts.hpp"
 #include "CoinWarmStartBasis.hpp"
 #include "CglGomory.hpp"
-
-
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
 
 //--------------------------------------------------------------------------
 // ** At present this does not use any solver
