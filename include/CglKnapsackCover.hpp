@@ -40,6 +40,15 @@ public:
     ~CglKnapsackCover ();
   //@}
 
+
+  /**@name Sets and gets
+  //@{
+  /// Set limit on number in knapsack
+  inline void setMaxInKnapsack(int value)
+           { if (value>0) maxInKnapsack_ = value;};
+  /// get limit on number in knapsack
+  inline int getMaxInKnapsack() const
+           {return maxInKnapsack_;};
 private:
   
  // Private member methods
@@ -50,7 +59,7 @@ private:
 
   /** deriveAKnapsack 
                  returns 1 if it is able to derive
-                 a (cannonical) knapsack inequality
+                 a (canonical) knapsack inequality
                 in binary variables of the form ax<=b 
                  from the rowIndex-th  row in the model, 
                 returns 0 otherwise.
@@ -66,7 +75,7 @@ private:
     const OsiPackedVectorBase & matrixRow) const;
 
   /** Find a violated minimal cover from 
- a cannonical form knapsack inequality by
+ a canonical form knapsack inequality by
  solving the -most- violated cover problem
  and postprocess to ensure minimality
   */
@@ -194,6 +203,8 @@ void liftUpDownAndUncomplementAndAdd(
   double epsilon_;  
   /// 1-epsilon
   double onetol_;  
+  /// Maximum in knapsack
+  int maxInKnapsack_;
   //@}
 };
 

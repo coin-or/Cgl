@@ -1,5 +1,6 @@
 # Static or shared libraries should be built (STATIC or SHARED)?
 LibType := SHARED
+LibType := STATIC
 
 # Select optimization (-O or -g). -O will be automatically bumped up to the 
 # highest level of optimization the compiler supports. If want something in
@@ -65,7 +66,7 @@ include ${MakefileDir}/Makefile.detectOsi
 CXXFLAGS += $(OPTFLAG)
 CXXFLAGS += -Iinclude -I../Common/include
 ifeq ($(OptLevel),-g)
-    CXXFLAGS += -DCGL_DEBUG
+    CXXFLAGS += -DCGL_DEBUG=1
 endif
 
 ###############################################################################
@@ -152,7 +153,7 @@ $(TARGETDIR)/unitTest : install $(TESTOBJ)
 	@echo Creating unitTest
 	@mkdir -p $(TARGETDIR)
 	@rm -f $@
-	$(CXX) $(CXXFLAGS) -o $@ $(TESTOBJ) $(LDFLAGS) $(SYSLD) -lm
+	$(CXX) $(CXXFLAGS) -o $@ $(TESTOBJ) $(LDFLAGS) -lefence $(SYSLD) -lm
 
 ###############################################################################
 

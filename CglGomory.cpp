@@ -686,7 +686,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
     } else {
       // not basic
       int j;
-#ifdef CGL_DEBUG
+#ifdef CGL_DEBUG>1
       {
 	// put column into array
 	array.setVector(columnLength[iColumn],row+columnStart[iColumn],

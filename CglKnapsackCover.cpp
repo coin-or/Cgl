@@ -69,7 +69,8 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
     // Skip rows with 1 or 2 vars
     // ToDo: 2 -> lprelax of exact knapsack cover
     // if (si.getMatrixByRow()->vectorSize(rowIndex)<3){
-    if (si.getMatrixByRow()->getVectorSize(rowIndex)<2){
+    if (si.getMatrixByRow()->getVectorSize(rowIndex)<2||
+	si.getMatrixByRow()->getVectorSize(rowIndex)>maxInKnapsack_){
       continue;
     }
     
@@ -795,7 +796,7 @@ Lp relax of most violated minimal cover: row %i has cover of size %i.\n",
 
 //--------------------------------------------------
 // Find a violated minimal cover from 
-// a cannonical form knapsack inequality by
+// a canonical form knapsack inequality by
 // solving the -most- violated cover problem
 // and postprocess to ensure minimality
 // -----------------------------------------
@@ -2252,7 +2253,8 @@ CglKnapsackCover::CglKnapsackCover ()
 :
 CglCutGenerator(),
 epsilon_(1.0e-08),
-onetol_(1-epsilon_)
+onetol_(1-epsilon_),
+maxInKnapsack_(50)
 {
   // nothing to do here
 }
@@ -2263,7 +2265,8 @@ onetol_(1-epsilon_)
 CglKnapsackCover::CglKnapsackCover (const CglKnapsackCover & source) :
    CglCutGenerator(source),
    epsilon_(source.epsilon_),
-   onetol_(source.onetol_)
+   onetol_(source.onetol_),
+   maxInKnapsack_(source.maxInKnapsack_)
 {
   // Nothing to do here
 }
@@ -2287,6 +2290,7 @@ CglKnapsackCover::operator=(
     CglCutGenerator::operator=(rhs);
     epsilon_=rhs.epsilon_;
     onetol_=rhs.onetol_;
+    maxInKnapsack_=rhs.maxInKnapsack_;
   }
   return *this;
 }
