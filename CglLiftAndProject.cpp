@@ -295,7 +295,8 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   CoinFillN(alpha, n, 0.0);
 
   for (j=0;j<n;j++){
-    if (!si.isBinary(j)) continue; // better to ask coneSi?
+    if (!si.isBinary(j)) continue; // Better to ask coneSi? No! 
+                                   // coneSi has no binInfo.
     equalObj1=eq(x[j],0);
     equalObj2=eq(x[j],1);
     if (equalObj1 || equalObj2) continue;
@@ -320,7 +321,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
       coneSi->initialSolve();
     }
     if(coneSi->isProvenOptimal()){
-      coneSi->setWarmStart(warmStart);
+      warmStart = coneSi->getWarmStart();
       haveWarmStart=true;
       double * wstar = coneSi->getColSolution();
       CoinDisjointCopyN(wstar, m, ustar);
