@@ -217,6 +217,9 @@ CglClique::find_scl(OsiCuts& cs) const
    const int nodenum = fgraph.nodenum;
    const fnode *nodes = fgraph.nodes;
 
+   // Return at once if no nodes - otherwise we get invalid reads
+   if (!nodenum)
+     return;
    int *current_indices = new int[nodenum];
    int *current_degrees = new int[nodenum];
    double *current_values = new double[nodenum];

@@ -466,7 +466,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     CglFlowVUB VUB;
 
     for (i = 0; i < rowLen; ++i) {
-	if ( x[i] - floor(x[i]) > EPSILON_ && ceil(x[i]) - x[i] > EPSILON_ )
+	if ( xlp[i] - floor(xlp[i]) > EPSILON_ && ceil(xlp[i]) - xlp[i] > EPSILON_ )
 	    break;
     }
     if (i == rowLen)  {
