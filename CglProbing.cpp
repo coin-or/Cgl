@@ -2089,7 +2089,10 @@ void CglProbing::snapshot ( const OsiSolverInterface & si,
   const int * rowLength = rowCopy_->getVectorLengths(); 
   const double * rowElements = rowCopy_->getElements();
   
-  int ninfeas= tighten(colLower_, colUpper_, column, rowElements,
+#ifndef NDEBUG
+  int ninfeas= 
+#endif
+    tighten(colLower_, colUpper_, column, rowElements,
 			 rowStart, rowLength, rowLower_, rowUpper_,
 			 numberRows_, numberColumns_, intVar, 5, primalTolerance_);
   assert (!ninfeas);

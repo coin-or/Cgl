@@ -688,12 +688,11 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		  }
 		}
 		rhs = packed[number];
-		double ratio=maxMultiplier/minMultiplier;
 #ifdef CGL_DEBUG
 		printf("min, max multipliers - %g, %g\n",
 		       minMultiplier,maxMultiplier);
 #endif
-		assert(ratio>0.9999&&ratio<1.0001);
+		assert(maxMultiplier/minMultiplier>0.9999&&maxMultiplier/minMultiplier<1.0001);
 	      }
 	    }
 	    // erase cutElement
