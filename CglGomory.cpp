@@ -23,10 +23,6 @@
 #include "CglGomory.hpp"
 
 using std::min;
-static void xxxxxx()
-{
-  printf("xx\n");
-}
 //-------------------------------------------------------------------
 // Generate disaggregation cuts
 //------------------------------------------------------------------- 
@@ -395,8 +391,6 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	assert (nn==1);
       }
 #endif
-      if (iColumn==4)
-	xxxxxx();
       if(intVar[iColumn]&&reducedValue<1.0-away_&&reducedValue>away_) {
 #ifdef CGL_DEBUG
 	cutVector.checkClear();
