@@ -207,6 +207,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   int numberRows=columnCopy.getNumRows();
   int numberColumns=columnCopy.getNumCols(); 
   
+  // Start of code to create a factorization from warm start (A) ====
   // check factorization is okay
   CoinFactorization factorization;
   // We can either set increasing rows so ...IsBasic gives pivot row
@@ -245,6 +246,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
     std::cout<<"Bad factorization of basis - status "<<status<<std::endl;
     return -1;
   }
+  // End of creation of factorization (A) ====
   
   double bounds[2]={-DBL_MAX,0.0};
   int iColumn,iRow;
@@ -337,6 +339,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
     }
   }
 
+  // Start of code to create work arrays for factorization (B) ====
   // two vectors for updating (one is work)
   CoinIndexedVector work;
   CoinIndexedVector array;
@@ -345,6 +348,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   array.reserve(numberRows);
   int * arrayRows = array.getIndices();
   double * arrayElements = array.denseVector();
+  // End of code to create work arrays (B) ====
+
   int numberAdded=0;
   // we also need somewhere to accumulate cut
   CoinIndexedVector cutVector;
@@ -356,9 +361,11 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 
   for (iColumn=0;iColumn<numberColumns;iColumn++) {
     double reducedValue=above_integer(colsol[iColumn]);;
+    // This returns pivot row for columns or -1 if not basic (C) ====
     int iBasic=columnIsBasic[iColumn];
     double ratio=reducedValue/(1.0-reducedValue);
     if (iBasic>=0) {
+  // Debug code below computes tableau column of basic ====
       int j;
 #ifdef CGL_DEBUG
       {
@@ -389,6 +396,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	double one =1.0;
 	array.setVector(1,&iBasic,&one);
 	int numberNonInteger=0;
+	//Code below computes tableau row ====
 	// get pi
 	factorization.updateColumnTranspose ( &work, &array );
 	int numberInArray=array.getNumElements();
@@ -423,6 +431,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      iRow = row[k];
 	      value += columnElements[k]*arrayElements[iRow];
 	    }
+	    // value is entry in tableau row end (C) ====
 	    if (fabs(value)<1.0e-16) {
 	      // small value
 	      continue;
@@ -470,6 +479,9 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      if (fabs(coefficient)>= COIN_INDEXED_TINY_ELEMENT) {
 		 cutElement[j] = coefficient;
 		 cutIndex[number++]=j;
+		 // If too many - break from loop
+		 if (number>limit_) 
+		   break;
 	      }
 	    }
 	  } else {
@@ -478,6 +490,11 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	  }
 	}
 	cutVector.setNumElements(number);
+	// If too many - just clear vector and skip
+	if (number>limit_) {
+	  cutVector.clear();
+	  continue;
+	}
 	//check will be cut
 	//reducedValue=above_integer(reducedValue);
 	rhs += reducedValue;
