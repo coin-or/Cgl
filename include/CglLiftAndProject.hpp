@@ -23,6 +23,24 @@ public:
       Insert the generated cuts into OsiCut, cs.
   */
   virtual void generateCuts(const OsiSolverInterface & si, OsiCuts & cs) const;
+
+  /** Get/Set the normalization : Either beta=+1 or beta=-1.
+  */
+
+  double getBeta() const {
+    return beta_;
+  }
+
+  void setBeta(int oneOrMinusOne){
+    if (oneOrMinusOne==1 || oneOrMinusOne==-1){
+      beta_= (double)oneOrMinusOne;
+    }
+    else {
+      throw CoinError("Unallowable value. Beta must be 1 or -1",
+		      "cutGeneration","CglLiftAndProject");
+    }
+  }
+
   //@}
 
   /**@name Constructors and destructors */
@@ -195,6 +213,7 @@ void liftUpDownAndUncomplementAndAdd(
   /**@name Private member data */
   //@{
   /// epsilon
+  double beta_;  
   double epsilon_;  
   /// 1-epsilon
   double onetol_;  
