@@ -234,7 +234,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
   double v_0Elements[2] = {-1,1};
   double u_0Elements[1] = {1};
 
-  CoinWarmStart * warmStart;
+  CoinWarmStart * warmStart = 0;
 
   double * ustar = new double[m];
   CoinFillN(ustar, m, 0.0);
