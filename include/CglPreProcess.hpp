@@ -96,6 +96,12 @@ public:
   /// Matching presolve information
   inline OsiPresolve * presolve(int iPass) const
   { if (iPass>=0&&iPass<numberSolvers_) return presolve_[iPass];};
+  /** Return a pointer to the original columns (with possible  clique slacks)
+      MUST be called before postProcess otherwise you just get 0,1,2.. */
+  const int * originalColumns() const;
+  /** Return a pointer to the original rows
+      MUST be called before postProcess otherwise you just get 0,1,2.. */
+  const int * originalRows() const;
   //@}
 
   ///@name Cut generator methods 
@@ -180,6 +186,8 @@ private:
   OsiSolverInterface * modified(OsiSolverInterface * model,
                                 bool constraints,
                                 int & numberChanges);
+  /// create original columns and rows
+  void createOriginalIndices() const;
   //@}
 
 //---------------------------------------------------------------------------
@@ -216,6 +224,10 @@ private:
 
   /// Pointer to user-defined data structure
   void * appData_;
+  /// Original column numbers
+  mutable int * originalColumn_;
+  /// Original row numbers
+  mutable int * originalRow_;
   /// Number of cut generators
   int numberCutGenerators_;
   // Cut generators

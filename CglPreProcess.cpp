@@ -51,6 +51,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     modifiedModel_[i]=NULL;
     presolve_[i]=NULL;
   }
+  // clear original
+  delete [] originalColumn_;
+  delete [] originalRow_;
+  originalColumn_=NULL;
+  originalRow_=NULL;
   startModel_=&model;
   CoinPackedMatrix matrixByRow(*originalModel_->getMatrixByRow());
   int numberRows = originalModel_->getNumRows();
@@ -576,6 +581,8 @@ CglPreProcess::CglPreProcess()
   handler_(NULL),
   defaultHandler_(true),
   appData_(NULL),
+  originalColumn_(NULL),
+  originalRow_(NULL),
   numberCutGenerators_(0),
   generator_(NULL)
 {
@@ -591,6 +598,8 @@ CglPreProcess::CglPreProcess(const CglPreProcess & rhs)
   numberSolvers_(rhs.numberSolvers_),
   defaultHandler_(rhs.defaultHandler_),
   appData_(rhs.appData_),
+  originalColumn_(NULL),
+  originalRow_(NULL),
   numberCutGenerators_(rhs.numberCutGenerators_)
 {
   if (defaultHandler_) {
@@ -721,6 +730,10 @@ CglPreProcess::gutsOfDestructor()
   delete [] presolve_;
   model_=NULL;
   presolve_=NULL;
+  delete [] originalColumn_;
+  delete [] originalRow_;
+  originalColumn_=NULL;
+  originalRow_=NULL;
 }
 // Add one generator
 void 
@@ -782,4 +795,63 @@ void
 CglPreProcess::newLanguage(CoinMessages::Language language)
 {
   messages_ = CglMessage(language);
+}
+// Return a pointer to the original columns (without clique slacks)
+const int * 
+CglPreProcess::originalColumns() const
+{
+  if (!originalColumn_)
+    createOriginalIndices();
+  return originalColumn_;
+}
+// Return a pointer to the original rows
+const int * 
+CglPreProcess::originalRows() const
+{
+  if (!originalRow_)
+    createOriginalIndices();
+  return originalRow_;
+}
+// create original columns and rows
+void 
+CglPreProcess::createOriginalIndices() const
+{
+  // Find last model and presolve
+  int iPass;
+  for (iPass=numberSolvers_-1;iPass>=0;iPass--) {
+    if (presolve_[iPass])
+      break;
+  }
+  int nRows,nColumns;
+  if (iPass>=0) {
+    nRows=model_[iPass]->getNumRows();
+    nColumns=model_[iPass]->getNumCols();
+  } else {
+    nRows=originalModel_->getNumRows();
+    nColumns=originalModel_->getNumCols();
+  }
+  originalColumn_=new int [nColumns];
+  originalRow_ = new int[nRows];
+  if (iPass>=0) {
+    memcpy(originalColumn_,presolve_[iPass]->originalColumns(),
+           nColumns*sizeof(int));
+    memcpy(originalRow_,presolve_[iPass]->originalRows(),
+           nRows*sizeof(int));
+    iPass--;
+    for (;iPass>=0;iPass--) { 
+      const int * originalColumns = presolve_[iPass]->originalColumns();
+      int i;
+      for (i=0;i<nColumns;i++)
+        originalColumn_[i]=originalColumns[originalColumn_[i]];
+      const int * originalRows = presolve_[iPass]->originalRows();
+      for (i=0;i<nRows;i++)
+        originalRow_[i]=originalRows[originalRow_[i]];
+    }
+  } else {
+    int i;
+    for (i=0;i<nColumns;i++)
+      originalColumn_[i]=i;
+    for (i=0;i<nRows;i++)
+      originalRow_[i]=i;
+  }
 }
