@@ -204,6 +204,8 @@ void liftUpDownAndUncomplementAndAdd(
   //@{
   /// epsilon
   double epsilon_;  
+  /// Tolerance to use for violation - bigger than epsilon_
+  double epsilon2_;
   /// 1-epsilon
   double onetol_;  
   /// Maximum in knapsack

@@ -170,7 +170,9 @@ inline Rational nearestRational(double value, int maxDenominator)
       Rational bad;
       bad.numerator=-1;
       bad.denominator=-1;
+#if CGL_DEBUG>1
       printf(" *** bad rational\n");
+#endif
       return bad;
     }
     value = 1.0/value;
@@ -562,7 +564,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	    }
 	    std::cout<<" <= "<<rhs<<std::endl;
 #endif
-	    if (!numberNonInteger) {
+	    if (!numberNonInteger&&number) {
 #ifdef CGL_DEBUG
 	      assert (sizeof(Rational)==sizeof(double));
 #endif
@@ -678,6 +680,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 #ifdef CGL_DEBUG
 	      std::cout<<"cut has "<<number<<" entries - skipped"
 		     <<std::endl;
+	      if (!number)
+		std::cout<<"******* Empty cut - infeasible"<<std::endl;
 #endif
 	    }
 	  } else {
