@@ -16,6 +16,10 @@
 #include "OsiRowCutDebugger.hpp"
 #include "CglProbing.hpp"
 #include "ekk_c_api.h"
+
+using std::max;
+using std::min;
+
 typedef struct {double infeasibility;int sequence;} double_int_pair;
 class double_int_pair_compare {
 public:

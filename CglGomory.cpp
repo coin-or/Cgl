@@ -22,6 +22,9 @@
 #include "OsiWarmStartBasis.hpp"
 #include "CglGomory.hpp"
 #include "ekk_c_api.h"
+
+using std::min;
+
 //-------------------------------------------------------------------
 // Generate disaggregation cuts
 //------------------------------------------------------------------- 
