@@ -108,7 +108,7 @@ private:
   /// If packed true then <=1 rows, otherwise >=1 rows.
   void generateCuts(const OsiRowCutDebugger * debugger, 
 		    const CoinPackedMatrix & rowCopy,
-		    const double * solution,
+		    const double * solution, const double * dj,
 		    OsiCuts & cs, const int * suitableRow,
 		    const int * fixedColumn,
 		    bool packed);

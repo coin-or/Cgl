@@ -16,6 +16,16 @@
 #include "OsiRowCutDebugger.hpp"
 #include "CglOddHole.hpp"
 //#define CGL_DEBUG
+// We may want to sort cut
+typedef struct {double dj;double element; int sequence;} 
+double_double_int_triple;
+class double_double_int_triple_compare {
+public:
+  bool operator() (double_double_int_triple x , double_double_int_triple y) const
+  {
+    return ( x.dj < y.dj);
+  }
+}; 
 //-------------------------------------------------------------------------------
 // Generate three cycle cuts
 //------------------------------------------------------------------- 
@@ -101,7 +111,8 @@ void CglOddHole::generateCuts(const OsiSolverInterface & si,
 #else
   const OsiRowCutDebugger * debugger = NULL;
 #endif
-  temp.generateCuts(debugger, *rowCopy,solution,cs,suitable,fixed,true);
+  temp.generateCuts(debugger, *rowCopy,solution,
+		    si.getReducedCost(),cs,suitable,fixed,true);
   // now cover
   //if no >= then skip
   bool doCover=false;
@@ -126,7 +137,8 @@ void CglOddHole::generateCuts(const OsiSolverInterface & si,
     }
   }
   if (doCover&&nsuitable) 
-    temp.generateCuts(debugger, *rowCopy,solution,cs,suitable,fixed,false);
+    temp.generateCuts(debugger, *rowCopy,solution,si.getReducedCost(),
+		      cs,suitable,fixed,false);
   delete [] checkRow;
   delete [] solution;
   delete [] fixed;
@@ -134,7 +146,8 @@ void CglOddHole::generateCuts(const OsiSolverInterface & si,
 }
 void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 			      const CoinPackedMatrix & rowCopy, 
-				 const double * solution, OsiCuts & cs,
+				 const double * solution, 
+			      const double * dj, OsiCuts & cs,
 				 const int * suitableRow,
 			      const int * fixedColumn,
 			      bool packed)
@@ -304,6 +317,9 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
   int * clean = new int[nSmall2];
   int * candidate = new int[CoinMax(nSmall2,nCols)];
   double * element = new double[nCols];
+  // in case we want to sort
+  double_double_int_triple * sortit = 
+    new double_double_int_triple [nCols];
   memset(mark,0,nSmall2*sizeof(int));
   int * countcol = new int[nCols];
   memset(countcol,0,nCols*sizeof(int));
@@ -472,22 +488,31 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 	      printf("why no cut\n");
 #endif
 	      if (packed) {
+		// sort and see if we can get down to length
 		// relax by taking out ones with solution 0.0
 		nincut=ii;
-		ii=0;
-		sum=0.0;
 		for (k=0;k<nincut;k++) {
 		  int jcol=candidate[k];
-		  if (solution[jcol]) {
-		    element[ii]=element[k];
-		    sum+=solution[jcol]*element[ii];
-		    candidate[ii++]=jcol;
-		  }
+		  double value = fabs(dj[jcol]);
+		  if (solution[jcol])
+		  value = -solution[jcol];
+		  sortit[k].dj=value;
+		  sortit[k].element=element[k];
+		  sortit[k].sequence=jcol;
+		}
+		// sort 
+		std::sort(sortit,sortit+nincut,double_double_int_triple_compare());
+		nincut = min(nincut,maximumEntries_);
+		sum=0.0;
+		for (k=0;k<nincut;k++) {
+		  int jcol=sortit[k].sequence;
+		  candidate[k]=jcol;
+		  element[k]=sortit[k].element;
+		  sum+=solution[jcol]*element[k];
 		}
 		violation = sum-rhs;
-		if (violation<minimumViolation_||
-		    ((double) ii) * minimumViolationPer_>violation||
-		    ii>maximumEntries_) {
+		ii=nincut;
+		if (violation<minimumViolation_) {
 		  good=false;
 		}
 	      } else { 
@@ -540,6 +565,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
   delete [] countcol;
   delete [] element;
   delete [] candidate;
+  delete [] sortit;
   delete [] clean;
   delete [] path;
   delete [] stack;
