@@ -76,7 +76,8 @@ CglClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
 		const CglTreeInfo info) const
 {
    int i;
-
+   if (!sp_numcols)
+     return; // nothing to do
    bool has_petol_set = petol >= 0;
 
    if (! has_petol_set)
