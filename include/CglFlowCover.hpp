@@ -172,8 +172,8 @@ public:
 	contained in si. The generated cuts are inserted into and returned 
 	in the collection of cuts cs. 
     */
-    virtual void generateCuts(const OsiSolverInterface & si, 
-			      OsiCuts & cs, const int level = 0) const;
+    virtual void generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
+			      const int level = 0, const int pass = 0) const;
     //@}
 
     /**@name Functions to query and set maximum number of cuts can be 

@@ -17,8 +17,8 @@
 
 //-------------------------------------------------------------
 void
-CglSimpleRounding::generateCuts(const OsiSolverInterface & si, 
-				OsiCuts & cs, const int level) const
+CglSimpleRounding::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
+				const int level, const int pass) const
 {
   int nRows=si.getNumRows(); // number of rows in the coefficient matrix
   int nCols=si.getNumCols(); // number of columns in the coefficient matrix

@@ -26,8 +26,10 @@
 //-----------------------------------------------------------------------------
 // Generate Mixed Integer Rounding inequality
 //------------------------------------------------------------------- 
-void CglMixedIntegerRounding::generateCuts(const OsiSolverInterface & si, 
-					   OsiCuts & cs, const int level) const
+void
+CglMixedIntegerRounding::generateCuts(const OsiSolverInterface& si,
+				      OsiCuts& cs,
+				      const int level, const int pass) const
 {
 
   // If the LP or integer presolve is used, then need to redo preprocessing

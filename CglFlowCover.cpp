@@ -223,8 +223,8 @@ CglFlowCover::flowPreprocess(const OsiSolverInterface& si) const
 //-----------------------------------------------------------------------------
 // Generate LSGFC cuts
 //------------------------------------------------------------------- 
-void CglFlowCover::generateCuts(const OsiSolverInterface & si, 
-				OsiCuts & cs, const int level) const 
+void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
+				const int level, const int pass) const 
 {
     if (getMaxNumCuts() <= 0) return;
     

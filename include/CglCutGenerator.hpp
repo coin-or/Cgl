@@ -29,7 +29,7 @@ public:
   collection of cuts cs.
   */
   virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
-			     const int level = 0) const=0; 
+			     const int level = 0, const int pass = 0) const=0; 
   //@}
 
     

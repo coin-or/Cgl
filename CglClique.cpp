@@ -42,7 +42,7 @@ CglClique::CglClique(bool setPacking) :
 
 void
 CglClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
-			const int level)
+		const int level, const int pass) const
 {
    int i;
 
@@ -102,7 +102,7 @@ CglClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
  *===========================================================================*/
 
 void
-CglClique::find_rcl(OsiCuts& cs)
+CglClique::find_rcl(OsiCuts& cs) const
 {
    const int nodenum = fgraph.nodenum;
    const fnode *nodes = fgraph.nodes;
@@ -212,7 +212,7 @@ CglClique::find_rcl(OsiCuts& cs)
  *===========================================================================*/
 
 void
-CglClique::find_scl(OsiCuts& cs)
+CglClique::find_scl(OsiCuts& cs) const
 {
    const int nodenum = fgraph.nodenum;
    const fnode *nodes = fgraph.nodes;

@@ -36,7 +36,7 @@ public:
 
   */
   virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
-			     const int level = 0) const;
+			     const int level = 0, const int pass = 0) const;
   //@}
 
   /**@name Create Row List */
