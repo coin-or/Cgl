@@ -59,7 +59,7 @@ static int tighten(double *colLower, double * colUpper,
 	dmaxdown = 0.0;
 	krs = rowStart[i];
 	kre = rowStart[i]+rowLength[i];
-	
+
 	/* ------------------------------------------------------------*/
 	/* Compute L(i) and U(i) */
 	/* ------------------------------------------------------------*/
@@ -948,7 +948,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
   if (!mode_)
     cutoff=DBL_MAX;
   /* for both way coding */
-  int nstackC0;
+  int nstackC0=-1;
   int * stackC0 = new int[maxStack_];
   double * lo0 = new double[maxStack_];
   double * up0 = new double[maxStack_];
@@ -1112,7 +1112,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];kk++) {
 		  double moveUp=0.0;
 		  double moveDown=0.0;
-		  double newUpper,newLower;
+		  double newUpper=-1.0,newLower=1.0;
 		  kcol=column[kk];
 		  if (markC[kcol]!=3) {
 		    value2=rowElements[kk];

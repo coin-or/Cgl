@@ -170,7 +170,9 @@ inline Rational nearestRational(double value, int maxDenominator)
       Rational bad;
       bad.numerator=-1;
       bad.denominator=-1;
+#ifdef CGL_DEBUG
       printf(" *** bad rational\n");
+#endif
       return bad;
     }
     value = 1.0/value;
@@ -367,8 +369,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
     int iBasic=columnIsBasic[iColumn];
     double ratio=reducedValue/(1.0-reducedValue);
     if (iBasic>=0) {
-#ifdef CGL_DEBUG
       int j;
+#ifdef CGL_DEBUG
       {
 	// put column into array
 	array.setVector(columnLength[iColumn],row+columnStart[iColumn],
@@ -603,9 +605,9 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		    break;
 		  }
 		}
-		
+
 		if (nOverflow){
-#ifdef CGL_DEBUG		
+#ifdef CGL_DEBUG
 		  printf("Gomory Scaling: Warning: Overflow detected \n");
 #endif
 		  numberNonInteger=-1;
