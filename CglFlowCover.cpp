@@ -1,4 +1,4 @@
-// LAST EDIT: Sun Oct 3 2004 by Yan Xu
+// $Id: 
 //-----------------------------------------------------------------------------
 // name:     Cgl Lifed Simple Generalized Flow Cover Cut Generator
 // author:   Yan Xu                email: yan.xu@sas.com
@@ -23,6 +23,9 @@
 #include "CoinPackedVector.hpp"
 
 #include "CglFlowCover.hpp"
+
+
+#define CGLFLOW_DEBUG 0
 
 //-------------------------------------------------------------------
 // Overloaded operator<< for printing VUB and VLB.
@@ -683,6 +686,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     //-------------------------------------------------------------------------
     // Generate a violated SGFC
 
+    int numCMinus = 0;
     int numPlusPlus = 0;
     double* rho     = new double [rowLen];
     double* xCoef   = new double [rowLen]; 
@@ -698,12 +702,15 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	xCoef[i] = 0.0;
 	yCoef[i] = 0.0;
     }
+    
 
     // Project out variables in C-
     // d^' = d + sum_{i in C^-} m_i. Now cutRHS = d^'
     for (i = 0; i < rowLen; ++i) { 
-	if ( label[i] == CGLFLOW_COL_INCUT && sign[i] < 0 ) 
+	if ( label[i] == CGLFLOW_COL_INCUT && sign[i] < 0 ) {
 	    cutRHS += up[i];
+	    ++numCMinus;
+	}
     }
 
     // (1) Compute the coefficients of the simple generalized flow cover
@@ -851,21 +858,21 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 #endif
 	}
     }
-    
+    double estY, estX;
     double movement = 0.0;
     double dPrimePrime = temp + cutRHS; 
     bool lifted = false;
-#if 0
+#if 1 // LIFTING?
     for( i = 0; i < rowLen; ++i ) {
 	if ( (label[i] != CGLFLOW_COL_INCUT) && (sign[i] > 0) ) {/* N+\C+*/
-	    lifted = liftNPlusCPlus(yCoef[i], xCoef[i], 
+	    lifted = liftPlus(estY, estX,
 				    index, up[i],
 				    lambda,
 				    y[i], x[i], 
 				    dPrimePrime, M);
 	    
-	    //xCoef[i] = alpha;
-	    //yCoef[i] = -beta;
+	    xCoef[i] = estX;
+	    yCoef[i] = -estY;
 #if CGLFLOW_DEBUG
 	    if (lifted == true) {
 		printf("Success: Lifted col %i (up_i=%f,yCoef[i]=%f,xCoef[i]=%f) in N+\\C+\n", 
@@ -879,11 +886,11 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	}
 	if (label[i] == CGLFLOW_COL_INCUT && sign[i] < 0) { 
 	    /* C- */
-	    liftCMinus(movement, t,
-		       index, up[i], 
-		       dPrimePrime, 
-		       lambda,	ml,
-		       M, rho);
+	    liftMinus(movement, t,
+		      index, up[i], 
+		      dPrimePrime, 
+		      lambda, ml,
+		      M, rho);
                 
 	    if(movement > EPSILON_) {
 #if MY_FLOW_DEBUG
@@ -1175,15 +1182,15 @@ CglFlowCover::determineOneRowType(const OsiSolverInterface& si,
 /*===========================================================================*/
 
 void
-CglFlowCover::liftCMinus(double &movement, /* Output */ 
-			 int t,
-			 int r,
-			 double z,
-			 double dPrimePrime, 
-			 double lambda,
-			 double ml,
-			 double *M,
-			 double *rho) const
+CglFlowCover::liftMinus(double &movement, /* Output */ 
+			int t,
+			int r,
+			double z,
+			double dPrimePrime, 
+			double lambda,
+			double ml,
+			double *M,
+			double *rho) const
 {
     int i;
     movement = 0.0;
@@ -1230,7 +1237,7 @@ CglFlowCover::liftCMinus(double &movement, /* Output */
 /*===========================================================================*/
 
 int
-CglFlowCover::liftNPlusCPlus(double &alpha, 
+CglFlowCover::liftPlus(double &alpha, 
 			     double &beta,
 			     int r,
 			     double m_j, 
@@ -1257,20 +1264,22 @@ CglFlowCover::liftNPlusCPlus(double &alpha,
                     alpha = 1.0;
                     beta = M[r] - r * lambda;
 #if CGLFLOW_DEBUG
-                    printf("liftNPlusCPlus:1: value=%f, alpah=%f, beta=%f\n",
+                    printf("liftPlus:1: value=%f, alpah=%f, beta=%f\n",
                            value, alpha,beta);
 #endif
                 }
                 else {
 #if CGLFLOW_DEBUG
-                    printf("liftNPlusCPlus:1: value=%f, become worst\n",value);
+                    printf("liftPlus:1: value=%f, become worst\n",value);
 #endif
                 }
             }
         }
+	else {    
 #if CGLFLOW_DEBUG
-                    printf("liftNPlusCPlus:1: too big number\n");
+	    printf("liftPlus:1: too big number\n");
 #endif
+	}
     }
     else {
         for (i = 1; i <= r; ++i) {
@@ -1284,13 +1293,13 @@ CglFlowCover::liftNPlusCPlus(double &alpha,
                     alpha = 1.0;
                     beta = M[i] - i * lambda;
 #if CGLFLOW_DEBUG
-                    printf("liftNPlusCPlus:2: value=%f, alpah=%f, beta=%f\n",
+                    printf("liftPlus:2: value=%f, alpah=%f, beta=%f\n",
                            value, alpha, beta);
 #endif
                 }
                 else {
 #if CGLFLOW_DEBUG
-                    printf("liftNPlusCPlus:2: value=%f, become worst\n",value);
+                    printf("liftPlus:2: value=%f, become worst\n",value);
 #endif
                 }
                 return status;

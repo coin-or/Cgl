@@ -22,10 +22,6 @@
 
 //=============================================================================
 
-#ifndef CGLFLOW_DEBUG
-#define CGLFLOW_DEBUG 0
-#endif
-
 //=============================================================================
 
 /** This enumerative constant describes the various col types.*/
@@ -243,25 +239,25 @@ private:
 				       double* coef, char sen, 
 				       double rhs) const;
     /** Lift functions */
-    void liftCMinus(double &movement, /* Output */ 
-		    int t,
-		    int r,
-		    double z,
-		    double dPrimePrime, 
-		    double lambda,
+    void liftMinus(double &movement, /* Output */ 
+		   int t,
+		   int r,
+		   double z,
+		   double dPrimePrime, 
+		   double lambda,
 		    double ml,
-		    double *M,
-		    double *rho) const;
+		   double *M,
+		   double *rho) const;
 
-    int liftNPlusCPlus(double &alpha, 
-		       double &beta,
-		       int r,
-		       double m_j, 
-		       double lambda,
-		       double y_j,
-		       double x_j,
-		       double dPrimePrime,
-		       double *M) const;
+    int liftPlus(double &alpha, 
+		 double &beta,
+		 int r,
+		 double m_j, 
+		 double lambda,
+		 double y_j,
+		 double x_j,
+		 double dPrimePrime,
+		 double *M) const;
     
 
     //-------------------------------------------------------------------------
