@@ -22,5 +22,5 @@ unitTest : install
 	(cd Test && ${MAKE} unitTest)
 
 install clean library : % :
-	(cd ../Osi && ${MAKE} install)
+	(cd ../Osi && ${MAKE} inst-libOsi)
 	${MAKE} -f Makefile.Cgl $*
