@@ -1372,16 +1372,34 @@ CglMixedIntegerRounding::cMirSeparation(
 
   // Check the violation of the cut after it is written with the original
   // variables.
-  const int cutLen = bestCut.getNumElements();
-  const int* cutInd = bestCut.getIndices();
-  const double* cutCoef = bestCut.getElements();
-  const double cutRHS = rhsBestCut;
+  int cutLen = bestCut.getNumElements();
+  int* cutInd = bestCut.getIndices();
+  double* cutCoef = bestCut.getElements();
+  double cutRHS = rhsBestCut;
   double violation = 0.0;
   double normCut = 0.0;
+  // Also weaken by small coefficients
+  int n=0;
   for ( j = 0; j < cutLen; ++j) {
-    violation += cutCoef[j] * xlp[cutInd[j]];
-    normCut += cutCoef[j] * cutCoef[j];
+    double value = cutCoef[j];
+    int column = cutInd[j];
+    if (fabs(value)>1.0e-12) {
+      violation += cutCoef[j] * xlp[column];
+      normCut += cutCoef[j] * cutCoef[j];
+      cutCoef[n]=value;
+      cutInd[n++]=column;
+    } else if (value) {
+      // Weaken
+      if (value>0.0) {
+        // Allow for at lower bound
+        cutRHS -= value*colLowerBound[column];
+      } else {
+        // Allow for at upper bound
+        cutRHS -= value*colUpperBound[column];
+      }
+    }
   }
+  cutLen=n;
   violation -= cutRHS;
   violation /= sqrt(normCut);
 
@@ -1390,6 +1408,15 @@ CglMixedIntegerRounding::cMirSeparation(
     cMirCut.setLb(-1.0 * si.getInfinity());
     cMirCut.setUb(cutRHS);
     cMirCut.setEffectiveness(violation);
+#ifdef CGL_DEBUG
+    {
+      for (int k=0; k<cutLen; k++){
+	assert(cutInd[k]>=0);
+	assert(cutCoef[k]);
+        assert (fabs(cutCoef[k])>1.0e-12);
+      }
+    }
+#endif
     generated = true;
   }
 

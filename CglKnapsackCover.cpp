@@ -698,6 +698,7 @@ CglKnapsackCover::liftAndUncomplementAndAdd(
       for (k=0; k<n; k++){
 	assert(indices[k]>=0);
 	assert(elements[k]);
+        assert (fabs(elements[k])>1.0e-12);
       }
     }
 #endif
@@ -2187,6 +2188,7 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
       for (k=0; k<n; k++){
 	assert(indices[k]>=0);
 	assert(elements[k]);
+        assert (fabs(elements[k])>1.0e-12);
       }
     }
 #endif
@@ -2377,6 +2379,7 @@ CglKnapsackCover::seqLiftAndUncomplementAndAdd(
       for (k=0; k<n; k++){
 	assert(indices[k]>=0);
 	assert(elements[k]);
+        assert (fabs(elements[k])>1.0e-12);
       }
     }
 #endif
