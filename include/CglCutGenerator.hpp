@@ -11,15 +11,26 @@
 struct CglTreeInfo {
   /// The level of the search tree node 
   int level;
-  /// How many times the cut generator was already invoked in this search tree
-  /// node
+  /** How many times the cut generator was already invoked in this search tree
+      node */
   int pass;
-  /// The number of rows in the original formulation. Some generators may not
-  /// want to consider already generated rows when generating new ones.
+  /** The number of rows in the original formulation. Some generators may not
+      want to consider already generated rows when generating new ones. */
   int formulation_rows;
   /// Set true if in tree (to avoid ambiguity at first branch)
   bool inTree;
-  CglTreeInfo() : level(-1), pass(-1), formulation_rows(-1), inTree(false) {}
+  /** Replacement array.  Before Branch and Cut it may be beneficial to strengthen rows
+      rather than adding cuts.  If this array is not NULL then the cut generator can
+      place a pointer to the stronger cut in this array which is number of rows in size.
+
+      A null (i.e. zero elements and free rhs) cut indicates that the row is useless 
+      and can be removed.
+
+      The calling function can then replace those rows.
+  */
+  OsiRowCut ** strengthenRow;
+  CglTreeInfo() : level(-1), pass(-1), formulation_rows(-1), inTree(false),
+                   strengthenRow(NULL) {}
 };
 
 //-------------------------------------------------------------------
