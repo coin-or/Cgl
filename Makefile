@@ -11,9 +11,10 @@ export MakefileDir := $(CoinDir)/Makefiles
 
 .DELETE_ON_ERROR:
 
-.PHONY: default install clean library unitTest libdepend doc
+.PHONY: default install clean library unitTest libdepend libCgl doc
 
 default: install
+libCgl:  library
 
 libdepend:
 	(cd ../Osi && ${MAKE} inst-libOsi)

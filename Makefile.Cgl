@@ -5,7 +5,7 @@ LibType := SHARED
 # highest level of optimization the compiler supports. If want something in
 # between then specify the exact level you want, e.g., -O1 or -O2
 OptLevel := -O
-#OptLevel := -g
+OptLevel := -g
 
 LIBNAME := Cgl
 
@@ -17,8 +17,6 @@ LIBSRC += CglLiftAndProject.cpp
 LIBSRC += CglOddHole.cpp
 LIBSRC += CglProbing.cpp
 LIBSRC += CglSimpleRounding.cpp
-
-export LibType OptLevel LIBNAME LIBSRC
 
 ##############################################################################
 # You should not need to edit below this line.
@@ -32,6 +30,8 @@ export ExtraLibDir  := ${OsiLibDir} ${CoinLibDir} ${zlibLibDir} ${bzlibLibDir}
 export ExtraLibName := ${OsiLibName} ${CoinLibName} ${zlibLibName} ${bzlibLibName}
 export ExtraDefine  := ${OsiDefine} ${CoinDefine} ${zlibDefine} ${bzlibDefine}
 
+export LibType OptLevel LIBNAME LIBSRC
+
 ###############################################################################
 
 .DELETE_ON_ERROR:
@@ -41,4 +41,4 @@ export ExtraDefine  := ${OsiDefine} ${CoinDefine} ${zlibDefine} ${bzlibDefine}
 default: install
 
 install library :
-	$(MAKE) -f ${MakefileDir}/Makefile.lib $*
+	$(MAKE) -f ${MakefileDir}/Makefile.lib $@

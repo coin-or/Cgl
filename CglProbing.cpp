@@ -11,7 +11,7 @@
 #include <cfloat>
 #include <cassert>
 #include <iostream>
-
+//#define PRINT_DEBUG
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedVector.hpp"
 #include "CoinPackedMatrix.hpp"
@@ -28,6 +28,7 @@ public:
   }
 }; 
 
+#ifdef CGL_DEBUG
 // Checks bounds okay against debugger
 static void checkBounds(const OsiRowCutDebugger * debugger,OsiColCut & cut)
 {
@@ -60,7 +61,7 @@ static void checkBounds(const OsiRowCutDebugger * debugger,OsiColCut & cut)
     }
   }
 }
-
+#endif
 // This tightens column bounds (and can declare infeasibility)
 // It may also declare rows to be redundant
 static int tighten(double *colLower, double * colUpper,
@@ -359,7 +360,9 @@ static void tighten2(double *colLower, double * colUpper,
     }
   }
 }
+#ifdef CGL_DEBUG
 static int nPath=0;
+#endif
 //-------------------------------------------------------------------
 // Generate disaggregation cuts
 //------------------------------------------------------------------- 
@@ -1194,7 +1197,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		  if (markC[kcol]!=3) {
 		    value2=rowElements[kk];
 		    if (value2 < 0.0) {
-		      if (colUpper[kcol] < 1e10 && (markC[kcol]&2)==0) {
+		      if (colUpper[kcol] < 1e10 && (markC[kcol]&2)==0 &&
+			  rowUpper[irow]<1.0e10) {
 			dbound = colUpper[kcol]+
 			  (rowUpper[irow]-minR[irow])/value2;
 			if (dbound > colLower[kcol] + primalTolerance_) {
@@ -1212,7 +1216,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			  moveUp = newLower-colLower[kcol];
 			}
 		      }
-		      if (colLower[kcol] > -1e10 && (markC[kcol]&1)==0) {
+		      if (colLower[kcol] > -1e10 && (markC[kcol]&1)==0 &&
+			  rowLower[irow]>-1.0e10) {
 			dbound = colLower[kcol] + 
 			  (rowLower[irow]-maxR[irow])/value2;
 			if (dbound < colUpper[kcol] - primalTolerance_) {
@@ -1232,7 +1237,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      }
 		    } else {
 		      /* positive element */
-		      if (colUpper[kcol] < 1e10 && (markC[kcol]&2)==0) {
+		      if (colUpper[kcol] < 1e10 && (markC[kcol]&2)==0 &&
+			  rowLower[irow]>-1.0e10) {
 			dbound = colUpper[kcol] + 
 			  (rowLower[irow]-maxR[irow])/value2;
 			if (dbound > colLower[kcol] + primalTolerance_) {
@@ -1250,7 +1256,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			  moveUp = newLower-colLower[kcol];
 			}
 		      }
-		      if (colLower[kcol] > -1e10 && (markC[kcol]&1)==0) {
+		      if (colLower[kcol] > -1e10 && (markC[kcol]&1)==0 &&
+			  rowUpper[irow]<1.0e10) {
 			dbound = colLower[kcol] + 
 			  (rowUpper[irow]-minR[irow])/value2;
 			if (dbound < colUpper[kcol] - primalTolerance_) {
