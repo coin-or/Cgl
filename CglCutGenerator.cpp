@@ -52,6 +52,11 @@ CglCutGenerator::operator=(
   }
   return *this;
 }
+bool 
+CglCutGenerator::mayGenerateRowCutsInTree() const
+{
+  return true;
+}
 
 
 

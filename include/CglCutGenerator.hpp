@@ -82,6 +82,15 @@ public:
   */
   inline void setAggressiveness(int value)
   { aggressive_=value;};
+
+  /**
+     Returns true if may generate Row cuts in tree (rather than root node).
+     Used so know if matrix will change in tree.  Really
+     meant so column cut generators can still be active
+     without worrying code.
+     Default is true
+  */
+  bool mayGenerateRowCutsInTree() const;
   //@}
   
   // test this class
