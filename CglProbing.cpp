@@ -653,6 +653,9 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       if (mode==1) {
 	const double * colsol = si.getColSolution();
 	double_int_pair * array = new double_int_pair [nCols];
+# 	ifdef ZEROFAULT
+	memset(array,0,(nCols*sizeof(double_int_pair))) ;
+#	endif
 	for (i=0;i<nCols;i++) {
 	  if (intVar[i]&&colUpper[i]-colLower[i]>1.0e-8) {
 	    double away = fabs(0.5-(colsol[i]-floor(colsol[i])));
