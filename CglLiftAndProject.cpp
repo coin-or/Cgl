@@ -145,11 +145,11 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
 
   // Set lower bound on u and v
   // u_0, v_0 will be reset as free
-  const double INFINITY = si.getInfinity();
+  const double solverINFINITY = si.getInfinity();
   double * BColLowers = new double[BNumCols];
   double * BColUppers = new double[BNumCols];
   CoinFillN(BColLowers,BNumCols,0.0);  
-  CoinFillN(BColUppers,BNumCols,INFINITY); 
+  CoinFillN(BColUppers,BNumCols,solverINFINITY); 
 
   // Set row lowers and uppers.
   // The rhs is zero, for but the last two rows.
@@ -263,8 +263,8 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
     const OsiPackedMatrix *see1 = coneSi->getMatrixByRow();
 #endif
 
-    coneSi->addCol(v_0,-INFINITY,INFINITY,0);
-    coneSi->addCol(u_0,-INFINITY,INFINITY,x[j]);
+    coneSi->addCol(v_0,-solverINFINITY,solverINFINITY,0);
+    coneSi->addCol(u_0,-solverINFINITY,solverINFINITY,x[j]);
     if(haveWarmStart) {
       coneSi->setWarmStart(warmStart);
       coneSi->resolve();
@@ -280,7 +280,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
     if(coneSi->isProvenOptimal()){
       warmStart = coneSi->getWarmStart();
       haveWarmStart=true;
-      double * wstar = coneSi->getColSolution();
+      const double * wstar = coneSi->getColSolution();
       CoinDisjointCopyN(wstar, m, ustar);
       Atilde->transposeTimes(ustar,alpha);
       alpha[j]+=wstar[BNumCols-1]; 
@@ -300,7 +300,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
       OsiRowCut rc;
       rc.setRow(n,nVectorIndices,alpha);
       rc.setLb(beta_);
-      rc.setUb(INFINITY);
+      rc.setUb(solverINFINITY);
       cs.insert(rc);
     }
     // delete col for u_o and v_0
