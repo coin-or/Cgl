@@ -242,7 +242,28 @@ private:
 				       int rowLen, int* ind, 
 				       double* coef, char sen, 
 				       double rhs) const;
+    /** Lift functions */
+    void liftCMinus(double &movement, /* Output */ 
+		    int t,
+		    int r,
+		    double z,
+		    double dPrimePrime, 
+		    double lambda,
+		    double ml,
+		    double *M,
+		    double *rho) const;
+
+    int liftNPlusCPlus(double &alpha, 
+		       double &beta,
+		       int r,
+		       double m_j, 
+		       double lambda,
+		       double y_j,
+		       double x_j,
+		       double dPrimePrime,
+		       double *M) const;
     
+
     //-------------------------------------------------------------------------
     //**@name Query and set the row type of a givne row. */
     //@{

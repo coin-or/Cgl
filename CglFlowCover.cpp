@@ -491,7 +491,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     if (sense == 'G') flipRow(rowLen, coef, rhs);
 
 #if CGLFLOW_DEBUG
-    std::cout << "Generate Flow cover -- initial constraint..." << endl;
+    std::cout << "Generate Flow cover -- initial constraint..." << std::endl;
     for(int iD = 0; iD < rowLen; ++iD) {
 	VUB = getVubs(ind[iD]);
 
@@ -683,6 +683,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     //-------------------------------------------------------------------------
     // Generate a violated SGFC
 
+    int numPlusPlus = 0;
     double* rho     = new double [rowLen];
     double* xCoef   = new double [rowLen]; 
     double* yCoef   = new double [rowLen];
@@ -718,6 +719,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	if (label[i] == CGLFLOW_COL_INCUT  && sign[i] > 0) { // C+
 	    yCoef[i] = 1.0;
 	    if ( up[i] > lambda + EPSILON_ ) { // C++
+		++numPlusPlus;
 		xCoef[i] = lambda - up[i];
 		cutRHS += xCoef[i];
 		if( up[i] < minPlsM ) {
@@ -756,6 +758,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     int     index  = 0;
     double  temp1  = 0.0;
     double* mt     = new double [rowLen];
+    double* M      = new double [rowLen + 1];
     
     while (true) {
 	ix = UNDEFINED_;
@@ -780,7 +783,8 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	    label[ix] = CGLFLOW_COL_INCUTDONE;
     }
     
-    if( index == 0 ) {         // No col in C++ and L-(not all). RETURN.
+    if( index == 0 || numPlusPlus == 0) {
+	// No col in C++ and L-(not all). RETURN.
 #if CGLFLOW_DEBUG
 	std::cout << "index = 0. RETURN." << std::endl; 
 #endif
@@ -812,141 +816,95 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     }
     
     temp1 = temp;
-    t = 0;
-
-    // If minPlsM <= minNegM or if sum >= lambda then the
-    // lifting function itself is superadditive, so we do not
-    // need to work with a super additive valid lifting function.
-    // See Corallary 2
-
-    if ( ( minPlsM > minNegM ) && ( sum < lambda ) ) {
-	// Compute break point (t in p.15)
-	for ( i = 0; i < index; ++i ) {
-	    if ( mt[i] < minPlsM ) {
-		t = i;
-		break;
-	    }
-	}
-
-	// Compute rho
-	if ( t < index - 1 ) {
-	    if ( t > 0 ) {
-		rho[t-1] = minPlsM - mt[t];
-		if( rho[t-1] > lambda )
-		    rho[t-1] = lambda;
-		if( lambda - sum < rho[t-1] ) 
-		    rho[t-1] = lambda - sum;
-	    }
-
-	    for (i = t; i < index; ++i) {
-		if( i == 0 ) 
-		    rho[i] = mt[i] - mt[i+1];
-		else 
-		    rho[i] = mt[i-1] - mt[i] + rho[i-1];
-//		    rho[i] = mt[i] - mt[i+1] + rho[i-1];
-		
-		if( rho[i] > lambda ) 
-		    rho[i] = lambda;
-		
-		if( lambda - sum < rho[i] ) 
-		    rho[i] = lambda - sum;	
-	    }
-	    if( sum == 0.0 ) {
-		temp1 = -lambda;
-		for( i = 0; i < t; i++ )
-		    temp1 += mt[i];
-	    }
-	}
-    }
-  
-    // mt[i] is M_i now.
-    for ( i = 1; i < index; ++i ) {
-	mt[i] += mt[i-1];
-    }
-
-    // Lift coeffs
-    int ii;
-    for( i = 0; i < rowLen; ++i ) {
-	if( label[i] != CGLFLOW_COL_INCUT && 
-	    sign[i] == CGLFLOW_COL_CONTPOS )     { // N+\C+
-
-	    double tempLCX = 0.0;  // tempLCX and tempLCY are temporary lifting
-	    double tempLCY = 0.0;  // coefficients for x and y
-	    int jj;
-	    
-	    // Determine interval of m_i
-	    if ( up[i] > mt[index-1] - lambda + EPSILON_ ) {
-		if ( up[i] < temp1 - EPSILON_ ) {
-		    if (y[i] - (mt[index-1] - index * lambda) * x[i] > 
-			tempLCX * x[i] + tempLCY * y[i]) {
-			tempLCY = 1.0;
-			tempLCX = -( mt[index-1] - index * lambda );
-		    }
-		}
-	    }
-	    else {
-		for ( ii = 0; ii < index; ii++ ) {
-		    if ( up[i] <= mt[ii] ) 
-			break;
-		}
-		
-		jj = ii;
-		if ( up[i] > mt[jj] - lambda ) {
-		    if ( y[i] - (mt[jj] - (jj+1) * lambda) * x[i] > 
-			 tempLCX * x[i] + tempLCY * y[i] ) {
-			tempLCY = 1.0;
-			tempLCX = -( mt[jj] - (jj+1) * lambda );
-		    }
-		}
-	    }
-	    yCoef[i] = tempLCY;
-	    xCoef[i] = tempLCX;    
-	}
-
-	if ( (label[i] != CGLFLOW_COL_INCUT && 
-	      sign[i] == CGLFLOW_COL_BINPOS) ||  
-	     (label[i] == CGLFLOW_COL_INCUT && sign[i] < 0) ) { 
-	
-	    if ( up[i] > temp ) 
-		xCoef[i] = -temp + mt[index-1] - index * lambda;
-	    else {
-		if ( up[i] > mt[index-1] - lambda ) 
-		    xCoef[i] = -up[i] + mt[index-1] - index * lambda;
-		else {
-		    for ( ii = 0; ii < index; ++ii ) {
-			if ( up[i] < mt[ii] - rho[ii] ) 
-			    break;	  
-		    }
-		    
-		    if (up[i] > mt[ii] - lambda) {
-			xCoef[i] = -up[i] + mt[ii] - (ii+1) * lambda;
-		    }
-		    else {
-			xCoef[i] = -ii * lambda;
-		    }
-		}
-	    }
-
-	    if ( label[i] != CGLFLOW_COL_INCUT && 
-		 sign[i] == CGLFLOW_COL_BINPOS ) {  // N+\C+
-		yCoef[i] = 0.0;
-		
-		xCoef[i] = -xCoef[i];
-		if( xCoef[i] < EPSILON_ )
-		    xCoef[i] = 0.0;
-	    }
     
-	    if ( label[i] == CGLFLOW_COL_INCUT && sign[i] < 0 ) { // C-
-		yCoef[i] = 0.0;
-		if ( -xCoef[i] < EPSILON_ ) {
-		    xCoef[i] = 0.0;
-		}
-		else {
-		    cutRHS += xCoef[i];
-		}
+    /* Get t */
+    t = 0;
+    for ( i = 0; i < index; ++i ) {
+	if ( mt[i] < minPlsM ) {
+	    t = i;
+	    break;
+	} 
+    }
+
+    if (i == index) {
+	t = index;
+    }
+    
+    /* Compute M_i */
+    M[0] = 0.0;
+    for ( i = 1; i <= index; ++i ) {
+	M[i] = M[(i-1)] + mt[(i-1)];
+#if CGLFLOW_DEBUG
+	printf("mt[%i]=%f, M[%i]=%f\n",i-1, mt[i-1], i, M[i]);
+#endif
+    }
+    
+    /* Get ml */
+    double ml = CoinMin(sum, lambda);
+    /* rho_i = max[0, m_i - (minPlsM - lamda) - ml */
+    if (t < index ) { /* rho exits only for t <= index-1 */
+	value = (minPlsM - lambda) + ml;
+	for (i = t; i < index; ++i) {
+	    rho[i] =  CoinMax(0.0, mt[i] - value);
+#if MY_FLOW_DEBUG
+	    printf("rho[%i]=%f\n", i, rho[i]);
+#endif
+	}
+    }
+    
+    double movement = 0.0;
+    double dPrimePrime = temp + cutRHS; 
+    bool lifted = false;
+#if 0
+    for( i = 0; i < rowLen; ++i ) {
+	if ( (label[i] != CGLFLOW_COL_INCUT) && (sign[i] > 0) ) {/* N+\C+*/
+	    lifted = liftNPlusCPlus(yCoef[i], xCoef[i], 
+				    index, up[i],
+				    lambda,
+				    y[i], x[i], 
+				    dPrimePrime, M);
+	    
+	    //xCoef[i] = alpha;
+	    //yCoef[i] = -beta;
+#if CGLFLOW_DEBUG
+	    if (lifted == true) {
+		printf("Success: Lifted col %i (up_i=%f,yCoef[i]=%f,xCoef[i]=%f) in N+\\C+\n", 
+		       ind[i], up[i], yCoef[i], xCoef[i]);
+	    }
+	    else {
+		printf("Failed to Lift col %i (m_i=%f) in N+\\C+\n", 
+		       ind[i], up[i]);
+	    }       
+#endif
+	}
+	if (label[i] == CGLFLOW_COL_INCUT && sign[i] < 0) { 
+	    /* C- */
+	    liftCMinus(movement, t,
+		       index, up[i], 
+		       dPrimePrime, 
+		       lambda,	ml,
+		       M, rho);
+                
+	    if(movement > EPSILON_) {
+#if MY_FLOW_DEBUG
+		printf("Success: Lifted col %i in C-, movement=%f\n", 
+		       colInd[i], movement);
+#endif
+		lifted = true;
+		yCoef[i] = -movement;
+		cutRHS -= movement;
+	    }
+	    else {
+#if MY_FLOW_DEBUG
+		printf("Failed to Lift col %i in C-, g=%f\n",
+		       colInd[i], movement);
+#endif
 	    }
 	}
     }
+#endif
+    //-------------------------------------------------------------------
+
     
     // Calculate the violation
     violation = -cutRHS;
@@ -1214,4 +1172,132 @@ CglFlowCover::determineOneRowType(const OsiSolverInterface& si,
     return rowType;
 }
 
+/*===========================================================================*/
+
+void
+CglFlowCover::liftCMinus(double &movement, /* Output */ 
+			 int t,
+			 int r,
+			 double z,
+			 double dPrimePrime, 
+			 double lambda,
+			 double ml,
+			 double *M,
+			 double *rho) const
+{
+    int i;
+    movement = 0.0;
+    
+    if (z > dPrimePrime) {
+        movement = z - M[r] + r * lambda;
+    }
+    else {
+        for (i = 0; i < t; ++i) {
+            if ( (z >= M[i]) && (z <= M[(i+1)] - lambda) ) {
+		movement = i * lambda;
+		return;
+            }
+        }
+        
+        for (i = 1; i < t; ++i) {
+            if ( (z >= M[i] - lambda) && (z <= M[i]) ) {
+                movement = z - M[i] + i * lambda;
+                return;
+            }
+        }
+        
+        for (i = t; i < r; ++i) {
+            if ( (z >= M[i] - lambda) && (z <= M[i] - lambda + ml + rho[i]) ) {
+                movement = z - M[i] + i * lambda;
+                return;
+            }
+        }
+        
+        for (i = t; i < r; ++i) {
+            if ( (z >= M[i]-lambda+ml+rho[i]) && (z <= M[(i+1)]-lambda) ) {
+                movement = i * lambda;
+                return;
+            }
+        }
+    
+        if ((z >= M[r] - lambda) && z <= dPrimePrime) {
+            movement = z - M[r] + r * lambda;
+        }
+    }
+    
+}
+
+/*===========================================================================*/
+
+int
+CglFlowCover::liftNPlusCPlus(double &alpha, 
+			     double &beta,
+			     int r,
+			     double m_j, 
+			     double lambda,
+			     double y_j,
+			     double x_j,
+			     double dPrimePrime,
+			     double *M) const
+{
+    int i;
+    int status = false;  /* Defalut: fail to lift */
+    double value;
+    alpha = 0.0;
+    beta = 0.0;
+    
+    if (m_j > M[r] - lambda + EPSILON_) {
+        if (m_j < dPrimePrime - EPSILON_) {
+            if ((m_j > (M[r] - lambda)) && (m_j <= M[r])){ /* FIXME: Test */
+                value = y_j - x_j * (M[r] - r * lambda);
+                
+                /* FIXME: Is this "if" useful */
+                if (value > 0.0) {
+                    status = true;
+                    alpha = 1.0;
+                    beta = M[r] - r * lambda;
+#if CGLFLOW_DEBUG
+                    printf("liftNPlusCPlus:1: value=%f, alpah=%f, beta=%f\n",
+                           value, alpha,beta);
+#endif
+                }
+                else {
+#if CGLFLOW_DEBUG
+                    printf("liftNPlusCPlus:1: value=%f, become worst\n",value);
+#endif
+                }
+            }
+        }
+#if CGLFLOW_DEBUG
+                    printf("liftNPlusCPlus:1: too big number\n");
+#endif
+    }
+    else {
+        for (i = 1; i <= r; ++i) {
+            if ((m_j > (M[i] - lambda)) && (m_j <= M[i])){ /* FIXME: Test */
+                
+                value = y_j - x_j * (M[i] - i * lambda);
+
+                /* FIXME: Is this "if" useful */
+                if (value > 0.0) {
+                    status = true;
+                    alpha = 1.0;
+                    beta = M[i] - i * lambda;
+#if CGLFLOW_DEBUG
+                    printf("liftNPlusCPlus:2: value=%f, alpah=%f, beta=%f\n",
+                           value, alpha, beta);
+#endif
+                }
+                else {
+#if CGLFLOW_DEBUG
+                    printf("liftNPlusCPlus:2: value=%f, become worst\n",value);
+#endif
+                }
+                return status;
+            }
+        }
+    }
+    
+    return status;
+}
 
