@@ -20,6 +20,42 @@ public:
   /** Generate probing/disaggregation cuts for the model of the 
       solver interface, si.
 
+      This is a simplification of probing ideas put into OSL about
+      ten years ago.  The only known documentation is a copy of a 
+      talk handout - we think Robin Lougee-Heimer has a copy!
+
+      For selected integer variables (e.g. unsatisfied ones) the effect of
+      setting them up or down is investigated.  Setting a variable up
+      may in turn set other variables (continuous as well as integer).
+      There are various possible results:
+
+      1) It is shown that problem is infeasible (this may also be
+         because objective function or reduced costs show worse than
+	 best solution).  If the other way is feasible we can generate
+	 a column cut (and continue probing), if not feasible we can
+	 say problem infeasible.
+
+      2) If both ways are feasible, it can happen that x to 0 implies y to 1
+         ** and x to 1 implies y to 1 (again a column cut).  More common
+	 is that x to 0 implies y to 1 and x to 1 implies y to 0 so we could
+	 substitute for y which might lead later to more powerful cuts.
+	 ** This is not done in this code as there is no mechanism for
+	 returning information.
+
+      3) When x to 1 a constraint went slack by c.  We can tighten the
+         constraint ax + .... <= b (where a may be zero) to
+	 (a+c)x + .... <= b.  If this cut is violated then it is
+	 generated.
+
+      4) Similarly we can generate implied disaggregation cuts
+
+      Note - differences to cuts in OSL.
+
+      a) OSL had structures intended to make this faster.
+      b) The "chaining" in 2) was done
+      c) Row cuts modified original constraint rather than adding cut
+      b) This code can cope with general integer variables.
+
       Insert the generated cuts into OsiCut, cs.
 
       If a "snapshot" of a matrix exists then this will be used.
