@@ -30,14 +30,14 @@
 void testingMessage( const char * const msg );
 
 // Command line parameter is directory containing data files.
-// If not specified, then "../Mps/" is used.
+// If not specified, then "../Mps/Sample/" is used.
 
 int main (int argc, const char *argv[])
 {
   // Set directory containing data files.
   std::string mpsDir;
   if ( argc >= 2 ) mpsDir = argv[1];
-  else mpsDir ="../Mps/";
+  else mpsDir ="../Mps/Sample/";
 
 #ifdef COIN_USE_OSL
   {

@@ -60,10 +60,6 @@ include ${MakefileDir}/Makefile.coin
 include ${MakefileDir}/Makefile.detectSolver
 include ${MakefileDir}/Makefile.detectOsi
 
-###############################################################################
-
-include ${MakefileDir}/Makefile.rules
-
 ##############################################################################
 
 CXXFLAGS += $(OPTFLAG)
@@ -107,6 +103,11 @@ LIBDEP := $(addprefix $(DEPDIR)/, $(LIBSRC:.cpp=.d))
 TESTSRC := $(wildcard *Test.cpp)
 TESTOBJ := $(addprefix $(TARGETDIR)/, $(TESTSRC:.cpp=.o))
 TESTDEP := $(addprefix $(DEPDIR)/, $(TESTSRC:.cpp=.d))
+
+###############################################################################
+# This one must be right before the rules
+
+include ${MakefileDir}/Makefile.rules
 
 ###############################################################################
 
