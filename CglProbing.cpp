@@ -167,7 +167,7 @@ static int tighten(double *colLower, double * colUpper,
 	      if (value > 0.0) {
 		if (colUpper[j] < 1e15) {
 		  dbound = colUpper[j] + (rowLower[i] - dmaxup) / value;
-		  if (dbound > colLower[j] + 1.0e-12) {
+		  if (dbound > colLower[j] + 1.0e-8) {
 		    /* we can tighten the lower bound */
 		    /* the paper mentions this as a possibility on p. 227 */
 		    colLower[j] = dbound;
@@ -199,7 +199,7 @@ static int tighten(double *colLower, double * colUpper,
 	      } else {
 		if (colLower[j] > -1e15) {
 		  dbound = colLower[j] + (rowLower[i] - dmaxup) / value;
-		  if (dbound < colUpper[j] - 1.0e-12) {
+		  if (dbound < colUpper[j] - 1.0e-8) {
 		    colUpper[j] = dbound;
 		    ++iubred;
 		    if (colUpper[j] - colLower[j] <= tolerance) {
@@ -226,7 +226,7 @@ static int tighten(double *colLower, double * colUpper,
 	      if (value < 0.0) {
 		if (colUpper[j] < 1e15) {
 		  dbound = colUpper[j] + (rowUpper[i] - dmaxdown) / value;
-		  if (dbound > colLower[j] + 1.0e-12) {
+		  if (dbound > colLower[j] + 1.0e-8) {
 		    colLower[j] = dbound;
 		    ++ilbred;
 		    if (! (colUpper[j] - colLower[j] > tolerance)) {
@@ -242,7 +242,7 @@ static int tighten(double *colLower, double * colUpper,
 	      } else {
 		if (colLower[j] > -1e15) {
 		  dbound = colLower[j] + (rowUpper[i] - dmaxdown) / value;
-		  if (dbound < colUpper[j] - 1.0e-12) {
+		  if (dbound < colUpper[j] - 1.0e-8) {
 		    colUpper[j] = dbound;
 		    ++iubred;
 		    if (! (colUpper[j] - colLower[j] > tolerance)) {
