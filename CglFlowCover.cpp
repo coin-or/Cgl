@@ -26,7 +26,6 @@
 
 
 #define CGLFLOW_DEBUG 0
-
 //-------------------------------------------------------------------
 // Overloaded operator<< for printing VUB and VLB.
 //-------------------------------------------------------------------  
@@ -1040,6 +1039,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     delete [] xCoef;
     delete [] yCoef;
     delete [] mt; 
+    delete [] M; 
     delete [] cutInd;
     delete [] cutCoef;
     
