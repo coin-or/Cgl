@@ -21,7 +21,8 @@ public:
   /** Generate knapsack cover cuts for the model of the solver interface, si. 
       Insert the generated cuts into OsiCut, cs.
   */
-  virtual void generateCuts(const OsiSolverInterface & si, OsiCuts & cs) const;
+  virtual void generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
+			    const int level = 0) const;
   //@}
 
   /**@name Constructors and destructors */

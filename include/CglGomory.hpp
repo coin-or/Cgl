@@ -30,7 +30,7 @@ public:
       from integer.
   */
   virtual void generateCuts( const OsiSolverInterface & si, 
-			     OsiCuts & cs) const;
+			     OsiCuts & cs, const int level = 0) const;
   /** Generates cuts given matrix and solution etc,
       returns number of cuts generated */
   int generateCuts( const OsiRowCutDebugger * debugger, 

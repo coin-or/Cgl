@@ -368,7 +368,7 @@ static int nPath=0;
 // Generate disaggregation cuts
 //------------------------------------------------------------------- 
 void CglProbing::generateCuts(const OsiSolverInterface & si, 
-						OsiCuts & cs ) const
+			      OsiCuts & cs, const int level) const
 {
 #ifdef CGL_DEBUG
   const OsiRowCutDebugger * debugger = si.getRowCutDebugger();

@@ -28,7 +28,8 @@ public:
   The generated cuts are inserted into and returned in the
   collection of cuts cs.
   */
-  virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs )const=0; 
+  virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
+			     const int level = 0) const=0; 
   //@}
 
     

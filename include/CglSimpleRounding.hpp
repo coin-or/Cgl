@@ -34,7 +34,8 @@ public:
   /** Generate simple rounding cuts for the model accessed through the solver interface. 
   Insert generated cuts into the cut set cs.
   */
-  virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs ) const;
+  virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
+			     const int level = 0) const;
   //@}
 
   /**@name Constructors and destructors */

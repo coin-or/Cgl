@@ -21,7 +21,7 @@
 // Generate Lift-and-Project cuts
 //------------------------------------------------------------------- 
 void CglLiftAndProject::generateCuts(const OsiSolverInterface & si, 
-						OsiCuts & cs ) const
+				     OsiCuts & cs, const int level) const
 {
   // Assumes the mixed 0-1 problem 
   //

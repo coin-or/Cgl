@@ -83,7 +83,7 @@ public:
 	 Returns number of infeasibilities 
   */
   virtual void generateCuts( const OsiSolverInterface & si, 
-			     OsiCuts & cs) const;
+			     OsiCuts & cs, const int level = 0) const;
   int generateCutsAndModify( const OsiSolverInterface & si, 
 			     OsiCuts & cs);
   //@}

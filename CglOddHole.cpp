@@ -30,7 +30,7 @@ public:
 // Generate three cycle cuts
 //------------------------------------------------------------------- 
 void CglOddHole::generateCuts(const OsiSolverInterface & si, 
-						OsiCuts & cs ) const
+			      OsiCuts & cs, const int level) const
 {
   // Get basic problem information
   int nRows=si.getNumRows(); 

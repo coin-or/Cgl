@@ -18,7 +18,7 @@ private:
 public:
     
    virtual void
-   generateCuts(const OsiSolverInterface& si, OsiCuts & cs);
+   generateCuts(const OsiSolverInterface& si, OsiCuts & cs, const int level=0);
 
    virtual void
    generateCuts(const OsiSolverInterface& si, OsiCuts & cs) const {

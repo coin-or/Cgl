@@ -126,7 +126,8 @@ public:
       contained in si. The generated cuts are inserted 
       in the collection of cuts cs. 
   */
-  virtual void generateCuts(const OsiSolverInterface & si, OsiCuts & cs) const;
+  virtual void generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
+			    const int level = 0) const;
   //@}
 
   //---------------------------------------------------------------------------

@@ -23,7 +23,7 @@
 // Generate knapsack cover cuts
 //------------------------------------------------------------------- 
 void CglKnapsackCover::generateCuts(const OsiSolverInterface & si, 
-						OsiCuts & cs ) const
+				    OsiCuts & cs, const int level) const
 {
   // Get basic problem information
   int nRows=si.getNumRows(); 

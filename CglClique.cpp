@@ -41,7 +41,8 @@ CglClique::CglClique(bool setPacking) :
 /*****************************************************************************/
 
 void
-CglClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs)
+CglClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
+			const int level)
 {
    int i;
 

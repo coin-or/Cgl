@@ -173,7 +173,7 @@ public:
 	in the collection of cuts cs. 
     */
     virtual void generateCuts(const OsiSolverInterface & si, 
-			      OsiCuts & cs) const;
+			      OsiCuts & cs, const int level = 0) const;
     //@}
 
     /**@name Functions to query and set maximum number of cuts can be 
