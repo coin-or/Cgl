@@ -72,7 +72,8 @@ void CglGomory::generateCuts(const OsiSolverInterface & si,
 	   si.getRowLower(), si.getRowUpper(),
 	   intVar,warm);
 
-
+  delete warmstart;
+  delete [] intVar;
 }
 
 // Returns value - floor but allowing for small errors
@@ -605,9 +606,9 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		    break;
 		  }
 		}
-
+		
 		if (nOverflow){
-#ifdef CGL_DEBUG
+#ifdef CGL_DEBUG		
 		  printf("Gomory Scaling: Warning: Overflow detected \n");
 #endif
 		  numberNonInteger=-1;

@@ -59,7 +59,7 @@ static int tighten(double *colLower, double * colUpper,
 	dmaxdown = 0.0;
 	krs = rowStart[i];
 	kre = rowStart[i]+rowLength[i];
-
+	
 	/* ------------------------------------------------------------*/
 	/* Compute L(i) and U(i) */
 	/* ------------------------------------------------------------*/
@@ -392,7 +392,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   // Get basic problem information
   int nRows;
   
-  OsiPackedMatrix * rowCopy;
+  OsiPackedMatrix * rowCopy=NULL;
 
   // get branch and bound cutoff
   double cutoff;
@@ -857,6 +857,13 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     delete [] movement;
     delete [] minR;
     delete [] maxR;
+  }
+  // delete stuff
+  if (!numberRows_) {
+    delete rowCopy;
+  } else {
+    delete [] rowLower;
+    delete [] rowUpper;
   }
   delete [] intVar;
   return ninfeas;
