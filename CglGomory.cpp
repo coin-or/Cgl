@@ -90,7 +90,7 @@ inline double above_integer(double value)
 int gcd(int a, int b) 
 {
   int remainder = -1;
-#ifdef CGL_DEBUG
+#if CGL_DEBUG>1
   printf("gcd of %d and %d\n",a,b);
   int nLoop=0;
 #endif
@@ -103,7 +103,7 @@ int gcd(int a, int b)
   }
   while (remainder) {
 
-#ifdef CGL_DEBUG
+#if CGL_DEBUG>1
     nLoop++;
     if (nLoop>50) {
       abort();
@@ -114,7 +114,7 @@ int gcd(int a, int b)
     b = a;
     a = remainder;
   }
-#ifdef CGL_DEBUG
+#if CGL_DEBUG>1
   printf("=> %d\n",b);
 #endif
   return b;
@@ -134,7 +134,7 @@ inline Rational nearestRational(double value, int maxDenominator)
   Rational tryB;
   double integerPart;
 
-#ifdef CGL_DEBUG
+#if CGL_DEBUG>1
   printf("Rational of %g is ",value);
 #endif
   int nLoop=0;
@@ -171,12 +171,12 @@ inline Rational nearestRational(double value, int maxDenominator)
     tryB = tryThis;
   }
   if (tryB.denominator <= maxDenominator) {
-#ifdef CGL_DEBUG
+#if CGL_DEBUG>1
     printf("%d/%d\n",tryB.numerator,tryB.denominator);
 #endif
     return tryB;
   } else {
-#ifdef CGL_DEBUG
+#if CGL_DEBUG>1
     printf("%d/%d\n",tryA.numerator,tryA.denominator);
 #endif
     return tryA;
@@ -422,7 +422,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      // small value
 	      continue;
 	    } else {
-#ifdef CGL_DEBUG
+#if CGL_DEBUG>1
 	      printf("for basic %d, column %d has alpha %g, colsol %g\n",
 		     iColumn,j,value,colsol[j]);
 #endif
@@ -579,7 +579,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		  double value = fabs(packed[j]);
 		  double dxInt = value*multiplier;
 		  xInt[j]= (int) (dxInt+0.5); 
-#ifdef CGL_DEBUG
+#if CGL_DEBUG>1
 		  printf("%g => %g   \n",value,dxInt);
 #endif
 		  if (dxInt>1.0e9||fabs(dxInt-xInt[j])> 1.0e-8) {
@@ -601,7 +601,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		    thisGcd = gcd(thisGcd,xInt[j]);
 		  }
 		  
-#ifdef CGL_DEBUG
+#if CGL_DEBUG>1
 		  printf("The gcd of xInt is %i\n",thisGcd);    
 #endif
 		  
@@ -615,7 +615,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		    } else {
 		      packed[j]=-xInt[j]/thisGcd;
 		    }
-#ifdef CGL_DEBUG
+#if CGL_DEBUG>1
 		    printf("%g => %g   \n",old,packed[j]);
 #endif
 		    if (fabs(packed[j])>maxMultiplier*fabs(old))
