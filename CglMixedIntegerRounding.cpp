@@ -29,7 +29,7 @@
 void
 CglMixedIntegerRounding::generateCuts(const OsiSolverInterface& si,
 				      OsiCuts& cs,
-				      const int level, const int pass) const
+				      const CglTreeInfo info) const
 {
 
   // If the LP or integer presolve is used, then need to redo preprocessing

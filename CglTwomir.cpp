@@ -69,7 +69,7 @@ void testus( DGG_constraint_t *cut){ //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // Generate  cuts
 //------------------------------------------------------------------- 
 void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs, 
-			     const int level, const int pass ) const
+			     const CglTreeInfo info ) const
 {
 
   //!!!!!!!!!!!!!!!!!!
@@ -90,11 +90,12 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   if (!do_mir_) t_max = t_min - 1;
   if (!do_2mir_) q_max = q_min - 1;
 
-  if (do_tab_ && level < 1 && pass < 6)
+  if (do_tab_ && info.level < 1 && info.pass < 6)
       DGG_generateTabRowCuts( &cut_list, data, (const void *) &si );
   
   if (do_form_)
-    DGG_generateFormulationCuts( &cut_list, data, (const void *) &si, form_nrows_ );
+    DGG_generateFormulationCuts( &cut_list, data, (const void *) &si,
+				 info.formulation_rows );
   
 #ifdef CGL_DEBUG
   const OsiRowCutDebugger debugg(si, probname_);// = si.getRowCutDebugger();

@@ -24,7 +24,7 @@
 // Generate Gomory cuts
 //------------------------------------------------------------------- 
 void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-			     const int level, const int pass) const
+			     const CglTreeInfo info) const
 {
   // Get basic problem information
   int numberColumns=si.getNumCols(); 

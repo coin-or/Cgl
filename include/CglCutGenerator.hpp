@@ -6,6 +6,19 @@
 #include "OsiCuts.hpp"
 #include "OsiSolverInterface.hpp"
 
+/** Information about where the cut generator is invoked from. */
+
+struct CglTreeInfo {
+  /// The level of the search tree node 
+  int level;
+  /// How many times the cut generator was already invoked in this search tree
+  /// node
+  int pass;
+  /// The number of rows in the original formulation. Some generators may not
+  /// want to consider already generated rows when generating new ones.
+  int formulation_rows;
+  CglTreeInfo() : level(-1), pass(-1), formulation_rows(-1) {}
+};
 
 //-------------------------------------------------------------------
 //
@@ -29,7 +42,7 @@ public:
   collection of cuts cs.
   */
   virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
-			     const int level = 0, const int pass = 0) const=0; 
+			     const CglTreeInfo info = CglTreeInfo()) const=0; 
   //@}
 
     

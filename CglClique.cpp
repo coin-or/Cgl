@@ -42,7 +42,7 @@ CglClique::CglClique(bool setPacking) :
 
 void
 CglClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
-		const int level, const int pass) const
+		const CglTreeInfo info) const
 {
    int i;
 

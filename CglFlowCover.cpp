@@ -224,7 +224,7 @@ CglFlowCover::flowPreprocess(const OsiSolverInterface& si) const
 // Generate LSGFC cuts
 //------------------------------------------------------------------- 
 void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-				const int level, const int pass) const 
+				const CglTreeInfo info) const 
 {
     if (getMaxNumCuts() <= 0) return;
     

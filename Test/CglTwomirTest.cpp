@@ -1,5 +1,5 @@
-/* Compile it with:
-  g++ -g -o test2mir CglTwomirTest.o -L$HOME/COIN/lib -Wl,-rpath,$HOME/COIN/lib -lSbb -lCgl -lOsiClp -lClp -lOsi -lCoin -lm
+/* Compile it with (assuming COIN lives in $HOME/COIN):
+  g++ -g -o test2mir CglTwomirTest.cpp -I$HOME/COIN/include -L$HOME/COIN/lib -Wl,-rpath,$HOME/COIN/lib -lSbb -lCgl -lOsiClp -lClp -lOsi -lCoin -lm
 
   Run it with:
   test2mir <mps_file_name>

@@ -94,7 +94,7 @@ public:
       formulation rows
   */
   virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs, 
-			     const int level = 0, const int pass = 0) const;
+			     const CglTreeInfo info = CglTreeInfo()) const;
 
   /**@name Change criterion on which scalings to use (default = 1,1,1,1) */
   //@{
