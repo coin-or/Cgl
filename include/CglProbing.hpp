@@ -84,8 +84,8 @@ public:
   */
   virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
 			     const CglTreeInfo info = CglTreeInfo()) const;
-  int generateCutsAndModify( const OsiSolverInterface & si, 
-			     OsiCuts & cs);
+  int generateCutsAndModify( const OsiSolverInterface & si, OsiCuts & cs, 
+			     const CglTreeInfo info = CglTreeInfo());
   //@}
 
   /**@name snapshot etc */
@@ -238,9 +238,11 @@ private:
       16 bit set if want to extend cliques at root node
   */
   int mode_;
-  /// Row cuts flag
-  /// 0 no cuts, 1 just disaggregation type, 2 coefficient ( 3 both)
-  int rowCuts_;
+  /** Row cuts flag
+      0 no cuts, 1 just disaggregation type, 2 coefficient ( 3 both), 4 just column cuts
+      -n as +n but just fixes variables unless at root
+  */
+  mutable int rowCuts_;
   /// Maximum number of passes to do in probing
   int maxPass_;
   /// Maximum number of unsatisfied variables to probe

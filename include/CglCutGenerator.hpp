@@ -17,7 +17,9 @@ struct CglTreeInfo {
   /// The number of rows in the original formulation. Some generators may not
   /// want to consider already generated rows when generating new ones.
   int formulation_rows;
-  CglTreeInfo() : level(-1), pass(-1), formulation_rows(-1) {}
+  /// Set true if in tree (to avoid ambiguity at first branch)
+  bool inTree;
+  CglTreeInfo() : level(-1), pass(-1), formulation_rows(-1), inTree(false) {}
 };
 
 //-------------------------------------------------------------------

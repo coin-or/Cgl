@@ -392,6 +392,13 @@ void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     printf("current obj %g, integer %g\n",objval1,objval2);
   }
 #endif
+  int saveRowCuts=rowCuts_;
+  if (rowCuts_<0) {
+    if (info.inTree)
+      rowCuts_=4;
+    else
+      rowCuts_=-rowCuts_;
+  }
   int nRows=si.getNumRows(); 
   double * rowLower = new double[nRows+1];
   double * rowUpper = new double[nRows+1];
@@ -417,9 +424,11 @@ void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   delete [] rowUpper;
   delete [] colLower;
   delete [] colUpper;
+  rowCuts_=saveRowCuts;
 }
 int CglProbing::generateCutsAndModify(const OsiSolverInterface & si, 
-						OsiCuts & cs )
+				      OsiCuts & cs,
+				      const CglTreeInfo info) 
 {
 #ifdef CGL_DEBUG
   const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
@@ -443,6 +452,13 @@ int CglProbing::generateCutsAndModify(const OsiSolverInterface & si,
     printf("current obj %g, integer %g\n",objval1,objval2);
   }
 #endif
+  int saveRowCuts=rowCuts_;
+  if (rowCuts_<0) {
+    if (info.inTree)
+      rowCuts_=4;
+    else
+      rowCuts_=-rowCuts_;
+  }
   int saveMode = mode_;
   if (!mode_)
     mode_=1;
@@ -467,7 +483,7 @@ int CglProbing::generateCutsAndModify(const OsiSolverInterface & si,
       assert(!debugger->invalidCut(rc)); 
 #endif
   }
-
+  rowCuts_=saveRowCuts;
   mode_=saveMode;
   // move bounds so can be used by user
   if (mode_==3) {
@@ -1025,7 +1041,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
     memset(djs,0,nCols*sizeof(double));
     memcpy(colsol, si.getColSolution(),nCols*sizeof(double));
     disaggEffectiveness=-1.0e10;
-    rowCuts=1;
+    if (rowCuts_!=4)
+      rowCuts=1;
+    else
+      rowCuts=4;
   }
   for (i = 0; i < nCols; ++i) {
     /* was if (intVar[i]) */
@@ -2374,7 +2393,7 @@ int CglProbing::getUsingObjective() const
 // Decide whether to do row cuts
 void CglProbing::setRowCuts(int type)
 {
-  if (type>=0&&type<4)
+  if (type>-5&&type<5)
     rowCuts_=type;
 }
 // Returns row cuts generation type
