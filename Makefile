@@ -4,7 +4,7 @@ LibType := SHARED
 # Select optimization (-O or -g). -O will be automatically bumped up to the 
 # highest level of optimization the compiler supports. If want something in
 # between then specify the exact level you want, e.g., -O1 or -O2
-OptLevel := -O
+OptLevel := -g
 
 # The path to the root of the install directory structure.
 # include files will be installed in ${InstallDir}/include, libraries in 
@@ -33,8 +33,8 @@ OslLibDir := PROBE
 OslLibName := libosl.so
 
 # Vol
-#VolIncDir := NONE
-VolIncDir := PROBE
+VolIncDir := NONE
+#VolIncDir := PROBE
 VolLibDir := PROBE
 VolLibName := libvol.so
 
