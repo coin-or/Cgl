@@ -18,8 +18,8 @@ TESTSRC += CglSimpleRoundingTest.cpp
 TESTSRC += unitTest.cpp
 
 export IncDir  := ${CglIncDir}  ${OsiIncDir} ${CoinIncDir} ${zlibIncDir} ${bzlibIncDir} $(ClpIncDir) $(lapackIncDir)
-export LibDir  := ${CglLibDir}  ${OsiLibDir} ${CoinLibDir} ${zlibLibDir} ${bzlibLibDir} $(ClpLibDir) $(lapackLibDir)
-export LibName := $(OsiClpLibName) ${CglLibName} ${OsiLibName} ${zlibLibName} ${bzlibLibName} $(ClpLibName) $(CoinLibName) $(lapackLibName)
+export LibDir  := ${CglLibDir}  ${OsiLibDir} ${CoinLibDir} ${zlibLibDir} ${bzlibLibDir} $(ClpLibDir) $(lapackLibDir) $(GlpkLibDir)
+export LibName := $(OsiClpLibName) ${CglLibName} ${OsiLibName} ${zlibLibName} ${bzlibLibName} $(ClpLibName) $(CoinLibName) $(lapackLibName) $(GlpkLibName)
 export Define  := ${CglDefine}  ${OsiDefine} ${CoinDefine} ${zlibDefine} ${bzlibDefine} $(ClpDefine) $(lapackDefine)
 
 ##############################################################################
