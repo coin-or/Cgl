@@ -149,6 +149,14 @@ public:
   void setMaxLook(int value);
   /// Get maximum number of variables to look at in one probe
   int getMaxLook() const;
+  /**
+     Returns true if may generate Row cuts in tree (rather than root node).
+     Used so know if matrix will change in tree.  Really
+     meant so column cut generators can still be active
+     without worrying code.
+     Default is true
+  */
+  bool mayGenerateRowCutsInTree() const;
   //@}
 
   /**@name Stop or restart row cuts (otherwise just fixing from probing) */

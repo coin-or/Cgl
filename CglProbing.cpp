@@ -3000,3 +3000,15 @@ CglProbing::deleteCliques()
   whichClique_=NULL;
   numberCliques_=0;
 }
+/*
+  Returns true if may generate Row cuts in tree (rather than root node).
+  Used so know if matrix will change in tree.  Really
+  meant so column cut generators can still be active
+  without worrying code.
+  Default is true
+*/
+bool 
+CglProbing::mayGenerateRowCutsInTree() const
+{
+  return rowCuts_>0;
+}

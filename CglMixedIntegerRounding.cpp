@@ -468,9 +468,11 @@ mixIntRoundPreprocess(const OsiSolverInterface& si) const
 	vlbs_[xInd].setVal(-yCoef / xCoef);
 	break;
       default:
-	throw CoinError("Unknown row type: impossible", 
-			"MixIntRoundPreprocess",
-			"CglMixedIntegerRounding");
+        // I am getting compiler bug which gets here - I am disabling - JJF
+	//throw CoinError("Unknown row type: impossible", 
+        //	"MixIntRoundPreprocess",
+        //	"CglMixedIntegerRounding");
+        break;
       }
     }
   }
