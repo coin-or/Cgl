@@ -60,6 +60,10 @@ include ${MakefileDir}/Makefile.coin
 include ${MakefileDir}/Makefile.detectSolver
 include ${MakefileDir}/Makefile.detectOsi
 
+###############################################################################
+
+include ${MakefileDir}/Makefile.rules
+
 ##############################################################################
 
 CXXFLAGS += $(OPTFLAG)
@@ -124,10 +128,6 @@ install: libcgl
 	@rm -f ${InstallDir}/lib/libcgl$(LIBEXT)
 	@cd ${InstallDir}/lib; \
 		ln -s libcgl$(OptVersion)$(LIBEXT) libcgl$(LIBEXT)
-
-###############################################################################
-
-include ${MakefileDir}/Makefile.rules
 
 ###############################################################################
 
