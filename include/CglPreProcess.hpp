@@ -81,6 +81,21 @@ public:
 
   /// Get the cutoff bound on the objective function - always as minimize
   double getCutoff() const;
+  /// The original solver associated with this model.
+  inline OsiSolverInterface * originalModel() const
+  { return originalModel_;};
+  /// Solver after making clique equalities (may == original)
+  inline OsiSolverInterface * startModel() const
+  { return startModel_;};
+  /// Copies of solver at various stages after presolve
+  inline OsiSolverInterface * modelAtPass(int iPass) const
+  { if (iPass>=0&&iPass<numberSolvers_) return model_[iPass];};
+  /// Copies of solver at various stages after presolve after modifications
+  inline OsiSolverInterface * modifiedModel(int iPass) const
+  { if (iPass>=0&&iPass<numberSolvers_) return modifiedModel_[iPass];};
+  /// Matching presolve information
+  inline OsiPresolve * presolve(int iPass) const
+  { if (iPass>=0&&iPass<numberSolvers_) return presolve_[iPass];};
   //@}
 
   ///@name Cut generator methods 
