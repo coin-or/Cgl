@@ -9,9 +9,9 @@
 #include <cassert>
 #include <iostream>
 
-#include "OsiPackedMatrix.hpp"
+#include "CoinPackedMatrix.hpp"
 #include "OsiCuts.hpp"
-#include "OsiWarmStartBasis.hpp"
+#include "CoinWarmStartBasis.hpp"
 #include "CglGomory.hpp"
 
 
@@ -26,7 +26,7 @@ CglGomoryUnitTest(
   const OsiSolverInterface * baseSiP,
   const std::string mpsDir )
 {
-  OsiRelFltEq eq(0.000001);
+  CoinRelFltEq eq(0.000001);
 
   // Test default constructor
   {
@@ -62,7 +62,7 @@ CglGomoryUnitTest(
     int length[5]={2,3,1,1,1};
     int rows[11]={0,2,-1,-1,0,1,2,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0,1,1,1};
-    OsiPackedMatrix matrix(true,3,5,8,elements,rows,start,length);
+    CoinPackedMatrix matrix(true,3,5,8,elements,rows,start,length);
     
     // rim data (objective not used just yet)
     double objective[7]={-4.0,1.0,0.0,0.0,0.0,0.0,0.0};
@@ -77,20 +77,20 @@ CglGomoryUnitTest(
     // basis 1
     int rowBasis1[3]={-1,-1,-1};
     int colBasis1[5]={1,1,-1,-1,1};
-    OsiWarmStartBasis warm;
+    CoinWarmStartBasis warm;
     warm.setSize(5,3);
     for (i=0;i<3;i++) {
       if (rowBasis1[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<5;i++) {
       if (colBasis1[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -111,7 +111,7 @@ CglGomoryUnitTest(
     double * colsol = colsol1;
     for (i=nOldCuts; i<nRowCuts; i++){
       OsiRowCut rcut;
-      OsiPackedVector rpv;
+      CoinPackedVector rpv;
       rcut = osicuts.rowCut(i);
       rpv = rcut.row();
       const int n = rpv.getNumElements();
@@ -157,16 +157,16 @@ CglGomoryUnitTest(
     warm.setSize(6,4);
     for (i=0;i<4;i++) {
       if (rowBasis2[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<6;i++) {
       if (colBasis2[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -187,7 +187,7 @@ CglGomoryUnitTest(
     colsol = colsol2;
     for (i=nOldCuts; i<nRowCuts; i++){
       OsiRowCut rcut;
-      OsiPackedVector rpv;
+      CoinPackedVector rpv;
       rcut = osicuts.rowCut(i);
       rpv = rcut.row();
       const int n = rpv.getNumElements();
@@ -233,16 +233,16 @@ CglGomoryUnitTest(
     warm.setSize(7,5);
     for (i=0;i<5;i++) {
       if (rowBasis3[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<7;i++) {
       if (colBasis3[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -270,7 +270,7 @@ CglGomoryUnitTest(
     int length[5]={2,3,1,1,1};
     int rows[11]={0,2,-1,-1,0,1,2,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0,1,-1,1};
-    OsiPackedMatrix matrix(true,3,5,8,elements,rows,start,length);
+    CoinPackedMatrix matrix(true,3,5,8,elements,rows,start,length);
     
     // rim data (objective not used just yet)
     double objective[7]={-4.0,1.0,0.0,0.0,0.0,0.0,0.0};
@@ -285,20 +285,20 @@ CglGomoryUnitTest(
     // basis 1
     int rowBasis1[3]={-1,-1,-1};
     int colBasis1[5]={1,1,-1,-1,1};
-    OsiWarmStartBasis warm;
+    CoinWarmStartBasis warm;
     warm.setSize(5,3);
     for (i=0;i<3;i++) {
       if (rowBasis1[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<5;i++) {
       if (colBasis1[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -319,7 +319,7 @@ CglGomoryUnitTest(
     double * colsol = colsol1;
     for (i=nOldCuts; i<nRowCuts; i++){
       OsiRowCut rcut;
-      OsiPackedVector rpv;
+      CoinPackedVector rpv;
       rcut = osicuts.rowCut(i);
       rpv = rcut.row();
       const int n = rpv.getNumElements();
@@ -365,16 +365,16 @@ CglGomoryUnitTest(
     warm.setSize(6,4);
     for (i=0;i<4;i++) {
       if (rowBasis2[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<6;i++) {
       if (colBasis2[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -395,7 +395,7 @@ CglGomoryUnitTest(
     colsol = colsol2;
     for (i=nOldCuts; i<nRowCuts; i++){
       OsiRowCut rcut;
-      OsiPackedVector rpv;
+      CoinPackedVector rpv;
       rcut = osicuts.rowCut(i);
       rpv = rcut.row();
       const int n = rpv.getNumElements();
@@ -441,16 +441,16 @@ CglGomoryUnitTest(
     warm.setSize(7,5);
     for (i=0;i<5;i++) {
       if (rowBasis3[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<7;i++) {
       if (colBasis3[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -478,7 +478,7 @@ CglGomoryUnitTest(
     int length[5]={2,3};
     int rows[11]={0,2,-1,-1,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0};
-    OsiPackedMatrix matrix(true,3,2,5,elements,rows,start,length);
+    CoinPackedMatrix matrix(true,3,2,5,elements,rows,start,length);
     
     // rim data (objective not used just yet)
     double objective[2]={-4.0,1.0};
@@ -493,20 +493,20 @@ CglGomoryUnitTest(
     // basis 1
     int rowBasis1[3]={-1,-1,1};
     int colBasis1[2]={1,1};
-    OsiWarmStartBasis warm;
+    CoinWarmStartBasis warm;
     warm.setSize(2,3);
     for (i=0;i<3;i++) {
       if (rowBasis1[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<2;i++) {
       if (colBasis1[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -527,7 +527,7 @@ CglGomoryUnitTest(
     double * colsol = colsol1;
     for (i=nOldCuts; i<nRowCuts; i++){
       OsiRowCut rcut;
-      OsiPackedVector rpv;
+      CoinPackedVector rpv;
       rcut = osicuts.rowCut(i);
       rpv = rcut.row();
       const int n = rpv.getNumElements();
@@ -570,16 +570,16 @@ CglGomoryUnitTest(
     warm.setSize(2,4);
     for (i=0;i<4;i++) {
       if (rowBasis2[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<2;i++) {
       if (colBasis2[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -600,7 +600,7 @@ CglGomoryUnitTest(
     colsol = colsol2;
     for (i=nOldCuts; i<nRowCuts; i++){
       OsiRowCut rcut;
-      OsiPackedVector rpv;
+      CoinPackedVector rpv;
       rcut = osicuts.rowCut(i);
       rpv = rcut.row();
       const int n = rpv.getNumElements();
@@ -643,16 +643,16 @@ CglGomoryUnitTest(
     warm.setSize(2,5);
     for (i=0;i<5;i++) {
       if (rowBasis3[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<2;i++) {
       if (colBasis3[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -680,7 +680,7 @@ CglGomoryUnitTest(
     int length[5]={2,3};
     int rows[11]={0,2,-1,-1,0,1,2};
     double elements[11]={-7.0,-2.0,1.0e10,1.0e10,+2.0,1.0,+2.0};
-    OsiPackedMatrix matrix(true,3,2,5,elements,rows,start,length);
+    CoinPackedMatrix matrix(true,3,2,5,elements,rows,start,length);
     
     // rim data (objective not used just yet)
     double objective[2]={-4.0,1.0};
@@ -695,20 +695,20 @@ CglGomoryUnitTest(
     // basis 1
     int rowBasis1[3]={-1,-1,1};
     int colBasis1[2]={1,1};
-    OsiWarmStartBasis warm;
+    CoinWarmStartBasis warm;
     warm.setSize(2,3);
     for (i=0;i<3;i++) {
       if (rowBasis1[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<2;i++) {
       if (colBasis1[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -729,7 +729,7 @@ CglGomoryUnitTest(
     double * colsol = colsol1;
     for (i=nOldCuts; i<nRowCuts; i++){
       OsiRowCut rcut;
-      OsiPackedVector rpv;
+      CoinPackedVector rpv;
       rcut = osicuts.rowCut(i);
       rpv = rcut.row();
       const int n = rpv.getNumElements();
@@ -772,16 +772,16 @@ CglGomoryUnitTest(
     warm.setSize(2,4);
     for (i=0;i<4;i++) {
       if (rowBasis2[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<2;i++) {
       if (colBasis2[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -802,7 +802,7 @@ CglGomoryUnitTest(
     colsol = colsol2;
     for (i=nOldCuts; i<nRowCuts; i++){
       OsiRowCut rcut;
-      OsiPackedVector rpv;
+      CoinPackedVector rpv;
       rcut = osicuts.rowCut(i);
       rpv = rcut.row();
       const int n = rpv.getNumElements();
@@ -845,16 +845,16 @@ CglGomoryUnitTest(
     warm.setSize(2,5);
     for (i=0;i<5;i++) {
       if (rowBasis3[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<2;i++) {
       if (colBasis3[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -887,7 +887,7 @@ CglGomoryUnitTest(
     int length[5]={2,3,1,1,1};
     int rows[11]={0,2,-1,-1,0,1,2,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0,1,1,1};
-    OsiPackedMatrix matrix(true,3,5,8,elements,rows,start,length);
+    CoinPackedMatrix matrix(true,3,5,8,elements,rows,start,length);
     
     // rim data (objective not used just yet)
     double objective[7]={-4.0,1.0,0.0,0.0,0.0,0.0,0.0};
@@ -902,20 +902,20 @@ CglGomoryUnitTest(
     // basis 1
     int rowBasis1[3]={-1,-1,-1};
     int colBasis1[5]={1,1,-1,-1,1};
-    OsiWarmStartBasis warm;
+    CoinWarmStartBasis warm;
     warm.setSize(5,3);
     for (i=0;i<3;i++) {
       if (rowBasis1[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<5;i++) {
       if (colBasis1[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -936,7 +936,7 @@ CglGomoryUnitTest(
     double * colsol = colsol1;
     for (i=nOldCuts; i<nRowCuts; i++){
       OsiRowCut rcut;
-      OsiPackedVector rpv;
+      CoinPackedVector rpv;
       rcut = osicuts.rowCut(i);
       rpv = rcut.row();
       const int n = rpv.getNumElements();
@@ -982,16 +982,16 @@ CglGomoryUnitTest(
     warm.setSize(6,4);
     for (i=0;i<4;i++) {
       if (rowBasis2[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<6;i++) {
       if (colBasis2[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -1019,7 +1019,7 @@ CglGomoryUnitTest(
     int length[5]={2,3,1,1,1};
     int rows[11]={0,2,-1,-1,0,1,2,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0,1,-1,1};
-    OsiPackedMatrix matrix(true,3,5,8,elements,rows,start,length);
+    CoinPackedMatrix matrix(true,3,5,8,elements,rows,start,length);
     
     // rim data (objective not used just yet)
     double objective[7]={-4.0,1.0,0.0,0.0,0.0,0.0,0.0};
@@ -1034,20 +1034,20 @@ CglGomoryUnitTest(
     // basis 1
     int rowBasis1[3]={-1,-1,-1};
     int colBasis1[5]={1,1,-1,-1,1};
-    OsiWarmStartBasis warm;
+    CoinWarmStartBasis warm;
     warm.setSize(5,3);
     for (i=0;i<3;i++) {
       if (rowBasis1[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<5;i++) {
       if (colBasis1[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -1068,7 +1068,7 @@ CglGomoryUnitTest(
     double * colsol = colsol1;
     for (i=nOldCuts; i<nRowCuts; i++){
       OsiRowCut rcut;
-      OsiPackedVector rpv;
+      CoinPackedVector rpv;
       rcut = osicuts.rowCut(i);
       rpv = rcut.row();
       const int n = rpv.getNumElements();
@@ -1114,16 +1114,16 @@ CglGomoryUnitTest(
     warm.setSize(6,4);
     for (i=0;i<4;i++) {
       if (rowBasis2[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<6;i++) {
       if (colBasis2[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -1151,7 +1151,7 @@ CglGomoryUnitTest(
     int length[5]={2,3};
     int rows[11]={0,2,-1,-1,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0};
-    OsiPackedMatrix matrix(true,3,2,5,elements,rows,start,length);
+    CoinPackedMatrix matrix(true,3,2,5,elements,rows,start,length);
     
     // rim data (objective not used just yet)
     double objective[2]={-4.0,1.0};
@@ -1166,20 +1166,20 @@ CglGomoryUnitTest(
     // basis 1
     int rowBasis1[3]={-1,-1,1};
     int colBasis1[2]={1,1};
-    OsiWarmStartBasis warm;
+    CoinWarmStartBasis warm;
     warm.setSize(2,3);
     for (i=0;i<3;i++) {
       if (rowBasis1[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<2;i++) {
       if (colBasis1[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -1200,7 +1200,7 @@ CglGomoryUnitTest(
     double * colsol = colsol1;
     for (i=nOldCuts; i<nRowCuts; i++){
       OsiRowCut rcut;
-      OsiPackedVector rpv;
+      CoinPackedVector rpv;
       rcut = osicuts.rowCut(i);
       rpv = rcut.row();
       const int n = rpv.getNumElements();
@@ -1243,16 +1243,16 @@ CglGomoryUnitTest(
     warm.setSize(2,4);
     for (i=0;i<4;i++) {
       if (rowBasis2[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<2;i++) {
       if (colBasis2[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -1280,7 +1280,7 @@ CglGomoryUnitTest(
     int length[5]={2,3};
     int rows[11]={0,2,-1,-1,0,1,2};
     double elements[11]={-7.0,-2.0,1.0e10,1.0e10,+2.0,1.0,+2.0};
-    OsiPackedMatrix matrix(true,3,2,5,elements,rows,start,length);
+    CoinPackedMatrix matrix(true,3,2,5,elements,rows,start,length);
     
     // rim data (objective not used just yet)
     double objective[2]={-4.0,1.0};
@@ -1295,20 +1295,20 @@ CglGomoryUnitTest(
     // basis 1
     int rowBasis1[3]={-1,-1,1};
     int colBasis1[2]={1,1};
-    OsiWarmStartBasis warm;
+    CoinWarmStartBasis warm;
     warm.setSize(2,3);
     for (i=0;i<3;i++) {
       if (rowBasis1[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<2;i++) {
       if (colBasis1[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 
@@ -1329,7 +1329,7 @@ CglGomoryUnitTest(
     double * colsol = colsol1;
     for (i=nOldCuts; i<nRowCuts; i++){
       OsiRowCut rcut;
-      OsiPackedVector rpv;
+      CoinPackedVector rpv;
       rcut = osicuts.rowCut(i);
       rpv = rcut.row();
       const int n = rpv.getNumElements();
@@ -1372,16 +1372,16 @@ CglGomoryUnitTest(
     warm.setSize(2,4);
     for (i=0;i<4;i++) {
       if (rowBasis2[i]<0) {
-	warm.setArtifStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setArtifStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setArtifStatus(i,OsiWarmStartBasis::basic);
+	warm.setArtifStatus(i,CoinWarmStartBasis::basic);
       }
     }
     for (i=0;i<2;i++) {
       if (colBasis2[i]<0) {
-	warm.setStructStatus(i,OsiWarmStartBasis::atLowerBound);
+	warm.setStructStatus(i,CoinWarmStartBasis::atLowerBound);
       } else {
-	warm.setStructStatus(i,OsiWarmStartBasis::basic);
+	warm.setStructStatus(i,CoinWarmStartBasis::basic);
       }
     }
 

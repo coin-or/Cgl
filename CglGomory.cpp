@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cmath>
 #include <cfloat>
+#include <cassert>
 #include <iostream>
 
 #include "CoinHelperFunctions.hpp"
@@ -21,8 +22,8 @@
 #endif
 #include "CoinWarmStartBasis.hpp"
 #include "CglGomory.hpp"
+#include "CoinFinite.hpp"
 
-using std::min;
 //-------------------------------------------------------------------
 // Generate disaggregation cuts
 //------------------------------------------------------------------- 

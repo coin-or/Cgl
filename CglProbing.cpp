@@ -9,15 +9,15 @@
 #include <cstdio>
 #include <cmath>
 #include <cfloat>
+#include <cassert>
 #include <iostream>
 
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedVector.hpp"
 #include "CoinPackedMatrix.hpp"
+#include "CoinFinite.hpp"
 #include "OsiRowCutDebugger.hpp"
 #include "CglProbing.hpp"
-using std::max;
-using std::min;
 
 typedef struct {double infeasibility;int sequence;} double_int_pair;
 class double_int_pair_compare {

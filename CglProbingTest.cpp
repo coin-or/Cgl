@@ -9,7 +9,7 @@
 #include <cassert>
 #include <iostream>
 
-#include "OsiPackedMatrix.hpp"
+#include "CoinPackedMatrix.hpp"
 #include "CglProbing.hpp"
 
 
@@ -24,7 +24,7 @@ CglProbingUnitTest(
   const OsiSolverInterface * baseSiP,
   const std::string mpsDir )
 {
-  OsiRelFltEq eq(0.000001);
+  CoinRelFltEq eq(0.000001);
 
   // Test default constructor
   {
@@ -63,7 +63,7 @@ CglProbingUnitTest(
       const double * up = siP->getColUpper();
       for (i=0; i<nColCuts; i++){
 	OsiColCut ccut;
-	OsiPackedVector cpv;
+	CoinPackedVector cpv;
 	ccut = osicuts.colCut(i);
 	cpv = ccut.lbs();
 	int n = cpv.getNumElements();
@@ -90,7 +90,7 @@ CglProbingUnitTest(
     }
     for (i=0; i<nRowCuts; i++){
       OsiRowCut rcut;
-      OsiPackedVector rpv;
+      CoinPackedVector rpv;
       const double * colsol = siP->getColSolution();
       rcut = osicuts.rowCut(i);
       rpv = rcut.row();
@@ -115,13 +115,13 @@ CglProbingUnitTest(
 	std::cout <<std::endl;
       }
     }
-    OsiPackedVector check;
+    CoinPackedVector check;
     int index[] = {6,32};
     double el[] = {1,1};
     check.setVector(2,index,el);
     assert (osicuts.sizeRowCuts()==2);
     // sort Elements in increasing order
-    OsiPackedVector rpv=osicuts.rowCut(1).row();
+    CoinPackedVector rpv=osicuts.rowCut(1).row();
     rpv.sortIncrIndex();
     assert (check==rpv);
     assert (osicuts.rowCut(1).lb()==1.0);
@@ -138,7 +138,7 @@ CglProbingUnitTest(
       const double * up = siP->getColUpper();
       for (i=0; i<nColCuts; i++){
 	OsiColCut ccut;
-	OsiPackedVector cpv;
+	CoinPackedVector cpv;
 	ccut = osicuts.colCut(i);
 	cpv = ccut.lbs();
 	int n = cpv.getNumElements();
@@ -165,7 +165,7 @@ CglProbingUnitTest(
     }
     for (i=0; i<nRowCuts; i++){
       OsiRowCut rcut;
-      OsiPackedVector rpv;
+      CoinPackedVector rpv;
       const double * colsol = siP->getColSolution();
       rcut = osicuts.rowCut(i);
       rpv = rcut.row();
