@@ -259,7 +259,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
     OsiPackedVector  v_0(2,v_0Indices,v_0Elements,false);
     OsiPackedVector  u_0(1,u_0Indices,u_0Elements,false);
 
-#if DEBUG
+#if CGL_DEBUG
     const OsiPackedMatrix *see1 = coneSi->getMatrixByRow();
 #endif
 
@@ -271,7 +271,7 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface & si,
     }
     else {
 
-#if DEBUG
+#if CGL_DEBUG
       const OsiPackedMatrix *see2 = coneSi->getMatrixByRow();
 #endif
 

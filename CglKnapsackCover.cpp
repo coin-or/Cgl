@@ -16,7 +16,7 @@
 #include "OsiPackedVector.hpp"
 #include "CoinSort.hpp"
 #include "OsiPackedMatrix.hpp"
-
+//#define DEBUG
 //-----------------------------------------------------------------------------
 // Generate knapsack cover cuts
 //------------------------------------------------------------------- 
@@ -53,7 +53,7 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
   int rowIndex;
   for (rowIndex=0; rowIndex<nRows; rowIndex++){
 
-#ifdef DEBUG
+#ifdef PRINT_DEBUG
     cout << "Processing row " << rowIndex << endl;
 #endif
     
@@ -79,6 +79,16 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
     // from the model row in mixed integer variables    //
     //////////////////////////////////////////////////////
     
+#ifdef CGL_DEBUG
+    for(k=0; k<krow.getNumElements(); k++) {
+      if (complement[krow.getIndices()[k]]){
+	assert(xstar[krow.getIndices()[k]]== 1.0-colsol[krow.getIndices()[k]]);
+      } else {
+	assert(xstar[krow.getIndices()[k]]== colsol[krow.getIndices()[k]]);
+      }
+    }
+    assert(!krow.getNumElements());
+#endif
     if (!deriveAKnapsack(si, cs, krow, b, complement, 
 			    xstar, rowIndex, 
 			    si.getMatrixByRow()->getVector(rowIndex))){
@@ -94,7 +104,21 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
       krow.setVector(0,NULL,NULL);
       continue;
     }
-
+#ifdef PRINT_DEBUG
+    {
+      // Get the sense of the row
+      int i;
+      printf("rhs sense %c rhs %g\n",si.getRowSense()[rowIndex],
+	     si.getRightHandSide()[rowIndex]);
+      const int * indices = si.getMatrixByRow()->getVector(rowIndex).getIndices();
+      const double * elements = si.getMatrixByRow()->getVector(rowIndex).getElements();
+      // for every variable in the constraint
+      for (i=0; i<si.getMatrixByRow()->getVector(rowIndex).getNumElements(); i++){
+	printf("%d (s=%g) %g, ",indices[i],colsol[i],elements[i]);
+      }
+      printf("\n");
+    }
+#endif
     
     //////////////////////////////////////////////////////
     // Look for a series of                             //
@@ -117,9 +141,21 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
     if (findGreedyCover(rowIndex, krow, b, xstar, cover, remainder) == 1){
 
       // Lift cover inequality and add to cut set 
-      liftAndUncomplementAndAdd(si.getRowUpper()[rowIndex], krow, b,
-				complement, rowIndex, cover, remainder, cs);   
-    }  
+      if (!liftAndUncomplementAndAdd(si.getRowUpper()[rowIndex], krow, b,
+				     complement, rowIndex, cover, remainder, cs)) {
+	// Reset local data and continue to the next iteration 
+	// of the rowIndex-loop
+        // I am not sure this is needed but I am just being careful
+	for(k=0; k<krow.getNumElements(); k++) {
+	  if (complement[krow.getIndices()[k]]){
+	    xstar[krow.getIndices()[k]]= 1.0-xstar[krow.getIndices()[k]];
+	    complement[krow.getIndices()[k]]=0;        
+	  }
+	}
+	krow.setVector(0,NULL,NULL);
+	continue;
+      }  
+    }
 
     //////////////////////////////////////////////////////
     // Try to generate a violated                       //
@@ -134,8 +170,20 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
 				    xstar, cover, remainder) == 1){
 
       // (Sequence Independent) Lift cover inequality and add to cut set 
-      liftAndUncomplementAndAdd(si.getRowUpper()[rowIndex], krow, b,
-				complement, rowIndex, cover, remainder, cs);   
+      if (!liftAndUncomplementAndAdd(si.getRowUpper()[rowIndex], krow, b,
+				     complement, rowIndex, cover, remainder, cs)) {
+	// Reset local data and continue to the next iteration 
+	// of the rowIndex-loop
+        // I am not sure this is needed but I am just being careful
+	for(k=0; k<krow.getNumElements(); k++) {
+	  if (complement[krow.getIndices()[k]]){
+	    xstar[krow.getIndices()[k]]= 1.0-xstar[krow.getIndices()[k]];
+	    complement[krow.getIndices()[k]]=0;        
+	  }
+	}
+	krow.setVector(0,NULL,NULL);
+	continue;
+      }  
 
       // experimenting here...
       // (Sequence Dependent) Lift cover inequality and add to cut set
@@ -185,8 +233,20 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
 					xstar, cover, remainder) == 1){
         
         // Lift cover inequality and add to cut set 
-        liftAndUncomplementAndAdd(si.getRowUpper()[rowIndex], krow, b,
-				  complement, rowIndex, cover, remainder, cs);
+	if (!liftAndUncomplementAndAdd(si.getRowUpper()[rowIndex], krow, b,
+				       complement, rowIndex, cover, remainder, cs)) {
+	  // Reset local data and continue to the next iteration 
+	  // of the rowIndex-loop
+	  // I am not sure this is needed but I am just being careful
+	  for(k=0; k<krow.getNumElements(); k++) {
+	    if (complement[krow.getIndices()[k]]){
+	      xstar[krow.getIndices()[k]]= 1.0-xstar[krow.getIndices()[k]];
+	      complement[krow.getIndices()[k]]=0;        
+	    }
+	  }
+	  krow.setVector(0,NULL,NULL);
+	  continue;
+	}  
       }
     } 
     else {
@@ -194,8 +254,20 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface & si,
 				     xstar, cover, remainder) == 1){
         
         // Lift cover inequality and add to cut set 
-	liftAndUncomplementAndAdd(si.getRowUpper()[rowIndex], krow, b,
-				  complement, rowIndex, cover, remainder, cs);
+	if (!liftAndUncomplementAndAdd(si.getRowUpper()[rowIndex], krow, b,
+				       complement, rowIndex, cover, remainder, cs)) {
+	  // Reset local data and continue to the next iteration 
+	  // of the rowIndex-loop
+	  // I am not sure this is needed but I am just being careful
+	  for(k=0; k<krow.getNumElements(); k++) {
+	    if (complement[krow.getIndices()[k]]){
+	      xstar[krow.getIndices()[k]]= 1.0-xstar[krow.getIndices()[k]];
+	      complement[krow.getIndices()[k]]=0;        
+	    }
+	  }
+	  krow.setVector(0,NULL,NULL);
+	  continue;
+	}  
       }
     } 
 
@@ -239,13 +311,15 @@ CglKnapsackCover::liftAndUncomplementAndAdd(
 {
   OsiPackedVector cut;
   double cutRhs = cover.getNumElements() - 1.0;
+  int goodCut=1;
   
   if (remainder.getNumElements() > 0){
     // Construct lifted cover cut 
-    liftCoverCut( 
-      b, krow.getNumElements(), 
-      cover, remainder,
-      cut );
+    if (!liftCoverCut( 
+		      b, krow.getNumElements(), 
+		      cover, remainder,
+		      cut )) 
+      goodCut= 0; // no cut
   }
   // The cover consists of every variable in the knapsack.
   // There is nothing to lift, so just add cut            
@@ -268,19 +342,33 @@ CglKnapsackCover::liftAndUncomplementAndAdd(
       }
     }
   }
-
-  // Create row cut. Effectiveness defaults to 0.
-  OsiRowCut rc;
-  rc.setRow(cut);
-  rc.setLb(-DBL_MAX);
-  rc.setUb(cutRhs);
-  //  rc.setEffectiveness(0);
-  // Todo: put in a more useful measure such as  the violation. 
-  
-  // Add row cut to the cut set  
-  cs.insert(rc);
-  
-  return 1; 
+  if (goodCut) {
+    // Create row cut. Effectiveness defaults to 0.
+    OsiRowCut rc;
+    rc.setRow(cut);
+    rc.setLb(-DBL_MAX);
+    rc.setUb(cutRhs);
+    //  rc.setEffectiveness(0);
+    // Todo: put in a more useful measure such as  the violation. 
+    
+    // Add row cut to the cut set  
+#ifdef PRINT_DEBUG
+    {
+      int k;
+      printf("cutrhs %g\n",cutRhs);
+      double * elements = cut.getElements();
+      int * indices = cut.getIndices();
+      for (k=0; k<cut.getNumElements(); k++){
+	printf("%d %g\n",indices[k],elements[k]);
+      }
+    }
+#endif
+    cs.insert(rc);
+    
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 //-------------------------------------------------------------------
@@ -464,7 +552,7 @@ CglKnapsackCover::deriveAKnapsack(
     cc.setUbs( 1, &index, &fakeLb);
     cc.setEffectiveness(DBL_MAX);
     cs.insert(cc);
-#ifdef DEBUG
+#ifdef PRINT_DEBUG
     printf("Cgl: Problem is infeasible\n");
 #endif
   }
@@ -478,7 +566,7 @@ CglKnapsackCover::deriveAKnapsack(
   for(i=0; i<krow.getNumElements(); i++){
     if (krow.getElements()[i]> b){
       fixedBnd.insert(krow.getIndices()[i],complement[krow.getIndices()[i]]);
-#ifdef DEBUG   
+#ifdef PRINT_DEBUG   
       printf("Variable %i being fixed to %i due to row %i.\n",
 	     krow.getIndices()[i],complement[krow.getIndices()[i]],rowIndex); 
 #endif
@@ -639,7 +727,7 @@ CglKnapsackCover::findLPMostViolatedMinCover(
       remainder.insert(krow.getIndices()[i],krow.getElements()[i]);
     }
     
-#ifdef DEBUG
+#ifdef PRINT_DEBUG
     if (coverSum <= b){
       printf("The identified cover is NOT a cover\n");
       abort();
@@ -665,13 +753,13 @@ CglKnapsackCover::findLPMostViolatedMinCover(
     }
 
     if (nCover<2){
-#ifdef DEBUG
+#ifdef PRINT_DEBUG
       printf("nCover < 2...aborting\n");
 #endif
       abort();
     }
     
-#ifdef DEBUG   /* debug */
+#ifdef PRINT_DEBUG   /* debug */
     printf("\
 Lp relax of most violated minimal cover: row %i has cover of size %i.\n",
 	   row,nCover);
@@ -755,7 +843,7 @@ CglKnapsackCover::findExactMostViolatedMinCover(
   // Redundant/useless adjusted rows should have been trapped in 
   // transformation to cannonical form of knapsack inequality
   if (elementSum < b + epsilon_) {
-#ifdef DEBUG
+#ifdef PRINT_DEBUG
     printf("Redundant/useless adjusted row\n");
 #endif
     return -1; 
@@ -785,7 +873,7 @@ CglKnapsackCover::findExactMostViolatedMinCover(
   CoinDecrSolutionOrdered dso(ratio);
   krow.sort(dso);   
 
-#ifdef DEBUG
+#ifdef CGL_DEBUG
   // sanity check
   for ( i=1; i<krow.getNumElements(); i++ ) {
     double ratioim1 =  ratio[krow.getIndices()[i-1]];
@@ -848,7 +936,7 @@ CglKnapsackCover::findExactMostViolatedMinCover(
       oneLessCoverElementSum -= cover.getElements()[cover.getNumElements()-1];
     }
 
-#ifdef DEBUG
+#ifdef PRINT_DEBUG
     printf("Exact Most Violated Cover: row %i has cover of size %i.\n",
 	   row,cover.getNumElements());
     //double sumCover = 0.0;
@@ -974,7 +1062,7 @@ CglKnapsackCover::findPseudoJohnAndEllisCover(
   CoinDecrSolutionOrdered decrSol(xstar);
   unsat.sort(decrSol);
   
-#ifdef DEBUG
+#ifdef CGL_DEBUG
   // sanity check
   for (i=1; i<unsat.getNumElements(); i++){
     double xstarim1= xstar[unsat.getIndices()[i-1]];
@@ -1086,7 +1174,7 @@ CglKnapsackCover::findPseudoJohnAndEllisCover(
       oneLessCoverElementSum -= cover.getElements()[cover.getNumElements()-1];
     }
   
-#ifdef DEBUG
+#ifdef PRINT_DEBUG
     if (coverXstarSum > (nCover-1) && coverElementSum > b){
       printf("John and Ellis: row %i has cover of size %i.\n",
 	     row,cover.getNumElements());
@@ -1214,7 +1302,7 @@ CglKnapsackCover::findJohnAndEllisCover(
   CoinDecrSolutionOrdered decrSol(xstar);
   unsat.sort(decrSol);
   
-#ifdef DEBUG
+#ifdef CGL_DEBUG
   // sanity check
   for (i=1; i<unsat.getNumElements(); i++){
     double xstarim1 = xstar[unsat.getIndices()[i-1]];
@@ -1323,7 +1411,7 @@ CglKnapsackCover::findJohnAndEllisCover(
       }
 #endif
   
-#ifdef DEBUG
+#ifdef PRINT_DEBUG
       printf("More Exactly John and Ellis:");
       printf(" row %i has -reduced--fractional- cover of size %i.\n",
 	     row,fracCover.getNumElements());
@@ -1428,7 +1516,7 @@ CglKnapsackCover::findGreedyCover(
     return -1;
   }
   
-#ifdef DEBUG 
+#ifdef PRINT_DEBUG 
   printf("Greedy cover: row %i has cover of size %i\n",
 	 row,cover.getNumElements());
   for (i=0; i<cover.getNumElements(); i++){
@@ -1554,7 +1642,7 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
     a.sort(dso2);   
     alpha.sort(dso2);
     
-#ifdef DEBUG
+#ifdef CGL_DEBUG
     // sanity check
     for ( i=1; i<a.getNumElements(); i++ ) {
       int alphai=  alpha.getIndices()[i];
@@ -1620,7 +1708,15 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
       if (fabs(psi_j-cutRhs)>epsilon_)
 	 cut.insert(atOne.getIndices()[j],psi_j-cutRhs);
 
+#ifdef CGL_DEBUG
       assert ( fabs(atOne.getElements()[j])> epsilon_ );
+#else
+      if ( fabs(atOne.getElements()[j])<= epsilon_ ) {
+	// exit gracefully
+	cutRhs = DBL_MAX;
+	break;
+      }
+#endif
       ratio[atOne.getIndices()[j]]=(psi_j-cutRhs)/atOne.getElements()[j];
 
       // update cutRhs and unsatRhs
@@ -1644,7 +1740,7 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
     sum+= cut.getElements()[i]*xstar[cut.getIndices()[i]];
   }
   if (sum > cutRhs){
-#ifdef DEBUG
+#ifdef PRINT_DEBUG
     printf("Sequentially lifted UpDown cover cut of ");
     printf("size %i derived from fracCover of size %i.\n",
 	   cut.getNumElements(), fracCover.getNumElements());
@@ -1680,6 +1776,17 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
     // ToDo: what's the default effectiveness?
     //  rc.setEffectiveness(1.0);
     // Add row cut to the cut set  
+#ifdef PRINT_DEBUG
+    {
+      int k;
+      printf("cutrhs %g\n",cutRhs);
+      double * elements = cut.getElements();
+      int * indices = cut.getIndices();
+      for (k=0; k<cut.getNumElements(); k++){
+	printf("%d %g\n",indices[k],elements[k]);
+      }
+    }
+#endif
     cs.insert(rc);
   }
 }
@@ -1771,7 +1878,7 @@ CglKnapsackCover::seqLiftAndUncomplementAndAdd(
     a.sort(dso2);   
     alpha.sort(dso2);
     
-#ifdef DEBUG
+#ifdef CGL_DEBUG
     // sanity check
     for ( i=1; i<a.getNumElements(); i++ ) {
       int alphai= alpha.getIndices()[i];
@@ -1819,7 +1926,7 @@ CglKnapsackCover::seqLiftAndUncomplementAndAdd(
     sum+= cut.getElements()[i]*xstar[cut.getIndices()[i]];
   }
   if (sum > cutRhs){
-#ifdef DEBUG
+#ifdef PRINT_DEBUG
     printf("Sequentially lifted cover cut of size %i derived from cover of size %i.\n",cut.getNumElements(), cover.getNumElements());
     for (i=0; i<cut.getNumElements(); i++){
       printf("index %i, element %g, xstar value % g \n", cut.getIndices()[i],cut.getElements()[i], xstar[cut.getIndices()[i]]);
@@ -1847,6 +1954,17 @@ CglKnapsackCover::seqLiftAndUncomplementAndAdd(
     rc.setUb(cutRhs);
     // ToDo: what's a meaningful effectivity?
     //  rc.setEffectiveness(1.0);
+#ifdef PRINT_DEBUG
+    {
+      int k;
+      printf("cutrhs %g\n",cutRhs);
+      double * elements = cut.getElements();
+      int * indices = cut.getIndices();
+      for (k=0; k<cut.getNumElements(); k++){
+	printf("%d %g\n",indices[k],elements[k]);
+      }
+    }
+#endif
     cs.insert(rc);
   }
 }
@@ -1865,6 +1983,7 @@ CglKnapsackCover::liftCoverCut(
       OsiPackedVector & cut) const
 {
   int i;
+  int  goodCut=1;
   // Given knapsack ax <=b, and a cover (e.g. cover corresponds to {0,...,nCover-1})
   // coverIndices are assumed in nondecr order of coverElements   
   // a_0>=a_1>=...>=a_(nCover-1)   
@@ -1880,9 +1999,15 @@ CglKnapsackCover::liftCoverCut(
   // By definition, lambda > 0. If this is not the case, something's screwy. Exit gracefully.
   double lambda = sum-b;
   if (lambda < epsilon_) {
+#ifdef PRINT_DEBUG
     printf("lambda < epsilon....aborting. \n");
     std::cout << "lambda " << lambda << " epsilon " << epsilon_ << std::endl;
-    abort();
+    //abort();
+    goodCut=0;
+#else
+    std::cout << "lambda " << lambda << "exiting" << std::endl;
+    goodCut=0;
+#endif
   }
 
   // mu is vector of partial sums: 
@@ -1928,10 +2053,12 @@ CglKnapsackCover::liftCoverCut(
           i++;
         }
         if (!found) {
-#ifdef DEBUG
+#ifdef CGL_DEBUG
           printf("Error: Unable to fix lifted coefficient\n");
-#endif
 	  abort();
+#else
+	  goodCut=0;
+#endif
         }
       } // end else 
     }// end for each j not in C 
@@ -1974,7 +2101,7 @@ CglKnapsackCover::liftCoverCut(
   delete [] muMinusLambda;
   delete [] mu;
 
-  return 1;
+  return goodCut;
 }
 
 //-------------------------------------------------------------------
@@ -2027,7 +2154,7 @@ CglKnapsackCover::exactSolveKnapsack(
   double * p = new double[n+2];
   double * w = new double[n+2];
   int ii;
-  for (ii=1; ii<n+2; ii++){
+  for (ii=1; ii<n+1; ii++){
     p[ii]=pp[ii-1];
     w[ii]=ww[ii-1];
   }

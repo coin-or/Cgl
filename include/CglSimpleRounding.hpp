@@ -15,7 +15,7 @@
       attempt to derive a <= inequality in all integer variables
       by netting out any continuous variables.
       Divide the resulting integer inequality through by 
-      the greatest common demonimator (gcd) of the lhs coefficients.
+      the greatest common denomimator (gcd) of the lhs coefficients.
       Round down the rhs.
 
  Warning: Use with careful attention to data precision.
@@ -77,10 +77,14 @@ private:
      dataTol, this method returns the smallest power of 10 needed so that
      x[i]*10**power "is integer" for all i=0,...,size-1.
   
-     dataTol should be correlated to the accuracy of the data,
-     and choosen to be the largest value that's tolerable.
-      
-     Does not check if the power is so big that it will
+     ** change of definition of dataTol so that it refers to original
+     data, not to scaled data as that seems to lead to problems.
+
+     So if xScaled is x[i]*10**power and xInt is rounded(xScaled)
+     then fabs(xScaled-xInt) <= dataTol*10**power.  This means that
+     dataTol should be smaller - say 1.0e-12 rather tahn 1.0e-8
+
+     Returns -number of times overflowed  if the power is so big that it will
      cause overflow (i.e. integer stored will be bigger than 2**31).
      Test in cut generator.
   */ 
@@ -92,10 +96,10 @@ private:
 
   /**@name Greatest common denominators methods */
   //@{
-  /// Returns the greatest common demoninator of two positive integers, a and b.
+  /// Returns the greatest common denominator of two positive integers, a and b.
   inline  int gcd(int a, int b) const; 
   
-  /** Returns the greatest common demoninator of a vector of
+  /** Returns the greatest common denominator of a vector of
       positive integers, vi, of length n.
   */
   inline  int gcdv(int n, const int * const vi) const; 
@@ -112,7 +116,7 @@ private:
 
 
 //-------------------------------------------------------------------
-// Returns the greatest common demoninator of two 
+// Returns the greatest common denominator of two 
 // positive integers, a and b, found using Euclid's algorithm 
 //-------------------------------------------------------------------
 int 
@@ -130,7 +134,7 @@ CglSimpleRounding::gcd(int a, int b) const
 }
 
 //-------------------------------------------------------------------
-// Returns the greatest common demoninator of a vector of
+// Returns the greatest common denominator of a vector of
 // positive integers, vi, of length n.
 //-------------------------------------------------------------------
 int 

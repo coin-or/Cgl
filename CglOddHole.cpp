@@ -94,8 +94,10 @@ void CglOddHole::generateCuts(const OsiSolverInterface & si,
       if (sum<0.9) suitable[i]=-1; //say no good
     }
   }
-#ifdef DEBUG
-  const OsiRowCutDebugger * debugger = si.rowCutDebugger();
+#ifdef CGL_DEBUG
+  const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
+  if (debugger&&!debugger->onOptimalPath(si))
+    debugger = NULL;
 #else
   const OsiRowCutDebugger * debugger = NULL;
 #endif
@@ -339,7 +341,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 	  stack[istack].cost=path[jnode].cost;
 	  stack[istack++].node=jnode;
 	  mark[jnode]=1;
-#ifdef DEBUG
+#ifdef CGL_DEBUG
 	  assert (istack<=nSmall2);
 #endif
 	}
@@ -352,7 +354,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
       int nrow2=0;
       int nclean=0;
       double sum=0;
-#ifdef DEBUG
+#ifdef CGL_DEBUG
       printf("** %d ",jcol-nSmall);
 #endif
       ii=1;
@@ -365,7 +367,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 	} else {
 	  jjcol=jcol;
 	}
-#ifdef DEBUG
+#ifdef CGL_DEBUG
 	printf(" %d",jjcol);
 #endif
 	if (mark[jjcol]) {
@@ -377,12 +379,12 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 	  mark[jjcol]=1;
 	  clean[nclean++]=jjcol;
 	  candidate[ii++]=jcol;
-#ifdef DEBUG
+#ifdef CGL_DEBUG
 	  assert (ii<=nSmall2);
 #endif
 	}
       }
-#ifdef DEBUG
+#ifdef CGL_DEBUG
       printf("\n");
 #endif
       for (j=0;j<nclean;j++) {
@@ -420,7 +422,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 	      countcol[icol]++;
 	    }
 	  }
-#ifdef DEBUG
+#ifdef CGL_DEBUG
 	  printf("true constraint %d",nrow2);
 #endif
 	  nrow2=nrow2>>1;
@@ -430,7 +432,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 	  for (k=0;k<nincut;k++) {
 	    int jcol=candidate[k];
 	    if (countcol[jcol]) {
-#ifdef DEBUG
+#ifdef CGL_DEBUG
 	      printf(" %d %d",jcol,countcol[jcol]);
 #endif
 	      int ihalf=(countcol[jcol]+bias)>>1;
@@ -443,7 +445,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 	      countcol[jcol]=0;
 	    }
 	  }
-#ifdef DEBUG
+#ifdef CGL_DEBUG
           printf("\n");
 #endif
 	  OsiRowCut rc;
@@ -452,7 +454,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 	      rc.setLb(-DBL_MAX);
 	      rc.setUb(rhs);   
 	    } else {
-#ifdef DEBUG
+#ifdef CGL_DEBUG
 	      printf("why no cut\n");
 #endif
 	      good=false;
@@ -463,7 +465,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 	      rc.setUb(DBL_MAX);
 	      rc.setLb(rhs);   
 	    } else {
-#ifdef DEBUG
+#ifdef CGL_DEBUG
 	      printf("why no cut\n");
 #endif
 	      good=false;
@@ -499,8 +501,9 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 	      hash[ncuts++]=value;
 	      printf("sum %g rhs %g %d\n",sum,rhs,ii);
 	      rc.setRow(ii,candidate,element);
-#ifdef DEBUG
-	      if (debugger) debugger->validateCut(rc); 
+#ifdef CGL_DEBUG
+	      if (debugger) 
+		assert(!debugger->invalidCut(rc)); 
 #endif
 	      cs.insert(rc);
 	    }

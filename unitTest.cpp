@@ -23,6 +23,8 @@
 #include "CglSimpleRounding.hpp"
 #include "CglKnapsackCover.hpp"
 #include "CglOddHole.hpp"
+#include "CglProbing.hpp"
+#include "CglGomory.hpp"
 //#include "CglFlowCover.hpp"
 
 
@@ -42,6 +44,11 @@ int main (int argc, const char *argv[])
 #ifdef COIN_USE_OSL
   {
     OsiOslSolverInterface oslSi;
+    testingMessage( "Testing CglGomory with OsiOslSolverInterface\n" );
+    CglGomoryUnitTest(&oslSi,mpsDir);
+  }  
+  {
+    OsiOslSolverInterface oslSi;
     testingMessage( "Testing CglSimpleRounding with OsiOslSolverInterface\n" );
     CglSimpleRoundingUnitTest(&oslSi,mpsDir);
   } 
@@ -54,6 +61,11 @@ int main (int argc, const char *argv[])
     OsiOslSolverInterface oslSi;
     testingMessage( "Testing CglOddHole with OsiOslSolverInterface\n" );
     CglOddHoleUnitTest(&oslSi,mpsDir);
+  }  
+  {
+    OsiOslSolverInterface oslSi;
+    testingMessage( "Testing CglProbing with OsiOslSolverInterface\n" );
+    CglProbingUnitTest(&oslSi,mpsDir);
   }  
   {
     OsiOslSolverInterface oslSi;
@@ -77,6 +89,11 @@ int main (int argc, const char *argv[])
     OsiXprSolverInterface xprSi;
     testingMessage( "Testing CglOddHole with OsiXprSolverInterface\n" );
     CglOddHoleUnitTest(&xprSi,mpsDir);
+  }  
+  {
+    OsiXprSolverInterface xprSi;
+    testingMessage( "Testing CglProbing with OsiXprSolverInterface\n" );
+    CglProbingUnitTest(&xprSi,mpsDir);
   }  
   {
     OsiXprSolverInterface xprSi;

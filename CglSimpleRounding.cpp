@@ -77,41 +77,41 @@ CglSimpleRounding::generateCuts(const OsiSolverInterface & si,
     // Determine the power of 10 needed, so that multipylying the integer
     // inequality through by 10**power makes all coefficients essentially
     // integral. 
-    int power = power10ToMakeDoubleAnInt(irow.getNumElements(),irow.getElements(),epsilon_);
+    int power = power10ToMakeDoubleAnInt(irow.getNumElements(),irow.getElements(),epsilon_*1.0e-4);
 
-    // New a vector to store the integer-ized values. For instance, 
+    // Now a vector to store the integer-ized values. For instance, 
     // if x[i] is .66 and power is 1000 then xInt[i] will be 660
-    int * xInt = new int[irow.getNumElements()]; 
-    double dxInt; // a double version of xInt for error trapping
+    int * xInt = NULL;
+    if (power >=0) {
 
-#ifdef DEBUG
-    printf("The (double) coefficients and their integer-ized counterparts:\n");
+      xInt = new int[irow.getNumElements()]; 
+      double dxInt; // a double version of xInt for error trapping
+      
+      
+#ifdef CGL_DEBUG      
+      printf("The (double) coefficients and their integer-ized counterparts:\n");
 #endif
 
-    int nOverflow = 0; // count of the number of times overflow is detected
-    for (k=0; k<irow.getNumElements(); k++){
-      dxInt = irow.getElements()[k]*pow(10.0,power);
-      xInt[k]= (int) (dxInt+0.5); // Need to add the 0.5 
-                                  // so that a dxInt=9.999 will give a xInt=1
-
-#ifdef DEBUG
-      printf("%g     %g   \n",irow.getElements()[k],dxInt);
+      for (k=0; k<irow.getNumElements(); k++){
+	dxInt = irow.getElements()[k]*pow(10.0,power);
+	xInt[k]= (int) (dxInt+0.5); // Need to add the 0.5 
+	// so that a dxInt=9.999 will give a xInt=1
+	
+#ifdef CGL_DEBUG
+	printf("%g     %g   \n",irow.getElements()[k],dxInt);
 #endif
+	
+      }
 
-      // Insert your favorite pre-emptive check for numerical overflow in here.
-      // Note: the max int on a 32-bit machine is around 2**31=2,147,483,648
-      // Trying to fit more than this into a 4-btye int will cause 
-      // an overflow condition.
-      if (fabs(dxInt-xInt[k])> epsilon_) ++nOverflow;
-    }
+    } else {
 
-
-    // If overflow is detected, one warning message is printed and 
-    // the row is skipped.
-    if (nOverflow > 0){
+      // If overflow is detected, one warning message is printed and 
+      // the row is skipped.
+#ifdef CGL_DEBUG
       printf("SimpleRounding: Warning: Overflow detected \n");
       printf("      on %i of vars in processing row %i. Row skipped.\n",
-	     nOverflow, rowIndex);
+	     -power, rowIndex);
+#endif
       // reset local data for next iteration
       for(k=0; k<irow.getNumElements(); k++) negative[irow.getIndices()[k]]=false;
       irow.setVector(0,NULL,NULL);
@@ -121,7 +121,7 @@ CglSimpleRounding::generateCuts(const OsiSolverInterface & si,
     // find greatest common divisor of the irow.elements
     int gcd = gcdv(irow.getNumElements(), xInt);
 
-#ifdef DEBUG
+#ifdef CGL_DEBUG
     printf("The gcd of xInt is %i\n",gcd);    
 #endif
 
@@ -155,7 +155,7 @@ CglSimpleRounding::generateCuts(const OsiSolverInterface & si,
       rc.setUb(cutRhs);   
       cs.insert(rc);
 
-#ifdef DEBUG
+#ifdef CGL_DEBUG
       printf("Row %i had a simple rounding cut:\n",rowIndex);
       printf("Cut size: %i Cut rhs: %g  Index       Element \n",
 	     cut.getNumElements(), cutRhs);
@@ -344,16 +344,26 @@ CglSimpleRounding::power10ToMakeDoubleAnInt(
   int power = 0;   // power of 10 used to convert a particular x[i] to an
                    // integer 
 
+#ifdef OLD_MULT
   double intPart;  // the integer part of the number
+#endif
   double fracPart; // the fractional part of the number
                    // we keep multiplying by 10 until the fractional part is 0
                    // (well, really just until the factional part is less than
                    // dataTol) 
 
+  // JJF - code seems to fail sometimes as multiplying by 10 - so
+  // definition of dataTol changed - see header file
+
+  const double multiplier[16]={1.0,1.0e1,1.0e2,1.0e3,1.0e4,1.0e5,
+			       1.0e6,1.0e7,1.0e8,1.0e9,1.0e10,1.0e11,
+			       1.0e12,1.0e13,1.0e14,1.0e15};
+
   // Loop through every element in the array in x
   for (i=0; i<size; i++){
     power = 0;
 
+#ifdef OLD_MULT 
     // look at the fractional part of x[i]
     // FYI: if you want to modify this member function to take an input
     // vector x of arbitary sign, change this line below to 
@@ -361,18 +371,40 @@ CglSimpleRounding::power10ToMakeDoubleAnInt(
     fracPart = modf(x[i],&intPart);
 
     // if the fractional part is close enough to 0 or 1, we're done with this
-    // value 
+    // value
     while(!(fracPart < dataTol || 1-fracPart < dataTol )) {
        // otherwise, multiply by 10 and look at the fractional part of the
        // result. 
        ++power;
        fracPart = fracPart*10.0;
        fracPart = modf(fracPart,&intPart);     
-    }    
-#ifdef DEBUG
+    }
+#else
+    // use fabs as safer and does no harm
+    double value = fabs(x[i]);
+    double scaledValue;
+    // Do loop - always using original value to stop round off error.
+    // If we don't find in 15 goes give up
+    for (power=0;power<16;power++) {
+      double tolerance = dataTol*multiplier[power];
+      scaledValue = value*multiplier[power];
+      fracPart = scaledValue-floor(scaledValue);
+      if(fracPart < tolerance || 1.0-fracPart < tolerance ) {
+	break;
+      }
+    }
+    if (power==16||scaledValue>2147483647) {
+#ifdef CGL_DEBUG
+      printf("Overflow %g => %g, power %d\n",x[i],scaledValue,power);
+#endif
+      return -1;
+    }
+#endif    
+#ifdef CGL_DEBUG
     printf("The smallest power of 10 to make %g  integral = %i\n",x[i],power);
 #endif
 
+    
     // keep track of the largest power needed so that at the end of the for
     // loop
     // x[i]*10**maxPower will be integral for all i

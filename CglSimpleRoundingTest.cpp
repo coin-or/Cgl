@@ -8,6 +8,7 @@
 #include <cassert>
 
 #include "CglSimpleRounding.hpp" 
+#include <stdio.h>
 
 #ifdef NDEBUG
 #undef NDEBUG
@@ -143,7 +144,7 @@ CglSimpleRoundingUnitTest(
     OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cuts);
     siP->resolve();
     double lpRelaxAfter=siP->getObjValue(); 
-#ifdef DEBUG
+#ifdef CGL_DEBUG
     printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
     printf("Final LP min=%f\n\n",lpRelaxAfter);
 #endif

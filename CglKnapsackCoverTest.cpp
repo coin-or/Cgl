@@ -285,7 +285,7 @@ CglKnapsackCoverUnitTest(
     ekk_crash(model,1); 
     ekk_primalSimplex(model,1);
     double lpRelaxBefore=ekk_getRobjvalue(model);
-#ifdef DEBUG
+#ifdef CGL_DEBUG
     printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
 #endif
     
@@ -300,7 +300,7 @@ CglKnapsackCoverUnitTest(
     }
     
     if (ipOpt){
-#ifdef DEBUG
+#ifdef CGL_DEBUG
       printf("Lp solution is within ip optimality tolerance\n");
 #endif
     }    
@@ -315,7 +315,7 @@ CglKnapsackCoverUnitTest(
       ekk_mergeBlocks(model,1);         
       ekk_dualSimplex(model);
       double lpRelaxAfter=ekk_getRobjvalue(model); 
-#ifdef DEBUG
+#ifdef CGL_DEBUG
       printf("\n\nFinal LP min=%f\n",lpRelaxAfter);
 #endif
       assert( lpRelaxBefore < lpRelaxAfter );
@@ -370,7 +370,7 @@ CglKnapsackCoverUnitTest(
     assert( eq(lpRelaxBefore, -51.66666666667) );
     double mycs[] = {.8999999999, .899999999999, .89999999999, 1.110223e-16, .5166666666667, 0};
     siP->setColSolution(mycs);
-#ifdef DEBUG
+#ifdef CGL_DEBUG
     printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
 #endif
     
@@ -384,7 +384,7 @@ CglKnapsackCoverUnitTest(
     }
     
     if (ipOpt){
-#ifdef DEBUG
+#ifdef CGL_DEBUG
       printf("Lp solution is within ip optimality tolerance\n");
 #endif
     }    
@@ -431,7 +431,7 @@ CglKnapsackCoverUnitTest(
       siP->resolve();
       double lpRelaxAfter=siP->getObjValue();
       assert( eq(lpRelaxAfter, -30.0) );
-#ifdef DEBUG
+#ifdef CGL_DEBUG
       printf("\n\nFinal LP min=%f\n",lpRelaxAfter);
 #endif
       // test that expected cut was detected
@@ -482,7 +482,7 @@ CglKnapsackCoverUnitTest(
 		       0.85999999999999999, 1, 1, 0.57999999999999996,
 		       1, 0, 1, 0, 0.25, 0, 0.67500000000000004};
     siP->setColSolution(mycs);
-#ifdef DEBUG
+#ifdef CGL_DEBUG
     printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
 #endif
     
@@ -495,7 +495,7 @@ CglKnapsackCoverUnitTest(
     siP->resolve();
     double lpRelaxAfter=siP->getObjValue(); 
     assert( eq(lpRelaxAfter, 2829.0597826086955) );
-#ifdef DEBUG
+#ifdef CGL_DEBUG
     printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
     printf("\n\nFinal LP min=%f\n",lpRelaxAfter);
 #endif
@@ -566,7 +566,7 @@ CglKnapsackCoverUnitTest(
        0, 0, 1, 0.5, 0, 0, 0, 0.5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
        1};
     siP->setColSolution(mycs);
-#ifdef DEBUG
+#ifdef CGL_DEBUG
     printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
 #endif
     
@@ -579,7 +579,7 @@ CglKnapsackCoverUnitTest(
     siP->resolve();
     double lpRelaxAfter=siP->getObjValue(); 
     assert( eq(lpRelaxAfter, 7125) );
-#ifdef DEBUG
+#ifdef CGL_DEBUG
     printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
     printf("\n\nFinal LP min=%f\n",lpRelaxAfter);
 #endif
@@ -645,7 +645,7 @@ CglKnapsackCoverUnitTest(
     siP->resolve();
     double lpRelaxAfter=siP->getObjValue(); 
     assert( eq(lpRelaxAfter, -176) );
-#ifdef DEBUG
+#ifdef CGL_DEBUG
     printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
     printf("\n\nFinal LP min=%f\n",lpRelaxAfter);
 #endif
@@ -697,7 +697,7 @@ CglKnapsackCoverUnitTest(
     siP->resolve();
     double lpRelaxAfter=siP->getObjValue();
     assert( eq(lpRelaxAfter, 3.2368421052631575) );
-#ifdef DEBUG
+#ifdef CGL_DEBUG
     printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
     printf("\n\nFinal LP min=%f\n",lpRelaxAfter);
 #endif
@@ -706,7 +706,7 @@ CglKnapsackCoverUnitTest(
     delete siP;
   } 
 
-#ifdef DEBUG
+#ifdef CGL_DEBUG
   // See what findLPMostViolatedMinCover for knapsack with 2 elements does
   {
     int nCols = 2;
@@ -729,7 +729,7 @@ CglKnapsackCoverUnitTest(
   }
 #endif 
 
-#ifdef DEBUG
+#ifdef CGL_DEBUG
   // see what findLPMostViolatedMinCover does
   {
     int nCols = 5;
