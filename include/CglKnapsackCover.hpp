@@ -41,7 +41,7 @@ public:
   //@}
 
 
-  /**@name Sets and gets
+  /**@name Sets and gets */
   //@{
   /// Set limit on number in knapsack
   inline void setMaxInKnapsack(int value)
