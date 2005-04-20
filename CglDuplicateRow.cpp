@@ -26,7 +26,7 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 #ifdef CGL_DEBUG
   const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
   if (debugger&&debugger->onOptimalPath(si)) {
-    printf("On optimal path %d\n",nPath);
+    printf("On optimal path\n");
   }
 #endif
   int numberColumns = matrix_.getNumCols();
