@@ -271,7 +271,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 
   if (2*n>maxels) {
     maxels=2*n;
-    cost=(double *) realloc(cost,maxels*sizeof(int));
+    cost=(double *) realloc(cost,maxels*sizeof(double));
     to=(int *) realloc(to,maxels*sizeof(int));
     rowfound=(int *) realloc(rowfound,maxels*sizeof(int));
   }
