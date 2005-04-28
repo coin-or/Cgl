@@ -218,7 +218,7 @@ CglClique::createFractionalGraph() const
    // fgraph.edgenum is filled when createNodeNode is invoked
    fgraph.nodenum = sp_numcols;
    fgraph.all_nbr = new int[2*fgraph.edgenum];
-   fgraph.nodes = new fnode[sp_numcols];
+   fgraph.nodes = new fnode[sp_numcols+1];
 
    int *all_nbr = fgraph.all_nbr;
    fnode *nodes = fgraph.nodes;

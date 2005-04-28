@@ -76,8 +76,6 @@ CglClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
 		const CglTreeInfo info) const
 {
    int i;
-   if (!sp_numcols)
-     return; // nothing to do
    bool has_petol_set = petol >= 0;
 
    if (! has_petol_set)
@@ -93,6 +91,7 @@ CglClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
       selectFractionals(si);
       delete[] sp_orig_row_ind;
       sp_numrows = si.getNumRows();
+      //sp_numcols = si.getNumCols();
       sp_orig_row_ind = new int[sp_numrows];
       for (i = 0; i < sp_numrows; ++i)
 	 sp_orig_row_ind[i] = i;
