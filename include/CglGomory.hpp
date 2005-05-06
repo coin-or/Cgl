@@ -40,7 +40,8 @@ public:
 		    const double * colLower, const double * colUpper,
 		    const double * rowLower, const double * rowUpper,
 		    const char * intVar ,
-		    const CoinWarmStartBasis* warm) const;
+		    const CoinWarmStartBasis* warm,
+                    const CglTreeInfo info) const;
 
   //@}
 
@@ -50,6 +51,10 @@ public:
   void setLimit(int limit);
   /// Get
   int getLimit() const;
+  /// Set at root (if <normal then use normal)
+  void setLimitAtRoot(int limit);
+  /// Get at root
+  int getLimitAtRoot() const;
   //@}
 
   /**@name Change criterion on which variables to look at.  All ones
@@ -97,6 +102,8 @@ private:
   double away_;
   /// Limit - only generate if fewer than this in cut
   int limit_;
+  /// Limit - only generate if fewer than this in cut (at root)
+  int limitAtRoot_;
   //@}
 };
 

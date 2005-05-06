@@ -38,7 +38,9 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   const CoinBigIndex * columnStart = matrix_.getVectorStarts();
   const int * columnLength = matrix_.getVectorLengths();
   // Row copy
+#ifndef NDEBUG
   const double * elementByRow = matrixByRow_.getElements();
+#endif
   const int * column = matrixByRow_.getIndices();
   const CoinBigIndex * rowStart = matrixByRow_.getVectorStarts();
   const int * rowLength = matrixByRow_.getVectorLengths();
@@ -99,9 +101,10 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       int j,k;
       for (j=rowStart[i];j<rowStart[i]+rowLength[i];j++) {
 	int iColumn = column[j];
-	double value = elementByRow[j];
 	if (columnLower[iColumn]!=colUpper2[iColumn]) {
-          assert (value==1.0);
+#ifndef NDEBUG
+          assert (elementByRow[j]==1.0);
+#endif
           check[iColumn]=1;
           which2[nn++]=iColumn;
         }
@@ -112,9 +115,10 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
           int nnsame=0;
           for ( j=rowStart[k];j<rowStart[k]+rowLength[k];j++) {
             int iColumn = column[j];
-            double value = elementByRow[j];
             if (columnLower[iColumn]!=colUpper2[iColumn]) {
-              assert (value==1.0);
+#ifndef NDEBUG
+              assert (elementByRow[j]==1.0);
+#endif
               nn2++;
               if (check[iColumn]) 
                 nnsame++;

@@ -20,7 +20,6 @@
 #include "OsiRowCutDebugger.hpp"
 #include "CglProbing.hpp"
 
-
 typedef struct {double infeasibility;int sequence;} double_int_pair;
 class double_int_pair_compare {
 public:
@@ -1236,57 +1235,59 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	  cs.insert(cc);
 	}
       }
-      int * look = new int[nCols];
-      int nLook=0;
-      // get min max etc for rows
-      tighten2(colLower, colUpper, column, rowElements,
-	       rowStart, rowLength, rowLower, rowUpper,
-	       minR , maxR , markR, nRows, nCols);
-      // decide what to look at
-      if (mode==1) {
-	const double * colsol = si.getColSolution();
-	double_int_pair * array = new double_int_pair [nCols];
-	for (i=0;i<nCols;i++) {
-	  if (intVar[i]&&colUpper[i]-colLower[i]>1.0e-8) {
-	    double away = fabs(0.5-(colsol[i]-floor(colsol[i])));
-	    if (away<0.49999) {
-	      array[nLook].infeasibility=away;
-	      array[nLook++].sequence=i;
-	    }
-	  }
-	}
-	std::sort(array,array+nLook,double_int_pair_compare());
-	nLook=CoinMin(nLook,maxProbe);
-	for (i=0;i<nLook;i++) {
-	  look[i]=array[i].sequence;
-	}
-	delete [] array;
-      } else {
-	for (i=0;i<nCols;i++) {
-	  if (intVar[i]&&colUpper[i]-colLower[i]>1.0e-8) {
-	    look[nLook++]=i;
-	  }
-	}
+      if (maxProbe>0) {
+        int * look = new int[nCols];
+        int nLook=0;
+        // get min max etc for rows
+        tighten2(colLower, colUpper, column, rowElements,
+                 rowStart, rowLength, rowLower, rowUpper,
+                 minR , maxR , markR, nRows, nCols);
+        // decide what to look at
+        if (mode==1) {
+          const double * colsol = si.getColSolution();
+          double_int_pair * array = new double_int_pair [nCols];
+          for (i=0;i<nCols;i++) {
+            if (intVar[i]&&colUpper[i]-colLower[i]>1.0e-8) {
+              double away = fabs(0.5-(colsol[i]-floor(colsol[i])));
+              if (away<0.49999) {
+                array[nLook].infeasibility=away;
+                array[nLook++].sequence=i;
+              }
+            }
+          }
+          std::sort(array,array+nLook,double_int_pair_compare());
+          nLook=CoinMin(nLook,maxProbe);
+          for (i=0;i<nLook;i++) {
+            look[i]=array[i].sequence;
+          }
+          delete [] array;
+        } else {
+          for (i=0;i<nCols;i++) {
+            if (intVar[i]&&colUpper[i]-colLower[i]>1.0e-8) {
+              look[nLook++]=i;
+            }
+          }
+        }
+        // Only look at short rows
+        for (i=0;i<nRows;i++) {
+          if (rowLength[i]>maxElements)
+            markR[i]=-2;
+        }
+        if (!numberCliques_) {
+          ninfeas= probe(si, debugger, cs, colLower, colUpper, rowCopy,
+                         rowLower, rowUpper,
+                         intVar, minR, maxR, markR,
+                         look,nLook,info);
+        } else {
+          ninfeas= probeCliques(si, debugger, cs, colLower, colUpper, rowCopy,
+                                rowLower, rowUpper,
+                                intVar, minR, maxR, markR,
+                                look,nLook,info);
+        }
+        delete [] look;
       }
-      // Only look at short rows
-      for (i=0;i<nRows;i++) {
-        if (rowLength[i]>maxElements)
-          markR[i]=-2;
-      }
-      if (!numberCliques_) {
-        ninfeas= probe(si, debugger, cs, colLower, colUpper, rowCopy,
-                       rowLower, rowUpper,
-                       intVar, minR, maxR, markR,
-                       look,nLook,info);
-      } else {
-        ninfeas= probeCliques(si, debugger, cs, colLower, colUpper, rowCopy,
-                       rowLower, rowUpper,
-                       intVar, minR, maxR, markR,
-                       look,nLook,info);
-      }
-      delete [] look;
     }
-  } else {
+  } else if (maxProbe>0) {
     // global cuts from previous calculations
     // could check more thoroughly that integers are correct
     assert(numberIntegers==numberIntegers_);
@@ -2017,12 +2018,14 @@ int CglProbing::probe( const OsiSolverInterface & si,
   CoinPackedMatrix * columnCopy=NULL;
   // Set up maxes
   int maxStack = info.inTree ? maxStack_ : maxStackRoot_;
+  int maxPass = info.inTree ? maxPass_ : maxPassRoot_;
   if (!rowCopy_) {
     columnCopy = new CoinPackedMatrix(*rowCopy);
     columnCopy->reverseOrdering();
   } else {
     columnCopy = columnCopy_;
   }
+  int numberCuts = cs.sizeCuts();
   const int * column = rowCopy->getIndices();
   const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
   const int * rowLength = rowCopy->getVectorLengths(); 
@@ -2086,7 +2089,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
   double tolerance = 1.0e1*primalTolerance_;
   // If we are going to replace coefficient then we don't need to be effective
   double needEffectiveness = info.strengthenRow ? -1.0e10 : 1.0e-3;
-  while (ipass<maxPass_&&nfixed) {
+  while (ipass<maxPass&&nfixed) {
     int iLook;
     ipass++;
     nfixed=0;
@@ -2549,7 +2552,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
           ninfeas=1;
           j=nCols-1;
           iLook=nLook;
-          ipass=maxPass_;
+          ipass=maxPass;
           break;
         }
         if (notFeasible)
@@ -3077,6 +3080,133 @@ int CglProbing::probe( const OsiSolverInterface & si,
       }
     }
   }
+  if (!ninfeas&&(info.strengthenRow||
+                 numberCuts == cs.sizeCuts())) {
+    // Try and find ALL big M's
+    for (i = 0; i < nRows; ++i) {
+      if ((rowLower[i]>-1.0e20||rowUpper[i]<1.0e20)&&
+          (!info.strengthenRow||!info.strengthenRow[i])) {
+	int iflagu = 0;
+	int iflagl = 0;
+	double dmaxup = 0.0;
+	double dmaxdown = 0.0;
+	int krs = rowStart[i];
+	int kre = rowStart[i]+rowLength[i];
+        int kInt = -1;
+        double valueInteger=0.0;
+        // Find largest integer coefficient
+        for (k = krs; k < kre; ++k) {
+          j = column[k];
+          if (intVar[j]) {
+            double value=rowElements[k];
+            if (colUpper[j]>colLower[j]&&!colLower[j]&&
+                fabs(value)>fabs(valueInteger)) {
+              kInt=j;
+              valueInteger=value;
+            }
+          }
+        }
+        if (kInt>=0) {
+          double upperBound = CoinMin(colUpper[kInt],(double) INT_MAX);
+          for (k = krs; k < kre; ++k) {
+            double value=rowElements[k];
+            j = column[k];
+            if (colUpper[j]==colLower[j]) {
+              dmaxup += colUpper[j]*value;
+              dmaxdown += colUpper[j]*value;
+              continue;
+            }
+            if (j!=kInt) {
+              // continuous
+              if (value > 0.0) {
+                if (colUpper[j] >= 1e15) {
+                  dmaxup = 1e31;
+                  ++iflagu;
+                } else {
+                  dmaxup += colUpper[j] * value;
+                }
+                if (colLower[j] <= -1e15) {
+                  dmaxdown = -1e31;
+                  ++iflagl;
+                } else {
+                  dmaxdown += colLower[j] * value;
+                }
+              } else if (value<0.0) {
+                if (colUpper[j] >= 1e15) {
+                  dmaxdown = -1e31;
+                  ++iflagl;
+                } else {
+                  dmaxdown += colUpper[j] * value;
+                }
+                if (colLower[j] <= -1e15) {
+                  dmaxup = 1e31;
+                  ++iflagu;
+                } else {
+                  dmaxup += colLower[j] * value;
+                }
+              }
+            }
+          }
+          // end of row
+          if (iflagu)
+            dmaxup=1.0e31;
+          if (iflagl)
+            dmaxdown=-1.0e31;
+          if (dmaxdown+valueInteger*upperBound>rowLower[i]&&
+              dmaxup+valueInteger*upperBound<rowUpper[i]) {
+            // check to see if always feasible at 1 but not always at 0
+            if (dmaxdown+valueInteger>rowLower[i]&&dmaxup+valueInteger<rowUpper[i]&&
+                (dmaxdown<rowLower[i]-primalTolerance_||dmaxup>rowUpper[i]+primalTolerance_)) {
+              // can tighten
+              if (valueInteger>0.0) {
+                assert (dmaxdown<rowLower[i]);
+                valueInteger = rowLower[i]-dmaxdown;
+              } else {
+                assert (dmaxup>rowUpper[i]);
+                valueInteger = rowUpper[i]-dmaxup;
+              }
+              OsiRowCut rc;
+              rc.setLb(rowLower[i]);
+              rc.setUb(rowUpper[i]);
+              int n=0;
+              double sum=0.0;
+              for (int kk=rowStart[i];kk<rowStart[i]+rowLength[i];kk++) {
+                int j=column[kk];
+                if (j!=kInt) {
+                  sum += colsol[j]*rowElements[kk];
+                  index[n]=j;
+                  element[n++]=rowElements[kk];
+                } else {
+                  sum += colsol[j]*valueInteger;
+                  assert (rowElements[kk]*valueInteger>=0.0);
+#if 0
+                  if (fabs(rowElements[kk])>1.01*fabs(valueInteger)) {
+                    printf("row %d changing coefficient of %d from %g to %g\n",
+                           i,kInt,rowElements[kk],valueInteger);
+                  }
+#endif
+                  if (fabs(valueInteger)>1.0e-12) {
+                    index[n]=column[kk];
+                    element[n++]=valueInteger;
+                  }
+                }
+              }
+              double gap = 0.0;
+              if (sum<rowLower[i])
+                gap=rowLower[i]-sum;
+              else if (sum>rowUpper[i])
+                gap=sum-rowUpper[i];
+              if (gap>1.0e-4||info.strengthenRow!=NULL) {
+                rc.setEffectiveness(gap);
+                rc.setRow(n,index,element);
+                rowCut.addCutIfNotDuplicate(rc,i);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
   delete [] stackC0;
   delete [] lo0;
   delete [] up0;
@@ -3238,9 +3368,10 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
     }
   }
   double tolerance = 1.0e1*primalTolerance_;
+  int maxPass = info.inTree ? maxPass_ : maxPassRoot_;
   // If we are going to replace coefficient then we don't need to be effective
   double needEffectiveness = info.strengthenRow ? -1.0e10 : 1.0e-3;
-  while (ipass<maxPass_&&nfixed) {
+  while (ipass<maxPass&&nfixed) {
     int iLook;
     ipass++;
     nfixed=0;
@@ -3858,7 +3989,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 	    ninfeas=1;
 	    j=nCols-1;
             iLook=nLook;
-	    ipass=maxPass_;
+	    ipass=maxPass;
 	    break;
 	  }
 	  if (notFeasible)
@@ -4617,8 +4748,9 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
   }
   double tolerance = 1.0e1*primalTolerance_;
   // If we are going to replace coefficient then we don't need to be effective
+  int maxPass = info.inTree ? maxPass_ : maxPassRoot_;
   double needEffectiveness = info.strengthenRow ? -1.0e10 : 1.0e-3;
-  while (ipass<maxPass_&&nfixed) {
+  while (ipass<maxPass&&nfixed) {
     int iLook;
     ipass++;
     nfixed=0;
@@ -5166,7 +5298,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
           ninfeas=1;
           j=nCols-1;
           iLook=nLook;
-          ipass=maxPass_;
+          ipass=maxPass;
           break;
         }
         if (iway==2||(iway==1&&feasible==2)) {
@@ -5781,7 +5913,7 @@ int CglProbing::getLogLevel() const
 // Set maximum number of unsatisfied variables to look at
 void CglProbing::setMaxProbe(int value)
 {
-  if (value>0)
+  if (value>=0)
     maxProbe_=value;
 }
 // Get maximum number of unsatisfied variables to look at
@@ -5810,6 +5942,17 @@ void CglProbing::setMaxElements(int value)
 int CglProbing::getMaxElements() const
 {
   return maxElements_;
+}
+// Set maximum number of passes per node (root node)
+void CglProbing::setMaxPassRoot(int value)
+{
+  if (value>0)
+    maxPassRoot_=value;
+}
+// Get maximum number of passes per node (root node)
+int CglProbing::getMaxPassRoot() const
+{
+  return maxPassRoot_;
 }
 // Set maximum number of unsatisfied variables to look at (root node)
 void CglProbing::setMaxProbeRoot(int value)
@@ -5901,6 +6044,7 @@ logLevel_(0),
 maxProbe_(100),
 maxStack_(50),
 maxElements_(100000),
+maxPassRoot_(3),
 maxProbeRoot_(100),
 maxStackRoot_(50),
 maxElementsRoot_(1000),
@@ -5944,6 +6088,7 @@ CglProbing::CglProbing (  const CglProbing & rhs)
   maxProbe_(rhs.maxProbe_),
   maxStack_(rhs.maxStack_),
   maxElements_(rhs.maxElements_),
+  maxPassRoot_(rhs.maxPassRoot_),
   maxProbeRoot_(rhs.maxProbeRoot_),
   maxStackRoot_(rhs.maxStackRoot_),
   maxElementsRoot_(rhs.maxElementsRoot_),
@@ -6100,6 +6245,7 @@ CglProbing::operator=(
     maxProbe_=rhs.maxProbe_;
     maxStack_=rhs.maxStack_;
     maxElements_ = rhs.maxElements_;
+    maxPassRoot_ = rhs.maxPassRoot_;
     maxProbeRoot_ = rhs.maxProbeRoot_;
     maxStackRoot_ = rhs.maxStackRoot_;
     maxElementsRoot_ = rhs.maxElementsRoot_;
@@ -6676,6 +6822,7 @@ CglProbing::setupRowCliqueInformation(const OsiSolverInterface & si)
     if (array[iRow]) {
       int start = cliqueRowStart_[iRow];
       memcpy(cliqueRow_+start,array[iRow],rowLength[iRow]*sizeof(cliqueEntry));
+      delete [] array[iRow];
     }
   }
   delete [] array;

@@ -67,7 +67,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	   si.getObjCoefficients(), si.getColSolution(),
 	   si.getColLower(), si.getColUpper(), 
 	   si.getRowLower(), si.getRowUpper(),
-	   intVar,warm);
+	   intVar,warm,info);
 
   delete warmstart;
   delete [] intVar;
@@ -196,14 +196,17 @@ inline Rational nearestRational(double value, int maxDenominator)
 // Does actual work - returns number of cuts
 int
 CglGomory::generateCuts( const OsiRowCutDebugger * debugger, 
-		     OsiCuts & cs,
-		     const CoinPackedMatrix & columnCopy,
-		     const double * objective, const double * colsol,
-		     const double * colLower, const double * colUpper,
-		     const double * rowLower, const double * rowUpper,
+                         OsiCuts & cs,
+                         const CoinPackedMatrix & columnCopy,
+                         const double * objective, const double * colsol,
+                         const double * colLower, const double * colUpper,
+                         const double * rowLower, const double * rowUpper,
 			 const char * intVar,
-		    const CoinWarmStartBasis* warm) const
+                         const CoinWarmStartBasis* warm,
+                         const CglTreeInfo info) const
 {
+  // get limit on length of cut
+  int limit = info.inTree ? limit_ : CoinMax(limit_,limitAtRoot_);
   int numberRows=columnCopy.getNumRows();
   int numberColumns=columnCopy.getNumCols(); 
   
@@ -480,7 +483,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		 cutElement[j] = coefficient;
 		 cutIndex[number++]=j;
 		 // If too many - break from loop
-		 if (number>limit_) 
+		 if (number>limit) 
 		   break;
 	      }
 	    }
@@ -491,7 +494,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	}
 	cutVector.setNumElements(number);
 	// If too many - just clear vector and skip
-	if (number>limit_) {
+	if (number>limit) {
 	  cutVector.clear();
 	  continue;
 	}
@@ -725,7 +728,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		    rhs += value*colUpper[iColumn];
 		} else {
 		  // throw away
-		  number=limit_+1;
+		  number=limit+1;
 		  numberNonInteger=1;
 		  break;
 		}
@@ -737,11 +740,11 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      }
 	    }
 	    if (largest>1.0e9*smallest) {
-	      number=limit_+1; //reject
+	      number=limit+1; //reject
 	      numberNonInteger=1;
 	    }
 	  }
-	  if (number<limit_||!numberNonInteger) {
+	  if (number<limit||!numberNonInteger) {
 	    bounds[1]=rhs;
 	    if (number>50&&numberNonInteger)
 	      bounds[1] += 1.0e-6; // weaken
@@ -825,6 +828,16 @@ int CglGomory::getLimit() const
 {
   return limit_;
 }
+// Limit stuff at root
+void CglGomory::setLimitAtRoot(int limit)
+{
+  if (limit>0)
+    limitAtRoot_=limit;
+}
+int CglGomory::getLimitAtRoot() const
+{
+  return limitAtRoot_;
+}
 
 // Away stuff
 void CglGomory::setAway(double value)
@@ -844,7 +857,8 @@ CglGomory::CglGomory ()
 :
 CglCutGenerator(),
 away_(0.05),
-limit_(50)
+limit_(50),
+limitAtRoot_(0)
 {
 
 }
@@ -855,7 +869,8 @@ limit_(50)
 CglGomory::CglGomory (const CglGomory & source) :
   CglCutGenerator(source),
   away_(source.away_),
-  limit_(source.limit_)
+  limit_(source.limit_),
+  limitAtRoot_(source.limitAtRoot_)
 {  
 }
 
@@ -885,6 +900,7 @@ CglGomory::operator=(const CglGomory& rhs)
     CglCutGenerator::operator=(rhs);
     away_=rhs.away_;
     limit_=rhs.limit_;
+    limitAtRoot_=rhs.limitAtRoot_;
   }
   return *this;
 }

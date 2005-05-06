@@ -17,6 +17,7 @@
 #include "OsiCuts.hpp"
 #include "CglCutGenerator.hpp"
 #include "CoinTime.hpp"
+#include "CoinSort.hpp"
 #include "CoinBuild.hpp"
 #include "CoinHelperFunctions.hpp"
 
@@ -258,15 +259,389 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       }
     }
   }
-  if (!returnModel) 
+  if (returnModel) {
+    // tighten bounds
+    int infeas = tightenPrimalBounds(*returnModel);
+    if (infeas) {
+      delete returnModel;
+      returnModel=NULL;
+    }
+  } else {
     handler_->message(CGL_INFEASIBLE,messages_)
       <<CoinMessageEol;
+  }
   return returnModel;
+}
+
+/* Tightens primal bounds to make dual and branch and cutfaster.  Unless
+   fixed, bounds are slightly looser than they could be.
+   Returns non-zero if problem infeasible
+   Fudge for branch and bound - put bounds on columns of factor *
+   largest value (at continuous) - should improve stability
+   in branch and bound on infeasible branches (0.0 is off)
+*/
+int 
+CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
+{
+  
+  // Get a row copy in standard format
+  CoinPackedMatrix copy = *model.getMatrixByRow();
+  // get matrix data pointers
+  const int * column = copy.getIndices();
+  const CoinBigIndex * rowStart = copy.getVectorStarts();
+  const int * rowLength = copy.getVectorLengths(); 
+  const double * element = copy.getElements();
+  int numberChanged=1,iPass=0;
+  double large = model.getInfinity()*0.1; // treat bounds > this as infinite
+  int numberInfeasible=0;
+  int totalTightened = 0;
+
+  double tolerance;
+  model.getDblParam(OsiPrimalTolerance,tolerance);
+
+
+  int numberColumns=model.getNumCols();
+  const double * colLower = model.getColLower();
+  const double * colUpper = model.getColUpper();
+  // New and saved column bounds
+  double * newLower = new double [numberColumns];
+  memcpy(newLower,colLower,numberColumns*sizeof(double));
+  double * newUpper = new double [numberColumns];
+  memcpy(newUpper,colUpper,numberColumns*sizeof(double));
+  double * columnLower = new double [numberColumns];
+  memcpy(columnLower,colLower,numberColumns*sizeof(double));
+  double * columnUpper = new double [numberColumns];
+  memcpy(columnUpper,colUpper,numberColumns*sizeof(double));
+  const double * solution = model.getColSolution();
+
+  int iRow, iColumn;
+
+  // If wanted - tighten column bounds using solution
+  if (factor) {
+    double largest=0.0;
+    if (factor>0.0) {
+      assert (factor>1.0);
+      for (iColumn=0;iColumn<numberColumns;iColumn++) {
+        if (columnUpper[iColumn]-columnLower[iColumn]>tolerance) {
+          largest = CoinMax(largest,fabs(solution[iColumn]));
+        }
+      }
+      largest *= factor;
+    } else {
+      // absolute
+       largest = - factor;
+    }
+    for (iColumn=0;iColumn<numberColumns;iColumn++) {
+      if (columnUpper[iColumn]-columnLower[iColumn]>tolerance) {
+        newUpper[iColumn] = CoinMin(columnUpper[iColumn],largest);
+        newLower[iColumn] = CoinMax(columnLower[iColumn],-largest);
+      }
+    }
+  }
+  int numberRows = model.getNumRows();
+  const double * rowLower = model.getRowLower();
+  const double * rowUpper = model.getRowUpper();
+#ifndef NDEBUG
+  double large2= 1.0e10*large;
+#endif
+#define MAXPASS 10
+
+  // Loop round seeing if we can tighten bounds
+  // Would be faster to have a stack of possible rows
+  // and we put altered rows back on stack
+  int numberCheck=-1;
+  while(numberChanged>numberCheck) {
+
+    numberChanged = 0; // Bounds tightened this pass
+    
+    if (iPass==MAXPASS) break;
+    iPass++;
+    
+    for (iRow = 0; iRow < numberRows; iRow++) {
+
+      if (rowLower[iRow]>-large||rowUpper[iRow]<large) {
+
+	// possible row
+	int infiniteUpper = 0;
+	int infiniteLower = 0;
+	double maximumUp = 0.0;
+	double maximumDown = 0.0;
+	double newBound;
+	CoinBigIndex rStart = rowStart[iRow];
+	CoinBigIndex rEnd = rowStart[iRow]+rowLength[iRow];
+	CoinBigIndex j;
+	// Compute possible lower and upper ranges
+      
+	for (j = rStart; j < rEnd; ++j) {
+	  double value=element[j];
+	  iColumn = column[j];
+	  if (value > 0.0) {
+	    if (newUpper[iColumn] >= large) {
+	      ++infiniteUpper;
+	    } else {
+	      maximumUp += newUpper[iColumn] * value;
+	    }
+	    if (newLower[iColumn] <= -large) {
+	      ++infiniteLower;
+	    } else {
+	      maximumDown += newLower[iColumn] * value;
+	    }
+	  } else if (value<0.0) {
+	    if (newUpper[iColumn] >= large) {
+	      ++infiniteLower;
+	    } else {
+	      maximumDown += newUpper[iColumn] * value;
+	    }
+	    if (newLower[iColumn] <= -large) {
+	      ++infiniteUpper;
+	    } else {
+	      maximumUp += newLower[iColumn] * value;
+	    }
+	  }
+	}
+	// Build in a margin of error
+	maximumUp += 1.0e-8*fabs(maximumUp);
+	maximumDown -= 1.0e-8*fabs(maximumDown);
+	double maxUp = maximumUp+infiniteUpper*1.0e31;
+	double maxDown = maximumDown-infiniteLower*1.0e31;
+	if (maxUp <= rowUpper[iRow] + tolerance && 
+	    maxDown >= rowLower[iRow] - tolerance) {
+	  
+	  // Row is redundant - make totally free
+	} else {
+	  if (maxUp < rowLower[iRow] -100.0*tolerance ||
+	      maxDown > rowUpper[iRow]+100.0*tolerance) {
+	    // problem is infeasible - exit at once
+	    numberInfeasible++;
+	    break;
+	  }
+	  double lower = rowLower[iRow];
+	  double upper = rowUpper[iRow];
+	  for (j = rStart; j < rEnd; ++j) {
+	    double value=element[j];
+	    iColumn = column[j];
+	    double nowLower = newLower[iColumn];
+	    double nowUpper = newUpper[iColumn];
+	    if (value > 0.0) {
+	      // positive value
+	      if (lower>-large) {
+		if (!infiniteUpper) {
+		  assert(nowUpper < large2);
+		  newBound = nowUpper + 
+		    (lower - maximumUp) / value;
+		  // relax if original was large
+		  if (fabs(maximumUp)>1.0e8)
+		    newBound -= 1.0e-12*fabs(maximumUp);
+		} else if (infiniteUpper==1&&nowUpper>large) {
+		  newBound = (lower -maximumUp) / value;
+		  // relax if original was large
+		  if (fabs(maximumUp)>1.0e8)
+		    newBound -= 1.0e-12*fabs(maximumUp);
+		} else {
+		  newBound = -COIN_DBL_MAX;
+		}
+		if (newBound > nowLower + 1.0e-12&&newBound>-large) {
+		  // Tighten the lower bound 
+		  newLower[iColumn] = newBound;
+		  numberChanged++;
+		  // check infeasible (relaxed)
+		  if (nowUpper - newBound < 
+		      -100.0*tolerance) {
+		    numberInfeasible++;
+		  }
+		  // adjust
+		  double now;
+		  if (nowLower<-large) {
+		    now=0.0;
+		    infiniteLower--;
+		  } else {
+		    now = nowLower;
+		  }
+		  maximumDown += (newBound-now) * value;
+		  nowLower = newBound;
+		}
+	      } 
+	      if (upper <large) {
+		if (!infiniteLower) {
+		  assert(nowLower >- large2);
+		  newBound = nowLower + 
+		    (upper - maximumDown) / value;
+		  // relax if original was large
+		  if (fabs(maximumDown)>1.0e8)
+		    newBound += 1.0e-12*fabs(maximumDown);
+		} else if (infiniteLower==1&&nowLower<-large) {
+		  newBound =   (upper - maximumDown) / value;
+		  // relax if original was large
+		  if (fabs(maximumDown)>1.0e8)
+		    newBound += 1.0e-12*fabs(maximumDown);
+		} else {
+		  newBound = COIN_DBL_MAX;
+		}
+		if (newBound < nowUpper - 1.0e-12&&newBound<large) {
+		  // Tighten the upper bound 
+		  newUpper[iColumn] = newBound;
+		  numberChanged++;
+		  // check infeasible (relaxed)
+		  if (newBound - nowLower < 
+		      -100.0*tolerance) {
+		    numberInfeasible++;
+		  }
+		  // adjust 
+		  double now;
+		  if (nowUpper>large) {
+		    now=0.0;
+		    infiniteUpper--;
+		  } else {
+		    now = nowUpper;
+		  }
+		  maximumUp += (newBound-now) * value;
+		  nowUpper = newBound;
+		}
+	      }
+	    } else {
+	      // negative value
+	      if (lower>-large) {
+		if (!infiniteUpper) {
+		  assert(nowLower < large2);
+		  newBound = nowLower + 
+		    (lower - maximumUp) / value;
+		  // relax if original was large
+		  if (fabs(maximumUp)>1.0e8)
+		    newBound += 1.0e-12*fabs(maximumUp);
+		} else if (infiniteUpper==1&&nowLower<-large) {
+		  newBound = (lower -maximumUp) / value;
+		  // relax if original was large
+		  if (fabs(maximumUp)>1.0e8)
+		    newBound += 1.0e-12*fabs(maximumUp);
+		} else {
+		  newBound = COIN_DBL_MAX;
+		}
+		if (newBound < nowUpper - 1.0e-12&&newBound<large) {
+		  // Tighten the upper bound 
+		  newUpper[iColumn] = newBound;
+		  numberChanged++;
+		  // check infeasible (relaxed)
+		  if (newBound - nowLower < 
+		      -100.0*tolerance) {
+		    numberInfeasible++;
+		  }
+		  // adjust
+		  double now;
+		  if (nowUpper>large) {
+		    now=0.0;
+		    infiniteLower--;
+		  } else {
+		    now = nowUpper;
+		  }
+		  maximumDown += (newBound-now) * value;
+		  nowUpper = newBound;
+		}
+	      }
+	      if (upper <large) {
+		if (!infiniteLower) {
+		  assert(nowUpper < large2);
+		  newBound = nowUpper + 
+		    (upper - maximumDown) / value;
+		  // relax if original was large
+		  if (fabs(maximumDown)>1.0e8)
+		    newBound -= 1.0e-12*fabs(maximumDown);
+		} else if (infiniteLower==1&&nowUpper>large) {
+		  newBound =   (upper - maximumDown) / value;
+		  // relax if original was large
+		  if (fabs(maximumDown)>1.0e8)
+		    newBound -= 1.0e-12*fabs(maximumDown);
+		} else {
+		  newBound = -COIN_DBL_MAX;
+		}
+		if (newBound > nowLower + 1.0e-12&&newBound>-large) {
+		  // Tighten the lower bound 
+		  newLower[iColumn] = newBound;
+		  numberChanged++;
+		  // check infeasible (relaxed)
+		  if (nowUpper - newBound < 
+		      -100.0*tolerance) {
+		    numberInfeasible++;
+		  }
+		  // adjust
+		  double now;
+		  if (nowLower<-large) {
+		    now=0.0;
+		    infiniteUpper--;
+		  } else {
+		    now = nowLower;
+		  }
+		  maximumUp += (newBound-now) * value;
+		  nowLower = newBound;
+		}
+	      }
+	    }
+	  }
+	}
+      }
+    }
+    totalTightened += numberChanged;
+    if (iPass==1)
+      numberCheck=numberChanged>>4;
+    if (numberInfeasible) break;
+  }
+  if (!numberInfeasible) {
+    // Set bounds slightly loose
+    double useTolerance = 1.0e-2;
+    for (iColumn=0;iColumn<numberColumns;iColumn++) {
+      if (columnUpper[iColumn]>columnLower[iColumn]) {
+        double lower = newLower[iColumn];
+        double upper = newUpper[iColumn];
+        if (model.isInteger(iColumn)) {
+          if (fabs(lower-floor(lower+0.5))<1.0e-5)
+            lower=floor(lower+0.5);
+          else
+            lower = ceil(lower);
+          if (fabs(upper-floor(upper+0.5))<1.0e-5)
+            upper=floor(upper+0.5);
+          else
+            upper = floor(upper);
+          if (lower>upper)
+            numberInfeasible++;
+        } else {
+          if (upper-lower<1.0e-8) {
+            if (fabs(lower)<1.0e-8&&fabs(upper)<1.0e-8) 
+              lower=0.0;
+            upper=lower;
+          } else { 
+            lower=CoinMax(columnLower[iColumn],
+                          lower-useTolerance);
+            upper=CoinMin(columnUpper[iColumn],
+                          upper+useTolerance);
+          }
+	}
+        model.setColLower(iColumn,lower);
+        model.setColUpper(iColumn,upper);
+      }
+    }
+  }
+  if (numberInfeasible) {
+    handler_->message(CGL_INFEASIBLE,messages_)
+      <<CoinMessageEol;
+    // restore column bounds
+    for (iColumn=0;iColumn<numberColumns;iColumn++) {
+      model.setColLower(iColumn,columnLower[iColumn]);
+      model.setColUpper(iColumn,columnUpper[iColumn]);
+    }
+  }
+  delete [] newLower;
+  delete [] newUpper;
+  delete [] columnLower;
+  delete [] columnUpper;
+  return (numberInfeasible);
 }
 
 void
 CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 {
+  // Do presolves
+  OsiHintStrength saveStrength;
+  bool saveHint;
+  originalModel_->getHintParam(OsiDoPresolveInResolve,saveHint,saveStrength);
   OsiSolverInterface * modelM = &modelIn;
   for (int iPass=numberSolvers_-1;iPass>=0;iPass--) {
     OsiSolverInterface * model = model_[iPass];
@@ -282,6 +657,7 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
         model->setColUpper(iColumn,value2);
       }
     }
+    model->setHintParam(OsiDoPresolveInResolve,true,OsiHintTry);
     model->resolve();
     presolve_[iPass]->postsolve(true);
     delete modifiedModel_[iPass];;
@@ -310,7 +686,9 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
       model->setColUpper(iColumn,value2);
     }
   }
+  model->setHintParam(OsiDoPresolveInResolve,true,OsiHintTry);
   model->resolve();
+  model->setHintParam(OsiDoPresolveInResolve,saveHint,saveStrength);
 }
 /* Return model with useful modifications.  
    If constraints true then adds any x+y=1 or x-y=0 constraints
@@ -469,17 +847,21 @@ CglPreProcess::modified(OsiSolverInterface * model,
         for (int k = 0;k<numberRowCuts;k++) {
           OsiRowCut * thisCut = cs.rowCutPtr(k) ;
           int n=thisCut->row().getNumElements();
+#ifndef NDEBUG
           const double * elementCut = thisCut->row().getElements();
+#endif
           double lower = thisCut->lb();
           double upper = thisCut->ub();
           if (n==2&&lower==upper) {
             numberTwo++;
+#ifndef NDEBUG
             if (lower) {
               assert (elementCut[0]==1.0&&elementCut[1]==1.0);
             } else {
               assert ((elementCut[0]==-1.0&&elementCut[1]==1.0)||
                       (elementCut[0]==1.0&&elementCut[1]==-1.0));
             }
+#endif
             twoCuts.insert(*thisCut);
           }
         }
@@ -854,4 +1236,74 @@ CglPreProcess::createOriginalIndices() const
     for (i=0;i<nRows;i++)
       originalRow_[i]=i;
   }
+}
+/* Fix some of problem - returning new problem.
+   Uses reduced costs.
+   Optional signed character array
+   1 always keep, -1 always discard, 0 use djs
+   
+*/
+OsiSolverInterface * 
+CglPreProcess::someFixed(OsiSolverInterface & model, 
+                                 double fractionToKeep,
+                                 bool fixContinuousAsWell,
+                                 char * keep) const
+{
+  model.resolve();
+  int numberColumns = model.getNumCols();
+  OsiSolverInterface * newModel = model.clone();
+  int i;
+  const double * lower = model.getColLower();
+  const double * upper = model.getColUpper();
+  const double * solution = model.getColSolution();
+  double * dj = CoinCopyOfArray(model.getReducedCost(),numberColumns);
+  int * sort = new int[numberColumns];
+  int number=0;
+  int numberThrow=0;
+  int numberContinuous=0;
+  for (i=0;i<numberColumns;i++) {
+    if (!model.isInteger(i)&&upper[i]>lower[i])
+      numberContinuous++;
+    if (model.isInteger(i)||fixContinuousAsWell) {
+      if (keep) {
+        if (keep[i]==1) {
+          continue; // always keep
+        } else if (keep[i]==-1) {
+          // always fix
+          dj[number]=-1.0e30;
+          numberThrow++;
+          sort[number++]=i;
+          continue;
+        }
+      }
+      double value = solution[i];
+      if (value<lower[i]+1.0e-8) {
+        dj[number]=-dj[i];
+        sort[number++]=i;
+      } else if (value>upper[number]-1.0e-8) {
+        dj[number]=-dj[i];
+        sort[number++]=i;
+      }
+    }
+  }
+  CoinSort_2(dj,dj+number,sort);
+  int numberToFix = (int) (numberColumns *(1.0-fractionToKeep));
+  if (!fixContinuousAsWell)
+    numberToFix = (int) ((numberColumns-numberContinuous) *(1.0-fractionToKeep));
+  numberToFix = CoinMax(numberToFix,numberThrow);
+  numberToFix = CoinMin(number,numberToFix);
+  printf("%d columns fixed\n",numberToFix);
+  for (i=0;i<numberToFix;i++) {
+    int iColumn = sort[i];
+    double value = solution[iColumn];
+    if (value<lower[iColumn]+1.0e-8) {
+      newModel->setColUpper(iColumn,lower[iColumn]);
+    } else if (value>upper[number]-1.0e-8) {
+      newModel->setColLower(iColumn,lower[iColumn]);
+    } else {
+      // must be a throw away on - go to lower
+      newModel->setColUpper(iColumn,lower[iColumn]);
+    }
+  }
+  return newModel;
 }

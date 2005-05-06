@@ -159,6 +159,10 @@ public:
   void setMaxElements(int value);
   /// Get maximum number of elements in row for it to be considered
   int getMaxElements() const;
+  /// Set maximum number of passes per node  (root node)
+  void setMaxPassRoot(int value);
+  /// Get maximum number of passes per node (root node)
+  int getMaxPassRoot() const;
   /// Set maximum number of unsatisfied variables to look at (root node)
   void setMaxProbeRoot(int value);
   /// Get maximum number of unsatisfied variables to look at (root node)
@@ -321,6 +325,8 @@ private:
   int maxStack_;
   /// Maximum number of elements in row for scan
   int maxElements_;
+  /// Maximum number of passes to do in probing at root
+  int maxPassRoot_;
   /// Maximum number of unsatisfied variables to probe at root
   int maxProbeRoot_;
   /// Maximum number of variables to look at in one probe at root
