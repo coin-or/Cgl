@@ -41,7 +41,7 @@ public:
 		    const double * rowLower, const double * rowUpper,
 		    const char * intVar ,
 		    const CoinWarmStartBasis* warm,
-                    const CglTreeInfo info) const;
+                    const CglTreeInfo info = CglTreeInfo()) const;
 
   //@}
 
