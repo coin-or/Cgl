@@ -45,7 +45,7 @@ public:
       code from this function i.e. call preProcessNonDefault
   */
   OsiSolverInterface * preProcess(OsiSolverInterface & model, 
-                                  bool makeEquality=true, int numberPasses=5);
+                                  bool makeEquality=false, int numberPasses=5);
   /** preProcess problem - returning new problem.
       If makeEquality true then <= cliques converted to ==.
       Presolve will be done numberPasses times.
