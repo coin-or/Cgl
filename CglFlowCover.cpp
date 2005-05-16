@@ -805,6 +805,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	delete [] xCoef;
 	delete [] yCoef;
 	delete [] mt; 
+	delete [] M; 
 	return generated;
     }
 
