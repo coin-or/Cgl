@@ -88,7 +88,9 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   const double * upper = originalModel_->getColUpper();
   const double * rowLower = originalModel_->getRowLower();
   const double * rowUpper = originalModel_->getRowUpper();
-  
+
+  // See if all + 1
+  bool allPlusOnes=true;
   for (iRow=0;iRow<numberRows;iRow++) {
     int numberP1=0, numberM1=0;
     int j;
@@ -108,10 +110,12 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       }
       if (fabs(elementByRow[j])!=1.0) {
         good=false;
+        allPlusOnes=false;
         break;
       } else if (elementByRow[j]>0.0) {
         which[numberP1++]=iColumn;
       } else {
+        allPlusOnes=false;
         numberM1++;
         which[numberColumns-numberM1]=iColumn;
       }
@@ -230,8 +234,13 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     OsiSolverInterface * oldModel = startModel_;
     for (int iPass=0;iPass<numberSolvers_;iPass++) {
       OsiPresolve * pinfo = new OsiPresolve();
+      int presolveActions=0;
       // Allow dual stuff on integers
-      pinfo->setPresolveActions(1);
+      presolveActions=1;
+      // Do not allow all +1 to be tampered with
+      if (allPlusOnes)
+        presolveActions |= 2;
+      pinfo->setPresolveActions(presolveActions);
       presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-8,true,5);
       if (!presolvedModel) {
         returnModel=NULL;
