@@ -545,7 +545,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		 k<rowStart[iRow]+rowLength[iRow];k++) {
 	      int jColumn=column[k];
 	      double value=rowElements[k];
-	      cutVector.add(jColumn,-coefficient*value);
+	      cutVector.quickAdd(jColumn,-coefficient*value);
 	    }
 	  }
 	}
