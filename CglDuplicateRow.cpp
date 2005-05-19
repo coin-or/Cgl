@@ -29,6 +29,9 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     printf("On optimal path\n");
   }
 #endif
+  // Don't do in tree ?
+  if (info.inTree)
+    return;
   int numberColumns = matrix_.getNumCols();
   CoinPackedVector ubs;
   

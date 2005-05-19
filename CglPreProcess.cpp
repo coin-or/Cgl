@@ -22,6 +22,7 @@
 #include "CoinHelperFunctions.hpp"
 
 #include "CglProbing.hpp"
+#include "CglDuplicateRow.hpp"
 
 OsiSolverInterface *
 CglPreProcess::preProcess(OsiSolverInterface & model, 
@@ -232,6 +233,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   } else {
     OsiSolverInterface * presolvedModel;
     OsiSolverInterface * oldModel = startModel_;
+    CglDuplicateRow dupCuts(startModel_);
+    //dupCuts.setLogLevel(1);
+    // If +1 try duplicate rows
+    if (allPlusOnes)
+      addCutGenerator(&dupCuts);
     for (int iPass=0;iPass<numberSolvers_;iPass++) {
       OsiPresolve * pinfo = new OsiPresolve();
       int presolveActions=0;
@@ -737,11 +743,21 @@ CglPreProcess::modified(OsiSolverInterface * model,
     int numberStrengthened=0;
     info.pass = iPass;
     int numberChangedThisPass=0;
+    int numberFromCglDuplicate=0;
+    const int * duplicate=NULL;
     for (int iGenerator=firstGenerator;iGenerator<lastGenerator;iGenerator++) {
       OsiCuts cs;
       CoinZeroN(whichCut,numberRows);
       if (iGenerator>=0) {
+        // refresh as model may have changed
+        generator_[iGenerator]->refreshSolver(newModel);
         generator_[iGenerator]->generateCuts(*newModel,cs,info);
+        // If CglDuplicate may give us useless rows
+        CglDuplicateRow * dupRow = dynamic_cast<CglDuplicateRow *> (generator_[iGenerator]);
+        if (dupRow) {
+          numberFromCglDuplicate = dupRow->numberOriginalRows();
+          duplicate = dupRow->duplicate();
+        }
       } else {
         // special probing
         CglProbing generator1;
@@ -765,9 +781,17 @@ CglPreProcess::modified(OsiSolverInterface * model,
         if(whichCut[iRow])
           numberStrengthened++;
       }
+      // Also can we get rid of duplicate rows
+      int numberDrop=0;
+      for (iRow=0;iRow<numberFromCglDuplicate;iRow++) {
+        if (duplicate[iRow]==-2||duplicate[iRow]>=0) {
+          numberDrop++;
+          newModel->setRowBounds(iRow,-COIN_DBL_MAX,COIN_DBL_MAX);
+        }
+      }
       const double * columnLower = newModel->getColLower();
       const double * columnUpper = newModel->getColUpper();
-      if (numberStrengthened) {
+      if (numberStrengthened||numberDrop) {
         // Easier to recreate entire matrix
         const CoinPackedMatrix * rowCopy = newModel->getMatrixByRow();
         const int * column = rowCopy->getIndices();

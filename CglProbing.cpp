@@ -13,6 +13,7 @@
 #include <iostream>
 //#define PRINT_DEBUG
 //#define CGL_DEBUG 1
+//#undef NDEBUG
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedVector.hpp"
 #include "CoinPackedMatrix.hpp"
@@ -956,7 +957,7 @@ void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 
   int nCols=si.getNumCols();
   // Set size if not set
-  if (!numberRows_) {
+  if (!rowCopy_) {
     numberRows_=nRows;
     numberColumns_=nCols;
   }
@@ -3157,7 +3158,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
             // check to see if always feasible at 1 but not always at 0
             if (dmaxdown+valueInteger>rowLower[i]&&dmaxup+valueInteger<rowUpper[i]&&
                 (dmaxdown<rowLower[i]-primalTolerance_||dmaxup>rowUpper[i]+primalTolerance_)) {
-              // can tighten
+              // can tighten (maybe)
+              double saveValue = valueInteger;
               if (valueInteger>0.0) {
                 assert (dmaxdown<rowLower[i]);
                 valueInteger = rowLower[i]-dmaxdown;
@@ -3165,41 +3167,44 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 assert (dmaxup>rowUpper[i]);
                 valueInteger = rowUpper[i]-dmaxup;
               }
-              OsiRowCut rc;
-              rc.setLb(rowLower[i]);
-              rc.setUb(rowUpper[i]);
-              int n=0;
-              double sum=0.0;
-              for (int kk=rowStart[i];kk<rowStart[i]+rowLength[i];kk++) {
-                int j=column[kk];
-                if (j!=kInt) {
-                  sum += colsol[j]*rowElements[kk];
-                  index[n]=j;
-                  element[n++]=rowElements[kk];
-                } else {
-                  sum += colsol[j]*valueInteger;
-                  assert (rowElements[kk]*valueInteger>=0.0);
+              if (fabs(saveValue-valueInteger)>1.0e-12) {
+                // take
+                OsiRowCut rc;
+                rc.setLb(rowLower[i]);
+                rc.setUb(rowUpper[i]);
+                int n=0;
+                double sum=0.0;
+                for (int kk=rowStart[i];kk<rowStart[i]+rowLength[i];kk++) {
+                  int j=column[kk];
+                  if (j!=kInt) {
+                    sum += colsol[j]*rowElements[kk];
+                    index[n]=j;
+                    element[n++]=rowElements[kk];
+                  } else {
+                    sum += colsol[j]*valueInteger;
+                    assert (rowElements[kk]*valueInteger>=0.0);
 #if 0
-                  if (fabs(rowElements[kk])>1.01*fabs(valueInteger)) {
-                    printf("row %d changing coefficient of %d from %g to %g\n",
-                           i,kInt,rowElements[kk],valueInteger);
-                  }
+                    if (fabs(rowElements[kk])>1.01*fabs(valueInteger)) {
+                      printf("row %d changing coefficient of %d from %g to %g\n",
+                             i,kInt,rowElements[kk],valueInteger);
+                    }
 #endif
-                  if (fabs(valueInteger)>1.0e-12) {
-                    index[n]=column[kk];
-                    element[n++]=valueInteger;
+                    if (fabs(valueInteger)>1.0e-12) {
+                      index[n]=column[kk];
+                      element[n++]=valueInteger;
+                    }
                   }
                 }
-              }
-              double gap = 0.0;
-              if (sum<rowLower[i])
-                gap=rowLower[i]-sum;
-              else if (sum>rowUpper[i])
-                gap=sum-rowUpper[i];
-              if (gap>1.0e-4||info.strengthenRow!=NULL) {
-                rc.setEffectiveness(gap);
-                rc.setRow(n,index,element);
-                rowCut.addCutIfNotDuplicate(rc,i);
+                double gap = 0.0;
+                if (sum<rowLower[i])
+                  gap=rowLower[i]-sum;
+                else if (sum>rowUpper[i])
+                  gap=sum-rowUpper[i];
+                if (gap>1.0e-4||info.strengthenRow!=NULL) {
+                  rc.setEffectiveness(gap);
+                  rc.setRow(n,index,element);
+                  rowCut.addCutIfNotDuplicate(rc,i);
+                }
               }
             }
           }
@@ -6338,7 +6343,7 @@ CglProbing::operator=(
 void 
 CglProbing::refreshSolver(OsiSolverInterface * solver)
 {
-  if (numberColumns_) {
+  if (rowCopy_) {
     // snapshot existed - redo
     snapshot(*solver,NULL);
   }
@@ -6355,7 +6360,7 @@ CglProbing::createCliques( OsiSolverInterface & si,
   deleteCliques();
   CoinPackedMatrix matrixByRow(*si.getMatrixByRow());
   int numberRows = si.getNumRows();
-  if (!numberRows_)
+  if (!rowCopy_)
     numberRows_=numberRows;
   numberColumns_ = si.getNumCols();
 

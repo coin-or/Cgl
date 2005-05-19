@@ -1123,12 +1123,14 @@ CglKnapsackCover::findLPMostViolatedMinCover(
       remainder.insert(krow.getIndices()[i],krow.getElements()[i]);
     }
     
-#ifdef PRINT_DEBUG
     if (coverSum <= b){
+#ifdef PRINT_DEBUG
       printf("The identified cover is NOT a cover\n");
       abort();
-    }
 #endif
+      delete [] ratio;
+      return -1;
+    }
     
     // Sort cover in terms of knapsack row coefficients   
     cover.sortDecrElement();
@@ -1139,7 +1141,7 @@ CglKnapsackCover::findLPMostViolatedMinCover(
     // by testing and potentially tossing smallest
     // elements 
     double oneLessCoverSum = coverSum - cover.getElements()[nCover-1];
-    while (oneLessCoverSum > b){
+    while (oneLessCoverSum > b+1.0e-12){
       // move the excess cover member into the set of remainders
       remainder.insert(cover.getIndices()[nCover-1],
 		       cover.getElements()[nCover-1]);
@@ -1151,8 +1153,10 @@ CglKnapsackCover::findLPMostViolatedMinCover(
     if (nCover<2){
 #ifdef PRINT_DEBUG
       printf("nCover < 2...aborting\n");
-#endif
       abort();
+#endif
+      delete [] ratio;
+      return -1;
     }
     
 #ifdef PRINT_DEBUG   /* debug */
