@@ -58,9 +58,15 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
 
   int * vub = new int [nRows];
 
+  // Now vubValue are for positive coefficients and vlbValue for negative
+  // when L row
   // For each column point to vub row
   int * vubRow = new int [nCols];
   double * vubValue = new double [nRows];
+
+  // For each column point to vlb row
+  int * vlbRow = new int [nCols];
+  double * vlbValue = new double [nRows];
 
   // Take out all fixed
   double * effectiveUpper = new double [nRows];
@@ -72,14 +78,18 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
     xstar[k]=colsol[k];
     complement[k]=0;
     vubRow[k]=-1;
+    vlbRow[k]=-1;
     if (si.isBinary(k)) {
       if (si.isFreeBinary(k)) {
 	vubRow[k]=-2;
+	vlbRow[k]=-2;
       } else {
 	vubRow[k]=-10;
+	vlbRow[k]=-10;
       }
     } else if (colUpper[k]==colLower[k]) {
       vubRow[k]=-10; // fixed
+      vlbRow[k]=-10; // fixed
     }
   }
 
@@ -97,10 +107,16 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
   // Scan all rows looking for possibles
 
   for (rowIndex=0;rowIndex<nRows;rowIndex++) {
+    vub[rowIndex]=-1;
     int start = rowStart[rowIndex];
     int end = start + rowLength[rowIndex];
     double upRhs = rowUpper[rowIndex]; 
     double loRhs = rowLower[rowIndex]; 
+    double multiplier=0.0;
+    if (upRhs>1.0e20)
+      multiplier=-1.0;
+    else if (loRhs<-1.0e20)
+      multiplier=1.0;
     int numberContinuous=0;
     int numberBinary=0;
     int iCont=-1;
@@ -111,47 +127,52 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
     int j;
     for (j=start;j<end;j++) {
       int iColumn=column[j];
+      double value = elementByRow[j];
       if (colUpper[iColumn]>colLower[iColumn]) {
-	sum += colsol[iColumn]*elementByRow[j];
-	if (vubRow[iColumn]==-2) {
+	sum += colsol[iColumn]*value;
+	if (vubRow[iColumn]==-2&&value*multiplier>0.0) {
 	  // binary
 	  numberBinary++;
-	  valueBinary=elementByRow[j];
+	  valueBinary=value;
+	  iBinary=iColumn;
+	} else if (vlbRow[iColumn]==-2&&value*multiplier<0.0) {
+	  // binary
+	  numberBinary++;
+	  valueBinary=value;
 	  iBinary=iColumn;
 	} else if (vubRow[iColumn]==-1) {
 	  // only use if not at bound
-	  if (colsol[iColumn]<colUpper[iColumn]-1.0e-6&&
-	      colsol[iColumn]>colLower[iColumn]+1.0e-6) {
+          //	  if (colsol[iColumn]<colUpper[iColumn]-1.0e-6&&
+          //  colsol[iColumn]>colLower[iColumn]+1.0e-6) {
 	    // possible
 	    iCont=iColumn;
 	    numberContinuous++;
-	    valueContinuous=elementByRow[j];
-	  } else {
-	    // ** needs more thought
-	    numberContinuous ++;
-	    iCont=-1;
-	  }
+	    valueContinuous=value;
+            //} else {
+	    //// ** needs more thought
+	    //numberContinuous ++;
+	    //iCont=-1;
+            //}
 	} else {
 	  // ** needs more thought
 	  numberContinuous ++;
 	  iCont=-1;
-	  if (colsol[iColumn]<colUpper[iColumn]-1.0e-6&&
-	      colsol[iColumn]>colLower[iColumn]+1.0e-6) {
-	    // already assigned
-	    numberContinuous ++;
-	    iCont=-1;
-	  }
+	  //if (colsol[iColumn]<colUpper[iColumn]-1.0e-6&&
+          //  colsol[iColumn]>colLower[iColumn]+1.0e-6) {
+          //// already assigned
+          //numberContinuous ++;
+          //iCont=-1;
+	  //}
 	}
       } else {
 	// fixed
-	upRhs -= colLower[iColumn]*elementByRow[j];
-	loRhs -= colLower[iColumn]*elementByRow[j];
+	upRhs -= colLower[iColumn]*value;
+	loRhs -= colLower[iColumn]*value;
       }
     }
     // see if binding
     effectiveUpper[rowIndex] = upRhs;
     effectiveLower[rowIndex] = loRhs;
-    vubValue[rowIndex] = valueContinuous;
     bool possible = false;
     if (fabs(sum-upRhs)<1.0e-5) {
       possible=true;
@@ -163,19 +184,23 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
     } else {
       effectiveLower[rowIndex]=-DBL_MAX;
     }
-    if (!numberBinary||numberBinary+numberContinuous>maxInKnapsack_)
-      possible=false;
-    if (possible) {
+    if (possible&&numberBinary&&numberBinary+numberContinuous<=maxInKnapsack_) {
       // binding with binary
       if(numberContinuous==1&&iCont>=0) {
 	// vub
 	if (numberBinary==1)
 #ifdef PRINT_DEBUG
-	  printf("vub (by row %d) %g <= 0-1 %g * %d + %g * %d <= %g\n",
+	  printf("vub/vlb (by row %d) %g <= 0-1 %g * %d + %g * %d <= %g\n",
 		 rowIndex,effectiveLower[rowIndex],valueBinary,iBinary,
 		 valueContinuous,iCont,effectiveUpper[rowIndex]);
 #endif
-	vubRow[iCont]=rowIndex;
+        if (multiplier*valueContinuous>0.0) {
+          vubValue[rowIndex] = valueContinuous;
+          vubRow[iCont]=rowIndex;
+        } else {
+          vlbValue[rowIndex] = valueContinuous;
+          vlbRow[iCont]=rowIndex;
+        }
 	vub[rowIndex]=iCont;
 	numberVub++;
       } else if (numberBinary>1) {
@@ -186,8 +211,8 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
 	vub[rowIndex]=-2;
       }
     } else {
-      // no point looking at this row
-      vub[rowIndex]=-2;
+      if (!possible||numberBinary+numberContinuous>maxInKnapsack_)
+        vub[rowIndex]=-2;      // no point looking at this row
     }
   }
   // Main loop
@@ -281,60 +306,91 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
 	    thisElement[i]=0.0;
 	  }
 	}
+        double dSign = sign[itry];
 	for (i=0;i<length;i++) {
 	  int iColumn = thisColumnIndex[i];
-	  int iRow = vubRow[iColumn];
-	  if (iRow>=0&&vub[iRow]==iColumn&&iRow!=rowIndex) {
-	    double useRhs=0.0;
-	    double vubCoefficient = vubValue[iRow];
-	    double thisCoefficient = thisElement[i];
-	    int replace = 0;
-	    // break it out - may be able to do better
-	    if (sign[itry]*thisCoefficient>0.0) {
-	      // we want valid lower bound on continuous
-	      if (effectiveLower[iRow]>-1.0e20&&vubCoefficient>0.0) 
-		replace=-1;
-	      else if (effectiveUpper[iRow]<1.0e20&&vubCoefficient<0.0) 
-		replace=1;
-	    } else {
-	      // we want valid upper bound on continuous
-	      if (effectiveLower[iRow]>-1.0e20&&vubCoefficient<0.0) 
-		replace=-1;
-	      else if (effectiveUpper[iRow]<1.0e20&&vubCoefficient>0.0) 
-		replace=1;
-	    }
-	    if (replace) {
-	      numberReplaced++;
-	      if (replace<0)
-		useRhs = effectiveLower[iRow];
-	      else
-		useRhs = effectiveUpper[iRow];
-	      // now replace (just using vubRow==-2)
-	      // delete continuous
-	      thisElement[i]=0.0;
-	      double scale = thisCoefficient/vubCoefficient;
-	      // modify rhs
-	      b -= scale*useRhs;
-	      int start = rowStart[iRow];
-	      int end = start+rowLength[iRow];
-	      int j;
-	      for (j=start;j<end;j++) {
-		int iColumn = column[j];
-		if (vubRow[iColumn]==-2) {
-		  double change = scale*elementByRow[j];
-		  int iBack = back[iColumn];
-		  if (iBack<0) {
-		    // element does not exist
-		    back[iColumn]=length2;
-		    thisElement[length2]=-change;
-		    thisColumnIndex[length2++]=iColumn;
-		  } else {
-		    // element does exist
-		    thisElement[iBack] -= change;
-		  }
-		}
-	      }
-	    }
+          int iRow=-1;
+          double vubCoefficient=0.0;
+          double thisCoefficient=thisElement[i];
+          int replace = 0;
+          if (vubRow[iColumn]>=0) {
+            iRow = vubRow[iColumn];
+            if (vub[iRow]==iColumn&&iRow!=rowIndex) {
+              vubCoefficient = vubValue[iRow];
+              // break it out - may be able to do better
+              if (dSign*thisCoefficient>0.0) {
+                // we want valid lower bound on continuous
+                if (effectiveLower[iRow]>-1.0e20&&vubCoefficient>0.0) 
+                  replace=-1;
+                else if (effectiveUpper[iRow]<1.0e20&&vubCoefficient<0.0) 
+                  replace=1;
+                // q assert (replace!=-1);
+                // q assert (replace!=1);
+              } else {
+                // we want valid upper bound on continuous
+                if (effectiveLower[iRow]>-1.0e20&&vubCoefficient<0.0) 
+                  replace=-1;
+                else if (effectiveUpper[iRow]<1.0e20&&vubCoefficient>0.0) 
+                  replace=1;
+                //assert (replace!=-1);
+              }
+            }
+          }
+          if (vlbRow[iColumn]>=0) {
+            iRow = vlbRow[iColumn];
+            if (vub[iRow]==iColumn&&iRow!=rowIndex) {
+              vubCoefficient = vlbValue[iRow];
+              // break it out - may be able to do better
+              if (dSign*thisCoefficient>0.0) {
+                // we want valid lower bound on continuous
+                if (effectiveLower[iRow]>-1.0e20&&vubCoefficient>0.0) 
+                  replace=-1;
+                else if (effectiveUpper[iRow]<1.0e20&&vubCoefficient<0.0) 
+                  replace=1;
+                //assert (replace!=1);
+              } else {
+                // we want valid upper bound on continuous
+                if (effectiveLower[iRow]>-1.0e20&&vubCoefficient<0.0) 
+                  replace=-1;
+                else if (effectiveUpper[iRow]<1.0e20&&vubCoefficient>0.0) 
+                  replace=1;
+                //q assert (replace!=-1);
+                //assert (replace!=1);
+              }
+            }
+          }
+          if (replace) {
+            double useRhs=0.0;
+            numberReplaced++;
+            if (replace<0)
+              useRhs = effectiveLower[iRow];
+            else
+              useRhs = effectiveUpper[iRow];
+            // now replace (just using vubRow==-2)
+            // delete continuous
+            thisElement[i]=0.0;
+            double scale = thisCoefficient/vubCoefficient;
+            // modify rhs
+            b -= scale*useRhs;
+            int start = rowStart[iRow];
+            int end = start+rowLength[iRow];
+            int j;
+            for (j=start;j<end;j++) {
+              int iColumn = column[j];
+              if (vubRow[iColumn]==-2) {
+                double change = scale*elementByRow[j];
+                int iBack = back[iColumn];
+                if (iBack<0) {
+                  // element does not exist
+                  back[iColumn]=length2;
+                  thisElement[length2]=-change;
+                  thisColumnIndex[length2++]=iColumn;
+                } else {
+                  // element does exist
+                  thisElement[iBack] -= change;
+                }
+              }
+            }
 	  }
 	}
 	if (numberReplaced) {
@@ -625,6 +681,8 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
   delete [] vub;
   delete [] vubRow;
   delete [] vubValue;
+  delete [] vlbRow;
+  delete [] vlbValue;
   delete [] effectiveLower;
   delete [] effectiveUpper;
 }

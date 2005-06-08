@@ -60,7 +60,7 @@ public:
   /// Creates solution in original model
   void postProcess(OsiSolverInterface &model);
   /** Tightens primal bounds to make dual and branch and cutfaster.  Unless
-      fixed, bounds are slightly looser than they could be.
+      fixed or integral, bounds are slightly looser than they could be.
       Returns non-zero if problem infeasible
       Fudge for branch and bound - put bounds on columns of factor *
       largest value (at continuous) - should improve stability
