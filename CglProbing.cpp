@@ -103,10 +103,11 @@ public:
 class row_cut {
 public:
 
-  row_cut(int size )
+  row_cut(int nRows )
   {
     numberCuts_=0;
-    size_=size;
+    int maxRowCuts = 2*nRows + 200;
+    size_=maxRowCuts;
   };
   ~row_cut()
   {
@@ -118,12 +119,16 @@ public:
   }
   int numberCuts() const
   { return numberCuts_;};
+  inline bool outOfSpace() const
+  { return size_==numberCuts_;};
   hash_set<OsiRowCut2  , row_cut_hash, row_cut_compare> rowCut_;
   int size_;
   int numberCuts_;
-  void addCutIfNotDuplicate(OsiRowCut & cut,int whichRow=-1)
+  // Return 0 if added, 1 if not, -1 if not added because of space
+  int addCutIfNotDuplicate(OsiRowCut & cut,int whichRow=-1)
   {
     if (numberCuts_<size_) {
+      numberCuts_++;
       double newLb = cut.lb();
       double newUb = cut.ub();
       CoinPackedVector vector = cut.row();
@@ -140,33 +145,67 @@ public:
       find =  rowCut_.find(newCut);
       if (find == rowCut_.end()) {
         rowCut_.insert(newCut);
+        return 0;
+      } else {
+        return 1;
       }
+    } else {
+      return -1;
     }
   }
   void addCuts(OsiCuts & cs, OsiRowCut ** whichRow)
   {
+    if (!numberCuts_)
+      return;
     hash_set<OsiRowCut2  , row_cut_hash, row_cut_compare>::const_iterator i;
     int numberCuts=cs.sizeRowCuts();
-    for (i=rowCut_.begin();i!=rowCut_.end();i++) {
-      cs.insert (*i);
-      if (whichRow) {
-        int iRow= i->whichRow();
-        if (iRow>=0&&!whichRow[iRow])
-          whichRow[iRow]=cs.rowCutPtr(numberCuts);;
+    int nRows = (size_-200)/2;
+    if (numberCuts_<nRows) {
+      for (i=rowCut_.begin();i!=rowCut_.end();i++) {
+        cs.insert (*i);
+        if (whichRow) {
+          int iRow= i->whichRow();
+          if (iRow>=0&&!whichRow[iRow])
+            whichRow[iRow]=cs.rowCutPtr(numberCuts);;
+        }
+        numberCuts++;
       }
-      numberCuts++;
+    } else {
+      // just best
+      double * effectiveness = new double[numberCuts_];
+      int iCut=0;
+      for (i=rowCut_.begin();i!=rowCut_.end();i++) {
+        effectiveness[iCut++]=-i->effectiveness();
+      }
+      std::sort(effectiveness,effectiveness+iCut);
+      double threshold = effectiveness[nRows];
+      for (i=rowCut_.begin();i!=rowCut_.end();i++) {
+        if (i->effectiveness()>threshold) {
+          cs.insert (*i);
+          if (whichRow) {
+            int iRow= i->whichRow();
+            if (iRow>=0&&!whichRow[iRow])
+              whichRow[iRow]=cs.rowCutPtr(numberCuts);;
+          }
+          numberCuts++;
+        }
+      }
+      delete [] effectiveness;
     }
     rowCut_.clear();
+    numberCuts_=0;
   }
 };
 #else
 class row_cut {
 public:
 
-  row_cut(int size)
+  row_cut(int nRows )
   {
-    rowCut_ = new  OsiRowCut2 * [size];
-    size_=size;
+    numberCuts_=0;
+    int maxRowCuts = 2*nRows + 200;
+    size_=maxRowCuts;
+    rowCut_ = new  OsiRowCut2 * [size_];
     numberCuts_=0;
   };
   ~row_cut()
@@ -179,10 +218,13 @@ public:
   { return rowCut_[i];};
   int numberCuts() const
   { return numberCuts_;};
+  inline bool outOfSpace() const
+  { return size_==numberCuts_;};
   OsiRowCut2 ** rowCut_;
   int size_;
   int numberCuts_;
-  void addCutIfNotDuplicate(OsiRowCut & cut,int whichRow=-1)
+  // Return 0 if added, 1 if not, -1 if not added because of space
+  int addCutIfNotDuplicate(OsiRowCut & cut,int whichRow=-1)
   {
     if (numberCuts_<size_) {
       double newLb = cut.lb();
@@ -222,21 +264,51 @@ public:
         newCutPtr->setUb(newUb);
         newCutPtr->setRow(vector);
         rowCut_[numberCuts_++]=newCutPtr;
+        return 0;
+      } else {
+        return 1;
       }
+    } else {
+      return -1;
     }
   }
   void addCuts(OsiCuts & cs, OsiRowCut ** whichRow)
   {
     int numberCuts=cs.sizeRowCuts();
-    for (int i=0;i<numberCuts_;i++) {
-      cs.insert(*rowCut_[i]);
-      if (whichRow) {
-        int iRow= rowCut_[i]->whichRow();
-        if (iRow>=0&&!whichRow[iRow])
-          whichRow[iRow]=cs.rowCutPtr(numberCuts);;
+    int nRows = (size_-200)/2;
+    if (numberCuts_<nRows) {
+      for (int i=0;i<numberCuts_;i++) {
+        cs.insert(*rowCut_[i]);
+        if (whichRow) {
+          int iRow= rowCut_[i]->whichRow();
+          if (iRow>=0&&!whichRow[iRow])
+            whichRow[iRow]=cs.rowCutPtr(numberCuts);;
+        }
+        numberCuts++;
       }
-      numberCuts++;
+    } else {
+      // just best
+      double * effectiveness = new double[numberCuts_];
+      int iCut=0;
+      int i;
+      for (i=0;i<numberCuts_;i++) {
+        effectiveness[iCut++]=-rowCut_[i]->effectiveness();
+      }
+      std::sort(effectiveness,effectiveness+numberCuts_);
+      double threshold = effectiveness[nRows];
+      for (int i=0;i<numberCuts_;i++) {
+        if (rowCut_[i]->effectiveness()>threshold) {
+          cs.insert(*rowCut_[i]);
+          if (whichRow) {
+            int iRow= rowCut_[i]->whichRow();
+            if (iRow>=0&&!whichRow[iRow])
+              whichRow[iRow]=cs.rowCutPtr(numberCuts);;
+          }
+          numberCuts++;
+        }
+      }
     }
+    numberCuts_=0;
   }
 };
 #endif
@@ -1185,8 +1257,8 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   
   // Let us never add more than twice the number of rows worth of row cuts
   // Keep cuts out of cs until end so we can find duplicates quickly
-  int maxRowCuts = 2*nRows + 200;
-  row_cut rowCut(maxRowCuts);
+  int nRowsFake = info.inTree ? nRows/3 : nRows;
+  row_cut rowCut(nRowsFake);
   int * markR = new int [nRows];
   double * minR = new double [nRows];
   double * maxR = new double [nRows];
@@ -2014,8 +2086,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
   int * index = new int[nCols];
   // Let us never add more than twice the number of rows worth of row cuts
   // Keep cuts out of cs until end so we can find duplicates quickly
-  int maxRowCuts = 2*nRows + 200;
-  row_cut rowCut(maxRowCuts);
+  int nRowsFake = info.inTree ? nRows/3 : nRows;
+  row_cut rowCut(nRowsFake);
   CoinPackedMatrix * columnCopy=NULL;
   // Set up maxes
   int maxStack = info.inTree ? maxStack_ : maxStackRoot_;
@@ -2026,7 +2098,6 @@ int CglProbing::probe( const OsiSolverInterface & si,
   } else {
     columnCopy = columnCopy_;
   }
-  int numberCuts = cs.sizeCuts();
   const int * column = rowCopy->getIndices();
   const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
   const int * rowLength = rowCopy->getVectorLengths(); 
@@ -2098,6 +2169,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
       double solval;
       double down;
       double up;
+      if (rowCut.outOfSpace())
+        break;
       int awayFromBound=1;
       j=look[iLook];
       solval=colsol[j];
@@ -3081,8 +3154,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
       }
     }
   }
-  if (!ninfeas&&(info.strengthenRow||
-                 numberCuts == cs.sizeCuts())) {
+  if ((!ninfeas&&!rowCut.outOfSpace())&&(info.strengthenRow||
+                 !rowCut.numberCuts())) {
     // Try and find ALL big M's
     for (i = 0; i < nRows; ++i) {
       if ((rowLower[i]>-1.0e20||rowUpper[i]<1.0e20)&&
@@ -3203,7 +3276,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 if (gap>1.0e-4||info.strengthenRow!=NULL) {
                   rc.setEffectiveness(gap);
                   rc.setRow(n,index,element);
-                  rowCut.addCutIfNotDuplicate(rc,i);
+                  int returnCode=rowCut.addCutIfNotDuplicate(rc,i);
+                  if (returnCode<0)
+                    break; // out of space
                 }
               }
             }
@@ -3288,8 +3363,8 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
   }
   // Let us never add more than twice the number of rows worth of row cuts
   // Keep cuts out of cs until end so we can find duplicates quickly
-  int maxRowCuts = 2*nRows + 200;
-  row_cut rowCut(maxRowCuts);
+  int nRowsFake = info.inTree ? nRows/3 : nRows;
+  row_cut rowCut(nRowsFake);
   CoinPackedMatrix * columnCopy=NULL;
   if (!rowCopy_) {
     columnCopy = new CoinPackedMatrix(*rowCopy);
@@ -4703,8 +4778,8 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
   int * index = new int[nCols];
   // Let us never add more than twice the number of rows worth of row cuts
   // Keep cuts out of cs until end so we can find duplicates quickly
-  int maxRowCuts = 2*nRows + 200;
-  row_cut rowCut(maxRowCuts);
+  int nRowsFake = info.inTree ? nRows/3 : nRows;
+  row_cut rowCut(nRowsFake);
   CoinPackedMatrix * columnCopy=NULL;
   if (!rowCopy_) {
     columnCopy = new CoinPackedMatrix(*rowCopy);
