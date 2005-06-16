@@ -128,7 +128,7 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
             }
           }
           if (nnsame==nn2) {
-            if (nn2<nn) {
+            if (nn2<nn&&lower_[k]==rhs_[k]&&rhs_[i]==rhs_[k]) {
               if (logLevel_)
                 printf("row %d strict subset of row %d, fix some in row %d\n",
                        k,i,i);
@@ -156,15 +156,15 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
                   }
                 }
               }
-            } else if (nn2==nn) {
+            } else if (nn2==nn&&lower_[i]==rhs_[i]&&lower_[k]==rhs_[k]) {
               if (logLevel_)
                 printf("row %d identical to row %d\n",
                        k,i);
               duplicate_[k]=i;
-            } else if (nn2>=nn) {
+            } else if (nn2>=nn&&lower_[i]==rhs_[i]&&lower_[k]==rhs_[k]) {
               abort();
             }
-          } else if (nnsame==nn&&nn2>nn) {
+          } else if (nnsame==nn&&nn2>nn&&lower_[i]==rhs_[i]&&rhs_[i]<=rhs_[k]) {
             if (logLevel_)
               printf("row %d strict superset of row %d, fix some in row %d\n",
                      k,i,k);
