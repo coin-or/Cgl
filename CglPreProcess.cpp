@@ -870,6 +870,9 @@ CglPreProcess::modified(OsiSolverInterface * model,
       OsiCuts cs;
       CoinZeroN(whichCut,numberRows);
       if (iGenerator>=0) {
+        //char name[20];
+        //sprintf(name,"prex%2.2d.mps",iGenerator);
+        //newModel->writeMpsNative(name, NULL, NULL,0,1,0);
         // refresh as model may have changed
         generator_[iGenerator]->refreshSolver(newModel);
         generator_[iGenerator]->generateCuts(*newModel,cs,info);
@@ -1039,6 +1042,12 @@ CglPreProcess::modified(OsiSolverInterface * model,
           if (values[j]>columnLower[iColumn]) {
             //printf("%d lower from %g to %g\n",iColumn,columnLower[iColumn],values[j]);
             newModel->setColLower(iColumn,values[j]) ;
+            if (false) {
+              OsiSolverInterface * xx = newModel->clone();
+              xx->initialSolve();
+              assert (xx->isProvenOptimal());
+              delete xx;
+            }
             numberChangedThisPass++;
             if (columnLower[iColumn]==columnUpper[iColumn])
               numberFixed++;
@@ -1054,6 +1063,12 @@ CglPreProcess::modified(OsiSolverInterface * model,
           if (values[j]<columnUpper[iColumn]) {
             //printf("%d upper from %g to %g\n",iColumn,columnUpper[iColumn],values[j]);
             newModel->setColUpper(iColumn,values[j]) ;
+            if (false) {
+              OsiSolverInterface * xx = newModel->clone();
+              xx->initialSolve();
+              assert (xx->isProvenOptimal());
+              delete xx;
+            }
             numberChangedThisPass++;
             if (columnLower[iColumn]==columnUpper[iColumn])
               numberFixed++;

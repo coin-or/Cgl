@@ -24,6 +24,7 @@ CglMessage::CglMessage(Language language) :
 {
   language_=language;
   strcpy(source_,"Cgl");
+  class_ = 3; // Cuts
   Cgl_message * message = us_english;
 
   while (message->internalNumber!=CGL_DUMMY_END) {

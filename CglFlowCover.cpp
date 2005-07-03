@@ -1,6 +1,6 @@
 // $Id$
 //-----------------------------------------------------------------------------
-// name:     Cgl Lifed Simple Generalized Flow Cover Cut Generator
+// name:     Cgl Lifted Simple Generalized Flow Cover Cut Generator
 // author:   Yan Xu                email: yan.xu@sas.com
 //           Jeff Linderoth        email: jtl3@lehigh.edu
 //           Martin Savelsberg     email: martin.savelsbergh@isye.gatech.edu
@@ -510,7 +510,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 #endif
 
     //-------------------------------------------------------------------------
-    // Generate conservation inequlaity and capacity equalities from 
+    // Generate conservation inequality and capacity equalities from 
     // the given row.
   
     for (i = 0; i < rowLen; ++i) {

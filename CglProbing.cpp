@@ -1233,11 +1233,9 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     rowUpper = new double[nRows];
     memcpy(rowLower,rowLower_,nRows*sizeof(double));
     memcpy(rowUpper,rowUpper_,nRows*sizeof(double));
-    rowLower[nRows-1]=-DBL_MAX;
     if (usingObjective_) {
+      rowLower[nRows-1]=-DBL_MAX;
       rowUpper[nRows-1]=cutoff+offset;
-    } else {
-      rowUpper[nRows-1]=DBL_MAX;
     }
     memcpy(colLower,si.getColLower(),nCols*sizeof(double));
     memcpy(colUpper,si.getColUpper(),nCols*sizeof(double));
