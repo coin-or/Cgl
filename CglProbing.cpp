@@ -296,7 +296,7 @@ public:
       }
       std::sort(effectiveness,effectiveness+numberCuts_);
       double threshold = effectiveness[nRows];
-      for (int i=0;i<numberCuts_;i++) {
+      for ( i=0;i<numberCuts_;i++) {
         if (rowCut_[i]->effectiveness()>threshold) {
           cs.insert(*rowCut_[i]);
           if (whichRow) {
