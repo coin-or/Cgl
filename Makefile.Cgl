@@ -17,6 +17,7 @@ LIBSRC += CglKnapsackCover.cpp
 LIBSRC += CglLiftAndProject.cpp
 LIBSRC += CglOddHole.cpp
 LIBSRC += CglProbing.cpp
+LIBSRC += CglRedSplit.cpp
 LIBSRC += CglSimpleRounding.cpp
 LIBSRC += CglClique.cpp
 LIBSRC += CglCliqueHelper.cpp
