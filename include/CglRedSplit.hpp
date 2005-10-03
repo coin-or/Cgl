@@ -104,7 +104,7 @@ public:
   void print() const;
 #ifdef COIN_USE_CLP
   /// Print the current simplex tableau  
-  void printOptTab(OsiClpSolverInterface *solver) const;
+  void printOptTab(const OsiClpSolverInterface *solver) const;
 #endif
   //@}
 

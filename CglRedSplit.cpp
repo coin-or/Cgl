@@ -22,8 +22,11 @@
 //#define RS_TRACE
 //#define RS_TRACEALL
 //#define RS_TRACETAB
-
 #include "OsiSolverInterface.hpp"
+#ifdef RS_TRACETAB
+#include "OsiClpSolverInterface.hpp"
+#define COIN_USE_CLP
+#endif
 
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedVector.hpp"
@@ -822,6 +825,9 @@ int CglRedSplit::generateCuts2(const OsiSolverInterface & si, OsiCuts & cs,
   double *slack = new double[nrow];  // workspace to get row of the tableau
 
 #ifdef RS_TRACETAB
+  //get solver to access tableau
+  const OsiClpSolverInterface *solver = 
+                            dynamic_cast<const OsiClpSolverInterface *>(&si);
   printOptTab(solver);
 #endif
 
@@ -1069,7 +1075,7 @@ void CglRedSplit::print() const
 /***********************************************************************/
 #ifdef COIN_USE_CLP
 #include "OsiClpSolverInterface.hpp"
-void CglRedSplit::printOptTab(OsiClpSolverInterface *solver) const
+void CglRedSplit::printOptTab(const OsiClpSolverInterface *solver) const
 {
   int i;
   const double *row_act = solver->getRowActivity();
@@ -1120,9 +1126,11 @@ void CglRedSplit::printOptTab(OsiClpSolverInterface *solver) const
     printf(" | ");
     if(basis_index[i] < ncol) {
       printf("%5.2f ", solution[basis_index[i]]);
+      assert (fabs(z[basis_index[i]]-1.0)<1.0e-5);
     }
     else {
       printf("%5.2f ", slack_val[basis_index[i]-ncol]);
+      assert (fabs(slack[basis_index[i]-ncol]-1.0)<1.0e-5);
     }
     printf("\n");
   }
