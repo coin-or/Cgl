@@ -178,7 +178,9 @@ public:
         effectiveness[iCut++]=-i->effectiveness();
       }
       std::sort(effectiveness,effectiveness+iCut);
-      double threshold = effectiveness[nRows];
+      double threshold = -1.0e20;
+      if (iCut>nRows)
+        threshold = effectiveness[nRows];
       for (i=rowCut_.begin();i!=rowCut_.end();i++) {
         if (i->effectiveness()>threshold) {
           cs.insert (*i);
