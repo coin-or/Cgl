@@ -2067,7 +2067,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		       int * look, int nLook,
                        const CglTreeInfo info) const
 {
-  int nRows=rowCopy->getNumRows();
+  int nRows=CoinMin(rowCopy->getNumRows(),si.getNumRows());
   int nCols=rowCopy->getNumCols();
   double * colsol = new double[nCols];
   double * djs = new double[nCols];
