@@ -2067,7 +2067,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		       int * look, int nLook,
                        const CglTreeInfo info) const
 {
-  int nRows=CoinMin(rowCopy->getNumRows(),si.getNumRows());
+  int nRows=rowCopy->getNumRows();
   int nCols=rowCopy->getNumCols();
   double * colsol = new double[nCols];
   double * djs = new double[nCols];
@@ -3154,6 +3154,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
       }
     }
   }
+  nRows=CoinMin(nRows,si.getNumRows());
   if ((!ninfeas&&!rowCut.outOfSpace())&&(info.strengthenRow||
                  !rowCut.numberCuts())) {
     // Try and find ALL big M's
