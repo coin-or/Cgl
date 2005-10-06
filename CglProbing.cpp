@@ -165,7 +165,7 @@ public:
         cs.insert (*i);
         if (whichRow) {
           int iRow= i->whichRow();
-          if (iRow>=0&&!whichRow[iRow])
+          if (iRow>=0&&iRow<nRows&&!whichRow[iRow])
             whichRow[iRow]=cs.rowCutPtr(numberCuts);;
         }
         numberCuts++;
@@ -1242,6 +1242,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     memcpy(colLower,si.getColLower(),nCols*sizeof(double));
     memcpy(colUpper,si.getColUpper(),nCols*sizeof(double));
   }
+  int nRowsSafe=CoinMin(nRows,si.getNumRows());
 #ifdef CGL_DEBUG
   const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
   if (debugger&&!debugger->onOptimalPath(si))
@@ -1257,7 +1258,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   
   // Let us never add more than twice the number of rows worth of row cuts
   // Keep cuts out of cs until end so we can find duplicates quickly
-  int nRowsFake = info.inTree ? nRows/3 : nRows;
+  int nRowsFake = info.inTree ? nRowsSafe/3 : nRowsSafe;
   row_cut rowCut(nRowsFake);
   int * markR = new int [nRows];
   double * minR = new double [nRows];
@@ -2068,6 +2069,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                        const CglTreeInfo info) const
 {
   int nRows=rowCopy->getNumRows();
+  int nRowsSafe=CoinMin(nRows,si.getNumRows());
   int nCols=rowCopy->getNumCols();
   double * colsol = new double[nCols];
   double * djs = new double[nCols];
@@ -2086,7 +2088,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
   int * index = new int[nCols];
   // Let us never add more than twice the number of rows worth of row cuts
   // Keep cuts out of cs until end so we can find duplicates quickly
-  int nRowsFake = info.inTree ? nRows/3 : nRows;
+  int nRowsFake = info.inTree ? nRowsSafe/3 : nRowsSafe;
   row_cut rowCut(nRowsFake);
   CoinPackedMatrix * columnCopy=NULL;
   // Set up maxes
@@ -3154,11 +3156,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
       }
     }
   }
-  nRows=CoinMin(nRows,si.getNumRows());
   if ((!ninfeas&&!rowCut.outOfSpace())&&(info.strengthenRow||
                  !rowCut.numberCuts())) {
     // Try and find ALL big M's
-    for (i = 0; i < nRows; ++i) {
+    for (i = 0; i < nRowsSafe; ++i) {
       if ((rowLower[i]>-1.0e20||rowUpper[i]<1.0e20)&&
           (!info.strengthenRow||!info.strengthenRow[i])) {
 	int iflagu = 0;
