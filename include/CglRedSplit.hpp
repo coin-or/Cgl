@@ -1,4 +1,4 @@
-// Last edit: 5/6/05
+// Last edit: 10/6/05
 //
 // Name:     CglRedSplit.hpp
 // Author:   Francois Margot
@@ -18,9 +18,7 @@
 #define CglRedSplit_H
 
 #include "CglCutGenerator.hpp"
-#ifdef COIN_USE_CLP
-class OsiClpSolverInterface;
-#endif
+
 class CglRedSplit : public CglCutGenerator {
  
 public:
@@ -50,19 +48,13 @@ public:
                See method setLimit().
       - away: Look only at basic integer variables whose current value
               is at least this value from being integer. See method setAway().
-
-      If optsol is not a null pointer, the code will stop as soon as
-      a generated cut is violated by the given solution; exclusively 
-      for debugging purposes.
-
   */
-  int generateCuts2(const OsiSolverInterface & si, OsiCuts & cs,
-		   double *optsol = 0,
-		   const CglTreeInfo info = CglTreeInfo());
-
-  /// For compatibility with CglCutGenerator 
   virtual void generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 			    const CglTreeInfo info) const;
+
+  /// Does the work for generating cuts 
+  int generateCuts2(const OsiSolverInterface & si, OsiCuts & cs,
+		   const CglTreeInfo info = CglTreeInfo());
   //@}
   
   
@@ -100,12 +92,18 @@ public:
   /// Get the value of minReduc
   double getMinReduc() const;
 
+  /// Set given_optsol to the given optimal solution given_sol.
+  /// If given_optsol is set using this method, 
+  /// the code will stop as soon as
+  /// a generated cut is violated by the given solution; exclusively 
+  /// for debugging purposes.
+  void set_given_optsol(const double *given_sol, const int card_sol);
+
   /// Print some of the data members  
   void print() const;
-#ifdef COIN_USE_CLP
+
   /// Print the current simplex tableau  
-  void printOptTab(const OsiClpSolverInterface *solver) const;
-#endif
+  void printOptTab(OsiSolverInterface *solver) const;
   //@}
 
   /**@name Constructors and destructors */
@@ -136,68 +134,66 @@ private:
 /**@name Private member methods */
 
   //@{
-  /// Compute the fractional part of value, allowing for small error
+  /// Compute the fractional part of value, allowing for small error.
   inline double rs_above_integer(double value); 
 
-  /// Perform row r1 of pi := row r1 of pi - step * row r2 of pi
+  /// Perform row r1 of pi := row r1 of pi - step * row r2 of pi.
   void update_pi_mat(int r1, int r2, int step);
 
-  /// Perform row r1 of b := row r1 of b - step * row r2 of b
+  /// Perform row r1 of tab := row r1 of tab - step * row r2 of tab.
   void update_redTab(int r1, int r2, int step);
 
   /// Find optimal integer step for changing row r1 by adding to it a 
-  /// multiple of another row r2
+  /// multiple of another row r2.
   void find_step(int r1, int r2, int *step, 
 		 double *reduc, double *norm);
 
   /// Test if an ordered pair of rows yields a reduction. Perform the
-  /// reduction if it is acceptable  
+  /// reduction if it is acceptable.
   int test_pair(int r1, int r2, double *norm);
 
-  /// Reduce rows of contNonBasicTab
+  /// Reduce rows of contNonBasicTab.
   void reduce_contNonBasicTab();
 
-  /// Generate a row of the current LP tableau
+  /// Generate a row of the current LP tableau.
   void generate_row(int index_row, double *row);
 
   /// Generate a mixed integer Chvatal-Gomory cut, when all non basic 
-  /// variables are non negative and at their lower bound
+  /// variables are non negative and at their lower bound.
   int generate_cgcut(double *row, double *rhs);
 
   /// Use multiples of the initial inequalities to cancel out the coefficients
-  /// of the slack variables
+  /// of the slack variables.
   void eliminate_slacks(double *row, 
 			const CoinPackedMatrix *byRow, 
 			const double *rhs, double *rowrhs);
 
   /// Change the sign of the coefficients of the continuous non basic
-  /// variables at their upper bound
+  /// variables at their upper bound.
   void flip(double *row);
 
   /// Change the sign of the coefficients of the continuous non basic
   /// variables at their upper bound and do the translations restoring
   /// the original bounds. Modify the right hand side
-  /// accordingly
+  /// accordingly.
   void unflip(double *row, double *rowrhs,
 	      const double *colLower, const double *colUpper,
 	      double *slack_val);
 
-  /// Generate the packed cut from the row representation
+  /// Generate the packed cut from the row representation.
   int generate_packed_row(double *row,
 			  int *rowind, double *rowelem, 
 			  int *card_row);
 
-  /// Check that the generated cuts do not cut a given optimal solution
+  /// Check that the generated cuts do not cut a given optimal solution.
   void check_optsol(const OsiSolverInterface *solver, 
 		    const int calling_place,
-		    const double *optsol, 
 		    const double *xlp, const double *slack_val,
 		    const int do_flip);
 
-  /// Check that the generated cuts do not cut a given optimal solution
+  /// Check that the generated cuts do not cut a given optimal solution.
   void check_optsol(const OsiSolverInterface *solver, 
 		    const int calling_place,
-		    const double *optsol, 
 		    const double *ck_row, const double ck_rhs, 
 		    const int cut_number, const int do_flip);
 
@@ -209,25 +205,25 @@ private:
 /**@name Private member data */
 
   //@{
-  /// Number of rows ( = number of slack variables) in the current LP
+  /// Number of rows ( = number of slack variables) in the current LP.
   int nrow; 
 
-  /// Number of structural variables in the current LP
+  /// Number of structural variables in the current LP.
   int ncol;
 
-  /// Epsilon for precision. Default: 1e-5
+  /// Epsilon for precision. Default: 1e-5.
   double EPS;
 
   /// Norm of a vector is considered zero if smaller than normIsZero;
-  /// Default: 1e-5
+  /// Default: 1e-5.
   double normIsZero;
 
   /// Minimum reduction in percent that must be achieved by a potential 
-  /// reduction step in order to be performed; Between 0 and 1, default: 0.05
+  /// reduction step in order to be performed; Between 0 and 1, default: 0.05.
   double minReduc;
 
   /// Number of integer basic structural variables that are fractional in the
-  /// current lp solution (at least away_ from being integral).  
+  /// current lp solution (at least away_ from being integer).  
   int card_intBasicVar_frac;
 
   /// Number of integer non basic structural variables in the
@@ -247,29 +243,29 @@ private:
   int card_nonBasicAtLower;
 
   /// Characteristic vector for integer basic structural variables
-  /// with non integer value in the current lp solution  
+  /// with non integer value in the current lp solution.
   int *cv_intBasicVar_frac;  
 
   /// List of integer structural basic variables 
-  /// (in order of pivot in selected rows for cut generation)
+  /// (in order of pivot in selected rows for cut generation).
   int *intBasicVar_frac;
 
-  /// List of integer structural non basic variables 
+  /// List of integer structural non basic variables.
   int *intNonBasicVar; 
 
   /// List of continuous non basic variables (structural or slack). 
-  // slacks are considered continuous (no harm if this is not the case)
+  // slacks are considered continuous (no harm if this is not the case).
   int *contNonBasicVar;
 
   /// List of non basic variables (structural or slack) at their 
-  /// upper bound 
+  /// upper bound. 
   int *nonBasicAtUpper;
 
   /// List of non basic variables (structural or slack) at their lower
-  /// bound 
+  /// bound.
   int *nonBasicAtLower;
 
-  /// Number of rows in the reduced tableau (= card_intBasicVar_frac)
+  /// Number of rows in the reduced tableau (= card_intBasicVar_frac).
   int mTab;
 
   /// Number of columns in the reduced tableau (= card_contNonBasicVar)
@@ -281,12 +277,12 @@ private:
 
   /// Current tableau for continuous non basic variables (structural or slack).
   /// Only rows used for generation.
-  /// Dimensions: mTab by nTab
+  /// Dimensions: mTab by nTab.
   double **contNonBasicTab;
 
   /// Current tableau for integer non basic structural variables.
   /// Only rows used for generation.
-  // Dimensions: mTab by card_intNonBasicVar
+  // Dimensions: mTab by card_intNonBasicVar.
   double **intNonBasicTab;
 
   /// Right hand side of the tableau.
@@ -294,10 +290,15 @@ private:
   double *rhsTab ;
 
   /// Use row only if pivot variable should be integer but is more 
-  /// than away_ from integrality
+  /// than away_ from being integer.
   double away_;
-  /// Generate cut only if at most limit_ non zero coefficients in cut
+  /// Generate cut only if at most limit_ non zero coefficients in cut.
   int limit_;
+  /// Given optimal solution that should not be cut; only for debug. 
+  double *given_optsol;
+
+  /// Number of entries in given_optsol.
+  int card_given_optsol;
   //@}
 };
   
