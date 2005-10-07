@@ -28,6 +28,8 @@ OsiSolverInterface *
 CglPreProcess::preProcess(OsiSolverInterface & model, 
                        bool makeEquality, int numberPasses)
 {
+  // Tell solver we are in Branch and Cut
+  model.setHintParam(OsiDoInBranchAndCut,true,OsiHintDo) ;
   // Default set of cut generators
   CglProbing generator1;
   generator1.setUsingObjective(true);
@@ -37,7 +39,11 @@ CglPreProcess::preProcess(OsiSolverInterface & model,
   generator1.setRowCuts(3);
   // Add in generators
   addCutGenerator(&generator1);
-  return preProcessNonDefault(model,makeEquality,numberPasses);
+  OsiSolverInterface * newSolver = preProcessNonDefault(model,makeEquality,numberPasses);
+  // Tell solver we are in Branch and Cut
+  model.setHintParam(OsiDoInBranchAndCut,false,OsiHintDo) ;
+  newSolver->setHintParam(OsiDoInBranchAndCut,false,OsiHintDo) ;
+  return newSolver;
 }
 OsiSolverInterface *
 CglPreProcess::preProcessNonDefault(OsiSolverInterface & model, 
