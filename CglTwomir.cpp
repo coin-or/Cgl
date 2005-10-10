@@ -152,7 +152,8 @@ CglTwomir::CglTwomir (const CglTwomir & source) :
   t_min_(source.t_min_),
   t_max_(source.t_max_),
   q_min_(source.q_min_),
-  q_max_(source.q_max_)
+  q_max_(source.q_max_),
+  a_max_(source.a_max_)
 {  
 }
 
@@ -184,6 +185,7 @@ CglTwomir::operator=(const CglTwomir& rhs)
     t_max_=rhs.t_max_;
     q_min_=rhs.q_min_;
     q_max_=rhs.q_max_;
+    a_max_=rhs.a_max_;
   }
   return *this;
 }
@@ -1334,12 +1336,13 @@ DGG_add2stepToList ( DGG_constraint_t *base, char *isint, double *x,
     vht = ABOV(base->coeff[i]);
     if(vht >= bht)  continue;  // too big
     if(vht < bht/a_max) continue; // too small
-    
     alpha = vht;
     int kk = 1;
     while ( !DGG_is2stepValid(alpha, bht) &&  bht/alpha <= a_max) {
       alpha = vht/kk; 
       kk++;
+      if (kk>1000)
+        break;
     }
     if ( !DGG_is2stepValid(alpha, bht) )    continue;
       
