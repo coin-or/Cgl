@@ -149,11 +149,16 @@ CglTwomir::CglTwomir () :
 //-------------------------------------------------------------------
 CglTwomir::CglTwomir (const CglTwomir & source) :
   CglCutGenerator(source),
+  do_mir_(source.do_mir_),
+  do_2mir_(source.do_2mir_),
+  do_tab_(source.do_tab_), 
+  do_form_(source.do_form_),
   t_min_(source.t_min_),
   t_max_(source.t_max_),
   q_min_(source.q_min_),
   q_max_(source.q_max_),
-  a_max_(source.a_max_)
+  a_max_(source.a_max_),
+  form_nrows_(source.form_nrows_)
 {  
 }
 
@@ -181,11 +186,16 @@ CglTwomir::operator=(const CglTwomir& rhs)
 {
   if (this != &rhs) {
     CglCutGenerator::operator=(rhs);
+    do_mir_=rhs.do_mir_;
+    do_2mir_=rhs.do_2mir_;
+    do_tab_=rhs.do_tab_; 
+    do_form_=rhs.do_form_;
     t_min_=rhs.t_min_;
     t_max_=rhs.t_max_;
     q_min_=rhs.q_min_;
     q_max_=rhs.q_max_;
     a_max_=rhs.a_max_;
+    form_nrows_=rhs.form_nrows_;
   }
   return *this;
 }
