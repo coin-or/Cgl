@@ -181,9 +181,9 @@ private:
 	      double *slack_val);
 
   /// Generate the packed cut from the row representation.
-  int generate_packed_row(double *row,
+  int generate_packed_row(const OsiSolverInterface * solver,double *row,
 			  int *rowind, double *rowelem, 
-			  int *card_row);
+			  int *card_row, double & rhs);
 
   /// Check that the generated cuts do not cut a given optimal solution.
   void check_optsol(const OsiSolverInterface *solver, 

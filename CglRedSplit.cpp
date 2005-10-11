@@ -508,14 +508,18 @@ void CglRedSplit::unflip(double *row, double *rowrhs,
 } /* unflip */
 
 /************************************************************************/
-int CglRedSplit::generate_packed_row(double *row,
-				     int *rowind, double *rowelem, 
-				     int *card_row) {
+int CglRedSplit::generate_packed_row( const OsiSolverInterface *solver,
+                                             double *row,
+                                             int *rowind, double *rowelem, 
+                                             int *card_row, double & rhs) {
   *card_row = 0;
+  const double *colLower = solver->getColLower();
+  const double *colUpper = solver->getColUpper();
   for(int i=0; i<ncol; i++) {
-    if(fabs(row[i]) > EPS) {
+    double value = row[i];
+    if(fabs(value) > EPS) {
       rowind[*card_row] = i;
-      rowelem[*card_row] = row[i];
+      rowelem[*card_row] = value;
       (*card_row)++;
       if(*card_row > limit_) {
 #ifdef RS_TRACE
@@ -523,6 +527,12 @@ int CglRedSplit::generate_packed_row(double *row,
 #endif	
 	return(0);
       }
+    } else {
+      // small - adjust rhs
+      if (value>0.0)
+        rhs -= value*colLower[i];
+      else
+        rhs -= value*colUpper[i];
     }
   }
   return(1);
@@ -961,7 +971,7 @@ int CglRedSplit::generateCuts2(const OsiSolverInterface & si, OsiCuts & cs,
 	check_optsol(solver, 4, row, rowrhs, i, 0);
       }
 
-      if(generate_packed_row(row, rowind, rowelem, &card_row)) {
+      if(generate_packed_row(solver,row, rowind, rowelem, &card_row,rowrhs)) {
       	OsiRowCut rc;
 	rc.setRow(card_row, rowind, rowelem);
 	rc.setLb(-DBL_MAX);
@@ -1234,13 +1244,17 @@ CglRedSplit::CglRedSplit (const CglRedSplit & source) :
   away_(source.away_),
   limit_(source.limit_),
   given_optsol(NULL),
-  card_given_optsol(0)
+  card_given_optsol(source.card_given_optsol)
 {  
   if (source.nrow) {
     printf("### ERROR: CglRedSplit::CglRedSplit(): copy not implemented\n");
     exit(1);
   } else {
     // we are in good shape
+    if (card_given_optsol) {
+      assert (source.given_optsol);
+      given_optsol = CoinCopyOfArray(source.given_optsol,card_given_optsol);
+    }
   }
 }
 
