@@ -23,7 +23,7 @@
 #include "CoinPackedVector.hpp"
 
 #include "CglMixedIntegerRounding.hpp"
-
+//#define CGL_DEBUG 1
 //-----------------------------------------------------------------------------
 // Generate Mixed Integer Rounding inequality
 //------------------------------------------------------------------- 
@@ -39,7 +39,6 @@ CglMixedIntegerRounding::generateCuts(const OsiSolverInterface& si,
   bool preReso = false;
   si.getHintParam(OsiDoPresolveInInitial, preInit);
   si.getHintParam(OsiDoPresolveInResolve, preReso);
-
   if (preInit == false &&  preReso == false) { // Do once
     if (doneInitPre_ == false) {   
       mixIntRoundPreprocess(si);
@@ -60,8 +59,6 @@ CglMixedIntegerRounding::generateCuts(const OsiSolverInterface& si,
   CoinPackedMatrix matrixByCol = matrixByRow;
   matrixByCol.reverseOrdering();
   //const CoinPackedMatrix & matrixByRow = *si.getMatrixByRow();
-  const char* sense        = si.getRowSense();
-  const double* RHS        = si.getRightHandSide();
   const double* LHS        = si.getRowActivity();
   const double* coefByRow  = matrixByRow.getElements();
   const int* colInds       = matrixByRow.getIndices();
@@ -77,11 +74,10 @@ CglMixedIntegerRounding::generateCuts(const OsiSolverInterface& si,
 
 
   generateMirCuts(si, xlp, colUpperBound, colLowerBound,
-		  matrixByRow, sense, RHS, LHS, coefByRow,
+		  matrixByRow, LHS, coefByRow,
 		  colInds, rowStarts, rowLengths, matrixByCol,
 		  coefByCol, rowInds, colStarts, colLengths,
 		  cs);
-
 }
 
 //-------------------------------------------------------------------
@@ -193,6 +189,8 @@ CglMixedIntegerRounding::gutsOfConstruct (const int maxaggr,
   indRowInt_ = 0;
   numRowContVB_ = 0;
   indRowContVB_ = 0;
+  sense_=NULL;
+  RHS_=NULL;
 }
 
 //-------------------------------------------------------------------
@@ -209,6 +207,8 @@ CglMixedIntegerRounding::gutsOfDelete ()
   if (indRowCont_ != 0) { delete [] indRowCont_; indRowCont_ = 0; }
   if (indRowInt_ != 0) { delete [] indRowInt_; indRowInt_ = 0; }
   if (indRowContVB_ != 0) { delete [] indRowContVB_; indRowContVB_ = 0; }
+  if (sense_ !=NULL) { delete [] sense_; sense_=NULL;}
+  if (RHS_ !=NULL) { delete [] RHS_; sense_=NULL;}
 }
 
 //-------------------------------------------------------------------
@@ -247,10 +247,14 @@ CglMixedIntegerRounding::gutsOfCopy (const CglMixedIntegerRounding& rhs)
     CoinDisjointCopyN(rhs.rowTypes_, numRows_, rowTypes_);
     indRows_ = new int [numRows_];
     CoinDisjointCopyN(rhs.indRows_, numRows_, indRows_);
+    sense_ = CoinCopyOfArray(rhs.sense_,numRows_);
+    RHS_ = CoinCopyOfArray(rhs.RHS_,numRows_);
   }
   else {
     rowTypes_ = 0;
     indRows_ = 0;
+    sense_=NULL;
+    RHS_=NULL;
   }
 
   if (numRowMix_ > 0) {
@@ -295,12 +299,17 @@ mixIntRoundPreprocess(const OsiSolverInterface& si) const
   const CoinPackedMatrix & matrixByRow = *si.getMatrixByRow();
   numRows_ = si.getNumRows();
   numCols_ = si.getNumCols();
-  const char* sense        = si.getRowSense();
-  const double* RHS        = si.getRightHandSide();
   const double* coefByRow  = matrixByRow.getElements();
   const int* colInds       = matrixByRow.getIndices();
   const int* rowStarts     = matrixByRow.getVectorStarts();
   const int* rowLengths    = matrixByRow.getVectorLengths();
+  // Get copies of sense and RHS so we can modify if ranges
+  if (sense_) {
+    delete [] sense_;
+    delete [] RHS_;
+  }
+  sense_ = CoinCopyOfArray(si.getRowSense(),numRows_);
+  RHS_  = CoinCopyOfArray(si.getRightHandSide(),numRows_);
 
   if (rowTypes_ != 0) {
     delete [] rowTypes_; rowTypes_ = 0;
@@ -318,11 +327,27 @@ mixIntRoundPreprocess(const OsiSolverInterface& si) const
   int numOTHER       = 0;
 
   int iRow;
+  const double* rowActivity        = si.getRowActivity();
+  const double* rowLower        = si.getRowLower();
+  const double* rowUpper        = si.getRowUpper();
   for (iRow = 0; iRow < numRows_; ++iRow) {
+    // If range then choose which to use
+    if (sense_[iRow]=='R') {
+      if (rowActivity[iRow]-rowLower[iRow]<
+          rowUpper[iRow]-rowActivity[iRow]) {
+        // treat as G row
+        RHS_[iRow]=rowLower[iRow];
+        sense_[iRow]='G';
+      } else {
+        // treat as L row
+        RHS_[iRow]=rowUpper[iRow];
+        sense_[iRow]='L';
+      }
+    }
     // get the type of a row
     const RowType rowType = 
       determineRowType(si, rowLengths[iRow], colInds+rowStarts[iRow],
-		       coefByRow+rowStarts[iRow], sense[iRow], RHS[iRow]);
+		       coefByRow+rowStarts[iRow], sense_[iRow], RHS_[iRow]);
     // store the type of the current row
     rowTypes_[iRow] = rowType;
 
@@ -608,8 +633,6 @@ CglMixedIntegerRounding::generateMirCuts(
 			    const double* colUpperBound,
 			    const double* colLowerBound,
 			    const CoinPackedMatrix& matrixByRow,
-			    const char* sense,
-			    const double* RHS,
 			    const double* LHS,
 			    const double* coefByRow,
 			    const int* colInds,
@@ -672,8 +695,8 @@ CglMixedIntegerRounding::generateMirCuts(
 	}
 
 	copyRowSelected(iAggregate, rowSelected, setRowsAggregated,
-			listRowsAggregated, xlpExtra, sense[rowSelected], 
-			RHS[rowSelected], LHS[rowSelected], 
+			listRowsAggregated, xlpExtra, sense_[rowSelected], 
+			RHS_[rowSelected], LHS[rowSelected], 
 			matrixByRow, rowAggregated, rhsAggregated);
 
       } 
@@ -697,8 +720,8 @@ CglMixedIntegerRounding::generateMirCuts(
 	  listColsSelected[iAggregate] = colSelected;
 
 	  copyRowSelected(iAggregate, rowSelected, setRowsAggregated,
-			  listRowsAggregated, xlpExtra, sense[rowSelected], 
-			  RHS[rowSelected], LHS[rowSelected], 
+			  listRowsAggregated, xlpExtra, sense_[rowSelected], 
+			  RHS_[rowSelected], LHS[rowSelected], 
 			  matrixByRow, rowToAggregate, rhsToAggregate);
 
 	  // call aggregate row heuristic
@@ -736,7 +759,17 @@ CglMixedIntegerRounding::generateMirCuts(
 					colUpperBound, colLowerBound,
 					mixedKnapsack, rhsMixedKnapsack, 
 					sStar, contVariablesInS);
-    
+        // may want some limit?
+        if (mixedKnapsack.getNumElements()>25000) {
+#if CGL_DEBUG	  
+	  std::cout << "mixed knapsack has " 
+                    <<mixedKnapsack.getNumElements()<<" elements - rhs is "
+                    <<rhsMixedKnapsack
+                    << std::endl;
+#endif
+	  continue;
+	}
+          
 	// if it did not find a mixed knapsack it is because there is at
 	// least one integer variable with lower bound different than zero
 	// or there are no integer or continuous variables.
@@ -752,7 +785,7 @@ CglMixedIntegerRounding::generateMirCuts(
 
 	// Find a c-MIR cut with the current mixed knapsack constraint
 	bool hasCut = cMirSeparation(si, matrixByRow, rowToUse,
-				     listRowsAggregated, sense, RHS,
+				     listRowsAggregated, sense_, RHS_,
 				     coefByRow, colInds, rowStarts, rowLengths,
 				     xlp, sStar, colUpperBound, colLowerBound, 
 				     mixedKnapsack,
@@ -1361,6 +1394,7 @@ CglMixedIntegerRounding::cMirSeparation(
 	rhs *= (- sCoefBestCut * coefCol);
       }
       else {
+        assert (sense[iRow]=='G');
 	// if it is a <= inequality, the coefficient of the slack is -1
 	row *= (sCoefBestCut * coefCol);
 	rhs *= (sCoefBestCut * coefCol);

@@ -214,6 +214,7 @@ private:
   // Do preprocessing.
   // It determines the type of each row. It also identifies the variable
   // upper bounds and variable lower bounds.
+  // It may change sense and RHS for ranged rows
   void mixIntRoundPreprocess(const OsiSolverInterface& si) const;
 
   // Determine the type of a given row.
@@ -228,8 +229,6 @@ private:
 			const double* colUpperBound,
 			const double* colLowerBound,
 			const CoinPackedMatrix& matrixByRow,
-			const char* sense,
-			const double* RHS,
 			const double* LHS,
 			const double* coefByRow,
 			const int* colInds,
@@ -390,6 +389,10 @@ private:
   // The indices of the rows of type ROW_CONT that have at least one variable
   // with variable upper or lower bound
   mutable int* indRowContVB_;
+  // Sense of rows (modified if ranges)
+  mutable char * sense_;
+  // RHS of rows (modified if ranges)
+  mutable double * RHS_;
   
 };
 

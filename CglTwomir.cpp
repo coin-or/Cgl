@@ -140,6 +140,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 //-------------------------------------------------------------------
 CglTwomir::CglTwomir () :
   CglCutGenerator(),
+  probname_(NULL),
   do_mir_(true), do_2mir_(true), do_tab_(true), do_form_(true),
   t_min_(1), t_max_(1), q_min_(1), q_max_(1), a_max_(2),
   form_nrows_(0) {}
@@ -159,7 +160,11 @@ CglTwomir::CglTwomir (const CglTwomir & source) :
   q_max_(source.q_max_),
   a_max_(source.a_max_),
   form_nrows_(source.form_nrows_)
-{  
+{
+  if (source.probname_)
+    probname_ = strdup(source.probname_);
+  else
+    probname_=NULL;
 }
 
 //-------------------------------------------------------------------
