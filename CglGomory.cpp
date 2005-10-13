@@ -560,11 +560,23 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	  int jColumn =cutIndex[j];
 	  double value=-cutElement[jColumn];
 	  cutElement[jColumn]=0.0;
-	  if (fabs(value)>1.0e-13) {
+	  if (fabs(value)>1.0e-8) {
 	    sum+=value*colsol[jColumn];
 	    packed[number]=value;
 	    cutIndex[number++]=jColumn;
-	  }
+          } else {
+            // small - adjust rhs if rhs reasonable
+            if (value>0.0&&colLower[jColumn]>-1000.0) {
+              rhs -= value*colLower[jColumn];
+            } else if (value<0.0&&colUpper[jColumn]<1000.0) {
+              rhs -= value*colUpper[jColumn];
+            } else if (fabs(value)>1.0e-13) {
+              // take anyway
+              sum+=value*colsol[jColumn];
+              packed[number]=value;
+              cutIndex[number++]=jColumn;
+            } 
+          }
 	}
 	// say zeroed out
 	cutVector.setNumElements(0);

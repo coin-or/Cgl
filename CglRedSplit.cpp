@@ -517,7 +517,7 @@ int CglRedSplit::generate_packed_row( const OsiSolverInterface *solver,
   const double *colUpper = solver->getColUpper();
   for(int i=0; i<ncol; i++) {
     double value = row[i];
-    if(fabs(value) > EPS) {
+    if(fabs(value) > 1.0e-8) {
       rowind[*card_row] = i;
       rowelem[*card_row] = value;
       (*card_row)++;
@@ -528,11 +528,23 @@ int CglRedSplit::generate_packed_row( const OsiSolverInterface *solver,
 	return(0);
       }
     } else {
-      // small - adjust rhs
-      if (value>0.0)
+      // small - adjust rhs if rhs reasonable
+      if (value>0.0&&colLower[i]>-1000.0) {
         rhs -= value*colLower[i];
-      else
+      } else if (value<0.0&&colUpper[i]<1000.0) {
         rhs -= value*colUpper[i];
+      } else if (fabs(value)>1.0e-13) {
+        // take anyway
+        rowind[*card_row] = i;
+        rowelem[*card_row] = value;
+        (*card_row)++;
+        if(*card_row > limit_) {
+#ifdef RS_TRACE
+          printf("Cut discarded since too many non zero coefficients\n");
+#endif	
+          return(0);
+        }
+      }
     }
   }
   return(1);
@@ -976,7 +988,7 @@ int CglRedSplit::generateCuts2(const OsiSolverInterface & si, OsiCuts & cs,
 	rc.setRow(card_row, rowind, rowelem);
 	rc.setLb(-DBL_MAX);
 	rc.setUb(rowrhs + 1e-8);   // relax the constraint slightly
-	cs.insertIfNotDuplicate(rc, CoinAbsFltEq(EPS));
+	cs.insertIfNotDuplicate(rc, CoinAbsFltEq(1.0e-8));
       }
     }
   }
@@ -1188,7 +1200,7 @@ CglRedSplit::CglRedSplit () :
 CglCutGenerator(),
 nrow(0),
 ncol(0),
-EPS(1e-05),
+EPS(1e-07),
 normIsZero(1e-05),
 minReduc(0.05),
 card_intBasicVar_frac(0),
