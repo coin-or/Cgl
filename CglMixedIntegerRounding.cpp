@@ -208,7 +208,7 @@ CglMixedIntegerRounding::gutsOfDelete ()
   if (indRowInt_ != 0) { delete [] indRowInt_; indRowInt_ = 0; }
   if (indRowContVB_ != 0) { delete [] indRowContVB_; indRowContVB_ = 0; }
   if (sense_ !=NULL) { delete [] sense_; sense_=NULL;}
-  if (RHS_ !=NULL) { delete [] RHS_; sense_=NULL;}
+  if (RHS_ !=NULL) { delete [] RHS_; RHS_=NULL;}
 }
 
 //-------------------------------------------------------------------
