@@ -1,4 +1,4 @@
-// Last edit: 10/6/05
+// Last edit: 10/14/05
 //
 // Name:     CglRedSplit.hpp
 // Author:   Francois Margot
@@ -75,7 +75,7 @@ public:
   double getAway() const;
 
   /** Set the value of EPS, epsilon for double computations;
-      Default: 1e-5 */
+      Default: 1e-7 */
   void setEPS(double value);
   /** Get the value of EPS */
   double getEPS() const;
@@ -211,7 +211,7 @@ private:
   /// Number of structural variables in the current LP.
   int ncol;
 
-  /// Epsilon for precision. Default: 1e-5.
+  /// Epsilon for precision. Default: 1e-7.
   double EPS;
 
   /// Norm of a vector is considered zero if smaller than normIsZero;

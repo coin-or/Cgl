@@ -391,6 +391,8 @@ private:
   // The indices of the rows of type ROW_CONT that have at least one variable
   // with variable upper or lower bound
   mutable int* indRowContVB_;
+  // If integer - for speed
+  mutable char * integerType_;
   // Sense of rows (modified if ranges)
   mutable char * sense_;
   // RHS of rows (modified if ranges)
