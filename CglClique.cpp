@@ -8,9 +8,10 @@
 
 /*****************************************************************************/
 
-CglClique::CglClique(bool setPacking) :
+CglClique::CglClique(bool setPacking, bool justOriginalRows) :
   CglCutGenerator(),
    setPacking_(setPacking),
+  justOriginalRows_(justOriginalRows),
    sp_numrows(0),
    sp_orig_row_ind(0),
    sp_numcols(0),
@@ -40,6 +41,7 @@ CglClique::CglClique(bool setPacking) :
 CglClique::CglClique(const CglClique& rhs)
   : CglCutGenerator(rhs),
     setPacking_(rhs.setPacking_),
+    justOriginalRows_(rhs.justOriginalRows_),
     sp_numrows(rhs.sp_numrows),
     sp_orig_row_ind(rhs.sp_orig_row_ind),
     sp_numcols(rhs.sp_numcols),
@@ -80,22 +82,28 @@ CglClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
 
    if (! has_petol_set)
       si.getDblParam(OsiPrimalTolerance, petol);
-
+   int numberOriginalRows = si.getNumRows();
+   if (info.inTree&&justOriginalRows_)
+     numberOriginalRows = info.formulation_rows;
    // First select which rows/columns we are interested in.
    if (!setPacking_) {
       selectFractionalBinaries(si);
       if (!sp_orig_row_ind) {
-	 selectRowCliques(si);
+	 selectRowCliques(si,numberOriginalRows);
       }
    } else {
       selectFractionals(si);
       delete[] sp_orig_row_ind;
-      sp_numrows = si.getNumRows();
+      sp_numrows = numberOriginalRows;
       //sp_numcols = si.getNumCols();
       sp_orig_row_ind = new int[sp_numrows];
       for (i = 0; i < sp_numrows; ++i)
 	 sp_orig_row_ind[i] = i;
    }
+   // Just original rows
+   if (justOriginalRows_&&info.inTree) 
+     sp_numrows = CoinMin(info.formulation_rows,sp_numrows);
+     
 
    createSetPackingSubMatrix(si);
    fgraph.edgenum = createNodeNode();

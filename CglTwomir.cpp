@@ -328,7 +328,6 @@ DGG_data_t* DGG_getData(const void *osi_ptr )
     double activity;
 
     data->nbasic_row = 0;
-
     for(i=0, j=data->ncol; i < data->nrow; i++, j++){
 
       /* check if the row is an equality constraint */ 

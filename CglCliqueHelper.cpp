@@ -72,7 +72,7 @@ CglClique::selectFractionals(const OsiSolverInterface& si) const
  *===========================================================================*/
 
 void
-CglClique::selectRowCliques(const OsiSolverInterface& si) const
+CglClique::selectRowCliques(const OsiSolverInterface& si,int numOriginalRows) const
 {
    const int numrows = si.getNumRows();
    std::vector<int> clique(numrows, 1);
@@ -98,7 +98,7 @@ CglClique::selectRowCliques(const OsiSolverInterface& si) const
    const CoinPackedMatrix& mrow = *si.getMatrixByRow();
    const double* rub = si.getRowUpper();
    for (i = 0; i < numrows; ++i) {
-      if (rub[i] != 1.0) {
+      if (rub[i] != 1.0||i>=numOriginalRows) {
 	 clique[i] = 0;
 	 continue;
       }

@@ -27,7 +27,7 @@ public:
    /**@name Constructors and destructors */
    //@{
    /** Default constructor.
-       If the argument is set to true then CglClique will assume that the
+       If the setPacking argument is set to true then CglClique will assume that the
        problem in the solverinterface passed to the generateCuts() method
        describes a set packing problem, i.e.,
        - all variables are binary
@@ -41,8 +41,10 @@ public:
        - the constraint is '= 1' or '<= 1'.
 
        If the user does not set the list of clique rows then CglClique will
-       start the generateCuts() methods by scanning the matrix for them.  */
-   CglClique(bool setPacking = false);
+       start the generateCuts() methods by scanning the matrix for them.
+       Also justOriginalRows can be set to true to limit clique creation
+  */
+   CglClique(bool setPacking = false, bool justOriginalRows = false);
    /// Destructor
    virtual ~CglClique() {}
 
@@ -124,7 +126,8 @@ private:
    /** An indicator showing whether the whole matrix in the solverinterface is
        a set packing problem or not */
    bool setPacking_;
-
+  /// True if just look at original rows
+  bool justOriginalRows_;
    /** pieces of the set packing part of the solverinterface */
    mutable int sp_numrows;
    mutable int* sp_orig_row_ind;
@@ -204,7 +207,7 @@ private:
        level. We already know that everything is binary. */
    void selectFractionals(const OsiSolverInterface& si) const;
    /**  */
-   void selectRowCliques(const OsiSolverInterface& si) const;
+   void selectRowCliques(const OsiSolverInterface& si,int numOriginalRows) const;
    /**  */
    void createSetPackingSubMatrix(const OsiSolverInterface& si) const;
    /**  */
