@@ -42,7 +42,8 @@ CglPreProcess::preProcess(OsiSolverInterface & model,
   OsiSolverInterface * newSolver = preProcessNonDefault(model,makeEquality,numberPasses);
   // Tell solver we are in Branch and Cut
   model.setHintParam(OsiDoInBranchAndCut,false,OsiHintDo) ;
-  newSolver->setHintParam(OsiDoInBranchAndCut,false,OsiHintDo) ;
+  if (newSolver)
+    newSolver->setHintParam(OsiDoInBranchAndCut,false,OsiHintDo) ;
   return newSolver;
 }
 OsiSolverInterface *
@@ -188,6 +189,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   if (!feasible) {
     handler_->message(CGL_INFEASIBLE,messages_)
       <<CoinMessageEol;
+    delete [] rows;
+    delete [] element;
     return NULL;
   } else {
     if (numberCliques) {
@@ -231,6 +234,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   if (!numberSolvers_) {
     // just fix
     startModel_->initialSolve();
+    if (!startModel_->isProvenOptimal()) {
+      handler_->message(CGL_INFEASIBLE,messages_)
+        <<CoinMessageEol;
+      return NULL;
+    }
     OsiSolverInterface * newModel = modified(startModel_,false,numberChanges);
     if (startModel_!=originalModel_)
       delete startModel_;
@@ -375,6 +383,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       }
       bool constraints = iPass<numberPasses-1;
       presolvedModel->initialSolve();
+      if (!presolvedModel->isProvenOptimal()) {
+        returnModel=NULL;
+        break;
+      }
       OsiSolverInterface * newModel = modified(presolvedModel,constraints,numberChanges);
       returnModel=newModel;
       if (!newModel) {
