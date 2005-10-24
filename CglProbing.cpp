@@ -164,9 +164,11 @@ public:
       for (i=rowCut_.begin();i!=rowCut_.end();i++) {
         cs.insert (*i);
         if (whichRow) {
+          //cs.rowCutPtr(numberCuts)->print();
           int iRow= i->whichRow();
-          if (iRow>=0&&iRow<nRows&&!whichRow[iRow])
-            whichRow[iRow]=cs.rowCutPtr(numberCuts);;
+          if (iRow>=0&&iRow<nRows&&!whichRow[iRow]) {
+            whichRow[iRow]=cs.rowCutPtr(numberCuts);
+          }
         }
         numberCuts++;
       }
@@ -1323,7 +1325,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
           for (i=0;i<nCols;i++) {
             if (intVar[i]&&colUpper[i]-colLower[i]>1.0e-8) {
               double away = fabs(0.5-(colsol[i]-floor(colsol[i])));
-              if (away<0.49999) {
+              if (away<0.49999||!info.inTree) {
                 array[nLook].infeasibility=away;
                 array[nLook++].sequence=i;
               }
@@ -5817,7 +5819,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 // Can give an array with 1 set to select, 0 to ignore
 // column bounds are tightened
 // If array given then values of 1 will be set to 0 if redundant
-void CglProbing::snapshot ( const OsiSolverInterface & si,
+int CglProbing::snapshot ( const OsiSolverInterface & si,
 		  char * possible,bool withObjective)
 {
   deleteSnapshot();
@@ -5875,7 +5877,7 @@ void CglProbing::snapshot ( const OsiSolverInterface & si,
   if (ninfeas) {
     // let someone else find out
     delete [] intVar;
-    return;
+    return 1;
   }
 
   // do integer stuff for mode 0
@@ -5933,7 +5935,7 @@ void CglProbing::snapshot ( const OsiSolverInterface & si,
   // make sure big enough - in case too many rows dropped
   columnCopy_->setDimensions(numberRows_,numberColumns_);
   rowCopy_->setDimensions(numberRows_,numberColumns_);
-  
+  return 0;
 }
 // Delete snapshot
 void CglProbing::deleteSnapshot()
@@ -6288,11 +6290,12 @@ CglProbing::~CglProbing ()
   delete [] whichClique_;
   delete [] cliqueRow_;
   delete [] cliqueRowStart_;
-  int i;
-  for (i=0;i<number01Integers_;i++) {
-    delete [] cutVector_[i].index;
+  if (cutVector_) {
+    for (int i=0;i<number01Integers_;i++) {
+      delete [] cutVector_[i].index;
+    }
+    delete [] cutVector_;
   }
-  delete [] cutVector_;
 }
 
 //----------------------------------------------------------------

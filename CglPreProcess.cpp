@@ -908,13 +908,16 @@ CglPreProcess::modified(OsiSolverInterface * model,
         generator1.setMaxProbe(100);
         generator1.setMaxLook(100);
         generator1.setRowCuts(3);
-        generator1.snapshot(*newModel,NULL,false);
-        generator1.createCliques(*newModel,2,1000,true);
-        generator1.setMode(0);
-        // To get special stuff
-        info.pass=4;
-        CoinZeroN(whichCut,numberRows);
-        generator1.generateCutsAndModify(*newModel,cs,info);
+        if(!generator1.snapshot(*newModel,NULL,false)) {
+          generator1.createCliques(*newModel,2,1000,true);
+          generator1.setMode(0);
+          // To get special stuff
+          info.pass=4;
+          CoinZeroN(whichCut,numberRows);
+          generator1.generateCutsAndModify(*newModel,cs,info);
+        } else {
+          feasible=false;
+        }
       }
       // check changes
       // first are any rows strengthened by cuts
@@ -933,7 +936,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
       }
       const double * columnLower = newModel->getColLower();
       const double * columnUpper = newModel->getColUpper();
-      if (numberStrengthened||numberDrop) {
+      if ((numberStrengthened||numberDrop)&&feasible) {
         // Easier to recreate entire matrix
         const CoinPackedMatrix * rowCopy = newModel->getMatrixByRow();
         const int * column = rowCopy->getIndices();

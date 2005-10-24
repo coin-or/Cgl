@@ -96,8 +96,9 @@ public:
       column bounds are tightened
       If array given then values of 1 will be set to 0 if redundant.
       Objective may be added as constraint
+      Returns 1 if infeasible otherwise 0
   */
-  void snapshot ( const OsiSolverInterface & si,
+  int snapshot ( const OsiSolverInterface & si,
 		  char * possible=NULL,
                   bool withObjective=true);
   /// Deletes snapshot

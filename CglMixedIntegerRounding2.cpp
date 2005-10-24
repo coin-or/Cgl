@@ -38,7 +38,7 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
   si.getHintParam(OsiDoPresolveInInitial, preInit);
   si.getHintParam(OsiDoPresolveInResolve, preReso);
 
-  if (preInit == false &&  preReso == false) { // Do once
+  if (preInit == false &&  preReso == false /*&& info.inTree*/) { // Do once
     if (doneInitPre_ == false) {   
       mixIntRoundPreprocess(si);
       doneInitPre_ = true;

@@ -38,7 +38,7 @@ ifeq ($(OptLevel),-g)
 #     CXXFLAGS += -DCGL_DEBUG
 endif
 #    CXXFLAGS += -DCGL_DEBUG
-
+#CXXFLAGS += -g
 export ExtraIncDir  := ${OsiIncDir} ${CoinIncDir} ${zlibIncDir} ${bzlibIncDir}
 export ExtraLibDir  := ${OsiLibDir} ${CoinLibDir} ${zlibLibDir} ${bzlibLibDir}
 export ExtraLibName := ${OsiLibName} ${CoinLibName} ${zlibLibName} ${bzlibLibName}
