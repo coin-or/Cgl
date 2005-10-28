@@ -2804,7 +2804,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                        kk++) {
                     sum += rowElements[kk]*colsol[column[kk]];
                   }
-                  if (sum-gap*colsol[j]>maxR[irow]+primalTolerance_||info.strengthenRow) {
+                  if (sum-gap*colsol[j]>maxR[irow]+primalTolerance_||(info.strengthenRow&&rowLower[irow]<-1.0e20)) {
                     // can be a cut
                     // subtract gap from upper and integer coefficient
                     // saveU and saveL spare
@@ -2843,7 +2843,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       // If strengthenRow point to row
                       //if(info.strengthenRow)
                       //printf("a point to row %d\n",irow);
-                      rowCut.addCutIfNotDuplicate(rc,irow);
+                      rowCut.addCutIfNotDuplicate(rc,rowLower[irow]<-1.0e20 ? irow :-1);
                     }
                   }
                 }
@@ -2856,7 +2856,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       sum += rowElements[kk]*colsol[column[kk]];
                     }
                   }
-                  if (sum+gap*colsol[j]<minR[irow]+primalTolerance_||info.strengthenRow) {
+                  if (sum+gap*colsol[j]<minR[irow]-primalTolerance_||(info.strengthenRow&&rowUpper[irow]>1.0e20)) {
                     // can be a cut
                     // add gap to lower and integer coefficient
                     // saveU and saveL spare
@@ -2894,7 +2894,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #endif
                       //if(info.strengthenRow)
                       //printf("b point to row %d\n",irow);
-                      rowCut.addCutIfNotDuplicate(rc,irow);
+                      rowCut.addCutIfNotDuplicate(rc,rowUpper[irow]>1.0e20 ? irow : -1);
                     }
                   }
                 }
@@ -3055,7 +3055,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                        kk++) {
                     sum += rowElements[kk]*colsol[column[kk]];
                   }
-                  if (sum+gap*colsol[j]>rowUpper[irow]+primalTolerance_||info.strengthenRow) {
+                  if (sum+gap*colsol[j]>rowUpper[irow]+primalTolerance_||(info.strengthenRow&&rowLower[irow]<-1.e20)) {
                     // can be a cut
                     // add gap to integer coefficient
                     // saveU and saveL spare
@@ -3093,7 +3093,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #endif
                       //if(info.strengthenRow)
                       //printf("c point to row %d\n",irow);
-                      rowCut.addCutIfNotDuplicate(rc,irow);
+                      rowCut.addCutIfNotDuplicate(rc,rowLower[irow]<-1.0e20 ? irow : -1);
                     }
                   }
                 }
@@ -3106,7 +3106,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       sum += rowElements[kk]*colsol[column[kk]];
                     }
                   }
-                  if (sum-gap*colsol[j]<rowLower[irow]+primalTolerance_||info.strengthenRow) {
+                  if (sum-gap*colsol[j]<rowLower[irow]-primalTolerance_||(info.strengthenRow&&rowUpper[irow]>1.0e20)) {
                     // can be a cut
                     // subtract gap from integer coefficient
                     // saveU and saveL spare
@@ -3144,7 +3144,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #endif
                       //if(info.strengthenRow)
                       //printf("d point to row %d\n",irow);
-                      rowCut.addCutIfNotDuplicate(rc,irow);
+                      rowCut.addCutIfNotDuplicate(rc,rowUpper[irow]>1.0e20 ? irow : -1);
                     }
                   }
                 }
@@ -4294,7 +4294,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			 kk++) {
 		      sum += rowElements[kk]*colsol[column[kk]];
 		    }
-		    if (sum-gap*colsol[j]>maxR[irow]+primalTolerance_||info.strengthenRow) {
+		    if (sum-gap*colsol[j]>maxR[irow]+primalTolerance_||(info.strengthenRow&&rowLower[irow]<-1.0e20)) {
 		      // can be a cut
 		      // subtract gap from upper and integer coefficient
 		      // saveU and saveL spare
@@ -4333,7 +4333,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
                         // If strengthenRow point to row
                         //if(info.strengthenRow)
                         //printf("a point to row %d\n",irow);
-			rowCut.addCutIfNotDuplicate(rc,irow);
+			rowCut.addCutIfNotDuplicate(rc,rowLower[irow]<-1.0e20 ? irow : -1);
 		      }
 		    }
 		  }
@@ -4346,7 +4346,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			sum += rowElements[kk]*colsol[column[kk]];
 		      }
 		    }
-		    if (sum+gap*colsol[j]<minR[irow]+primalTolerance_||info.strengthenRow) {
+		    if (sum+gap*colsol[j]<minR[irow]+primalTolerance_||(info.strengthenRow&&rowUpper[irow]>1.0e20)) {
 		      // can be a cut
 		      // add gap to lower and integer coefficient
 		      // saveU and saveL spare
@@ -4384,7 +4384,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 #endif
                         //if(info.strengthenRow)
                         //printf("b point to row %d\n",irow);
-			rowCut.addCutIfNotDuplicate(rc,irow);
+			rowCut.addCutIfNotDuplicate(rc,rowUpper[irow]>1.0e20 ? irow : -1);
 		      }
 		    }
 		  }
@@ -4592,7 +4592,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			 kk++) {
 		      sum += rowElements[kk]*colsol[column[kk]];
 		    }
-		    if (sum+gap*colsol[j]>rowUpper[irow]+primalTolerance_||info.strengthenRow) {
+		    if (sum+gap*colsol[j]>rowUpper[irow]+primalTolerance_||(info.strengthenRow&&rowLower[irow]<-1.0e20)) {
 		      // can be a cut
 		      // add gap to integer coefficient
 		      // saveU and saveL spare
@@ -4630,7 +4630,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 #endif
                         //if(info.strengthenRow)
                         //printf("c point to row %d\n",irow);
-			rowCut.addCutIfNotDuplicate(rc,irow);
+			rowCut.addCutIfNotDuplicate(rc,rowLower[irow]<-1.0e20? irow : -1);
 		      }
 		    }
 		  }
@@ -4643,7 +4643,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			sum += rowElements[kk]*colsol[column[kk]];
 		      }
 		    }
-		    if (sum-gap*colsol[j]<rowLower[irow]+primalTolerance_||info.strengthenRow) {
+		    if (sum-gap*colsol[j]<rowLower[irow]+primalTolerance_||(info.strengthenRow&&rowUpper[irow]>1.0e20)) {
 		      // can be a cut
 		      // subtract gap from integer coefficient
 		      // saveU and saveL spare
@@ -4681,7 +4681,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 #endif
                         //if(info.strengthenRow)
                         //printf("d point to row %d\n",irow);
-			rowCut.addCutIfNotDuplicate(rc,irow);
+			rowCut.addCutIfNotDuplicate(rc,rowUpper[irow]>1.0e20 ? irow : -1);
 		      }
 		    }
 		  }

@@ -365,6 +365,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       // Do not allow all +1 to be tampered with
       if (allPlusOnes)
         presolveActions |= 2;
+      // allow transfer of costs
+      // presolveActions |= 4;
       pinfo->setPresolveActions(presolveActions);
       presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-8,true,5);
       if (!presolvedModel) {

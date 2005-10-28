@@ -957,7 +957,6 @@ int CglRedSplit::generateCuts2(const OsiSolverInterface & si, OsiCuts & cs,
   double *rowelem = new double[ncol];
 
   const CoinPackedMatrix *byRow = solver->getMatrixByRow();
-
   for(i=0; i<mTab; i++) {
     generate_row(i, row);
     flip(row);
