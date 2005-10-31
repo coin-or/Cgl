@@ -1102,7 +1102,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
       }
       if (numberFixed||numberTwo||numberStrengthened||numberBounds)
         handler_->message(CGL_PROCESS_STATS,messages_)
-          <<numberFixed<<numberBounds<<numberStrengthened<<numberTwo
+          <<numberFixed<<numberBounds<<numberStrengthened
           <<CoinMessageEol;
       if (!feasible)
         break;

@@ -15,7 +15,7 @@ static Cgl_message us_english[]=
   {CGL_INFEASIBLE,0,1,"Cut generators found to be infeasible!"},
   {CGL_CLIQUES,1,2,"%d cliques of average size %g"},
   {CGL_FIXED,2,1,"%d variables fixed"},
-  {CGL_PROCESS_STATS,3,1,"%d fixed, %d tightened bounds, %d strengthened rows and %d twoCuts"},
+  {CGL_PROCESS_STATS,3,1,"%d fixed, %d tightened bounds, %d strengthened rows"},
   {CGL_DUMMY_END,999999,0,""}
 };
 /* Constructor */
