@@ -25,7 +25,7 @@
 #include "CglTwomir.hpp"
 class CoinWarmStartBasis;
 
-#define DGG_DEBUG_DGG 1
+//#define DGG_DEBUG_DGG 1
 //#define CGL_DEBUG
 #define  q_max  data->cparams.q_max
 #define  q_min  data->cparams.q_min
@@ -365,6 +365,7 @@ DGG_data_t* DGG_getData(const void *osi_ptr )
         data->x[j] = activity - rowLower[i];
 
       if ( data->x[j] < -DGG_NULL_SLACK ){
+#if DGG_DEBUG_DGG
 	int k;
 	double norm = 0.0, min = DBL_MAX, amin = DBL_MAX, max = DBL_MIN;
         printf("** warning: row %d has negative slack!\n", i);
@@ -379,6 +380,7 @@ DGG_data_t* DGG_getData(const void *osi_ptr )
 	printf("rlower = %lf activity = %lf\n", rowLower[i], activity);
 	printf("norm = %lf   (b-ax) = %lf\n", norm, (rowLower[i] - activity));
 	printf("steepn = %lf\n", (rowLower[i] - activity)/norm);
+#endif
       }
 
       data->rc[j] = dualVal[i];
