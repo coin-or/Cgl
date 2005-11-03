@@ -843,6 +843,12 @@ int CglRedSplit::generateCuts2(const OsiSolverInterface & si, OsiCuts & cs,
       break;
     }
   }
+  /* Loop is mTab * mTab * non basic
+     so may be very expensive */
+  double check = ncol;
+  check *= card_intBasicVar_frac*card_intBasicVar_frac;
+  if (check>1.0e7)
+    card_intBasicVar_frac=0; // switch off
 
   if((card_contNonBasicVar == 0) || (card_intBasicVar_frac == 0)) {
     delete[] cstat;
