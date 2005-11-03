@@ -847,7 +847,7 @@ int CglRedSplit::generateCuts2(const OsiSolverInterface & si, OsiCuts & cs,
      so may be very expensive */
   double check = ncol;
   check *= card_intBasicVar_frac*card_intBasicVar_frac;
-  if (check>1.0e7)
+  if (check>1.0e7&&limit_==50)
     card_intBasicVar_frac=0; // switch off
 
   if((card_contNonBasicVar == 0) || (card_intBasicVar_frac == 0)) {

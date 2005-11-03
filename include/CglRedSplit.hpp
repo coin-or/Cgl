@@ -61,7 +61,9 @@ public:
   /**@name Parameters */
   //@{
   /** Set limit, the maximum number of non zero coefficients in generated cut;
-      Default: 50 */
+      Default: 50 
+      Note that if at default then code may be switched off on large problems
+      as may take too long.  To switch on set to 49, 51 - not 50 */
   void setLimit(int limit);
   /** Get value of limit */
   int getLimit() const;
