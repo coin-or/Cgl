@@ -1181,7 +1181,8 @@ void CglRedSplit::printOptTab(OsiSolverInterface *solver) const
     }
     printf("\n");
   }
-  for( int ii=0; ii<7*(ncol+nrow+1); ii++) {
+  int ii;
+  for( ii=0; ii<7*(ncol+nrow+1); ii++) {
     printf("-");
   }
   printf("\n");
