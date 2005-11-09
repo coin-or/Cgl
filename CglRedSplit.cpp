@@ -377,20 +377,21 @@ void CglRedSplit::reduce_contNonBasicTab() {
 /************************************************************************/
 void CglRedSplit::generate_row(int index_row, double *row) {
 
-  for(int i=0; i<ncol+nrow; i++) {
+  int i;
+  for( i=0; i<ncol+nrow; i++) {
     row[i] = 0;
   }
-  for(int i=0; i<card_intBasicVar_frac; i++) {
+  for( i=0; i<card_intBasicVar_frac; i++) {
     row[intBasicVar_frac[i]] += pi_mat[index_row][i];
   }
-  for(int i=0; i<card_intNonBasicVar; i++) {
+  for( i=0; i<card_intNonBasicVar; i++) {
     int locind = intNonBasicVar[i];
     row[locind] = 0;
     for(int j =0; j<mTab; j++) {
       row[locind] += pi_mat[index_row][j] * intNonBasicTab[j][i];
     }
   }
-  for(int i=0; i<card_contNonBasicVar; i++) {
+  for( i=0; i<card_contNonBasicVar; i++) {
     row[contNonBasicVar[i]] = contNonBasicTab[index_row][i];
   }
 } /* generate_row */
@@ -414,7 +415,8 @@ int CglRedSplit::generate_cgcut(double *row, double *rhs) {
     return(0);
   }
 
-  for(int i=0; i<card_intNonBasicVar; i++) {
+  int i;
+  for( i=0; i<card_intNonBasicVar; i++) {
     int locind = intNonBasicVar[i];
     double f = rs_above_integer(row[locind]);
     row[locind] -= f;
@@ -423,7 +425,7 @@ int CglRedSplit::generate_cgcut(double *row, double *rhs) {
     }
   }
 
-  for(int i=0; i<card_contNonBasicVar; i++) {
+  for( i=0; i<card_contNonBasicVar; i++) {
     if(row[contNonBasicVar[i]] < 0) {
       row[contNonBasicVar[i]] /= f0compl;
     }
@@ -480,7 +482,8 @@ void CglRedSplit::unflip(double *row, double *rowrhs,
 			 const double *colLower, const double *colUpper,
 			 double *slack_val) {
   
-  for(int i=0; i<card_nonBasicAtLower; i++) {
+  int i;
+  for( i=0; i<card_nonBasicAtLower; i++) {
     int locind = nonBasicAtLower[i];
     if(locind < ncol) {
       *rowrhs += row[locind] * colLower[locind];
@@ -489,7 +492,7 @@ void CglRedSplit::unflip(double *row, double *rowrhs,
       *rowrhs += row[locind] * slack_val[locind-ncol];
     }
   }
-  for(int i=0; i<card_nonBasicAtUpper; i++) {
+  for( i=0; i<card_nonBasicAtUpper; i++) {
     int locind = nonBasicAtUpper[i];
     row[locind] = -row[locind];
     if(locind < ncol) {
@@ -586,14 +589,15 @@ void CglRedSplit::check_optsol(const OsiSolverInterface *solver,
 #endif
 
   ck_byRow->timesMinor(given_optsol, ck_slack);
-  for(int irow=0; irow<nrow; irow++) {
+  int irow;
+  for( irow=0; irow<nrow; irow++) {
     ck_slack[irow] = rhs[irow] - ck_slack[irow];  
                                         // slack values for optimal solution
   }
   
   double *ck_row = new double[ncol+nrow];
   
-  for(int irow=0; irow<mTab; irow++) {
+  for( irow=0; irow<mTab; irow++) {
     for(i=0; i<ncol+nrow; i++) {
       ck_row[i] = 0;
     }
@@ -898,7 +902,8 @@ int CglRedSplit::generateCuts2(const OsiSolverInterface & si, OsiCuts & cs,
       card_intBasicVar_frac++;
       rhsTab[card_rowTab] = xlp[basis_index[i]];
       solver->getBInvARow(i, z, slack);
-      for(int ii=0; ii<card_contNonBasicVar; ii++) {
+      int ii;
+      for( ii=0; ii<card_contNonBasicVar; ii++) {
 	int locind = contNonBasicVar[ii];
 	if(locind < ncol) {
 	  if(fabs(z[locind]) > EPS) {
@@ -918,7 +923,7 @@ int CglRedSplit::generateCuts2(const OsiSolverInterface & si, OsiCuts & cs,
 	}
       }
 
-      for(int ii=0; ii<card_intNonBasicVar; ii++) {
+      for( ii=0; ii<card_intNonBasicVar; ii++) {
 	int locind = intNonBasicVar[ii];
 	if(locind < ncol) {
 	  if(fabs(z[locind]) > EPS) {
@@ -1159,11 +1164,12 @@ void CglRedSplit::printOptTab(OsiSolverInterface *solver) const
 
   for(i=0; i<nrow; i++) {
     solver->getBInvARow(i, z, slack);
-    for(int ii=0; ii<ncol; ii++) {
+    int ii;
+    for( ii=0; ii<ncol; ii++) {
       printf("%5.2f ", z[ii]);
     }
     printf(" | ");
-    for(int ii=0; ii<nrow; ii++) {
+    for( ii=0; ii<nrow; ii++) {
       printf("%5.2f ", slack[ii]);
     }
     printf(" | ");
@@ -1175,16 +1181,16 @@ void CglRedSplit::printOptTab(OsiSolverInterface *solver) const
     }
     printf("\n");
   }
-  for(int ii=0; ii<7*(ncol+nrow+1); ii++) {
+  for( int ii=0; ii<7*(ncol+nrow+1); ii++) {
     printf("-");
   }
   printf("\n");
 
-  for(int ii=0; ii<ncol; ii++) {
+  for( ii=0; ii<ncol; ii++) {
     printf("%5.2f ", rc[ii]);    
   }
   printf(" | ");
-  for(int ii=0; ii<nrow; ii++) {
+  for( ii=0; ii<nrow; ii++) {
     printf("%5.2f ", -dual[ii]);
   }
   printf(" | ");
