@@ -23,6 +23,7 @@
 #include "CoinWarmStartBasis.hpp"
 #include "CglTwomir.hpp"
 class CoinWarmStartBasis;
+#undef DGG_DEBUG_DGG
 
 //#define DGG_DEBUG_DGG 1
 //#define CGL_DEBUG
