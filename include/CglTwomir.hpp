@@ -6,6 +6,7 @@
 #include <string>
 
 #include "CglCutGenerator.hpp"
+#include "CoinFactorization.hpp"
 
 typedef struct
 {
@@ -33,6 +34,7 @@ typedef struct{
   int t_min;
   int t_max;
   int a_max;
+  int max_elements;
 } cutParams;
 
 typedef struct
@@ -102,6 +104,7 @@ public:
   void setMirScale (int tmin, int tmax) {t_min_ = tmin; t_max_ = tmax;}
   void setTwomirScale (int qmin, int qmax) {q_min_ = qmin; q_max_ = qmax;}
   void setAMax (int a) {a_max_ = a;}
+  void setMaxElements (int n) {max_elements_ = n;}
   void setCutTypes (bool mir, bool twomir, bool tab, bool form)
   { do_mir_ = mir; do_2mir_ = twomir; do_tab_ = tab; do_form_ = form;}
   void setFormulationRows (int n) {form_nrows_ = n;}
@@ -112,6 +115,7 @@ public:
   int getQmin() const {return q_min_;}
   int getQmax() const {return q_max_;}
   int getAmax() const {return a_max_;}
+  int getMaxElements() const {return max_elements_;}
   int getIfMir() const { return do_mir_;}
   int getIfTwomir() const { return do_2mir_;}
   int getIfTableau() const { return do_tab_;}
@@ -150,6 +154,7 @@ private:
   int q_min_;  /// q_min - first value of t to use for 2-Step tMIR inequalities
   int q_max_;  /// q_max - last value of t to use for 2-Step tMIR inequalities
   int a_max_;  /// a_max - maximum value of bhat/alpha
+  int max_elements_; /// Maximum number of elements in cut
 
   int form_nrows_; //number of rows on which formulation cuts will be generated
   //@}
@@ -414,6 +419,9 @@ int DGG_getTableauConstraint( int index,
                               const void *solver_ptr, 
                               DGG_data_t *data, 
                               DGG_constraint_t* tabrow,
+                              const int * colIsBasic,
+                              const int * rowIsBasic,
+                              CoinFactorization & factorization,
                               int mode );
 
 DGG_constraint_t* DGG_getSlackExpression(const void *solver_ptr, DGG_data_t* data, int row_index);

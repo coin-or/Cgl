@@ -1146,6 +1146,245 @@ int CglProbing::generateCutsAndModify(const OsiSolverInterface & si,
     setupRowCliqueInformation(si);
   return ninfeas;
 }
+int analyze(const OsiSolverInterface * solverX, char * intVar,
+             double * lower, double * upper)
+{
+  OsiSolverInterface * solver = solverX->clone();
+  const double *objective = solver->getObjCoefficients() ;
+  int numberColumns = solver->getNumCols() ;
+  int numberRows = solver->getNumRows();
+  double direction = solver->getObjSense();
+  int iRow,iColumn;
+
+  // Row copy
+  CoinPackedMatrix matrixByRow(*solver->getMatrixByRow());
+  const double * elementByRow = matrixByRow.getElements();
+  const int * column = matrixByRow.getIndices();
+  const CoinBigIndex * rowStart = matrixByRow.getVectorStarts();
+  const int * rowLength = matrixByRow.getVectorLengths();
+
+  // Column copy
+  CoinPackedMatrix  matrixByCol(*solver->getMatrixByCol());
+  const double * element = matrixByCol.getElements();
+  const int * row = matrixByCol.getIndices();
+  const CoinBigIndex * columnStart = matrixByCol.getVectorStarts();
+  const int * columnLength = matrixByCol.getVectorLengths();
+
+  const double * rowLower = solver->getRowLower();
+  const double * rowUpper = solver->getRowUpper();
+
+  char * ignore = new char [numberRows];
+  int * which = new int[numberRows];
+  double * changeRhs = new double[numberRows];
+  memset(changeRhs,0,numberRows*sizeof(double));
+  memset(ignore,0,numberRows);
+  int numberChanged=0;
+  bool finished=false;
+  while (!finished) {
+    int saveNumberChanged = numberChanged;
+    for (iRow=0;iRow<numberRows;iRow++) {
+      int numberContinuous=0;
+      double value1=0.0,value2=0.0;
+      bool allIntegerCoeff=true;
+      double sumFixed=0.0;
+      int jColumn1=-1,jColumn2=-1;
+      for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+        int jColumn = column[j];
+        double value = elementByRow[j];
+        if (upper[jColumn] > lower[jColumn]+1.0e-8) {
+          if (!intVar[jColumn]) {
+            if (numberContinuous==0) {
+              jColumn1=jColumn;
+              value1=value;
+            } else {
+              jColumn2=jColumn;
+              value2=value;
+            }
+            numberContinuous++;
+          } else {
+            if (fabs(value-floor(value+0.5))>1.0e-12)
+              allIntegerCoeff=false;
+          }
+        } else {
+          sumFixed += lower[jColumn]*value;
+        }
+      }
+      double low = rowLower[iRow];
+      if (low>-1.0e20) {
+        low -= sumFixed;
+        if (fabs(low-floor(low+0.5))>1.0e-12)
+          allIntegerCoeff=false;
+      }
+      double up = rowUpper[iRow];
+      if (up<1.0e20) {
+        up -= sumFixed;
+        if (fabs(up-floor(up+0.5))>1.0e-12)
+          allIntegerCoeff=false;
+      }
+      if (numberContinuous==1) {
+        // see if really integer
+        // This does not allow for complicated cases
+        if (low==up) {
+          if (fabs(value1)>1.0e-3) {
+            value1 = 1.0/value1;
+            if (fabs(value1-floor(value1+0.5))<1.0e-12) {
+              // integer
+              numberChanged++;
+              intVar[jColumn1]=77;
+            }
+          }
+        } else {
+          if (fabs(value1)>1.0e-3) {
+            value1 = 1.0/value1;
+            if (fabs(value1-floor(value1+0.5))<1.0e-12) {
+              // This constraint will not stop it being integer
+              ignore[iRow]=1;
+            }
+          }
+        }
+      } else if (numberContinuous==2) {
+        if (low==up) {
+          /* need general theory - for now just look at 2 cases -
+             1 - +- 1 one in column and just costs i.e. matching objective
+             2 - +- 1 two in column but feeds into G/L row which will try and minimize
+          */
+          if (fabs(value1)==1.0&&value1*value2==-1.0&&!lower[jColumn1]
+              &&!lower[jColumn2]) {
+            int n=0;
+            int i;
+            double objChange=direction*(objective[jColumn1]+objective[jColumn2]);
+            double bound = CoinMin(upper[jColumn1],upper[jColumn2]);
+            bound = CoinMin(bound,1.0e20);
+            for ( i=columnStart[jColumn1];i<columnStart[jColumn1]+columnLength[jColumn1];i++) {
+              int jRow = row[i];
+              double value = element[i];
+              if (jRow!=iRow) {
+                which[n++]=jRow;
+                changeRhs[jRow]=value;
+              }
+            }
+            for ( i=columnStart[jColumn1];i<columnStart[jColumn1]+columnLength[jColumn1];i++) {
+              int jRow = row[i];
+              double value = element[i];
+              if (jRow!=iRow) {
+                if (!changeRhs[jRow]) {
+                  which[n++]=jRow;
+                  changeRhs[jRow]=value;
+                } else {
+                  changeRhs[jRow]+=value;
+                }
+              }
+            }
+            if (objChange>=0.0) {
+              // see if all rows OK
+              bool good=true;
+              for (i=0;i<n;i++) {
+                int jRow = which[i];
+                double value = changeRhs[jRow];
+                if (value) {
+                  value *= bound;
+                  if (rowLength[jRow]==1) {
+                    if (value>0.0) {
+                      double rhs = rowLower[jRow];
+                      if (rhs>0.0) {
+                        double ratio =rhs/value;
+                        if (fabs(ratio-floor(ratio+0.5))>1.0e-12)
+                          good=false;
+                      }
+                    } else {
+                      double rhs = rowUpper[jRow];
+                      if (rhs<0.0) {
+                        double ratio =rhs/value;
+                        if (fabs(ratio-floor(ratio+0.5))>1.0e-12)
+                          good=false;
+                      }
+                    }
+                  } else if (rowLength[jRow]==2) {
+                    if (value>0.0) {
+                      if (rowLower[jRow]>-1.0e20)
+                        good=false;
+                    } else {
+                      if (rowUpper[jRow]<1.0e20)
+                        good=false;
+                    }
+                  } else {
+                    good=false;
+                  }
+                }
+              }
+              if (good) {
+                // both can be integer
+                numberChanged++;
+                intVar[jColumn1]=77;
+                numberChanged++;
+                intVar[jColumn2]=77;
+              }
+            }
+            // clear
+            for (i=0;i<n;i++) {
+              changeRhs[which[i]]=0.0;
+            }
+          }
+        }
+      }
+    }
+    for (iColumn=0;iColumn<numberColumns;iColumn++) {
+      if (upper[iColumn] > lower[iColumn]+1.0e-8&&!intVar[iColumn]) {
+        double value;
+        value = upper[iColumn];
+        if (value<1.0e20&&fabs(value-floor(value+0.5))>1.0e-12) 
+          continue;
+        value = lower[iColumn];
+        if (value>-1.0e20&&fabs(value-floor(value+0.5))>1.0e-12) 
+          continue;
+        bool integer=true;
+        for (CoinBigIndex j=columnStart[iColumn];j<columnStart[iColumn]+columnLength[iColumn];j++) {
+          int iRow = row[j];
+          if (!ignore[iRow]) {
+            integer=false;
+            break;
+          }
+        }
+        if (integer) {
+          // integer
+          numberChanged++;
+          intVar[iColumn]=77;
+        }
+      }
+    }
+    finished = numberChanged==saveNumberChanged;
+  }
+  bool feasible=true;
+  for (iColumn=0;iColumn<numberColumns;iColumn++) {
+    if (intVar[iColumn]==77) {
+      if (upper[iColumn]>1.0e20) {
+        upper[iColumn] = 1.0e20;
+      } else {
+        upper[iColumn] = floor(upper[iColumn]+1.0e-5);
+      }
+      if (lower[iColumn]<-1.0e20) {
+        lower[iColumn] = -1.0e20;
+      } else {
+        lower[iColumn] = ceil(lower[iColumn]-1.0e-5);
+        if (lower[iColumn]>upper[iColumn])
+          feasible=false;
+      }
+      if (lower[iColumn]==0.0&&upper[iColumn]==1.0)
+        intVar[iColumn]=1;
+      else if (lower[iColumn]==upper[iColumn])
+        intVar[iColumn]=0;
+      else
+        intVar[iColumn]=2;
+    }
+  }
+  delete [] which;
+  delete [] changeRhs;
+  delete [] ignore;
+  //if (numberChanged)
+  //printf("%d variables could be made integer\n",numberChanged);
+  delete solver;
+  return feasible;
+}
 int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si, 
                                    OsiCuts & cs ,
                                    double * rowLower, double * rowUpper,
@@ -1181,7 +1420,13 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       intVar[i]=0;
     }
   }
-
+  memcpy(colLower,si.getColLower(),nCols*sizeof(double));
+  memcpy(colUpper,si.getColUpper(),nCols*sizeof(double));
+  bool feasible=true;
+  if (!info.inTree) {
+    // make more integer
+    feasible = analyze(&si,intVar,colLower,colUpper);
+  }
   int ninfeas=0;
   // Set up maxes
   int maxProbe = info.inTree ? maxProbe_ : maxProbeRoot_;
@@ -1224,8 +1469,6 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       memcpy(rowLower,si.getRowLower(),nRows*sizeof(double));
       memcpy(rowUpper,si.getRowUpper(),nRows*sizeof(double));
     }
-    memcpy(colLower,si.getColLower(),nCols*sizeof(double));
-    memcpy(colUpper,si.getColUpper(),nCols*sizeof(double));
   } else {
     // use snapshot
     nRows=numberRows_;
@@ -1241,8 +1484,6 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       rowLower[nRows-1]=-DBL_MAX;
       rowUpper[nRows-1]=cutoff+offset;
     }
-    memcpy(colLower,si.getColLower(),nCols*sizeof(double));
-    memcpy(colUpper,si.getColUpper(),nCols*sizeof(double));
   }
   int nRowsSafe=CoinMin(nRows,si.getNumRows());
 #ifdef CGL_DEBUG
@@ -1269,6 +1510,8 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     ninfeas= tighten(colLower, colUpper, column, rowElements,
 			 rowStart, rowLength, rowLower, rowUpper,
 			 nRows, nCols, intVar, 2, primalTolerance_);
+    if (!feasible)
+      ninfeas=1;
     if (!ninfeas) {
       // create column cuts where integer bounds have changed
       {
@@ -2075,6 +2318,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
   int nCols=rowCopy->getNumCols();
   double * colsol = new double[nCols];
   double * djs = new double[nCols];
+  const double * objective = si.getObjCoefficients();
   const double * currentColLower = si.getColLower();
   const double * currentColUpper = si.getColUpper();
   double * tempL = new double [nCols];
@@ -2358,7 +2602,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                               newLower-primalTolerance_<=colUpper[kcol]) {
                             newLower=colUpper[kcol];
                             markIt |= 2;
-                            markIt=3;
+                            //markIt=3;
                           } else {
                             // avoid problems - fix later ?
                             markIt=3;
@@ -2381,7 +2625,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                               newUpper+primalTolerance_>=colLower[kcol]) {
                             newUpper=colLower[kcol];
                             markIt |= 1;
-                            markIt=3;
+                            //markIt=3;
                           } else {
                             // avoid problems - fix later ?
                             markIt=3;
@@ -2406,7 +2650,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                               newLower-primalTolerance_<=colUpper[kcol]) {
                             newLower=colUpper[kcol];
                             markIt |= 2;
-                            markIt=3;
+                            //markIt=3;
                           } else {
                             // avoid problems - fix later ?
                             markIt=3;
@@ -2429,7 +2673,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                               newUpper+primalTolerance_>=colLower[kcol]) {
                             newUpper=colLower[kcol];
                             markIt |= 1;
-                            markIt=3;
+                            //markIt=3;
                           } else {
                             // avoid problems - fix later ?
                             markIt=3;
@@ -2468,6 +2712,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       saveL[nstackC]=colLower[kcol];
                       saveU[nstackC]=colUpper[kcol];
                       assert (saveU[nstackC]>saveL[nstackC]);
+                      assert (nstackC<nCols);
                       nstackC++;
                       onList=true;
                     }
@@ -2545,6 +2790,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       saveL[nstackC]=colLower[kcol];
                       saveU[nstackC]=colUpper[kcol];
                       assert (saveU[nstackC]>saveL[nstackC]);
+                      assert (nstackC<nCols);
                       nstackC++;
                       onList=true;
                     }
@@ -2800,9 +3046,48 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 double sum=0.0;
                 if (!ifCut&&(gap>primalTolerance_&&gap<1.0e8)) {
                   // see if the strengthened row is a cut
+                  // also see if singletons can go to good objective
+                  bool moveSingletons=true;
                   for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
                        kk++) {
-                    sum += rowElements[kk]*colsol[column[kk]];
+                    int iColumn = column[kk];
+                    double value = rowElements[kk];
+                    sum += value*colsol[iColumn];
+                    if (moveSingletons&&j!=iColumn) {
+                      if (colUpper[iColumn]>colLower[iColumn]) {
+                        if (columnLength[iColumn]!=1) {
+                          moveSingletons=false;
+                        }
+                      }
+                    }
+                  }
+                  if (moveSingletons) {
+                    // can fix any with good costs
+                    for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
+                         kk++) {
+                      int iColumn = column[kk];
+                      if (j!=iColumn) {
+                        if (colUpper[iColumn]>colLower[iColumn]) {
+                          if (columnLength[iColumn]==1) {
+                            double value = rowElements[kk];
+                            if (direction*objective[iColumn]*value<0.0&&!markC[iColumn]) {
+                              // Fix
+                              if (nstackC0+1<maxStack) {
+                                stackC0[nstackC0]=iColumn;
+                                if (value>0.0) {
+                                  lo0[nstackC0]=colUpper[iColumn];
+                                  up0[nstackC0]=colUpper[iColumn];
+                                } else {
+                                  lo0[nstackC0]=colLower[iColumn];
+                                  up0[nstackC0]=colLower[iColumn];
+                                }
+                                nstackC0++;
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
                   }
                   if (sum-gap*colsol[j]>maxR[irow]+primalTolerance_||(info.strengthenRow&&rowLower[irow]<-1.0e20)) {
                     // can be a cut
@@ -2850,10 +3135,48 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 gap = minR[irow]-rowLower[irow];
                 if (!ifCut&&(gap>primalTolerance_&&gap<1.0e8)) {
                   // see if the strengthened row is a cut
-                  if (!sum) {
+                  sum =0.0;
+                  // also see if singletons can go to good objective
+                  bool moveSingletons=true;
+                  for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
+                       kk++) {
+                    int iColumn = column[kk];
+                    double value = rowElements[kk];
+                    sum += value*colsol[iColumn];
+                    if (moveSingletons&&j!=iColumn) {
+                      if (colUpper[iColumn]>colLower[iColumn]) {
+                        if (columnLength[iColumn]!=1) {
+                          moveSingletons=false;
+                        }
+                      }
+                    }
+                  }
+                  if (moveSingletons) {
+                    // can fix any with good costs
                     for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
                          kk++) {
-                      sum += rowElements[kk]*colsol[column[kk]];
+                      int iColumn = column[kk];
+                      if (j!=iColumn) {
+                        if (colUpper[iColumn]>colLower[iColumn]) {
+                          if (columnLength[iColumn]==1) {
+                            double value = rowElements[kk];
+                            if (direction*objective[iColumn]*value>0.0&&!markC[iColumn]) {
+                              // Fix
+                              if (nstackC0+1<maxStack) {
+                                stackC0[nstackC0]=iColumn;
+                                if (value<0.0) {
+                                  lo0[nstackC0]=colUpper[iColumn];
+                                  up0[nstackC0]=colUpper[iColumn];
+                                } else {
+                                  lo0[nstackC0]=colLower[iColumn];
+                                  up0[nstackC0]=colLower[iColumn];
+                                }
+                                nstackC0++;
+                              }
+                            }
+                          }
+                        }
+                      }
                     }
                   }
                   if (sum+gap*colsol[j]<minR[irow]-primalTolerance_||(info.strengthenRow&&rowUpper[irow]>1.0e20)) {
@@ -2906,6 +3229,100 @@ int CglProbing::probe( const OsiSolverInterface & si,
           } else {
             if (iway==1&&feasible==3) {
               iway=3;
+              // look for singletons that can move (just at root)
+              if ((rowCuts&2)!=0&&goingToTrueBound&&info.strengthenRow) {
+                for (istackR=0;istackR<nstackR;istackR++) {
+                  int irow=stackR[istackR];
+                  double gap = rowUpper[irow]-maxR[irow];
+                  if (gap>primalTolerance_) {
+                    // also see if singletons can go to good objective
+                    bool moveSingletons=true;
+                    for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
+                         kk++) {
+                      int iColumn = column[kk];
+                      if (moveSingletons&&j!=iColumn) {
+                        if (colUpper[iColumn]>colLower[iColumn]) {
+                          if (columnLength[iColumn]!=1) {
+                            moveSingletons=false;
+                          }
+                        }
+                      }
+                    }
+                    if (moveSingletons) {
+                      // can fix any with good costs
+                      for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
+                           kk++) {
+                        int iColumn = column[kk];
+                        if (j!=iColumn) {
+                          if (colUpper[iColumn]>colLower[iColumn]) {
+                            if (columnLength[iColumn]==1) {
+                              double value = rowElements[kk];
+                              if (direction*objective[iColumn]*value<0.0&&!markC[iColumn]) {
+                                // Fix
+                                stackC[nstackC]=iColumn;
+                                saveL[nstackC]=colLower[iColumn];
+                                saveU[nstackC]=colUpper[iColumn];
+                                assert (saveU[nstackC]>saveL[nstackC]);
+                                if (value>0.0) {
+                                  colLower[iColumn]=colUpper[iColumn];
+                                } else {
+                                  colUpper[iColumn]=colLower[iColumn];
+                                }
+                                assert (nstackC<nCols);
+                                nstackC++;
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                  gap = minR[irow]-rowLower[irow];
+                  if (gap>primalTolerance_) {
+                    // also see if singletons can go to good objective
+                    bool moveSingletons=true;
+                    for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
+                         kk++) {
+                      int iColumn = column[kk];
+                      if (moveSingletons&&j!=iColumn) {
+                        if (colUpper[iColumn]>colLower[iColumn]) {
+                          if (columnLength[iColumn]!=1) {
+                            moveSingletons=false;
+                          }
+                        }
+                      }
+                    }
+                    if (moveSingletons) {
+                      // can fix any with good costs
+                      for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
+                         kk++) {
+                        int iColumn = column[kk];
+                        if (j!=iColumn) {
+                          if (colUpper[iColumn]>colLower[iColumn]) {
+                            if (columnLength[iColumn]==1) {
+                              double value = rowElements[kk];
+                              if (direction*objective[iColumn]*value>0.0&&!markC[iColumn]) {
+                                // Fix
+                                stackC[nstackC]=iColumn;
+                                saveL[nstackC]=colLower[iColumn];
+                                saveU[nstackC]=colUpper[iColumn];
+                                assert (saveU[nstackC]>saveL[nstackC]);
+                                if (value<0.0) {
+                                  colLower[iColumn]=colUpper[iColumn];
+                                } else {
+                                  colUpper[iColumn]=colLower[iColumn];
+                                }
+                                assert (nstackC<nCols);
+                                nstackC++;
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
               /* point back to stack */
               for (istackC=nstackC-1;istackC>=0;istackC--) {
                 int icol=stackC[istackC];
@@ -2914,13 +3331,13 @@ int CglProbing::probe( const OsiSolverInterface & si,
               OsiColCut cc;
               int nTot=0,nFix=0,nInt=0;
               bool ifCut=false;
-              for (istackC=0;istackC<nstackC0;istackC++) {
+              for (istackC=1;istackC<nstackC0;istackC++) {
                 int icol=stackC0[istackC];
                 int istackC1=markC[icol]-1000;
                 if (istackC1>=0) {
                   if (CoinMin(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
                     saveL[istackC1]=CoinMin(lo0[istackC],colLower[icol]);
-                    if (intVar[icol]) {
+                    if (intVar[icol]||!info.inTree) {
                       element[nFix]=saveL[istackC1];
                       index[nFix++]=icol;
                       nInt++;
@@ -2928,7 +3345,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                         ifCut=true;
                     }
                     nfixed++;
-                  }
+                  } 
                 }
               }
               if (nFix) {
@@ -2936,13 +3353,13 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 cc.setLbs(nFix,index,element);
                 nFix=0;
               }
-              for (istackC=0;istackC<nstackC0;istackC++) {
+              for (istackC=1;istackC<nstackC0;istackC++) {
                 int icol=stackC0[istackC];
                 int istackC1=markC[icol]-1000;
                 if (istackC1>=0) {
                   if (CoinMax(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
                     saveU[istackC1]=CoinMax(up0[istackC],colUpper[icol]);
-                    if (intVar[icol]) {
+                    if (intVar[icol]||!info.inTree) {
                       element[nFix]=saveU[istackC1];
                       index[nFix++]=icol;
                       nInt++;
@@ -2950,6 +3367,41 @@ int CglProbing::probe( const OsiSolverInterface & si,
                         ifCut=true;
                     }
                     nfixed++;
+                  } else if (!info.inTree&&saveL[0]==0.0&&saveU[0]==1.0) {
+                    // See if can do two cut
+                    double upperWhenDown = up0[istackC];
+                    double lowerWhenDown = lo0[istackC];
+                    double upperWhenUp = colUpper[icol];
+                    double lowerWhenUp = colLower[icol];
+                    double upperOriginal = saveU[istackC1];
+                    double lowerOriginal = saveL[istackC1];
+                    if (upperWhenDown<lowerOriginal+1.0e-12&&lowerWhenUp>upperOriginal-1.0e-12) {
+                      OsiRowCut rc;
+                      rc.setLb(lowerOriginal);
+                      rc.setUb(lowerOriginal);
+                      rc.setEffectiveness(1.0e-5);
+                      int index[2];
+                      double element[2];
+                      index[0]=j;
+                      index[1]=icol;
+                      element[0]=-(upperOriginal-lowerOriginal);
+                      element[1]=1.0;
+                      rc.setRow(2,index,element);
+                      cs.insert(rc);
+                    } else if (upperWhenUp<lowerOriginal+1.0e-12&&lowerWhenDown>upperOriginal-1.0e-12) {
+                      OsiRowCut rc;
+                      rc.setLb(upperOriginal);
+                      rc.setUb(upperOriginal);
+                      rc.setEffectiveness(1.0e-5);
+                      int index[2];
+                      double element[2];
+                      index[0]=j;
+                      index[1]=icol;
+                      element[0]=upperOriginal-lowerOriginal;
+                      element[1]=1.0;
+                      rc.setRow(2,index,element);
+                      cs.insert(rc);
+                    } 
                   }
                 }
               }
@@ -3801,7 +4253,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 				newLower-primalTolerance_<=colUpper[kcol]) {
 			      newLower=colUpper[kcol];
                               markIt |= 2;
-                              markIt=3;
+                              //markIt=3;
 			    } else {
                               // avoid problems - fix later ?
                               markIt=3;
@@ -3824,7 +4276,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 				newUpper+primalTolerance_>=colLower[kcol]) {
 			      newUpper=colLower[kcol];
                               markIt |= 1;
-                              markIt=3;
+                              //markIt=3;
 			    } else {
                               // avoid problems - fix later ?
                               markIt=3;
@@ -3849,7 +4301,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 				newLower-primalTolerance_<=colUpper[kcol]) {
 			      newLower=colUpper[kcol];
                               markIt |= 2;
-                              markIt=3;
+                              //markIt=3;
 			    } else {
                               // avoid problems - fix later ?
                               markIt=3;
@@ -3872,7 +4324,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 				newUpper+primalTolerance_>=colLower[kcol]) {
 			      newUpper=colLower[kcol];
                               markIt |= 1;
-                              markIt=3;
+                              //markIt=3;
 			    } else {
                               // avoid problems - fix later ?
                               markIt=3;

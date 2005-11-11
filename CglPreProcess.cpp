@@ -34,8 +34,9 @@ CglPreProcess::preProcess(OsiSolverInterface & model,
   CglProbing generator1;
   generator1.setUsingObjective(true);
   generator1.setMaxPass(3);
-  generator1.setMaxProbe(100);
-  generator1.setMaxLook(50);
+  generator1.setMaxProbeRoot(model.getNumCols());
+  generator1.setMaxElements(100);
+  generator1.setMaxLookRoot(50);
   generator1.setRowCuts(3);
   // Add in generators
   addCutGenerator(&generator1);
@@ -138,6 +139,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
         state=2;
       else if (iUpper<-numberM1)
         state=3;
+      if (fabs(((double) iUpper)-upperValue)>1.0e-9)
+        state =-1;
     }
     if (!state&&lowerValue>-1.0e6) {
       if (-iLower==1-numberP1)
@@ -146,8 +149,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
         state=-2;
       else if (-iLower<-numberP1)
         state=-3;
+      if (fabs(((double) iLower)-lowerValue)>1.0e-9)
+        state =-1;
     }
-    if (good&&state) {
+    if (good&&state>0) {
       if (abs(state)==3) {
         // infeasible
         feasible=false;
@@ -207,6 +212,9 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
         <<CoinMessageEol;
   }
   if (numberSlacks&&makeEquality) {
+      handler_->message(CGL_SLACKS,messages_)
+        <<numberSlacks
+        <<CoinMessageEol;
     // add variables to make equality rows
     // Get new model
     startModel_ = originalModel_->clone();
@@ -250,7 +258,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     CglDuplicateRow dupCuts(startModel_);
     //dupCuts.setLogLevel(1);
     // If +1 try duplicate rows
-    if (allPlusOnes)
+    if (allPlusOnes) 
       addCutGenerator(&dupCuts);
     for (int iPass=0;iPass<numberSolvers_;iPass++) {
       // Look at Vubs
@@ -384,7 +392,15 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
         break; // model totally solved
       }
       bool constraints = iPass<numberPasses-1;
+      // Give a hint to do primal
+      bool saveTakeHint;
+      OsiHintStrength saveStrength;
+      presolvedModel->getHintParam(OsiDoDualInInitial,
+                                   saveTakeHint,saveStrength);
+      if (iPass)
+        presolvedModel->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
       presolvedModel->initialSolve();
+      presolvedModel->setHintParam(OsiDoDualInInitial,saveTakeHint,saveStrength);
       if (!presolvedModel->isProvenOptimal()) {
         returnModel=NULL;
         break;
@@ -793,9 +809,13 @@ void
 CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 {
   // Do presolves
-  OsiHintStrength saveStrength;
   bool saveHint;
-  originalModel_->getHintParam(OsiDoPresolveInResolve,saveHint,saveStrength);
+  OsiHintStrength saveStrength;
+  originalModel_->getHintParam(OsiDoPresolveInInitial,saveHint,saveStrength);
+  bool saveHint2;
+  OsiHintStrength saveStrength2;
+  originalModel_->getHintParam(OsiDoDualInInitial,
+                        saveHint2,saveStrength2);
   OsiSolverInterface * modelM = &modelIn;
   for (int iPass=numberSolvers_-1;iPass>=0;iPass--) {
     OsiSolverInterface * model = model_[iPass];
@@ -807,14 +827,18 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
         if (modelM->isInteger(iColumn)) {
           double value = solutionM[iColumn];
           double value2 = floor(value+0.5);
-          assert (fabs(value-value2)<1.0e-3);
-          model->setColLower(iColumn,value2);
-          model->setColUpper(iColumn,value2);
+          // if test fails then empty integer
+          if (fabs(value-value2)<1.0e-3) {
+            model->setColLower(iColumn,value2);
+            model->setColUpper(iColumn,value2);
+          }
         }
       }
     }
-    model->setHintParam(OsiDoPresolveInResolve,true,OsiHintTry);
-    model->resolve();
+    // Give a hint to do primal
+    //model->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
+    model->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
+    model->initialSolve();
     presolve_[iPass]->postsolve(true);
     delete modifiedModel_[iPass];;
     delete model_[iPass];;
@@ -837,14 +861,18 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
     if (modelM->isInteger(iColumn)) {
       double value = solutionM[iColumn];
       double value2 = floor(value+0.5);
-      assert (fabs(value-value2)<1.0e-3);
-      model->setColLower(iColumn,value2);
-      model->setColUpper(iColumn,value2);
+      // if test fails then empty integer
+      if (fabs(value-value2)<1.0e-3) {
+        model->setColLower(iColumn,value2);
+        model->setColUpper(iColumn,value2);
+      }
     }
   }
-  model->setHintParam(OsiDoPresolveInResolve,true,OsiHintTry);
-  model->resolve();
-  model->setHintParam(OsiDoPresolveInResolve,saveHint,saveStrength);
+  //model->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
+  model->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
+  model->initialSolve();
+  model->setHintParam(OsiDoDualInInitial,saveHint2,saveStrength2);
+  model->setHintParam(OsiDoPresolveInInitial,saveHint,saveStrength);
 }
 /* Return model with useful modifications.  
    If constraints true then adds any x+y=1 or x-y=0 constraints
@@ -1027,21 +1055,10 @@ CglPreProcess::modified(OsiSolverInterface * model,
         for (int k = 0;k<numberRowCuts;k++) {
           OsiRowCut * thisCut = cs.rowCutPtr(k) ;
           int n=thisCut->row().getNumElements();
-#ifndef NDEBUG
-          const double * elementCut = thisCut->row().getElements();
-#endif
           double lower = thisCut->lb();
           double upper = thisCut->ub();
           if (n==2&&lower==upper) {
             numberTwo++;
-#ifndef NDEBUG
-            if (lower) {
-              assert (elementCut[0]==1.0&&elementCut[1]==1.0);
-            } else {
-              assert ((elementCut[0]==-1.0&&elementCut[1]==1.0)||
-                      (elementCut[0]==1.0&&elementCut[1]==-1.0));
-            }
-#endif
             twoCuts.insert(*thisCut);
           }
         }
@@ -1102,7 +1119,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
       }
       if (numberFixed||numberTwo||numberStrengthened||numberBounds)
         handler_->message(CGL_PROCESS_STATS,messages_)
-          <<numberFixed<<numberBounds<<numberStrengthened
+          <<numberFixed<<numberBounds<<numberStrengthened<<numberTwo
           <<CoinMessageEol;
       if (!feasible)
         break;
@@ -1118,6 +1135,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
         iPass=numberPasses-2;
       }
     }
+    numberChanges += numberTwo;
   }
   delete [] whichCut;
   int numberRowCuts = twoCuts.sizeRowCuts() ;

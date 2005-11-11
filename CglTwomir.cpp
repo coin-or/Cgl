@@ -19,7 +19,6 @@
 #include "CoinWarmStartBasis.hpp"
 #include "CoinFinite.hpp"
 #include "CoinPackedMatrix.hpp"
-#include "CoinFactorization.hpp"
 #include "OsiRowCutDebugger.hpp"
 #include "CoinWarmStartBasis.hpp"
 #include "CglTwomir.hpp"
@@ -32,6 +31,7 @@ class CoinWarmStartBasis;
 #define  t_max  data->cparams.t_max
 #define  t_min  data->cparams.t_min
 #define  a_max  data->cparams.a_max
+#define  max_elements  data->cparams.max_elements
 
 #define talk false // true
 
@@ -86,6 +86,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   t_max = t_max_;
   t_min = t_min_;
   a_max = a_max_;
+  max_elements = max_elements_;
 
   if (!do_mir_) t_max = t_min - 1;
   if (!do_2mir_) q_max = q_min - 1;
@@ -110,22 +111,22 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   for ( i=0; i<cut_list.n; i++){
     DGG_constraint_t *cut = cut_list.c[i];
     OsiRowCut rowcut;
-    
-    rowcut.setRow(cut->nz, cut->index, cut->coeff);
-    rowcut.setUb(DBL_MAX);
-    rowcut.setLb(cut->rhs);
-    cs.insert(rowcut);
+    if (cut->nz<max_elements) {
+      rowcut.setRow(cut->nz, cut->index, cut->coeff);
+      rowcut.setUb(DBL_MAX);
+      rowcut.setLb(cut->rhs);
+      cs.insert(rowcut);
     
 #ifdef CGL_DEBUG
-    if (debugger) {
-      if (debugger->invalidCut(rowcut)) {
-	write_cut(cut);
-	printf ("2mir_test: debug failed, mayday, mayday **********************************\n");} 
+      if (debugger) {
+        if (debugger->invalidCut(rowcut)) {
+          write_cut(cut);
+          printf ("2mir_test: debug failed, mayday, mayday **********************************\n");} 
 	//assert(0);
       }
-    //assert(!debugger->invalidCut(rowcut));
+      //assert(!debugger->invalidCut(rowcut));
 #endif
-    
+    }
   }
   
   for ( i=0; i<cut_list.n; i++)
@@ -142,7 +143,7 @@ CglTwomir::CglTwomir () :
   CglCutGenerator(),
   probname_(NULL),
   do_mir_(true), do_2mir_(true), do_tab_(true), do_form_(true),
-  t_min_(1), t_max_(1), q_min_(1), q_max_(1), a_max_(2),
+  t_min_(1), t_max_(1), q_min_(1), q_max_(1), a_max_(2),max_elements_(50000),
   form_nrows_(0) {}
 
 //-------------------------------------------------------------------
@@ -159,6 +160,7 @@ CglTwomir::CglTwomir (const CglTwomir & source) :
   q_min_(source.q_min_),
   q_max_(source.q_max_),
   a_max_(source.a_max_),
+  max_elements_(source.max_elements_),
   form_nrows_(source.form_nrows_)
 {
   if (source.probname_)
@@ -200,6 +202,7 @@ CglTwomir::operator=(const CglTwomir& rhs)
     q_min_=rhs.q_min_;
     q_max_=rhs.q_max_;
     a_max_=rhs.a_max_;
+    max_elements_=rhs.max_elements_;
     form_nrows_=rhs.form_nrows_;
   }
   return *this;
@@ -481,9 +484,12 @@ DGG_getSlackExpression(const void *osi_ptr, DGG_data_t* data, int row_index)
 
 int
 DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
-				  DGG_constraint_t* tabrow, int mode )
+                          DGG_constraint_t* tabrow, 
+                          const int * colIsBasic,
+                          const int * rowIsBasic,
+                          CoinFactorization & factorization,
+                          int mode )
 {
-  int rval = 0;
 
 #if DGG_DEBUG_DGG
   /* ensure that the index corresponds to a basic variable */
@@ -516,31 +522,6 @@ DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
   value = (double*)malloc(sizeof(double)*(data->nrow+data->ncol));
   memset(value, 0, sizeof(double)*(data->nrow+data->ncol));
 
-  /* allocate memory for basic column/row indicators */
-  int *rowIsBasic = 0, *colIsBasic = 0;
-  rowIsBasic = (int*)malloc(sizeof(int)*data->nrow);
-  colIsBasic = (int*)malloc(sizeof(int)*data->ncol);
-    
-  /* initialize the IsBasic arrays with -1 / 1 values indicating 
-     where the basic rows and columns are. NOTE: WE could do this 
-     only once and keep it in osi_data at the expense of space!! */
-
-  int i;
-  for( i=0; i<data->ncol; i++){
-    if ( DGG_isBasic(data,i) ) colIsBasic[i] = 1;
-    else                       colIsBasic[i] = -1;
-  }
-  for( i=0; i<data->nrow; i++){
-    if ( DGG_isBasic(data,i+data->ncol) ) rowIsBasic[i] = 1;
-    else                                  rowIsBasic[i] = -1;
-  }
-
-  /* obtain factorization */
-  CoinFactorization factorization;
-  factorization.increasingRows(2); /* ??? */
-  rval = factorization.factorize(*colMatrixPtr, rowIsBasic, colIsBasic); 
-  /* 0 = okay. -1 = singular. -2 = too many in basis. -99 = memory. */
-  DGG_TEST2(rval, 1, "factorization error = %d", rval);
 
   /* obtain the tableau row coefficients for all variables */
   /* note: we could speed this up by only computing non-basic variables */
@@ -639,10 +620,6 @@ DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
 
   /* CLEANUP */
   free(value);
-
-  /* put down here to test */
-  free(rowIsBasic);
-  free(colIsBasic);
 
   return 0;
 }
@@ -1035,6 +1012,35 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
   base = DGG_newConstraint(data->ncol + data->nrow);
 
   if(talk) printf ("2mir_test: generating tab row cuts\n");
+  /* allocate memory for basic column/row indicators */
+  int *rowIsBasic = 0, *colIsBasic = 0;
+  rowIsBasic = (int*)malloc(sizeof(int)*data->nrow);
+  colIsBasic = (int*)malloc(sizeof(int)*data->ncol);
+    
+  /* initialize the IsBasic arrays with -1 / 1 values indicating 
+     where the basic rows and columns are. NOTE: WE could do this 
+     only once and keep it in osi_data at the expense of space!! */
+
+  int i;
+  for( i=0; i<data->ncol; i++){
+    if ( DGG_isBasic(data,i) ) colIsBasic[i] = 1;
+    else                       colIsBasic[i] = -1;
+  }
+  for( i=0; i<data->nrow; i++){
+    if ( DGG_isBasic(data,i+data->ncol) ) rowIsBasic[i] = 1;
+    else                                  rowIsBasic[i] = -1;
+  }
+
+  /* obtain factorization */
+  CoinFactorization factorization;
+  factorization.increasingRows(2); /* ??? */
+  /* obtain address of the LP matrix */
+  const OsiSolverInterface *si = (const OsiSolverInterface *) solver_ptr;
+  const CoinPackedMatrix *colMatrixPtr = si->getMatrixByCol();
+  rval = factorization.factorize(*colMatrixPtr, rowIsBasic, colIsBasic); 
+  /* 0 = okay. -1 = singular. -2 = too many in basis. -99 = memory. */
+  DGG_TEST2(rval, 1, "factorization error = %d", rval);
+
   for(k=0; k<data->ncol; k++){
     if (!(DGG_isBasic(data, k) && DGG_isInteger(data,k))) continue;
 
@@ -1042,7 +1048,8 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
     if (frac < DGG_GOMORY_THRESH || frac > 1-DGG_GOMORY_THRESH) continue;
 
     base->nz = 0;
-    rval = DGG_getTableauConstraint(k, solver_ptr, data, base, 0);
+    rval = DGG_getTableauConstraint(k, solver_ptr, data, base, 
+                                    colIsBasic,rowIsBasic,factorization,0);
     DGG_CHECKRVAL(rval, rval);
 
     if (base->nz == 0){
@@ -1054,6 +1061,9 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
     rval = DGG_generateCutsFromBase(base, cut_list, data, solver_ptr);
     DGG_CHECKRVAL(rval, rval);
   }
+
+  free(rowIsBasic);
+  free(colIsBasic);
 
    if(talk) printf ("2mir_test: generated %d tab cuts\n", cut_list->n - nc); fflush (stdout);
   DGG_freeConstraint(base);

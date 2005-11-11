@@ -10,7 +10,7 @@
 #include <cfloat>
 #include <cassert>
 #include <iostream>
-//#define CGL_DEBUG
+//#define CGL_DEBUG 2
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedVector.hpp"
 #include "CoinPackedMatrix.hpp"
@@ -209,6 +209,9 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   int limit = info.inTree ? limit_ : CoinMax(limit_,limitAtRoot_);
   int numberRows=columnCopy.getNumRows();
   int numberColumns=columnCopy.getNumCols(); 
+  // Allow bigger length on initial matrix (if special setting)
+  if (limit==512&&!info.inTree&&!info.pass)
+    limit=1024;
   
   // Start of code to create a factorization from warm start (A) ====
   // check factorization is okay
@@ -313,7 +316,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 #ifdef CGL_DEBUG
 	assert (min(rowUpper[iRow]-rowActivity[iRow],
 		    rowActivity[iRow]-rowUpper[iRow])<1.0e-7);
-	abort();
+	//abort();
+        continue;
 #else
 	continue;
 #endif
@@ -440,7 +444,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      continue;
 	    } else {
 #if CGL_DEBUG>1
-	      if (iColumn==314) printf("for basic %d, column %d has alpha %g, colsol %g\n",
+	      if (iColumn==52) printf("for basic %d, column %d has alpha %g, colsol %g\n",
 		     iColumn,j,value,colsol[j]);
 #endif
 	      // deal with bounds
@@ -452,7 +456,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		//reducedValue -= value*colLower[j];
 	      }
 #if CGL_DEBUG>1
-	      if (iColumn==348) printf("%d value %g reduced %g int %d rhs %g swap %d\n",
+	      if (iColumn==52) printf("%d value %g reduced %g int %d rhs %g swap %d\n",
 		     j,value,reducedValue,intVar[j],rhs,swap[j]);
 #endif
 	      double coefficient;
@@ -722,7 +726,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	  }
 	  // Take off tiny elements
 	  // for first pass reject
-#define TINY_ELEMENT 1.0e-7
+#define TINY_ELEMENT 1.0e-12
 	  {
 	    int i,number2=number;
 	    number=0;
@@ -759,13 +763,14 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	  if (number<limit||!numberNonInteger) {
 	    bounds[1]=rhs;
 	    if (number>50&&numberNonInteger)
-	      bounds[1] += 1.0e-6; // weaken
+	      bounds[1] = bounds[1]+1.0e-6+1.0e-8*fabs(rhs); // weaken
 	    {
 	      OsiRowCut rc;
 	      rc.setRow(number,cutIndex,packed);
 	      rc.setLb(bounds[0]);
 	      rc.setUb(bounds[1]);   
 	      cs.insert(rc);
+              //rc.print();
 #ifdef CGL_DEBUG
 	      if (!number)
 		std::cout<<"******* Empty cut - infeasible"<<std::endl;
@@ -795,7 +800,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		     <<") ";
 	  }
 	  std::cout<<std::endl;
-	  abort();
+	  //abort();
 #endif
 	}
       }
@@ -810,7 +815,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	factorization.updateColumn ( &work, &array );
 	int numberInArray=array.getNumElements();
 	printf("non-basic %d\n",iColumn);
-	for (j=0;j<numberInArray;j++) {
+	for (int j=0;j<numberInArray;j++) {
 	  int indexValue=arrayRows[j];
 	  double value=arrayElements[indexValue];
 	  if (fabs(value)>1.0e-6) {

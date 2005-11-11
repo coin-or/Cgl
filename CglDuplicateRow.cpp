@@ -359,9 +359,11 @@ CglDuplicateRow::refreshSolver(OsiSolverInterface * solver)
   const CoinBigIndex * rowStart = matrixByRow_.getVectorStarts();
   const int * rowLength = matrixByRow_.getVectorLengths();
   int iRow;
+  int numberGood=0;
+  int markBad = -(solver->getNumCols()+1);
   for (iRow=0;iRow<numberRows;iRow++) {
-    rhs_[iRow]=-1;
-    lower_[iRow]=0;
+    rhs_[iRow]=markBad;
+    lower_[iRow]=markBad;
     duplicate_[iRow]=-1;
     if (rowUpper[iRow]<100) {
       int iRhs= (int) floor(rowUpper[iRow]);
@@ -372,13 +374,23 @@ CglDuplicateRow::refreshSolver(OsiSolverInterface * solver)
         if (!solver->isInteger(iColumn))
           good=false;
         double value = elementByRow[j];
-        if (floor(value)!=value||value<1.0)
+        if (floor(value)!=value||value<1.0) {
           good=false;
+        }
       }
       if (good) {
         lower_[iRow] = (int) CoinMax(0.0,ceil(rowLower[iRow]));
-        assert (iRhs>=lower_[iRow]);
-        rhs_[iRow]=iRhs;
+        if (iRhs>=lower_[iRow]) {
+          rhs_[iRow]=iRhs;
+          numberGood++;
+        } else {
+          // infeasible ?
+          lower_[iRow]=markBad;
+          rhs_[iRow]=markBad;
+        }
+      } else {
+        lower_[iRow]=markBad;
+        rhs_[iRow]=markBad;
       }
     }
   }
