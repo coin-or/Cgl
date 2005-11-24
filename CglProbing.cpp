@@ -2427,18 +2427,25 @@ int CglProbing::probe( const OsiSolverInterface & si,
       if(colUpper[j]-colLower[j]<1.0e-8) markC[j]=3;
       if (markC[j]||!intVar[j]) continue;
       double saveSolval = solval;
-      if (solval>colUpper[j]-tolerance||solval<colLower[j]+tolerance) {
+      if (solval>=colUpper[j]-tolerance||solval<=colLower[j]+tolerance||up==down) {
 	awayFromBound=0;
-	if (solval<colLower[j]+tolerance) {
+	if (solval<=colLower[j]+2.0*tolerance) {
 	  solval = colLower[j]+1.0e-1;
 	  down=colLower[j];
 	  up=down+1.0;
-	} else if (solval>colUpper[j]-tolerance) {
+	} else if (solval>=colUpper[j]-2.0*tolerance) {
 	  solval = colUpper[j]-1.0e-1;
 	  up=colUpper[j];
 	  down=up-1;
-	} 
+	} else {
+          // odd
+          up=down+1.0;
+          solval = down+1.0e-1;
+        }
       }
+      assert (up<=colUpper[j]);
+      assert (down>=colLower[j]);
+      assert (up>down);
       int istackC,iway, istackR;
       int way[]={1,2,1};
       int feas[]={1,2,4};
@@ -3923,18 +3930,25 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
       if(colUpper[j]-colLower[j]<1.0e-8) markC[j]=3;
       if (markC[j]||!intVar[j]) continue;
       double saveSolval = solval;
-      if (solval>colUpper[j]-tolerance||solval<colLower[j]+tolerance) {
+      if (solval>=colUpper[j]-tolerance||solval<=colLower[j]+tolerance||up==down) {
 	awayFromBound=0;
-	if (solval<colLower[j]+tolerance) {
+	if (solval<=colLower[j]+2.0*tolerance) {
 	  solval = colLower[j]+1.0e-1;
 	  down=colLower[j];
 	  up=down+1.0;
-	} else if (solval>colUpper[j]-tolerance) {
+	} else if (solval>=colUpper[j]-2.0*tolerance) {
 	  solval = colUpper[j]-1.0e-1;
 	  up=colUpper[j];
 	  down=up-1;
-	} 
+	} else {
+          // odd
+          up=down+1.0;
+          solval = down+1.0e-1;
+        }
       }
+      assert (up<=colUpper[j]);
+      assert (down>=colLower[j]);
+      assert (up>down);
       if ((solval-down>1.0e-6&&up-solval>1.0e-6)||mode_!=1) {
 	int istackC,iway, istackR;
 	int way[]={1,2,1};

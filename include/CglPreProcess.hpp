@@ -54,9 +54,11 @@ public:
 
       This version assumes user has added cut generators to CglPreProcess object
       before calling it.  As an example use coding in preProcess
+      If makeEquality is 1 add slacks to get cliques,
+      if 2 add slacks to get sos (but only if looks plausible) and keep sos info
   */
   OsiSolverInterface * preProcessNonDefault(OsiSolverInterface & model, 
-                                  bool makeEquality=true, int numberPasses=5);
+                                  int makeEquality=0, int numberPasses=5);
   /// Creates solution in original model
   void postProcess(OsiSolverInterface &model);
   /** Tightens primal bounds to make dual and branch and cutfaster.  Unless
@@ -120,6 +122,21 @@ public:
   /** Return a pointer to the original rows
       MUST be called before postProcess otherwise you just get 0,1,2.. */
   const int * originalRows() const;
+  /// Number of SOS if found
+  inline int numberSOS() const
+  { return numberSOS_;};
+  /// Type of each SOS
+  inline const int * typeSOS() const
+  { return typeSOS_;};
+  /// Start of each SOS
+  inline const int * startSOS() const
+  { return startSOS_;};
+  /// Columns in SOS
+  inline const int * whichSOS() const
+  { return whichSOS_;};
+  /// Weights for each SOS column
+  inline const double * weightSOS() const
+  { return weightSOS_;};
   //@}
 
   ///@name Cut generator methods 
@@ -248,8 +265,18 @@ private:
   mutable int * originalRow_;
   /// Number of cut generators
   int numberCutGenerators_;
-  // Cut generators
+  /// Cut generators
   CglCutGenerator ** generator_;
+  /// Number of SOS if found
+  int numberSOS_;
+  /// Type of each SOS
+  int * typeSOS_;
+  /// Start of each SOS
+  int * startSOS_;
+  /// Columns in SOS
+  int * whichSOS_;
+  /// Weights for each SOS column
+  double * weightSOS_;
  //@}
 };
 
