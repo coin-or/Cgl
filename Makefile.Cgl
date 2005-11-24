@@ -27,6 +27,8 @@ LIBSRC += CglTwomir.cpp
 LIBSRC += CglMessage.cpp
 LIBSRC += CglDuplicateRow.cpp
 LIBSRC += CglPreProcess.cpp
+LIBSRC += CglAllDifferent.cpp
+LIBSRC += CglStored.cpp
 
 ##############################################################################
 # You should not need to edit below this line.

@@ -75,6 +75,22 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 
   //!!!!!!!!!!!!!!!!!!
   six = &si;
+  // Temp - check if free variables
+  {
+    const double *colUpper = si.getColUpper();
+    const double *colLower = si.getColLower();
+    int ncol = si.getNumCols();
+    int numberFree=0;
+    for (int i=0;i<ncol;i++) {
+      if (colLower[i]<-1.0e20&&colUpper[i]>1.0e20)
+        numberFree++;
+    }
+    if (numberFree) {
+      if (!info.inTree&&!info.pass)
+        printf("CglTwoMir - %d free variables - returning\n",numberFree);
+      return;
+    }
+  }
   
   DGG_list_t cut_list;
   DGG_list_init (&cut_list);
