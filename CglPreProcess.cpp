@@ -97,7 +97,59 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   const double * upper = originalModel_->getColUpper();
   const double * rowLower = originalModel_->getRowLower();
   const double * rowUpper = originalModel_->getRowUpper();
-
+  if (makeEquality==2) {
+    int iRow, iColumn;
+    int numberIntegers = 0;
+    for (iColumn=0;iColumn<numberColumns;iColumn++) {
+      if (originalModel_->isInteger(iColumn))
+        numberIntegers++;
+    }
+    // Look for possible SOS
+    int numberSOS=0;
+    int * mark = new int[numberColumns];
+    CoinFillN(mark,numberColumns,-1);
+    int numberOverlap=0;
+    int numberInSOS=0;
+    for (iRow=0;iRow<numberRows;iRow++) {
+      if (rowLower[iRow]==1.0&&rowUpper[iRow]==1.0) {
+        if (rowLength[iRow]<5)
+          continue;
+        bool goodRow=true;
+        for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+          int iColumn = column[j];
+          if (elementByRow[j]!=1.0||!originalModel_->isInteger(iColumn)||lower[iColumn]) {
+            goodRow=false;
+            break;
+          }
+          if (mark[iColumn]>=0) {
+            goodRow=false;
+            numberOverlap++;
+          }
+        }
+        if (goodRow) {
+          // mark all
+          for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+            int iColumn = column[j];
+            mark[iColumn]=numberSOS;
+          }
+          numberSOS++;
+          numberInSOS += rowLength[iRow];
+        }
+      }
+    }
+    delete [] mark;
+    if (numberSOS) {
+      if (numberOverlap||numberIntegers>numberInSOS+1) {
+        printf("%d SOS (%d members out of %d) with %d overlaps",
+               numberSOS,numberInSOS,numberIntegers,numberOverlap);
+        printf(" - too much overlap or too many others\n");
+        makeEquality=0;
+      }
+    } else {
+      // no sos
+      makeEquality=0;
+    }
+  }
   // See if all + 1
   bool allPlusOnes=true;
   for (iRow=0;iRow<numberRows;iRow++) {
