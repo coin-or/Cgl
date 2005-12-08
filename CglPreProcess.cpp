@@ -1036,7 +1036,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
     if (newModel->isBinary(iColumn))
       number01Integers++;
   }
-  OsiRowCut ** whichCut = new OsiRowCut * [numberRows];
+  OsiRowCut ** whichCut = new OsiRowCut * [numberRows+1];
   numberChanges=0;
   CglTreeInfo info;
   info.level = 0;
