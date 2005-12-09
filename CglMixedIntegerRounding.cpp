@@ -1644,3 +1644,9 @@ CglMixedIntegerRounding::printStats(
   }
 
 }
+// This can be used to refresh any inforamtion
+void 
+CglMixedIntegerRounding::refreshSolver(OsiSolverInterface * solver)
+{
+  doneInitPre_ = false;
+}

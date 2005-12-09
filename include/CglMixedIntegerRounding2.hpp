@@ -157,6 +157,8 @@ public:
   /// Destructor 
   virtual
     ~CglMixedIntegerRounding2 ();
+  /// This can be used to refresh any inforamtion
+  virtual void refreshSolver(OsiSolverInterface * solver);
   //@}
 
   //---------------------------------------------------------------------------

@@ -111,7 +111,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     int numberOverlap=0;
     int numberInSOS=0;
     for (iRow=0;iRow<numberRows;iRow++) {
-      if (rowLower[iRow]==1.0&&rowUpper[iRow]==1.0) {
+      if (rowUpper[iRow]==1.0) {
         if (rowLength[iRow]<5)
           continue;
         bool goodRow=true;
@@ -140,9 +140,9 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     delete [] mark;
     if (numberSOS) {
       if (numberOverlap||numberIntegers>numberInSOS+1) {
-        printf("%d SOS (%d members out of %d) with %d overlaps",
-               numberSOS,numberInSOS,numberIntegers,numberOverlap);
-        printf(" - too much overlap or too many others\n");
+        handler_->message(CGL_PROCESS_SOS2,messages_)
+          <<numberSOS<<numberInSOS<<numberIntegers<<numberOverlap
+          <<CoinMessageEol;
         makeEquality=0;
       }
     } else {
@@ -494,14 +494,18 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     handler_->message(CGL_INFEASIBLE,messages_)
       <<CoinMessageEol;
   }
-  if (makeEquality==2&&numberCliques&&returnModel) {
-    int iRow, iColumn;
+  int numberIntegers=0;
+  if (returnModel) {
+    int iColumn;
     int numberColumns = returnModel->getNumCols();
-    int numberIntegers = 0;
     for (iColumn=0;iColumn<numberColumns;iColumn++) {
       if (returnModel->isInteger(iColumn))
         numberIntegers++;
     }
+  }
+  if (makeEquality==2&&numberCliques&&returnModel) {
+    int iRow, iColumn;
+    int numberColumns = returnModel->getNumCols();
     int numberRows = returnModel->getNumRows();
     // get row copy
     const CoinPackedMatrix * matrix = returnModel->getMatrixByRow();
@@ -547,11 +551,14 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       }
     }
     if (numberSOS) {
-      printf("%d SOS (%d members out of %d) with %d overlaps\n",
-             numberSOS,numberInSOS,numberIntegers,numberOverlap);
       if (numberOverlap||numberIntegers>numberInSOS+1) {
-        printf("too much overlap or too many others\n");
+        handler_->message(CGL_PROCESS_SOS2,messages_)
+          <<numberSOS<<numberInSOS<<numberIntegers<<numberOverlap
+          <<CoinMessageEol;
       } else {
+        handler_->message(CGL_PROCESS_SOS1,messages_)
+          <<numberSOS<<numberInSOS
+          <<CoinMessageEol;
         numberSOS_=numberSOS;
         typeSOS_ = new int[numberSOS_];
         startSOS_ = new int[numberSOS_+1];
@@ -576,6 +583,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     }
     delete [] mark;
   }
+  if (returnModel)
+    handler_->message(CGL_PROCESS_STATS2,messages_)
+      <<returnModel->getNumRows()<<returnModel->getNumCols()
+      <<numberIntegers<<returnModel->getNumElements()
+      <<CoinMessageEol;
   return returnModel;
 }
 
