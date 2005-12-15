@@ -145,9 +145,9 @@ public:
   /// Get maximum number of passes per node
   int getMaxPass() const;
   /// Set log level - 0 none, 1 - a bit, 2 - more details
-  void CglProbing::setLogLevel(int value);
+  void setLogLevel(int value);
   /// Get log level
-  int CglProbing::getLogLevel() const;
+  int getLogLevel() const;
   /// Set maximum number of unsatisfied variables to look at
   void setMaxProbe(int value);
   /// Get maximum number of unsatisfied variables to look at
