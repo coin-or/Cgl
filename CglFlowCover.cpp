@@ -858,11 +858,12 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 #endif
 	}
     }
+
+#if 0 // LIFTING?
     double estY, estX;
     double movement = 0.0;
     double dPrimePrime = temp + cutRHS; 
     bool lifted = false;
-#if 0 // LIFTING?
     for( i = 0; i < rowLen; ++i ) {
 	if ( (label[i] != CGLFLOW_COL_INCUT) && (sign[i] > 0) ) {/* N+\C+*/
 	    lifted = liftPlus(estY, estX,
