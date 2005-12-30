@@ -42,7 +42,7 @@ enum CglFlowColStatus{
     /** The column is a prime candidate. */
     CGLFLOW_COL_PRIME,
     /** The column is a secondary candidate. */
-    CGLFLOW_COL_SECONDARY,
+    CGLFLOW_COL_SECONDARY
 };
 
 /** This enumerative constant describes the various stati of vars in 
@@ -59,7 +59,7 @@ enum CglFlowColCut{
     /** The column is decided to be in L-. */
     CGLFLOW_COL_INLMINDONE,
     /** The column is in L--.*/
-    CGLFLOW_COL_INLMINMIN,
+    CGLFLOW_COL_INLMINMIN
 };
 
 /** This enumerative constant describes the various row types.*/
