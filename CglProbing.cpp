@@ -1689,7 +1689,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
           if (!rcut.ub()) {
             // UB
             if (elements[which]<0.0) {
-              assert (elements[1-which]>0.0);
+              //assert (elements[1-which]>0.0);
               // delta to 0 => x to 0.0
               cutVector_[i].length++;
             } else {
@@ -1729,7 +1729,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
           if (!lb) {
             // LB
             if (elements[which]>0.0) {
-              assert (elements[1-which]<0.0);
+              //assert (elements[1-which]<0.0);
               // delta to 0 => x to 0.0
               // flip so same as UB
               cutVector_[i].length++; 
