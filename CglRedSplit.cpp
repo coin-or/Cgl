@@ -907,7 +907,7 @@ void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     new_mTab = (int) (sqrt(maxTab_/card_contNonBasicVar));
   }
   else {
-    new_mTab = (int) (cbrt(maxTab_));
+    new_mTab = (int) (CoinCbrt(maxTab_));
   }
 
   if(new_mTab == 0) {
