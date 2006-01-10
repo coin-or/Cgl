@@ -535,7 +535,7 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
       // reset the remainder
       remainder.setVector(0,NULL,NULL);
       
-      if (expensiveCuts_||krow.getNumElements()<=15) {
+      if (expensiveCuts_||krow.getNumElements()<=15||(!info.inTree&&krow.getNumElements()<=20)) {
         if (findJohnAndEllisCover(rowIndex, krow, b,
                                   xstar, fracCover, atOnes, remainder) == 1){
           
@@ -563,7 +563,7 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
       //    use an exact algorithm to find the most violated (minimal) cover, 
       // else, 
       //    use an lp-relaxation to find the most violated (minimal) cover.
-      if(krow.getNumElements()<=15){
+      if(krow.getNumElements()<=15||(!info.inTree&&krow.getNumElements()<=20)){
 	if (findExactMostViolatedMinCover(nCols, rowIndex, krow, b,
 					  xstar, cover, remainder) == 1){
 	  
