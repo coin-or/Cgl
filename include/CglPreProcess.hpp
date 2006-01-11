@@ -27,6 +27,8 @@
 
     Presolve will also be done.
 
+    If row names existed they may be replaced by R0000000 etc
+
 */
 
 class CglPreProcess  {
