@@ -1698,3 +1698,9 @@ int DGG_cutsOffPoint(double *x, DGG_constraint_t *cut)
   DGG_TEST(1, 1, "found a bad cut!");
 
 }
+// Returns true if needs optimal basis to do cuts
+bool 
+CglTwomir::needsOptimalBasis() const
+{
+  return true;
+}

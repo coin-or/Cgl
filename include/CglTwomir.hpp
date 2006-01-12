@@ -97,6 +97,8 @@ public:
   */
   virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs, 
 			     const CglTreeInfo info = CglTreeInfo()) const;
+  /// Return true if needs optimal basis to do cuts (will return true)
+  virtual bool needsOptimalBasis() const;
 
   /**@name Change criterion on which scalings to use (default = 1,1,1,1) */
   //@{

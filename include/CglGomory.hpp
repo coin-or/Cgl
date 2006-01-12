@@ -43,6 +43,8 @@ public:
 		    const CoinWarmStartBasis* warm,
                     const CglTreeInfo info = CglTreeInfo()) const;
 
+  /// Return true if needs optimal basis to do cuts (will return true)
+  virtual bool needsOptimalBasis() const;
   //@}
 
   /**@name Change limit on how many variables in cut (default 50) */

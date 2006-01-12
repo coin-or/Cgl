@@ -1506,3 +1506,9 @@ CglRedSplit::operator=(const CglRedSplit& rhs)
   }
   return *this;
 }
+// Returns true if needs optimal basis to do cuts
+bool 
+CglRedSplit::needsOptimalBasis() const
+{
+  return true;
+}

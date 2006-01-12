@@ -104,6 +104,8 @@ public:
      Default is true
   */
   virtual bool mayGenerateRowCutsInTree() const;
+  /// Return true if needs optimal basis to do cuts
+  virtual bool needsOptimalBasis() const;
   //@}
   
   // test this class

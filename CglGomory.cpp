@@ -921,3 +921,9 @@ CglGomory::operator=(const CglGomory& rhs)
   }
   return *this;
 }
+// Returns true if needs optimal basis to do cuts
+bool 
+CglGomory::needsOptimalBasis() const
+{
+  return true;
+}

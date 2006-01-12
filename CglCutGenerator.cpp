@@ -57,7 +57,12 @@ CglCutGenerator::mayGenerateRowCutsInTree() const
 {
   return true;
 }
-
+// Return true if needs optimal basis to do cuts
+bool 
+CglCutGenerator::needsOptimalBasis() const
+{
+  return false;
+}
 
 
 #ifdef NDEBUG
