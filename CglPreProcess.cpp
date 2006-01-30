@@ -520,6 +520,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     // Look for possible SOS
     int numberSOS=0;
     int * mark = new int[numberColumns];
+    char * sosRow = new char[numberRows];
+    CoinZeroN(sosRow,numberRows);
     CoinFillN(mark,numberColumns,-1);
     int numberOverlap=0;
     int numberInSOS=0;
@@ -547,6 +549,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
           }
           numberSOS++;
           numberInSOS += rowLength[iRow];
+          sosRow[iRow]=1;
         }
       }
     }
@@ -566,22 +569,134 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
         weightSOS_ = new double[numberInSOS];
         numberInSOS=0;
         startSOS_[0]=0;
+        const CoinPackedMatrix * columnCopy = returnModel->getMatrixByCol();
+        const int * row = columnCopy->getIndices();
+        const CoinBigIndex * columnStart = columnCopy->getVectorStarts();
+        const int * columnLength = columnCopy->getVectorLengths(); 
+        const double * columnElements = columnCopy->getElements();
+        const double * objective = returnModel->getObjCoefficients();
+        int * numberInRow = new int [numberRows];
+        double * sort = new double[numberColumns];
+        int * which = new int[numberColumns];
         for (int iSOS =0;iSOS<numberSOS_;iSOS++) {
           int n=0;
+          int numberObj=0;
+          CoinZeroN(numberInRow,numberRows);
           for (iColumn=0;iColumn<numberColumns;iColumn++) {
             if (mark[iColumn]==iSOS) {
+              if (objective[iColumn])
+                numberObj++;
+              for (CoinBigIndex j=columnStart[iColumn];
+                   j<columnStart[iColumn]+columnLength[iColumn];j++) {
+                int iRow = row[j];
+                if (!sosRow[iRow])
+                  numberInRow[iRow]++;
+              }
               whichSOS_[numberInSOS]=iColumn;
               weightSOS_[numberInSOS]=n;
               numberInSOS++;
               n++;
             }
           }
+          // See if any rows look good
+          int bestRow=-1;
+          int numberDifferent=1;
+          int start = startSOS_[iSOS];
+          for (int iRow=0;iRow<numberRows;iRow++) {
+            if (numberInRow[iRow]>=n-1) {
+              // See how many different
+              int i;
+              for ( i=0;i<n;i++) {
+                int iColumn = whichSOS_[i+start];
+                sort[i]=0.0;
+                which[i]=iColumn;
+                for (CoinBigIndex j=columnStart[iColumn];
+                     j<columnStart[iColumn]+columnLength[iColumn];j++) {
+                  int jRow = row[j];
+                  if (jRow==iRow) {
+                    sort[i]=columnElements[j];
+                    break;
+                  }
+                }
+              }
+              // sort
+              CoinSort_2(sort,sort+n,which);
+              double last = sort[0];
+              int nDiff=1;
+              for ( i=1;i<n;i++) {
+                if (sort[i]>last+CoinMax(fabs(last)*1.0e-8,1.0e-5)) {
+                  nDiff++;
+                }
+                last = sort[i];
+              }
+              if (nDiff>numberDifferent) {
+                numberDifferent = nDiff;
+                bestRow=iRow;
+              }
+            }
+          }
+          if (numberObj>=n-1||bestRow<0) {
+            int i;
+            for ( i=0;i<n;i++) {
+              int iColumn = whichSOS_[i+start];
+              sort[i]=objective[iColumn];
+              which[i]=iColumn;
+            }
+            // sort
+            CoinSort_2(sort,sort+n,which);
+            double last = sort[0];
+            int nDiff=1;
+            for ( i=1;i<n;i++) {
+              if (sort[i]>last+CoinMax(fabs(last)*1.0e-8,1.0e-5)) {
+                nDiff++;
+              }
+              last = sort[i];
+            }
+            if (nDiff>numberDifferent) {
+              numberDifferent = nDiff;
+              bestRow=numberRows;
+            }
+          }
+          if (bestRow>=0) {
+            // if not objective - recreate
+            if (bestRow<numberRows) {
+              int i;
+              for ( i=0;i<n;i++) {
+                int iColumn = whichSOS_[i+start];
+                sort[i]=0.0;
+                which[i]=iColumn;
+                for (CoinBigIndex j=columnStart[iColumn];
+                     j<columnStart[iColumn]+columnLength[iColumn];j++) {
+                  int jRow = row[j];
+                  if (jRow==bestRow) {
+                    sort[i]=columnElements[j];
+                    break;
+                  }
+                }
+              }
+              // sort
+              CoinSort_2(sort,sort+n,which);
+            }
+            // make sure gaps OK
+            double last = sort[0];
+            for (int i=1;i<n;i++) {
+              double next = last+CoinMax(fabs(last)*1.0e-8,1.0e-5);
+              sort[i]=CoinMax(sort[i],next);
+              last = sort[i];
+            }
+            //CoinCopyN(sort,n,weightSOS_+start);
+            //CoinCopyN(which,n,whichSOS_+start);
+          }
           typeSOS_[iSOS]=1;
           startSOS_[iSOS+1]=numberInSOS;
         }
+        delete [] numberInRow;
+        delete [] sort;
+        delete [] which;
       }
     }
     delete [] mark;
+    delete [] sosRow;
   }
   if (returnModel)
     handler_->message(CGL_PROCESS_STATS2,messages_)
