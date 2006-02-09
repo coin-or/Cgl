@@ -6339,15 +6339,15 @@ int CglProbing::snapshot ( const OsiSolverInterface & si,
   const CoinBigIndex * rowStart = rowCopy_->getVectorStarts();
   const int * rowLength = rowCopy_->getVectorLengths(); 
   const double * rowElements = rowCopy_->getElements();
-  
+
+  int returnCode=0;
   int ninfeas= 
     tighten(colLower_, colUpper_, column, rowElements,
 			 rowStart, rowLength, rowLower_, rowUpper_,
 			 numberRows_, numberColumns_, intVar, 5, primalTolerance_);
   if (ninfeas) {
     // let someone else find out
-    delete [] intVar;
-    return 1;
+    returnCode = 1;
   }
 
   // do integer stuff for mode 0
@@ -6405,7 +6405,7 @@ int CglProbing::snapshot ( const OsiSolverInterface & si,
   // make sure big enough - in case too many rows dropped
   columnCopy_->setDimensions(numberRows_,numberColumns_);
   rowCopy_->setDimensions(numberRows_,numberColumns_);
-  return 0;
+  return returnCode;
 }
 // Delete snapshot
 void CglProbing::deleteSnapshot()
