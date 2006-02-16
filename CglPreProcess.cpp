@@ -97,7 +97,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   const double * upper = originalModel_->getColUpper();
   const double * rowLower = originalModel_->getRowLower();
   const double * rowUpper = originalModel_->getRowUpper();
-  if (makeEquality==2) {
+  if (makeEquality==2||makeEquality==3) {
     int iRow, iColumn;
     int numberIntegers = 0;
     for (iColumn=0;iColumn<numberColumns;iColumn++) {
@@ -139,11 +139,14 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     }
     delete [] mark;
     if (numberSOS) {
-      if (numberOverlap||numberIntegers>numberInSOS+1) {
+      if (numberOverlap||(numberIntegers>numberInSOS+1&&makeEquality==2)) {
         handler_->message(CGL_PROCESS_SOS2,messages_)
           <<numberSOS<<numberInSOS<<numberIntegers<<numberOverlap
           <<CoinMessageEol;
         makeEquality=0;
+      } else {
+        // mark as type 2 if 3
+        makeEquality=2;
       }
     } else {
       // no sos
@@ -392,7 +395,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
             }
             if (debug>0) {
               if (value1>0.0&&objective[iColumn1]*direction<0.0) {
-                // will push as high as possible
+                // will push as high as possible so make ==
                 // highest effective rhs
                 if (value2>0) 
                   upper -= value2 * columnLower[iColumn2];
@@ -401,10 +404,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
                 if (columnUpper[iColumn1]>1.0e20||
                     columnUpper[iColumn1]*value1>=upper) {
                   //printf("looks possible\n");
+                  // make equality
                   if (rowLower[iRow]<-1.0e20) 
-                    oldModel->setRowLower(iRow,upper);
+                    oldModel->setRowLower(iRow,rowUpper[iRow]);
                   else
-                    oldModel->setRowLower(iRow,-upper);
+                    oldModel->setRowUpper(iRow,rowLower[iRow]);
                 } else {
                   // may be able to make integer
                   // may just be better to use to see objective integral
