@@ -284,8 +284,9 @@ public:
   {
     int numberCuts=cs.sizeRowCuts();
     int nRows = (size_-200)/2;
+    int i ;
     if (numberCuts_<nRows) {
-      for (int i=0;i<numberCuts_;i++) {
+      for (i=0;i<numberCuts_;i++) {
         cs.insert(*rowCut_[i]);
         if (whichRow) {
           int iRow= rowCut_[i]->whichRow();
@@ -298,7 +299,6 @@ public:
       // just best
       double * effectiveness = new double[numberCuts_];
       int iCut=0;
-      int i;
       for (i=0;i<numberCuts_;i++) {
         effectiveness[iCut++]=-rowCut_[i]->effectiveness();
       }
@@ -316,6 +316,9 @@ public:
         }
       }
     }
+    for (i = 0 ; i < numberCuts_ ; i++)
+    { delete rowCut_[i] ;
+      rowCut_[i] = 0 ; }
     numberCuts_=0;
   }
 };
@@ -1569,6 +1572,9 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
         if (mode==1) {
           const double * colsol = si.getColSolution();
           double_int_pair * array = new double_int_pair [nCols];
+#	  ifdef ZEROFAULT
+	  std::memset(array,0,sizeof(double_int_pair)*nCols) ;
+#	  endif
           for (i=0;i<nCols;i++) {
             if (intVar[i]&&colUpper[i]-colLower[i]>1.0e-8) {
               double away = fabs(0.5-(colsol[i]-floor(colsol[i])));
@@ -1619,6 +1625,9 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     int nLook=0;
     const double * colsol = si.getColSolution();
     double_int_pair * array = new double_int_pair [nCols];
+#   ifdef ZEROFAULT
+    std::memset(array,0,sizeof(double_int_pair)*nCols) ;
+#   endif
     for (i=0;i<number01Integers_;i++) {
       int j=cutVector_[i].sequence;
       if (!cutVector_[i].index&&colUpper[j]-colLower[j]>1.0e-8) {
@@ -6349,6 +6358,10 @@ int CglProbing::snapshot ( const OsiSolverInterface & si,
     // let someone else find out
     returnCode = 1;
   }
+/*
+  QUESTION: If ninfeas > 1 (one or more variables infeasible), shouldn't we
+	    bail out here?
+*/
 
   // do integer stuff for mode 0
   cutVector_ = new disaggregation [number01Integers_];
