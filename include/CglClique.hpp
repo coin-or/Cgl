@@ -80,7 +80,10 @@ public:
    double getMinViolation() const { return petol; }
 
 private:
-   
+
+   struct frac_graph ;
+   friend struct frac_graph ;
+
    /** A node of the fractional graph. There is a node for every variable at
        fractional level. */
    struct fnode {
