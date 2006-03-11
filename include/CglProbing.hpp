@@ -287,6 +287,9 @@ private:
 
   // Private member data
 
+  struct disaggregation_struct_tag ;
+  friend struct CglProbing::disaggregation_struct_tag ;
+
   /**@name Private member data */
   //@{
   /// Row copy (only if snapshot)
@@ -351,7 +354,7 @@ private:
     unsigned int affected:29; // If 0-1 then 0-1 sequence, otherwise true
   } disaggregationAction;
   /// Disaggregation cuts and for building cliques
-  typedef struct {
+  typedef struct disaggregation_struct_tag {
     int sequence; // integer variable
     // index will be NULL if no probing done yet
     int length; // length of newValue
