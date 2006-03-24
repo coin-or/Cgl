@@ -224,6 +224,11 @@ CglClique::createFractionalGraph() const
    fnode *nodes = fgraph.nodes;
    int min_degree, max_degree, min_deg_node, max_deg_node;
 
+#  ifdef ZEROFAULT
+   // May be read below even if sp_numcols == 0
+   nodes[0].degree = 0 ;
+#  endif
+
    int i, j, total_deg, old_total;
 
    /*========================================================================*
