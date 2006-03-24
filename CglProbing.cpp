@@ -315,6 +315,7 @@ public:
           numberCuts++;
         }
       }
+      delete[] effectiveness ;
     }
     for (i = 0 ; i < numberCuts_ ; i++)
     { delete rowCut_[i] ;
