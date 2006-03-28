@@ -13,13 +13,13 @@
 #include <iostream>
 #include <cstdlib>
 
-#ifdef COIN_USE_OSL
+#ifdef COIN_HAS_OSL
 #include <OsiOslSolverInterface.hpp>
 #endif
-#ifdef COIN_USE_CLP
+#ifdef COIN_HAS_CLP
 #include <OsiClpSolverInterface.hpp>
 #endif
-#ifdef COIN_USE_XPR
+#ifdef COIN_HAS_XPR
 #include <OsiXprSolverInterface.hpp>
 #endif
 
@@ -44,7 +44,7 @@ int main (int argc, const char *argv[])
   if ( argc >= 2 ) mpsDir = argv[1];
   else mpsDir ="../Mps/Sample/";
 
-#ifdef COIN_USE_OSL
+#ifdef COIN_HAS_OSL
   {
     OsiOslSolverInterface oslSi;
     testingMessage( "Testing CglGomory with OsiOslSolverInterface\n" );
@@ -77,7 +77,7 @@ int main (int argc, const char *argv[])
   }
 
 #endif
-#ifdef COIN_USE_XPR
+#ifdef COIN_HAS_XPR
   {
     OsiXprSolverInterface xprSi;
     testingMessage( "Testing CglSimpleRounding with OsiXprSolverInterface\n" );
@@ -105,7 +105,7 @@ int main (int argc, const char *argv[])
   }
 
 #endif
-#ifdef COIN_USE_CLP
+#ifdef COIN_HAS_CLP
   {
     OsiClpSolverInterface clpSi;
     testingMessage( "Testing CglGomory with OsiClpSolverInterface\n" );
