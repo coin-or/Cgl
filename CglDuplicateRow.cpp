@@ -41,9 +41,7 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   const CoinBigIndex * columnStart = matrix_.getVectorStarts();
   const int * columnLength = matrix_.getVectorLengths();
   // Row copy
-#ifndef NDEBUG
   const double * elementByRow = matrixByRow_.getElements();
-#endif
   const int * column = matrixByRow_.getIndices();
   const CoinBigIndex * rowStart = matrixByRow_.getVectorStarts();
   const int * rowLength = matrixByRow_.getVectorLengths();
