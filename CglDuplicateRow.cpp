@@ -55,8 +55,21 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   int i;
   int numberRows=matrix_.getNumRows();
   int * effectiveRhs = CoinCopyOfArray(rhs_,numberRows);
+  int * effectiveLower = CoinCopyOfArray(lower_,numberRows);
   double * colUpper2 = new double [numberColumns];
   bool infeasible=false;
+  // mark bad rows
+  for (i=0;i<numberRows;i++) {
+    duplicate_[i]=-1;
+    int j;
+    for (j=rowStart[i];j<rowStart[i]+rowLength[i];j++) {
+      if (elementByRow[j]!=1.0) {
+        duplicate_[i]=-3;
+        rhs_[i]=-1000000;
+        break;
+      }
+    }
+  }
   for ( i=0;i<numberColumns;i++) {
     colUpper2[i]=columnUpper[i];
     if (columnLower[i]) {
@@ -65,6 +78,7 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
         int iRow = row[jj];
         nOut += (int) (element[jj]*value);
         effectiveRhs[iRow] -= (int) (element[jj]*value);
+        effectiveLower[iRow] -= (int) (element[jj]*value);
       }
     }
   }
@@ -90,12 +104,16 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   memset(check,0,numberColumns);
   int * which2 = new int[numberColumns];
   for (i=0;i<numberRows;i++) {
-    if (effectiveRhs[i]>0)
-      duplicate_[i]=-1;
-    else if (effectiveRhs[i]==0)
-      duplicate_[i]=-2;
-    else
-      duplicate_[i]=-3;
+    if (duplicate_[i]==-1) {
+      if (effectiveRhs[i]>0)
+        duplicate_[i]=-1;
+      else if (effectiveRhs[i]==0)
+        duplicate_[i]=-2;
+      else
+        duplicate_[i]=-3;
+    } else {
+      effectiveRhs[i]=-1000;
+    }
   }
   for (i=0;i<numberRows;i++) {
     // initially just one
@@ -128,7 +146,7 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
             }
           }
           if (nnsame==nn2) {
-            if (nn2<nn&&lower_[k]==rhs_[k]&&rhs_[i]==rhs_[k]) {
+            if (nn2<nn&&effectiveLower[k]==rhs_[k]&&rhs_[i]==rhs_[k]) {
               if (logLevel_)
                 printf("row %d strict subset of row %d, fix some in row %d\n",
                        k,i,i);
@@ -156,15 +174,15 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
                   }
                 }
               }
-            } else if (nn2==nn&&lower_[i]==rhs_[i]&&lower_[k]==rhs_[k]) {
+            } else if (nn2==nn&&effectiveLower[i]==rhs_[i]&&effectiveLower[k]==rhs_[k]) {
               if (logLevel_)
                 printf("row %d identical to row %d\n",
                        k,i);
               duplicate_[k]=i;
-            } else if (nn2>=nn&&lower_[i]==rhs_[i]&&lower_[k]==rhs_[k]) {
+            } else if (nn2>=nn&&effectiveLower[i]==rhs_[i]&&effectiveLower[k]==rhs_[k]) {
               abort();
             }
-          } else if (nnsame==nn&&nn2>nn&&lower_[i]==rhs_[i]&&rhs_[i]<=rhs_[k]) {
+          } else if (nnsame==nn&&nn2>nn&&effectiveLower[i]==rhs_[i]&&rhs_[i]<=rhs_[k]) {
             if (logLevel_)
               printf("row %d strict superset of row %d, fix some in row %d\n",
                      k,i,k);
@@ -201,6 +219,27 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
                 which2[nn++]=iColumn;
               }
             }
+          } else {
+            // may be redundant
+            if (nnsame==nn2) {
+              // k redundant ?
+              if (nn2<nn&&effectiveLower[k]<=0&&rhs_[i]<=rhs_[k]) {
+                if (logLevel_)
+                  printf("row %d slack subset of row %d, drop row %d\n",
+                         k,i,k);
+                // treat k as duplicate
+                duplicate_[k]=i;
+              }
+            } else if (nnsame==nn) {
+              // i redundant ?
+              if (nn2>nn&&effectiveLower[i]<=0&&rhs_[k]<=rhs_[i]) {
+                if (logLevel_)
+                  printf("row %d slack subset of row %d, drop row %d\n",
+                         i,k,i);
+                // treat i as duplicate
+                duplicate_[i]=k;
+              }
+            }
           }
         }
       }
@@ -230,6 +269,7 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     }
   } 
   delete [] effectiveRhs;
+  delete [] effectiveLower;
   if (logLevel_)
     printf("%d free (but %d fixed this time), %d out of rhs, DP size %d, %d rows\n",
            nFree,nFixed,nOut,sizeDynamic_,nRow);

@@ -155,12 +155,14 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   }
   // See if all + 1
   bool allPlusOnes=true;
+  int nPossible=0;
   for (iRow=0;iRow<numberRows;iRow++) {
     int numberP1=0, numberM1=0;
     int j;
     double upperValue=rowUpper[iRow];
     double lowerValue=rowLower[iRow];
     bool good=true;
+    bool allPlus=true;
     for (j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
       int iColumn = column[j];
       if (upper[iColumn]-lower[iColumn]<1.0e-8) {
@@ -174,16 +176,18 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       }
       if (fabs(elementByRow[j])!=1.0) {
         good=false;
-        allPlusOnes=false;
+        allPlus=false;
         break;
       } else if (elementByRow[j]>0.0) {
         which[numberP1++]=iColumn;
       } else {
-        allPlusOnes=false;
         numberM1++;
         which[numberColumns-numberM1]=iColumn;
+        allPlus=false;
       }
     }
+    if (allPlus)
+      nPossible++;
     int iUpper = (int) floor(upperValue+1.0e-5);
     int iLower = (int) ceil(lowerValue-1.0e-5);
     int state=0;
@@ -251,6 +255,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       }
     }
   }
+  // allow if some +1's
+  allPlusOnes = 10*nPossible>numberRows;
   delete [] which;
   if (!feasible) {
     handler_->message(CGL_INFEASIBLE,messages_)
