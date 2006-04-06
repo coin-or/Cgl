@@ -1157,7 +1157,8 @@ int CglProbing::generateCutsAndModify(const OsiSolverInterface & si,
 bool analyze(const OsiSolverInterface * solverX, char * intVar,
              double * lower, double * upper)
 {
-  return true;
+  // until I can see why says variables integer on gen and qnet2
+#if 0
   OsiSolverInterface * solver = solverX->clone();
   const double *objective = solver->getObjCoefficients() ;
   int numberColumns = solver->getNumCols() ;
@@ -1392,6 +1393,9 @@ bool analyze(const OsiSolverInterface * solverX, char * intVar,
   //if (numberChanged)
   //printf("%d variables could be made integer\n",numberChanged);
   delete solver;
+#else
+  bool feasible=true;
+#endif
   return feasible;
 }
 int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si, 
