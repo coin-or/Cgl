@@ -1150,7 +1150,7 @@ int CglProbing::generateCutsAndModify(const OsiSolverInterface & si,
   colLower_	= colLower;
   colUpper_	= colUpper;
   // Setup information 
-  if (rowCliques)
+  if (rowCliques&&numberRows_&&numberColumns_)
     setupRowCliqueInformation(si);
   return ninfeas;
 }
