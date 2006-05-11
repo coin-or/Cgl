@@ -1,1 +1,10 @@
 * text=auto !eol
+Cgl/cgl_addlibs.txt.in -text
+Cgl/configure.ac -text
+/Externals -text
+/config.guess -text
+/config.sub -text
+/configure.ac -text
+/depcomp -text
+/install-sh -text
+/missing -text
