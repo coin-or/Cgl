@@ -42,6 +42,7 @@ CXXFLAGS += -I`$(CYGPATH_W) $(COINBASESRCDIR)/src` \
 
 if COIN_HAS_CLP
   CXXFLAGS += -I`$(CYGPATH_W) $(CLPSRCDIR)/src` \
+	-I`$(CYGPATH_W) $(CLPOBJDIR)/inc` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiClp`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiClp/libOsiClp.la \
 	$(CLPOBJDIR)/src/libClp.la

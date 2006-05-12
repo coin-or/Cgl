@@ -50,6 +50,7 @@ noinst_PROGRAMS = unitTest$(EXEEXT)
 # Depending of what solvers are available, we add the corresponding files,
 # libraries and include dirs
 @COIN_HAS_CLP_TRUE@am__append_1 = -I`$(CYGPATH_W) $(CLPSRCDIR)/src` \
+@COIN_HAS_CLP_TRUE@	-I`$(CYGPATH_W) $(CLPOBJDIR)/inc` \
 @COIN_HAS_CLP_TRUE@	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiClp`
 
 @COIN_HAS_CLP_TRUE@am__append_2 = $(OSIOBJDIR)/src/OsiClp/libOsiClp.la \
