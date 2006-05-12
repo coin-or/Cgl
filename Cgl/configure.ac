@@ -68,6 +68,33 @@ AC_COIN_HAS_PROJECT(Sym)
 AC_COIN_HAS_PROJECT(Vol)
 
 #############################################################################
+#                            Third party solvers                            #
+#############################################################################
+
+# Those are not really required for the compilation of Cgl, but we
+# need to know which are available in order to compile the unitTest
+# correctly.  Therefore, we test those again, even though those tests
+# are done already for Osi (and the libraries are already listed in
+# osi_addlibs.txt)
+
+# Some solvers require additional library, which we check for first.
+# ADDLIBS is our variable that accumulates the libraries necessary for
+# linking.
+AC_CHECK_LIB([pthread],[pthread_create],
+             [ADDLIBS="-lpthread $ADDLIBS"])
+AC_CHECK_LIB([dl],[dlopen],
+             [ADDLIBS="-ldl $ADDLIBS"])
+
+# Check which third party solvers are available ToDo!
+AC_COIN_HAS_USER_LIBRARY([Cplex],[CPX],[cplex],[cplex.h],[CPXgetstat])
+AC_COIN_HAS_USER_LIBRARY([Glpk],[GLPK],[glpk],[glpk.h],[glp_lpx_simplex])
+AC_COIN_HAS_USER_LIBRARY([FortMP],[FMP],[fmp])  #ToDo! is Fortran?
+AC_COIN_HAS_USER_LIBRARY([Mosek],[MSK],[mosekdl],[mosekdl.h],[MSK_openmosek])
+AC_COIN_HAS_USER_LIBRARY([Osl],[OSL],[osl],[ekk_c_api.h],[ekk_simplex])
+AC_COIN_HAS_USER_LIBRARY([Soplex],[SPX],[spx],[spxsolver.h]) # ToDo
+AC_COIN_HAS_USER_LIBRARY([Xpress],[XPR],[xpr],[xprs.h],[XPRSsetintcontrol])
+
+#############################################################################
 #                   Determine list of all Cgl subprojects                   #
 #############################################################################
 
@@ -75,7 +102,8 @@ AC_COIN_HAS_PROJECT(Vol)
 # Makefile.am whenever a new cut generator is added, we automatically
 # determine the list of all subdirectories of src with Makefile
 # (CGL_SUBDIRS), and also a list of all sublibraries relative to src
-# (CGL_SUBLIBS) that can be used in the src/Makefile.am
+# (CGL_SUBLIBS) that can be used in the src/Makefile.am.  (We still need
+# to manually add the Makefile in the AC_CONFIG_FILES list below)1
 
 AC_SUBST(CGL_SUBDIRS)
 AC_SUBST(CGL_SUBLIBS)
@@ -83,9 +111,11 @@ AC_SUBST(CGL_SUBLIBS)
 curr_dir=`pwd`
 cd $srcdir/src
 for file in `find . -name Makefile.in`; do
-  newdir=`echo $file | sed -e s%/Makefile.in%%`
-  CGL_SUBDIRS="$CGL_SUBDIRS $newdir"
-  CGL_SUBLIBS="$CGL_SUBLIBS $newdir/lib${newdir}.la"
+  if test $file != ./Makefile.in; then
+    newdir=`echo $file | sed -e s%/Makefile.in%% | sed -e s%^./%% `
+    CGL_SUBDIRS="$CGL_SUBDIRS $newdir"
+    CGL_SUBLIBS="$CGL_SUBLIBS $newdir/lib${newdir}.la"
+  fi
 done
 cd $curr_dir
 
@@ -97,6 +127,21 @@ cd $curr_dir
 # configuration header file)
 AC_CONFIG_FILES([Makefile
                  src/Makefile
+		 src/CglAllDifferent/Makefile
+		 src/CglClique/Makefile
+		 src/CglDuplicateRow/Makefile
+		 src/CglFlowCover/Makefile
+		 src/CglGomory/Makefile
+		 src/CglKnapsackCover/Makefile
+		 src/CglLiftAndProject/Makefile
+		 src/CglMixedIntegerRounding/Makefile
+		 src/CglMixedIntegerRounding2/Makefile
+		 src/CglOddHole/Makefile
+		 src/CglPreProcess/Makefile
+		 src/CglProbing/Makefile
+		 src/CglRedSplit/Makefile
+		 src/CglSimpleRounding/Makefile
+		 src/CglTwomir/Makefile
                  test/Makefile
 		 cgl_addlibs.txt])
 

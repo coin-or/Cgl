@@ -7,6 +7,8 @@
 #  pragma warning(disable:4786)
 #endif
 
+#include "config_cgl.h"
+
 #include <string>
 #include <cstring>
 #include <cassert>
@@ -35,14 +37,14 @@
 void testingMessage( const char * const msg );
 
 // Command line parameter is directory containing data files.
-// If not specified, then "../Mps/Sample/" is used.
+// If not specified, then "../../Data/Sample/" is used.
 
 int main (int argc, const char *argv[])
 {
   // Set directory containing data files.
   std::string mpsDir;
   if ( argc >= 2 ) mpsDir = argv[1];
-  else mpsDir ="../Mps/Sample/";
+  else mpsDir ="../../Data/Sample/";
 
 #ifdef COIN_HAS_OSL
   {

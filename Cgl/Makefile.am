@@ -28,7 +28,7 @@ endif
 
 # Here we need include all files that are not mentioned in other Makefiles
 
-EXTRA_DIST = TODO
+EXTRA_DIST =
 
 ########################################################################
 #                           Extra Targets                              #
