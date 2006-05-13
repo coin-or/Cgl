@@ -30,7 +30,7 @@ libCglGomory_la_LDFLAGS = -no-undefined
 # being compiled.
 CXXFLAGS += \
 	-I`$(CYGPATH_W) $(srcdir)/..` \
-	-I`$(CYGPATH_W) $(COINBASESRCDIR)/src` \
+	-I`$(CYGPATH_W) $(COINUTILSSRCDIR)/src` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src`
 
 ########################################################################

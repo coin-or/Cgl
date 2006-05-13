@@ -22,7 +22,7 @@ SUBDIRS = $(subdirs)
 #                           Extra Targets                              #
 ########################################################################
 
-test:
+test: all
 	cd Cgl; make test
 
 unitTest: test

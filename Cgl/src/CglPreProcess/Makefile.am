@@ -31,7 +31,7 @@ CXXFLAGS += \
 	-I`$(CYGPATH_W) $(srcdir)/..` \
 	-I`$(CYGPATH_W) $(srcdir)/../CglProbing` \
 	-I`$(CYGPATH_W) $(srcdir)/../CglDuplicateRow` \
-	-I`$(CYGPATH_W) $(COINBASESRCDIR)/src` \
+	-I`$(CYGPATH_W) $(COINUTILSSRCDIR)/src` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src`
 
 ########################################################################
