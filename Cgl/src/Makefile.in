@@ -306,7 +306,7 @@ libCgl_la_SOURCES = \
 
 
 # This is for libtool (on Windows)
-libCgl_la_LDFLAGS = -no-undefined
+libCgl_la_LDFLAGS = # -no-undefined
 
 # We want to have all the sublibraries from the Cgl subprojects collected into
 # this library
