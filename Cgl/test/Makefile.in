@@ -153,13 +153,13 @@ unitTest_OBJECTS = $(am_unitTest_OBJECTS)
 @COIN_HAS_VOL_TRUE@	$(VOLOBJDIR)/src/libVol.la
 @COIN_HAS_XPR_TRUE@am__DEPENDENCIES_12 =  \
 @COIN_HAS_XPR_TRUE@	$(OSIOBJDIR)/src/OsiXpr/libOsiXpr.la
-unitTest_DEPENDENCIES = ../src/libCgl.la $(OSIOBJDIR)/src/libOsi.la \
-	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_2) \
-	$(am__DEPENDENCIES_3) $(am__DEPENDENCIES_4) \
-	$(am__DEPENDENCIES_5) $(am__DEPENDENCIES_6) \
-	$(am__DEPENDENCIES_7) $(am__DEPENDENCIES_8) \
-	$(am__DEPENDENCIES_9) $(am__DEPENDENCIES_10) \
-	$(am__DEPENDENCIES_11) $(am__DEPENDENCIES_12) \
+unitTest_DEPENDENCIES = ../src/libCgl.la $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_2) $(am__DEPENDENCIES_3) \
+	$(am__DEPENDENCIES_4) $(am__DEPENDENCIES_5) \
+	$(am__DEPENDENCIES_6) $(am__DEPENDENCIES_7) \
+	$(am__DEPENDENCIES_8) $(am__DEPENDENCIES_9) \
+	$(am__DEPENDENCIES_10) $(am__DEPENDENCIES_11) \
+	$(am__DEPENDENCIES_12) $(OSIOBJDIR)/src/libOsi.la \
 	$(COINUTILSOBJDIR)/src/libCoinUtils.la
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)/inc
 depcomp = $(SHELL) $(top_srcdir)/../depcomp
@@ -287,9 +287,9 @@ LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
 
 # List additional libraries
-LIBS = @LIBS@ `cat $(OSIOBJDIR)/osi_addlibs.txt` $(am__append_3) \
-	$(am__append_6) $(am__append_11) $(am__append_24) \
-	$(am__append_27) `cat \
+LIBS = @LIBS@ $(am__append_3) $(am__append_6) $(am__append_11) \
+	$(am__append_24) $(am__append_27) `cat \
+	$(OSIOBJDIR)/osi_addlibs.txt` `cat \
 	$(COINUTILSOBJDIR)/coinutils_addlibs.txt` $(ADDLIBS)
 LIBTOOL = @LIBTOOL@
 LIBTOOLM4 = @LIBTOOLM4@
@@ -382,11 +382,11 @@ unitTest_SOURCES = unitTest.cpp
 # List libraries of COIN projects
 
 # Finally the Coin library (many of the above need it)
-unitTest_LDADD = ../src/libCgl.la $(OSIOBJDIR)/src/libOsi.la \
-	$(am__append_2) $(am__append_5) $(am__append_8) \
-	$(am__append_10) $(am__append_13) $(am__append_15) \
-	$(am__append_17) $(am__append_19) $(am__append_21) \
-	$(am__append_23) $(am__append_26) $(am__append_29) \
+unitTest_LDADD = ../src/libCgl.la $(am__append_2) $(am__append_5) \
+	$(am__append_8) $(am__append_10) $(am__append_13) \
+	$(am__append_15) $(am__append_17) $(am__append_19) \
+	$(am__append_21) $(am__append_23) $(am__append_26) \
+	$(am__append_29) $(OSIOBJDIR)/src/libOsi.la \
 	$(COINUTILSOBJDIR)/src/libCoinUtils.la
 
 ########################################################################
@@ -647,8 +647,10 @@ uninstall-am: uninstall-info-am
 	uninstall-info-am
 
 
-test: unitTest
-	./unitTest
+test: unitTest$(EXEEXT)
+	./unitTest$(EXEEXT)
+
+.PHONY: test
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

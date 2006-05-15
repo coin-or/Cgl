@@ -17,10 +17,7 @@ noinst_PROGRAMS = unitTest
 unitTest_SOURCES = unitTest.cpp
 
 # List libraries of COIN projects
-unitTest_LDADD = ../src/libCgl.la $(OSIOBJDIR)/src/libOsi.la
-
-# List additional libraries
-LIBS += `cat $(OSIOBJDIR)/osi_addlibs.txt`
+unitTest_LDADD = ../src/libCgl.la
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows
@@ -123,11 +120,19 @@ if COIN_HAS_XPR
 endif
 
 # Finally the Coin library (many of the above need it)
-unitTest_LDADD += $(COINUTILSOBJDIR)/src/libCoinUtils.la
-LIBS += `cat $(COINUTILSOBJDIR)/coinutils_addlibs.txt` $(ADDLIBS)
+unitTest_LDADD += \
+	$(OSIOBJDIR)/src/libOsi.la \
+	$(COINUTILSOBJDIR)/src/libCoinUtils.la
 
-test: unitTest
-	./unitTest
+# List additional libraries
+LIBS += `cat $(OSIOBJDIR)/osi_addlibs.txt`\
+	`cat $(COINUTILSOBJDIR)/coinutils_addlibs.txt` \
+	$(ADDLIBS)
+
+test: unitTest$(EXEEXT)
+	./unitTest$(EXEEXT)
+
+.PHONY: test
 
 ########################################################################
 #                          Cleaning stuff                              #
