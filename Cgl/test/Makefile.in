@@ -161,7 +161,6 @@ unitTest_DEPENDENCIES = ../src/libCgl.la $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_10) $(am__DEPENDENCIES_11) \
 	$(am__DEPENDENCIES_12) $(OSIOBJDIR)/src/libOsi.la \
 	$(COINUTILSOBJDIR)/src/libCoinUtils.la
-DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)/inc
 depcomp = $(SHELL) $(top_srcdir)/../depcomp
 am__depfiles_maybe = depfiles
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
@@ -388,6 +387,10 @@ unitTest_LDADD = ../src/libCgl.la $(am__append_2) $(am__append_5) \
 	$(am__append_21) $(am__append_23) $(am__append_26) \
 	$(am__append_29) $(OSIOBJDIR)/src/libOsi.la \
 	$(COINUTILSOBJDIR)/src/libCoinUtils.la
+
+# This line is necessary to allow VPATH compilation with MS compilers
+# on Cygwin
+DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 
 ########################################################################
 #                          Cleaning stuff                              #
@@ -648,6 +651,7 @@ uninstall-am: uninstall-info-am
 
 
 test: unitTest$(EXEEXT)
+	cd ../../Data/Netlib; make uncompress
 	./unitTest$(EXEEXT)
 
 .PHONY: test

@@ -60,7 +60,6 @@ am_libCglSimpleRounding_la_OBJECTS = CglSimpleRounding.lo \
 	CglSimpleRoundingTest.lo
 libCglSimpleRounding_la_OBJECTS =  \
 	$(am_libCglSimpleRounding_la_OBJECTS)
-DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)/inc
 depcomp = $(SHELL) $(top_srcdir)/../depcomp
 am__depfiles_maybe = depfiles
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
@@ -296,6 +295,10 @@ libCglSimpleRounding_la_SOURCES = \
 
 # This is for libtool (on Windows)
 libCglSimpleRounding_la_LDFLAGS = -no-undefined
+
+# This line is necessary to allow VPATH compilation with MS compilers
+# on Cygwin
+DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 
 ########################################################################
 #                Headers that need to be installed                     #

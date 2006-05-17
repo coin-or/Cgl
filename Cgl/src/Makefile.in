@@ -67,7 +67,6 @@ am__DEPENDENCIES_1 =
 libCgl_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am_libCgl_la_OBJECTS = CglCutGenerator.lo CglMessage.lo CglStored.lo
 libCgl_la_OBJECTS = $(am_libCgl_la_OBJECTS)
-DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)/inc
 depcomp = $(SHELL) $(top_srcdir)/../depcomp
 am__depfiles_maybe = depfiles
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
@@ -311,6 +310,10 @@ libCgl_la_LDFLAGS = # -no-undefined
 # We want to have all the sublibraries from the Cgl subprojects collected into
 # this library
 libCgl_la_LIBADD = $(CGL_SUBLIBS)
+
+# This line is necessary to allow VPATH compilation with MS compilers
+# on Cygwin
+DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 
 ########################################################################
 #                Headers that need to be installed                     #

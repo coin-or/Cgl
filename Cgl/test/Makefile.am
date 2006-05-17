@@ -31,6 +31,10 @@ CXXFLAGS += -I`$(CYGPATH_W) $(COINUTILSSRCDIR)/src` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglProbing` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglSimpleRounding`
 
+# This line is necessary to allow VPATH compilation with MS compilers
+# on Cygwin
+DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
+
 # Depending of what solvers are available, we add the corresponding files,
 # libraries and include dirs
 
@@ -130,6 +134,7 @@ LIBS += `cat $(OSIOBJDIR)/osi_addlibs.txt`\
 	$(ADDLIBS)
 
 test: unitTest$(EXEEXT)
+	cd ../../Data/Netlib; make uncompress
 	./unitTest$(EXEEXT)
 
 .PHONY: test
