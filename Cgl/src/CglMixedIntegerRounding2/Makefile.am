@@ -21,7 +21,7 @@ libCglMixedIntegerRounding2_la_SOURCES = \
 	CglMixedIntegerRounding2.cpp  CglMixedIntegerRounding2.hpp
 
 # This is for libtool (on Windows)
-libCglMixedIntegerRounding2_la_LDFLAGS = -no-undefined
+libCglMixedIntegerRounding2_la_LDFLAGS = # -no-undefined
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.

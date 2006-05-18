@@ -21,7 +21,7 @@ libCglPreProcess_la_SOURCES = \
 	CglPreProcess.cpp  CglPreProcess.hpp
 
 # This is for libtool (on Windows)
-libCglPreProcess_la_LDFLAGS = -no-undefined
+libCglPreProcess_la_LDFLAGS = # -no-undefined
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.

@@ -108,6 +108,7 @@ CBCOBJDIR = @CBCOBJDIR@
 CBCSRCDIR = @CBCSRCDIR@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
+CDEFS = @CDEFS@
 CFLAGS = @CFLAGS@
 CGLOBJDIR = @CGLOBJDIR@
 CGLSRCDIR = @CGLSRCDIR@
@@ -292,7 +293,7 @@ libCglGomory_la_SOURCES = \
 
 
 # This is for libtool (on Windows)
-libCglGomory_la_LDFLAGS = -no-undefined
+libCglGomory_la_LDFLAGS = # -no-undefined
 
 # This line is necessary to allow VPATH compilation with MS compilers
 # on Cygwin

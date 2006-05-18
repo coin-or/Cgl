@@ -21,7 +21,7 @@ libCglRedSplit_la_SOURCES = \
 	CglRedSplit.cpp  CglRedSplit.hpp
 
 # This is for libtool (on Windows)
-libCglRedSplit_la_LDFLAGS = -no-undefined
+libCglRedSplit_la_LDFLAGS = # -no-undefined
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.

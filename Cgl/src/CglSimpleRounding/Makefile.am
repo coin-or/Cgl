@@ -22,7 +22,7 @@ libCglSimpleRounding_la_SOURCES = \
 	CglSimpleRoundingTest.cpp
 
 # This is for libtool (on Windows)
-libCglSimpleRounding_la_LDFLAGS = -no-undefined
+libCglSimpleRounding_la_LDFLAGS = # -no-undefined
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.

@@ -21,7 +21,7 @@ libCglLiftAndProject_la_SOURCES = \
 	CglLiftAndProject.cpp  CglLiftAndProject.hpp
 
 # This is for libtool (on Windows)
-libCglLiftAndProject_la_LDFLAGS = -no-undefined
+libCglLiftAndProject_la_LDFLAGS = # -no-undefined
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.

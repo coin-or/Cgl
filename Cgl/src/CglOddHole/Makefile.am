@@ -22,7 +22,7 @@ libCglOddHole_la_SOURCES = \
 	CglOddHoleTest.cpp
 
 # This is for libtool (on Windows)
-libCglOddHole_la_LDFLAGS = -no-undefined
+libCglOddHole_la_LDFLAGS = # -no-undefined
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.

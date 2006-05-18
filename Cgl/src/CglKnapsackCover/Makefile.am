@@ -22,7 +22,7 @@ libCglKnapsackCover_la_SOURCES = \
 	CglKnapsackCoverTest.cpp
 
 # This is for libtool (on Windows)
-libCglKnapsackCover_la_LDFLAGS = -no-undefined
+libCglKnapsackCover_la_LDFLAGS = # -no-undefined
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.
