@@ -55,9 +55,20 @@ include_HEADERS = \
 	CglMessage.hpp \
 	CglStored.hpp
 
-########################################################################
-#     Generating the configure header that is to be distributed        #
-########################################################################
+#############################################################################
+# Create the Config.h file that always defines HAVE_CONFIG_H and install it #
+#############################################################################
 
-# We don't do anything here yet, since so far nothing important is in the
-# config.h file
+# You only need to adapt the following line
+ConfigHeader = CglConfig.h
+
+install-exec-local:
+	echo "#ifndef HAVE_CONFIG_H" >bla
+	echo "#define HAVE_CONFIG_H" >>bla
+	echo "#endif" >> bla
+	cat $(srcdir)/$(ConfigHeader) >> bla
+	$(install_sh_DATA) bla $(DESTDIR)$(includedir)/$(ConfigHeader)
+	rm -f bla
+
+uninstall-local:
+	rm -f $(DESTDIR)$(includedir)/$(ConfigHeader)
