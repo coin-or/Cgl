@@ -22,7 +22,7 @@ libCglGomory_la_SOURCES = \
 	CglGomoryTest.cpp
 
 # This is for libtool (on Windows)
-libCglGomory_la_LDFLAGS = # -no-undefined
+libCglGomory_la_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.

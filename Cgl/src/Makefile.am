@@ -26,7 +26,7 @@ libCgl_la_SOURCES = \
 	CglStored.cpp CglStored.hpp
 
 # This is for libtool (on Windows)
-libCgl_la_LDFLAGS = # -no-undefined
+libCgl_la_LDFLAGS = $(LT_LDFLAGS)
 
 # We want to have all the sublibraries from the Cgl subprojects collected into
 # this library

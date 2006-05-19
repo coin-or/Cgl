@@ -21,7 +21,7 @@ libCglTwomir_la_SOURCES = \
 	CglTwomir.cpp  CglTwomir.hpp # CglTwomirTest.cpp
 
 # This is for libtool (on Windows)
-libCglTwomir_la_LDFLAGS = # -no-undefined
+libCglTwomir_la_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.

@@ -21,7 +21,7 @@ libCglAllDifferent_la_SOURCES = \
 	CglAllDifferent.cpp  CglAllDifferent.hpp
 
 # This is for libtool (on Windows)
-libCglAllDifferent_la_LDFLAGS = # -no-undefined
+libCglAllDifferent_la_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.
