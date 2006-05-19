@@ -7,7 +7,7 @@
 #  pragma warning(disable:4786)
 #endif
 
-#include "config_cgl.h"
+#include "CglConfig.h"
 
 #include <string>
 #include <cstring>
