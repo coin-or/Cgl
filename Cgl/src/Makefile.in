@@ -301,6 +301,7 @@ lib_LTLIBRARIES = libCgl.la
 
 # List all source files for this library, including headers
 libCgl_la_SOURCES = \
+	CglConfig.h \
 	CglCutGenerator.cpp CglCutGenerator.hpp\
 	CglMessage.cpp CglMessage.hpp \
 	CglStored.cpp CglStored.hpp
