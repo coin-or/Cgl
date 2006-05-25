@@ -8,6 +8,10 @@
 
 AUTOMAKE_OPTIONS = foreign
 
+EXTRA_DIST = examples/cgl1.cpp \
+	examples/cgl2.cpp \
+	examples/Makefile.in
+
 ########################################################################
 #                          Subdirectories                              #
 ########################################################################

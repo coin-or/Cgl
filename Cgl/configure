@@ -21038,7 +21038,7 @@ cd $curr_dir
 
 # Here list all the files that configure should create (except for the
 # configuration header file)
-                                                                                                                                                                                              ac_config_files="$ac_config_files Makefile src/Makefile src/CglAllDifferent/Makefile src/CglClique/Makefile src/CglDuplicateRow/Makefile src/CglFlowCover/Makefile src/CglGomory/Makefile src/CglKnapsackCover/Makefile src/CglLiftAndProject/Makefile src/CglMixedIntegerRounding/Makefile src/CglMixedIntegerRounding2/Makefile src/CglOddHole/Makefile src/CglPreProcess/Makefile src/CglProbing/Makefile src/CglRedSplit/Makefile src/CglSimpleRounding/Makefile src/CglTwomir/Makefile test/Makefile cgl_addlibs.txt"
+                                                                                                                                                                                                        ac_config_files="$ac_config_files Makefile examples/Makefile src/Makefile src/CglAllDifferent/Makefile src/CglClique/Makefile src/CglDuplicateRow/Makefile src/CglFlowCover/Makefile src/CglGomory/Makefile src/CglKnapsackCover/Makefile src/CglLiftAndProject/Makefile src/CglMixedIntegerRounding/Makefile src/CglMixedIntegerRounding2/Makefile src/CglOddHole/Makefile src/CglPreProcess/Makefile src/CglProbing/Makefile src/CglRedSplit/Makefile src/CglSimpleRounding/Makefile src/CglTwomir/Makefile test/Makefile cgl_addlibs.txt"
 
 
 # Here put the location and name of the configuration header file
@@ -21736,6 +21736,7 @@ do
   case "$ac_config_target" in
   # Handling of arguments.
   "Makefile" ) CONFIG_FILES="$CONFIG_FILES Makefile" ;;
+  "examples/Makefile" ) CONFIG_FILES="$CONFIG_FILES examples/Makefile" ;;
   "src/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
   "src/CglAllDifferent/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglAllDifferent/Makefile" ;;
   "src/CglClique/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglClique/Makefile" ;;
