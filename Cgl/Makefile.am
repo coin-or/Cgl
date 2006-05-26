@@ -8,10 +8,6 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-EXTRA_DIST = examples/cgl1.cpp \
-	examples/cgl2.cpp \
-	examples/Makefile.in
-
 ########################################################################
 #                          Subdirectories                              #
 ########################################################################
@@ -32,7 +28,9 @@ endif
 
 # Here we need include all files that are not mentioned in other Makefiles
 
-EXTRA_DIST =
+EXTRA_DIST = examples/cgl1.cpp \
+	examples/cgl2.cpp \
+	examples/Makefile.in
 
 ########################################################################
 #                           Extra Targets                              #
