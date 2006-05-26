@@ -1,5 +1,4 @@
 * text=auto !eol
-Cgl/bla -text
 Cgl/cgl_addlibs.txt.in -text
 Cgl/configure -text
 Cgl/configure.ac -text
