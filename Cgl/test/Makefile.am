@@ -21,7 +21,7 @@ unitTest_LDADD = ../src/libCgl.la
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows
-CXXFLAGS += -I`$(CYGPATH_W) $(COINUTILSSRCDIR)/src` \
+AM_CPPFLAGS = -I`$(CYGPATH_W) $(COINUTILSSRCDIR)/src` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src` \
 	-I`$(CYGPATH_W) $(srcdir)/../src` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglFlowCover` \
@@ -42,7 +42,7 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 # libraries and include dirs
 
 if COIN_HAS_CLP
-  CXXFLAGS += -I`$(CYGPATH_W) $(CLPSRCDIR)/src` \
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(CLPSRCDIR)/src` \
 	-I`$(CYGPATH_W) $(CLPOBJDIR)/inc` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiClp`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiClp/libOsiClp.la \
@@ -51,7 +51,7 @@ if COIN_HAS_CLP
 endif
 
 if COIN_HAS_CBC
-  CXXFLAGS += -I`$(CYGPATH_W) $(CBCSRCDIR)/src` \
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(CBCSRCDIR)/src` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiCbc`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiCbc/libOsiCbc.la \
 	$(CBCOBJDIR)/src/libCbc.la
@@ -59,13 +59,13 @@ if COIN_HAS_CBC
 endif
 
 if COIN_HAS_CPX
-  CXXFLAGS += -I`$(CYGPATH_W) $(CPXINCDIR)` \
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(CPXINCDIR)` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiCpx`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiCpx/libOsiCpx.la
 endif
 
 if COIN_HAS_DYLP
-  CXXFLAGS += -I`$(CYGPATH_W) $(DYLPSRCDIR)/src` \
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(DYLPSRCDIR)/src` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiDylp`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiDylp/libOsiDylp.la \
 	$(DYLPOBJDIR)/src/libDylp.la
@@ -73,36 +73,36 @@ if COIN_HAS_DYLP
 endif
 
 if COIN_HAS_FMP
-  CXXFLAGS += -I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiFmp`
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiFmp`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiFmp/libOsiFmp.la
 endif
 
 if COIN_HAS_GLPK
-  CXXFLAGS += -I`$(CYGPATH_W) $(GLPKINCDIR)` \
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(GLPKINCDIR)` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiGlpk`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiGlpk/libOsiGlpk.la
 endif
 
 if COIN_HAS_MSK
-  CXXFLAGS += -I`$(CYGPATH_W) $(MSKINCDIR)` \
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(MSKINCDIR)` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiMsk`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiMsk/libOsiMsk.la
 endif
 
 if COIN_HAS_OSL
-  CXXFLAGS += -I`$(CYGPATH_W) $(OSLINCDIR)` \
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(OSLINCDIR)` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiOsl`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiOsl/libOsiOsl.la
 endif
 
 if COIN_HAS_SPX
-  CXXFLAGS += -I`$(CYGPATH_W) $(SPXINCDIR)` \
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(SPXINCDIR)` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiSpx`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiSpx/libOsiSpx.la
 endif
 
 if COIN_HAS_SYM
-  CXXFLAGS += -I`$(CYGPATH_W) $(SYMSRCDIR)/src` \
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(SYMSRCDIR)/src` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiSym`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiSym/libOsiSym.la \
 	$(SYMOBJDIR)/src/libSym.la
@@ -110,7 +110,7 @@ if COIN_HAS_SYM
 endif
 
 if COIN_HAS_VOL
-  CXXFLAGS += -I`$(CYGPATH_W) $(VOLSRCDIR)/src` \
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(VOLSRCDIR)/src` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiVol`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiVol/libOsiVol.la \
 	$(VOLOBJDIR)/src/libVol.la
@@ -118,7 +118,7 @@ if COIN_HAS_VOL
 endif
 
 if COIN_HAS_XPR
-  CXXFLAGS += -I`$(CYGPATH_W) $(XPRINCDIR)` \
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(XPRINCDIR)` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiXpr`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiXpr/libOsiXpr.la
 endif
