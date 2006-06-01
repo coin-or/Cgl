@@ -2,7 +2,6 @@
 Cgl/cgl_addlibs.txt.in -text
 Cgl/configure -text
 Cgl/configure.ac -text
-Cgl/doc/doxygen.conf -text
 Cgl/examples/Makefile.in -text
 Cgl/examples/cgl1.cpp -text
 Cgl/examples/cgl2.cpp -text

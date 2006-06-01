@@ -30,8 +30,7 @@ endif
 
 EXTRA_DIST = examples/cgl1.cpp \
 	examples/cgl2.cpp \
-	examples/Makefile.in \
-	doc/doxygen.conf
+	examples/Makefile.in
 
 ########################################################################
 #                           Extra Targets                              #
@@ -42,16 +41,13 @@ test: all
 
 unitTest: test
 
-doc:
-	cd $(srcdir); doxygen doc/doxygen.conf
-
 clean-local:
 	if test -r test/Makefile; then cd test; make clean; fi
 
 distclean-local:
 	if test -r test/Makefile; then cd test; make distclean; fi
 
-.PHONY: test unitTest doc
+.PHONY: test unitTest
 
 ########################################################################
 #                  Installation of the addlibs file                    #
