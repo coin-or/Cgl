@@ -60,6 +60,7 @@ public:
                        LUB in absolute value. See method setEPS_COEFF_LUB().
       - EPS_RELAX: Value used to relax slightly the right hand side of each
                    generated cut. See method setEPS_RELAX().
+
       - normIsZero: Norm of a vector is considered zero if smaller than
                     this value. See method setNormIsZero().
       - minReduc: Reduction is performed only if the norm of the vector is
