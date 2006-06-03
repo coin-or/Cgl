@@ -244,22 +244,7 @@ CXX = @CXX@
 CXXCPP = @CXXCPP@
 CXXDEFS = @CXXDEFS@
 CXXDEPMODE = @CXXDEPMODE@
-
-# Here list all include flags, relative to this "srcdir" directory.  This
-# "cygpath" stuff is necessary to compile with native compilers on Windows
-CXXFLAGS = @CXXFLAGS@ -I`$(CYGPATH_W) $(COINUTILSSRCDIR)/src` \
-	-I`$(CYGPATH_W) $(OSISRCDIR)/src` -I`$(CYGPATH_W) \
-	$(srcdir)/../src` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglFlowCover` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglGomory` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglKnapsackCover` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglOddHole` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglProbing` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglSimpleRounding` $(am__append_1) \
-	$(am__append_4) $(am__append_7) $(am__append_9) \
-	$(am__append_12) $(am__append_14) $(am__append_16) \
-	$(am__append_18) $(am__append_20) $(am__append_22) \
-	$(am__append_25) $(am__append_28)
+CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -389,6 +374,21 @@ unitTest_LDADD = ../src/libCgl.la $(am__append_2) $(am__append_5) \
 	$(am__append_21) $(am__append_23) $(am__append_26) \
 	$(am__append_29) $(OSIOBJDIR)/src/libOsi.la \
 	$(COINUTILSOBJDIR)/src/libCoinUtils.la
+
+# Here list all include flags, relative to this "srcdir" directory.  This
+# "cygpath" stuff is necessary to compile with native compilers on Windows
+AM_CPPFLAGS = -I`$(CYGPATH_W) $(COINUTILSSRCDIR)/src` -I`$(CYGPATH_W) \
+	$(OSISRCDIR)/src` -I`$(CYGPATH_W) $(srcdir)/../src` \
+	-I`$(CYGPATH_W) $(srcdir)/../src/CglFlowCover` -I`$(CYGPATH_W) \
+	$(srcdir)/../src/CglGomory` -I`$(CYGPATH_W) \
+	$(srcdir)/../src/CglKnapsackCover` -I`$(CYGPATH_W) \
+	$(srcdir)/../src/CglOddHole` -I`$(CYGPATH_W) \
+	$(srcdir)/../src/CglProbing` -I`$(CYGPATH_W) \
+	$(srcdir)/../src/CglSimpleRounding` $(am__append_1) \
+	$(am__append_4) $(am__append_7) $(am__append_9) \
+	$(am__append_12) $(am__append_14) $(am__append_16) \
+	$(am__append_18) $(am__append_20) $(am__append_22) \
+	$(am__append_25) $(am__append_28)
 
 # This line is necessary to allow VPATH compilation with MS compilers
 # on Cygwin
