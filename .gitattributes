@@ -6,7 +6,6 @@ Cgl/examples/Makefile.in -text
 Cgl/examples/cgl1.cpp -text
 Cgl/examples/cgl2.cpp -text
 Cgl/inc/config_cgl.h.in -text
-/Externals -text
 /config.guess -text
 /config.sub -text
 /configure -text
