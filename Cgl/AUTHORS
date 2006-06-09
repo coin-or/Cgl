@@ -1,4 +1,3 @@
-
 CglAllDifferrent
    John Forrest - contributor & PM
 
@@ -9,15 +8,15 @@ CglClique & CliqueHelper
   Marta Eso  - contributor
 
 CglCutGenerator
-   John Forrest - contributor
+   John Forrest - contributor & PM
 
 CglDuplicateRow
-   John Forrest - contributor
+   John Forrest - contributor & PM
 
 CglFlowCover & FlowCoverTest 
    John Forrest
    Laszlo Ladani
-   Yan Xu - contributor & maintainer
+   Yan Xu - contributor & PM
    Jeff Linderoth - contributor
    Martin Salvesburgh - contributor
 
@@ -26,7 +25,7 @@ CglGomory & GomoryTest
    John Forrest  - contributor & PM
    Laszlo Ladanyi - contributor
 
-CglKnapsack
+CglKnapsackCover
    John Forrest
    Laszlo Ladanyi
    Robin Lougee-Heimer - contributor & PM
@@ -39,39 +38,38 @@ CglLiftAndProject
 CglMessage
    John Forrest - contributor & PM
 
-Cgl MixedIntegerRounding 
+CglMixedIntegerRounding 
    John Forrest
    Laszlo Ladanyi - contributor
    Joao Goncalves  - contributor & PM
 
-Cgl MixedIntegerRounding2
+CglMixedIntegerRounding2
   John Forrest  - contributor & PM
-
-CglPreProcessing
-  John Forrest  - contributor & PM
-
-CglRedSplit 
-  John Forrest
-   JP Fasano
-   Francois Margot - contributor & PM
-
-CglStored
-    John Forrest  - contributor & PM
 
 CglOddHole 
    John Forrest - contributor & PM
    Laszlo Ladanyi
+
+CglPreProcess
+  John Forrest  - contributor & PM
 
 CglProbing & Probing Test
    JP Fasano
    John Forrest - contributor & PM
    Laszlo Ladanyi
 
+CglRedSplit 
+  John Forrest
+  JP Fasano
+  Francois Margot - contributor & PM
 
 CglSimpleRounding 
    John Forrest
    Laszlo Ladanyi
    Robin Lougee-Heimer - contributor & PM
+
+CglStored
+    John Forrest  - contributor & PM
 
 CglTwomir  
    JP Fasano
