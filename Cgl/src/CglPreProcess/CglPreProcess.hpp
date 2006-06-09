@@ -222,7 +222,8 @@ private:
   */
   OsiSolverInterface * modified(OsiSolverInterface * model,
                                 bool constraints,
-                                int & numberChanges);
+                                int & numberChanges,
+                                int iBigPass);
   /// create original columns and rows
   void createOriginalIndices() const;
   //@}

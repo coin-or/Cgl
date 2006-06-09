@@ -90,6 +90,8 @@ public:
   /// Destructor 
   virtual
     ~CglGomory ();
+  /// Create C++ lines to get to current state
+  virtual std::string generateCpp( FILE * fp);
   //@}
       
 private:

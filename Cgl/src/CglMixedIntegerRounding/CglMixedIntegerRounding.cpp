@@ -1650,3 +1650,26 @@ CglMixedIntegerRounding::refreshSolver(OsiSolverInterface * solver)
 {
   doneInitPre_ = false;
 }
+// Create C++ lines to get to current state
+std::string
+CglMixedIntegerRounding::generateCpp( FILE * fp) 
+{
+  CglMixedIntegerRounding other;
+  fprintf(fp,"0#include \"CglMixedIntegerRounding.hpp\"\n");
+  fprintf(fp,"3  CglMixedIntegerRounding mixedIntegerRounding;\n");
+  if (MAXAGGR_!=other.MAXAGGR_)
+    fprintf(fp,"3  mixedIntegerRounding.setMAXAGGR_(%d);\n",MAXAGGR_);
+  else
+    fprintf(fp,"4  mixedIntegerRounding.setMAXAGGR_(%d);\n",MAXAGGR_);
+  if (MULTIPLY_!=other.MULTIPLY_)
+    fprintf(fp,"3  mixedIntegerRounding.setMULTIPLY_(%d);\n",MULTIPLY_);
+  else
+    fprintf(fp,"4  mixedIntegerRounding.setMULTIPLY_(%d);\n",MULTIPLY_);
+  if (CRITERION_!=other.CRITERION_)
+  fprintf(fp,"3  mixedIntegerRounding.setCRITERION_(%d);\n",CRITERION_);
+  if (getAggressiveness()!=other.getAggressiveness())
+    fprintf(fp,"3  mixedIntegerRounding.setAggressiveness(%d);\n",getAggressiveness());
+  else
+    fprintf(fp,"4  mixedIntegerRounding.setAggressiveness(%d);\n",getAggressiveness());
+  return "mixedIntegerRounding";
+}
