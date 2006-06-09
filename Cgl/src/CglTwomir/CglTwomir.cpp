@@ -303,7 +303,7 @@ DGG_data_t* DGG_getData(const void *osi_ptr )
 	if ( fabs(colSolut[i] - colUpper[i]) > DGG_BOUND_THRESH )
 	  if ( fabs(colSolut[i] - colLower[i]) > DGG_BOUND_THRESH ){
 	    fprintf(stdout, "WARNING!!!! : ");
-	    fprintf(stdout, "variable %d non-basic, lb = %f, ub = %f, x = %f\n",
+	    fprintf(stdout, "variable %d non-basic, lb = %lf, ub = %lf, x = %lf\n",
 		    i, colLower[i], colUpper[i], colSolut[i]);
 	    error+=1;
 	  }
@@ -396,10 +396,10 @@ DGG_data_t* DGG_getData(const void *osi_ptr )
 	  if ( rowMat[k] > max ) max = rowMat[k];
 	}
 	norm = sqrt(norm);
-	printf("min = %f  amin = %f  max = %f\n", min, amin, max);
-	printf("rlower = %f activity = %f\n", rowLower[i], activity);
-	printf("norm = %f   (b-ax) = %f\n", norm, (rowLower[i] - activity));
-	printf("steepn = %f\n", (rowLower[i] - activity)/norm);
+	printf("min = %lf  amin = %lf  max = %lf\n", min, amin, max);
+	printf("rlower = %lf activity = %lf\n", rowLower[i], activity);
+	printf("norm = %lf   (b-ax) = %lf\n", norm, (rowLower[i] - activity));
+	printf("steepn = %lf\n", (rowLower[i] - activity)/norm);
 #endif
       }
 
@@ -1491,11 +1491,11 @@ int DGG_build2step( double alpha,
   rho = bht - alpha*floor(bht/alpha);
 
   /* ensure bht > alpha > 0 */
-  DGG_TEST3( (bht <= alpha) || (alpha <= 0.0), 1, "bad alpha (%f) / bht (%f) pair", alpha, bht);
+  DGG_TEST3( (bht <= alpha) || (alpha <= 0.0), 1, "bad alpha (%lf) / bht (%lf) pair", alpha, bht);
   /* ensure that we are not in a limiting case */
   DGG_TEST( DGG_is_a_multiple_of_b(alpha, bht), 1, "can't generate simple 2mir in limiting case");
   /* ensure that rho is not zero */
-  DGG_TEST2( rho < DGG_MIN_RHO, 1, "rho (%f) too small", rho);
+  DGG_TEST2( rho < DGG_MIN_RHO, 1, "rho (%lf) too small", rho);
 
   /* initialize constraint */
   tmir = DGG_newConstraint( base->nz );
@@ -1679,7 +1679,7 @@ int DGG_cutsOffPoint(double *x, DGG_constraint_t *cut)
 	for(i=0; i < cut->nz; i++)
 	  LHS += cut->coeff[i]*(x[ cut->index[i] ]);
 
-  //fprintf(stdout, "LHS = %f, SENSE = %c, RHS = %f\n", LHS, cut->sense, cut->rhs);
+  //fprintf(stdout, "LHS = %lf, SENSE = %c, RHS = %lf\n", LHS, cut->sense, cut->rhs);
   if ( cut->sense == 'E' )
     if ( fabs(LHS - cut->rhs) > DGG_NULL_SLACK )
       goto BAD;
@@ -1694,7 +1694,7 @@ int DGG_cutsOffPoint(double *x, DGG_constraint_t *cut)
 
   BAD:
 
-  fprintf(stdout, "LHS = %f, SENSE = %c, RHS = %f\n", LHS, cut->sense, cut->rhs);
+  fprintf(stdout, "LHS = %lf, SENSE = %c, RHS = %lf\n", LHS, cut->sense, cut->rhs);
   DGG_TEST(1, 1, "found a bad cut!");
 
 }
@@ -1703,46 +1703,4 @@ bool
 CglTwomir::needsOptimalBasis() const
 {
   return true;
-}
-// Create C++ lines to get to current state
-std::string
-CglTwomir::generateCpp( FILE * fp) 
-{
-  CglTwomir other;
-  fprintf(fp,"0#include \"CglTwomir.hpp\"\n");
-  fprintf(fp,"3  CglTwomir twomir;\n");
-  if (t_min_!=other.t_min_||t_max_!=other.t_max_)
-    fprintf(fp,"3  twomir.setMirScale(%d,%d);\n",t_min_,t_max_);
-  else
-    fprintf(fp,"4  twomir.setMirScale(%d,%d);\n",t_min_,t_max_);
-  if (q_min_!=other.q_min_||q_max_!=other.q_max_)
-    fprintf(fp,"3  twomir.setTwomirScale(%d,%d);\n",q_min_,q_max_);
-  else
-    fprintf(fp,"4  twomir.setTwomirScale(%d,%d);\n",q_min_,q_max_);
-  if (do_mir_!=other.do_mir_||do_2mir_!=other.do_2mir_||
-      do_tab_!=other.do_tab_||do_form_!=other.do_form_)
-    fprintf(fp,"3  twomir.setCutTypes(%s,%s,%s,%s);\n",
-	    do_mir_ ? "true" : "false",
-	    do_2mir_ ? "true" : "false",
-	    do_tab_ ? "true" : "false",
-	    do_form_ ? "true" : "false");
-  else
-    fprintf(fp,"4  twomir.setCutTypes(%s,%s,%s,%s);\n",
-	    do_mir_ ? "true" : "false",
-	    do_2mir_ ? "true" : "false",
-	    do_tab_ ? "true" : "false",
-	    do_form_ ? "true" : "false");
-  if (a_max_!=other.a_max_)
-    fprintf(fp,"3  twomir.setAMax(%d);\n",a_max_);
-  else
-    fprintf(fp,"4  twomir.setAMax(%d);\n",a_max_);
-  if (max_elements_!=other.max_elements_)
-    fprintf(fp,"3  twomir.setMaxElements(%d);\n",max_elements_);
-  else
-    fprintf(fp,"4  twomir.setMaxElements(%d);\n",max_elements_);
-  if (getAggressiveness()!=other.getAggressiveness())
-    fprintf(fp,"3  twomir.setAggressiveness(%d);\n",getAggressiveness());
-  else
-    fprintf(fp,"4  twomir.setAggressiveness(%d);\n",getAggressiveness());
-  return "twomir";
 }

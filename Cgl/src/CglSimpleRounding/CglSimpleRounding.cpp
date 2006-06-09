@@ -467,16 +467,3 @@ CglSimpleRounding::operator=(
   }
   return *this;
 }
-// Create C++ lines to get to current state
-std::string
-CglSimpleRounding::generateCpp( FILE * fp) 
-{
-  CglSimpleRounding other;
-  fprintf(fp,"0#include \"CglSimpleRounding.hpp\"\n");
-  fprintf(fp,"3  CglSimpleRounding simpleRounding;\n");
-  if (getAggressiveness()!=other.getAggressiveness())
-    fprintf(fp,"3  simpleRounding.setAggressiveness(%d);\n",getAggressiveness());
-  else
-    fprintf(fp,"4  simpleRounding.setAggressiveness(%d);\n",getAggressiveness());
-  return "simpleRounding";
-}

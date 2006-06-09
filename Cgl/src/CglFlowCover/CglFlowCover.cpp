@@ -1312,20 +1312,3 @@ CglFlowCover::liftPlus(double &alpha,
     return status;
 }
 
-// Create C++ lines to get to current state
-std::string
-CglFlowCover::generateCpp( FILE * fp) 
-{
-  CglFlowCover other;
-  fprintf(fp,"0#include \"CglFlowCover.hpp\"\n");
-  fprintf(fp,"3  CglFlowCover flowCover;\n");
-  if (maxNumCuts_!=other.maxNumCuts_)
-    fprintf(fp,"3  flowCover.setMaxNumCuts(%d);\n",maxNumCuts_);
-  else
-    fprintf(fp,"4  flowCover.setMaxNumCuts(%d);\n",maxNumCuts_);
-  if (getAggressiveness()!=other.getAggressiveness())
-    fprintf(fp,"3  flowCover.setAggressiveness(%d);\n",getAggressiveness());
-  else
-    fprintf(fp,"4  flowCover.setAggressiveness(%d);\n",getAggressiveness());
-  return "flowCover";
-}

@@ -52,8 +52,6 @@ public:
   /// Destructor 
   virtual
     ~CglAllDifferent ();
-  /// Create C++ lines to get to current state
-  virtual std::string generateCpp( FILE * fp);
 
   /// This can be used to refresh any inforamtion
   virtual void refreshSolver(OsiSolverInterface * solver);
@@ -66,21 +64,6 @@ public:
   */
   virtual bool mayGenerateRowCutsInTree() const
   { return false;};
-  //@}
-  /**@name Sets and Gets */
-  //@{
-  /// Set log level
-  inline void setLogLevel(int value)
-  { logLevel_=value;};
-  /// Get log level
-  inline int getLogLevel() const
-  { return logLevel_;};
-  /// Set Maximum number of sets to look at at once
-  inline void setMaxLook(int value)
-  { maxLook_=value;};
-  /// Get Maximum number of sets to look at at once
-  inline int getMaxLook() const
-  { return maxLook_;};
   //@}
       
 private:

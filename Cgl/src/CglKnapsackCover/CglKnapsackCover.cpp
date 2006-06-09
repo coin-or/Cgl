@@ -2822,31 +2822,3 @@ CglKnapsackCover::operator=(const CglKnapsackCover& rhs)
    }
    return *this;
 }
-// Create C++ lines to get to current state
-std::string
-CglKnapsackCover::generateCpp( FILE * fp) 
-{
-  CglKnapsackCover other;
-  fprintf(fp,"0#include \"CglKnapsackCover.hpp\"\n");
-  fprintf(fp,"3  CglKnapsackCover knapsackCover;\n");
-  if (maxInKnapsack_!=other.maxInKnapsack_)
-    fprintf(fp,"3  knapsackCover.setMaxInKnapsack(%d);\n",maxInKnapsack_);
-  else
-    fprintf(fp,"4  knapsackCover.setMaxInKnapsack(%d);\n",maxInKnapsack_);
-  if (expensiveCuts_ != other.expensiveCuts_) {
-    if (expensiveCuts_)	
-      fprintf(fp,"3  knapsackCover.switchOnExpensive();\n");
-    else
-      fprintf(fp,"3  knapsackCover.switchOffExpensive();\n");
-  } else {
-    if (expensiveCuts_)	
-      fprintf(fp,"4  knapsackCover.switchOnExpensive();\n");
-    else
-      fprintf(fp,"4  knapsackCover.switchOffExpensive();\n");
-  }
-  if (getAggressiveness()!=other.getAggressiveness())
-    fprintf(fp,"3  knapsackCover.setAggressiveness(%d);\n",getAggressiveness());
-  else
-    fprintf(fp,"4  knapsackCover.setAggressiveness(%d);\n",getAggressiveness());
-  return "knapsackCover";
-}

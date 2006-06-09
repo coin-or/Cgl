@@ -300,20 +300,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       else
 	startModel_->setRowUpper(iRow,rowLower[iRow]);
     }
-  } else {
-    // make clone anyway so can tighten bounds
-    startModel_ = originalModel_->clone();
   }
   delete [] rows;
   delete [] element;
    
-  // tighten bounds
-  int infeas = tightenPrimalBounds(*startModel_);
-  if (infeas) {
-    handler_->message(CGL_INFEASIBLE,messages_)
-      <<CoinMessageEol;
-    return NULL;
-  }
   OsiSolverInterface * returnModel=NULL;
   int numberChanges;
   if (!numberSolvers_) {
@@ -324,7 +314,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
         <<CoinMessageEol;
       return NULL;
     }
-    OsiSolverInterface * newModel = modified(startModel_,false,numberChanges,0);
+    OsiSolverInterface * newModel = modified(startModel_,false,numberChanges);
     if (startModel_!=originalModel_)
       delete startModel_;
     startModel_=newModel;
@@ -486,7 +476,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
         returnModel=NULL;
         break;
       }
-      OsiSolverInterface * newModel = modified(presolvedModel,constraints,numberChanges,iPass);
+      OsiSolverInterface * newModel = modified(presolvedModel,constraints,numberChanges);
       returnModel=newModel;
       if (!newModel) {
         break;
@@ -507,8 +497,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       int infeas = tightenPrimalBounds(*returnModel);
       if (infeas) {
         delete returnModel;
-        if (returnModel==startModel_&&startModel_!=originalModel_)
-          startModel_=NULL;
         returnModel=NULL;
       }
     }
@@ -745,7 +733,7 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
   const int * column = copy.getIndices();
   const CoinBigIndex * rowStart = copy.getVectorStarts();
   const int * rowLength = copy.getVectorLengths(); 
-  double * element = copy.getMutableElements();
+  const double * element = copy.getElements();
   int numberChanged=1,iPass=0;
   double large = model.getInfinity()*0.1; // treat bounds > this as infinite
   int numberInfeasible=0;
@@ -1058,9 +1046,10 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
           if (lower>upper)
             numberInfeasible++;
         } else {
-          if (fabs(upper)<1.0e-8&&fabs(lower)<1.0e-8) {
-            lower=0.0;
-            upper=0.0;
+          if (upper-lower<1.0e-8) {
+            if (fabs(lower)<1.0e-8&&fabs(upper)<1.0e-8) 
+              lower=0.0;
+            upper=lower;
           } else {
             // Relax unless integral
             if (fabs(lower-floor(lower+0.5))>1.0e-9)
@@ -1077,111 +1066,6 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
 	}
         model.setColLower(iColumn,lower);
         model.setColUpper(iColumn,upper);
-        newLower[iColumn]=lower;
-        newUpper[iColumn]=upper;
-      }
-    }
-    if (!numberInfeasible) {
-      // check common bad formulations
-      int numberChanges=0;
-      for (iRow = 0; iRow < numberRows; iRow++) {
-        if (rowLower[iRow]>-large||rowUpper[iRow]<large) {
-          // possible row
-          double sumFixed=0.0;
-          int infiniteUpper = 0;
-          int infiniteLower = 0;
-          double maximumUp = 0.0;
-          double maximumDown = 0.0;
-          double largest = 0.0;
-          CoinBigIndex rStart = rowStart[iRow];
-          CoinBigIndex rEnd = rowStart[iRow]+rowLength[iRow];
-          CoinBigIndex j;
-          int numberInteger=0;
-          int whichInteger=-1;
-          // Compute possible lower and upper ranges
-          for (j = rStart;j < rEnd; ++j) {
-            double value=element[j];
-            iColumn = column[j];
-            if (newUpper[iColumn]>newLower[iColumn]) {
-              if (model.isInteger(iColumn)) {
-                numberInteger++;
-                whichInteger=iColumn;
-              }
-              largest = CoinMax(largest,fabs(value));
-              if (value > 0.0) {
-                if (newUpper[iColumn] >= large) {
-                  ++infiniteUpper;
-                } else {
-                  maximumUp += newUpper[iColumn] * value;
-                }
-                if (newLower[iColumn] <= -large) {
-                  ++infiniteLower;
-                } else {
-                  maximumDown += newLower[iColumn] * value;
-                }
-              } else if (value<0.0) {
-                if (newUpper[iColumn] >= large) {
-                  ++infiniteLower;
-                } else {
-                  maximumDown += newUpper[iColumn] * value;
-                }
-                if (newLower[iColumn] <= -large) {
-                  ++infiniteUpper;
-                } else {
-                  maximumUp += newLower[iColumn] * value;
-                }
-              }
-            } else {
-              // fixed
-              sumFixed += newLower[iColumn]*value;
-            }
-          }
-          //if (numberInteger==1) {
-          //printf("int %d\n",whichInteger);
-          //}
-          // For moment just when all one sign and ints
-          //maximumUp += 1.0e-8*fabs(maximumUp);
-          //maximumDown -= 1.0e-8*fabs(maximumDown);
-          double gap = 0.0;
-          if ((rowLower[iRow]>maximumDown&&largest>rowLower[iRow]-maximumDown)&&
-              ((maximumUp<=rowUpper[iRow]&&!infiniteUpper)||rowUpper[iRow]>=1.031)) {
-            gap = rowLower[iRow]-maximumDown;
-            if (infiniteLower)
-              gap=0.0; // switch off
-          } else if ((maximumUp>rowUpper[iRow]&&largest>maximumUp-rowUpper[iRow])&&
-                     ((maximumDown>=rowLower[iRow]&&!infiniteLower)||rowLower[iRow]<=-1.031)) {
-            gap = -(maximumUp-rowUpper[iRow]);
-            if (infiniteUpper)
-              gap=0.0; // switch off
-          }
-          if (fabs(gap)>1.0e-8) {
-            for (j = rStart;j < rEnd; ++j) {
-              double value=element[j];
-              iColumn = column[j];
-              double difference = newUpper[iColumn]-newLower[iColumn];
-              if (difference>0.0&&difference<=1.0) {
-                double newValue=value;
-                if (value*gap>0.0) {
-                  if (fabs(value*difference) > fabs(gap)) {
-                    // No need for it to be larger than
-                    newValue = gap/difference;
-                  }
-                  if (fabs(value-newValue)>1.0e-12) {
-                    numberChanges++;
-                    element[j]=newValue;
-                    if (handler_->logLevel()>2)
-                      printf("element in Row %d for column %d changed from %g to %g\n",
-                             iRow,iColumn,value,newValue);
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-      if (numberChanges&&handler_->logLevel()>1) {
-        printf("%d elements changed\n",numberChanges);
-        model.replaceMatrixOptional(copy);
       }
     }
   }
@@ -1277,8 +1161,7 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 OsiSolverInterface * 
 CglPreProcess::modified(OsiSolverInterface * model,
                      bool constraints,
-                     int & numberChanges,
-                        int iBigPass)
+                     int & numberChanges)
 {
   OsiSolverInterface * newModel = model->clone();
   OsiCuts twoCuts;
@@ -1318,14 +1201,11 @@ CglPreProcess::modified(OsiSolverInterface * model,
         //char name[20];
         //sprintf(name,"prex%2.2d.mps",iGenerator);
         //newModel->writeMpsNative(name, NULL, NULL,0,1,0);
-        // skip duplicate rows except once
-        CglDuplicateRow * dupRow = dynamic_cast<CglDuplicateRow *> (generator_[iGenerator]);
-        if (dupRow&&(iPass||iBigPass))
-            continue;
         // refresh as model may have changed
         generator_[iGenerator]->refreshSolver(newModel);
         generator_[iGenerator]->generateCuts(*newModel,cs,info);
         // If CglDuplicate may give us useless rows
+        CglDuplicateRow * dupRow = dynamic_cast<CglDuplicateRow *> (generator_[iGenerator]);
         if (dupRow) {
           numberFromCglDuplicate = dupRow->numberOriginalRows();
           duplicate = dupRow->duplicate();
@@ -1528,7 +1408,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
       break;
     numberChanges +=  numberChangedThisPass;
     if (iPass<numberPasses-1) {
-      if ((!numberFixed&&numberChangedThisPass<1000*(numberRows+numberColumns))||iPass==numberPasses-2) {
+      if (!numberChangedThisPass||iPass==numberPasses-2) {
         // do special probing at end
         firstGenerator=-1;
         lastGenerator=0;

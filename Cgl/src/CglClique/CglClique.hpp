@@ -47,8 +47,6 @@ public:
    CglClique(bool setPacking = false, bool justOriginalRows = false);
    /// Destructor
    virtual ~CglClique() {}
-  /// Create C++ lines to get to current state
-  virtual std::string generateCpp( FILE * fp);
 
    void considerRows(const int numRows, const int* rowInd);
 

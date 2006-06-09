@@ -45,8 +45,6 @@ public:
   /// Destructor 
   virtual
     ~CglKnapsackCover ();
-  /// Create C++ lines to get to current state
-  virtual std::string generateCpp( FILE * fp);
   //@}
 
 

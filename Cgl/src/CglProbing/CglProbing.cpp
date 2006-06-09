@@ -20,8 +20,7 @@
 #include "CoinFinite.hpp"
 #include "OsiRowCutDebugger.hpp"
 #include "CglProbing.hpp"
-//#define PROBING_EXTRA_STUFF true
-#define PROBING_EXTRA_STUFF false
+
 typedef struct {double infeasibility;int sequence;} double_int_pair;
 class double_int_pair_compare {
 public:
@@ -1258,10 +1257,9 @@ bool analyze(const OsiSolverInterface * solverX, char * intVar,
           /* need general theory - for now just look at 2 cases -
              1 - +- 1 one in column and just costs i.e. matching objective
              2 - +- 1 two in column but feeds into G/L row which will try and minimize
-             (take out 2 for now - until fixed)
           */
           if (fabs(value1)==1.0&&value1*value2==-1.0&&!lower[jColumn1]
-              &&!lower[jColumn2]&&columnLength[jColumn1]==1&&columnLength[jColumn2]==1) {
+              &&!lower[jColumn2]) {
             int n=0;
             int i;
             double objChange=direction*(objective[jColumn1]+objective[jColumn2]);
@@ -1275,7 +1273,7 @@ bool analyze(const OsiSolverInterface * solverX, char * intVar,
                 changeRhs[jRow]=value;
               }
             }
-            for ( i=columnStart[jColumn2];i<columnStart[jColumn2]+columnLength[jColumn2];i++) {
+            for ( i=columnStart[jColumn1];i<columnStart[jColumn1]+columnLength[jColumn1];i++) {
               int jRow = row[i];
               double value = element[i];
               if (jRow!=iRow) {
@@ -1422,78 +1420,22 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   char * intVar = new char[nCols];
   int i;
   int numberIntegers=0;
-  memcpy(colLower,si.getColLower(),nCols*sizeof(double));
-  memcpy(colUpper,si.getColUpper(),nCols*sizeof(double));
-  const double * colsol =si.getColSolution();
-  // and put reasonable bounds on integer variables
   for (i=0;i<nCols;i++) {
     if (si.isInteger(i)) {
       intVar[i]=2;
       numberIntegers++;
-      if (si.isBinary(i)) {
+      if (si.isBinary(i)) 
         intVar[i]=1;  
-      } else {
-	// make sure reasonable bounds
-	if (colsol[i]<1.0e10&&colUpper[i]>1.0e12) 
-	  colUpper[i] = 1.23456789e11;
-	if (colsol[i]>-1.0e10&&colLower[i]<-1.0e12) 
-	  colLower[i] = -1.23456789e11;
-      }
     } else {
       intVar[i]=0;
     }
   }
+  memcpy(colLower,si.getColLower(),nCols*sizeof(double));
+  memcpy(colUpper,si.getColUpper(),nCols*sizeof(double));
   bool feasible=true;
   if (!info.inTree) {
     // make more integer
     feasible = analyze(&si,intVar,colLower,colUpper);
-  }
-  if (feasible&&PROBING_EXTRA_STUFF) {
-    // tighten bounds on djs
-    // should be in CbcCutGenerator and check if basic 
-    const double * djs =si.getReducedCost();
-    const double * colsol =si.getColSolution();
-    double direction = si.getObjSense();
-    double cutoff;
-    si.getDblParam(OsiDualObjectiveLimit,cutoff);
-    cutoff *= direction;
-    if (fabs(cutoff)>1.0e30)
-      assert (cutoff>1.0e30);
-    double current = si.getObjValue();
-    current *= direction;
-    double gap=CoinMax(cutoff-current,1.0e-1);
-    for (int i = 0; i < nCols; ++i) {
-      double djValue = djs[i]*direction;
-      if (colUpper[i]-colLower[i]>1.0e-8) {
-        if (colsol[i]<colLower[i]+primalTolerance_) {
-          if (djValue>gap) {
-            if (si.isInteger(i)) {
-              printf("why int %d not fixed at lb\n",i);
-              colUpper[i]= colLower[i];
-            } else {
-              double newUpper = colLower[i] + gap/djValue;
-              if (newUpper<colUpper[i]) {
-                //printf("%d ub from %g to %g\n",i,colUpper[i],newUpper);
-                colUpper[i]= CoinMax(newUpper,colLower[i]+1.0e-5);
-              }
-            }
-          }
-        } else if (colsol[i]>colUpper[i]-primalTolerance_) {
-          if (-djValue>gap) {
-            if (si.isInteger(i)) {
-              printf("why int %d not fixed at ub\n",i);
-              colLower[i]= colUpper[i];
-            } else {
-              double newLower = colUpper[i] + gap/djValue;
-              if (newLower>colLower[i]) {
-                //printf("%d lb from %g to %g\n",i,colLower[i],newLower);
-                colLower[i]= CoinMin(newLower,colUpper[i]-1.0e-5);
-              }
-            }
-          }
-        }
-      }
-    }
   }
   int ninfeas=0;
   // Set up maxes
@@ -2373,17 +2315,6 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     delete [] rowUpper;
   }
   delete [] intVar;
-  // and put back unreasonable bounds on integer variables
-  const double * trueLower = si.getColLower();
-  const double * trueUpper = si.getColUpper();
-  for (i=0;i<nCols;i++) {
-    if (si.isInteger(i)&&!si.isBinary(i)) {
-      if (colUpper[i] == 1.23456789e11) 
-	colUpper[i] = trueUpper[i];
-      if (colLower[i] == -1.23456789e11) 
-	colLower[i] = trueLower[i];
-    }
-  }
   return ninfeas;
 }
 // Does probing and adding cuts
@@ -2494,62 +2425,6 @@ int CglProbing::probe( const OsiSolverInterface & si,
   double tolerance = 1.0e1*primalTolerance_;
   // If we are going to replace coefficient then we don't need to be effective
   double needEffectiveness = info.strengthenRow ? -1.0e10 : 1.0e-3;
-  if (PROBING_EXTRA_STUFF) {
-    int nCut=0;
-    for (int iRow=0;iRow<nRows;iRow++) {
-      int numberInt=0;
-      int whichInt=-1;
-      int numberNeg=0;
-      double sumFixed=0.0;
-      double intValue=0.0;
-      for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
-        int jColumn = column[j];
-        double value = rowElements[j];
-        if (colUpper[jColumn] > colLower[jColumn]+1.0e-8) {
-          if (intVar[jColumn]) {
-            numberInt++;
-            whichInt=jColumn;
-            intValue=value;
-          } else if (value<0) {
-            numberNeg++;
-          }
-        } else {
-          sumFixed += colLower[jColumn]*value;
-        }
-      }
-      if (numberInt==1&&numberNeg==0&&intValue<0.0&&!rowUpper[iRow]&&rowLower[iRow]<-1.0e30&&!sumFixed) {
-        double intSol = colsol[whichInt];
-        for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
-          int jColumn = column[j];
-          //double value = rowElements[j];
-          if (colUpper[jColumn] > colLower[jColumn]+1.0e-8) {
-            if (!intVar[jColumn]) {
-              if (colLower[jColumn]||colUpper[jColumn]>1.0)
-                continue;;
-              double upper = colUpper[jColumn];
-              if (colsol[jColumn]>intSol*upper+1.0e-4) {
-                nCut++;
-                OsiRowCut rc;
-                rc.setLb(-COIN_DBL_MAX);
-                rc.setUb(0.0);
-                rc.setEffectiveness(1.0e-5);
-                int index[2];
-                double element[2];
-                index[0]=jColumn;
-                index[1]=whichInt;
-                element[0]=1.0;
-                element[1]=-upper;
-                rc.setRow(2,index,element);
-                cs.insert(rc);
-              }
-            }
-          }
-        }
-      }
-    }
-    if (nCut)
-      printf("%d possible cuts\n",nCut);
-  }
   while (ipass<maxPass&&nfixed) {
     int iLook;
     ipass++;
@@ -7526,65 +7401,4 @@ CglProbing::setupRowCliqueInformation(const OsiSolverInterface & si)
   delete [] array;
   if (rowCopy!=rowCopy_)
     delete rowCopy;
-}
-// Create C++ lines to get to current state
-std::string
-CglProbing::generateCpp( FILE * fp) 
-{
-  CglProbing other;
-  fprintf(fp,"0#include \"CglProbing.hpp\"\n");
-  fprintf(fp,"3  CglProbing probing;\n");
-  if (getMode()!=other.getMode())
-    fprintf(fp,"3  probing.setMode(%d);\n",getMode());
-  else
-    fprintf(fp,"4  probing.setMode(%d);\n",getMode());
-  if (getMaxPass()!=other.getMaxPass())
-    fprintf(fp,"3  probing.setMaxPass(%d);\n",getMaxPass());
-  else
-    fprintf(fp,"4  probing.setMaxPass(%d);\n",getMaxPass());
-  if (getLogLevel()!=other.getLogLevel())
-    fprintf(fp,"3  probing.setLogLevel(%d);\n",getLogLevel());
-  else
-    fprintf(fp,"4  probing.setLogLevel(%d);\n",getLogLevel());
-  if (getMaxProbe()!=other.getMaxProbe())
-    fprintf(fp,"3  probing.setMaxProbe(%d);\n",getMaxProbe());
-  else
-    fprintf(fp,"4  probing.setMaxProbe(%d);\n",getMaxProbe());
-  if (getMaxLook()!=other.getMaxLook())
-    fprintf(fp,"3  probing.setMaxLook(%d);\n",getMaxLook());
-  else
-    fprintf(fp,"4  probing.setMaxLook(%d);\n",getMaxLook());
-  if (getMaxElements()!=other.getMaxElements())
-    fprintf(fp,"3  probing.setMaxElements(%d);\n",getMaxElements());
-  else
-    fprintf(fp,"4  probing.setMaxElements(%d);\n",getMaxElements());
-  if (getMaxPassRoot()!=other.getMaxPassRoot())
-    fprintf(fp,"3  probing.setMaxPassRoot(%d);\n",getMaxPassRoot());
-  else
-    fprintf(fp,"4  probing.setMaxPassRoot(%d);\n",getMaxPassRoot());
-  if (getMaxProbeRoot()!=other.getMaxProbeRoot())
-    fprintf(fp,"3  probing.setMaxProbeRoot(%d);\n",getMaxProbeRoot());
-  else
-    fprintf(fp,"4  probing.setMaxProbeRoot(%d);\n",getMaxProbeRoot());
-  if (getMaxLookRoot()!=other.getMaxLookRoot())
-    fprintf(fp,"3  probing.setMaxLookRoot(%d);\n",getMaxLookRoot());
-  else
-    fprintf(fp,"4  probing.setMaxLookRoot(%d);\n",getMaxLookRoot());
-  if (getMaxElementsRoot()!=other.getMaxElementsRoot())
-    fprintf(fp,"3  probing.setMaxElementsRoot(%d);\n",getMaxElementsRoot());
-  else
-    fprintf(fp,"4  probing.setMaxElementsRoot(%d);\n",getMaxElementsRoot());
-  if (rowCuts()!=other.rowCuts())
-    fprintf(fp,"3  probing.setRowCuts(%d);\n",rowCuts());
-  else
-    fprintf(fp,"4  probing.setRowCuts(%d);\n",rowCuts());
-  if (getUsingObjective()!=other.getUsingObjective())
-    fprintf(fp,"3  probing.setUsingObjective(%s);\n",getUsingObjective() ? "true" : "false");
-  else
-    fprintf(fp,"4  probing.setUsingObjective(%s);\n",getUsingObjective() ? "true" : "false");
-  if (getAggressiveness()!=other.getAggressiveness())
-    fprintf(fp,"3  probing.setAggressiveness(%d);\n",getAggressiveness());
-  else
-    fprintf(fp,"4  probing.setAggressiveness(%d);\n",getAggressiveness());
-  return "probing";
 }

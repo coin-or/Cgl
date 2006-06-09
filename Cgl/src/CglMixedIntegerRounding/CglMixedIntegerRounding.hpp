@@ -158,8 +158,6 @@ public:
     ~CglMixedIntegerRounding ();
   /// This can be used to refresh any inforamtion
   virtual void refreshSolver(OsiSolverInterface * solver);
-  /// Create C++ lines to get to current state
-  virtual std::string generateCpp( FILE * fp);
   //@}
 
   //---------------------------------------------------------------------------

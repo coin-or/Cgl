@@ -64,8 +64,6 @@ public:
   /// Destructor 
   virtual
     ~CglLiftAndProject ();
-  /// Create C++ lines to get to current state
-  virtual std::string generateCpp( FILE * fp);
   //@}
 
 private:

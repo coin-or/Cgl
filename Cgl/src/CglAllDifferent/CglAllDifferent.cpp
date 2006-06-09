@@ -550,24 +550,3 @@ void
 CglAllDifferent::refreshSolver(OsiSolverInterface * solver)
 {
 }
-// Create C++ lines to get to current state
-std::string
-CglAllDifferent::generateCpp( FILE * fp) 
-{
-  CglAllDifferent other;
-  fprintf(fp,"0#include \"CglAllDifferent.hpp\"\n");
-  fprintf(fp,"3  CglAllDifferent allDifferent;\n");
-  if (logLevel_!=other.logLevel_)
-    fprintf(fp,"3  allDifferent.setLogLevel(%d);\n",logLevel_);
-  else
-    fprintf(fp,"4  allDifferent.setLogLevel(%d);\n",logLevel_);
-  if (maxLook_!=other.maxLook_)
-    fprintf(fp,"3  allDifferent.setMaxLook(%d);\n",maxLook_);
-  else
-    fprintf(fp,"4  allDifferent.setMaxLook(%d);\n",maxLook_);
-  if (getAggressiveness()!=other.getAggressiveness())
-    fprintf(fp,"3  allDifferent.setAggressiveness(%d);\n",getAggressiveness());
-  else
-    fprintf(fp,"4  allDifferent.setAggressiveness(%d);\n",getAggressiveness());
-  return "allDifferent";
-}
