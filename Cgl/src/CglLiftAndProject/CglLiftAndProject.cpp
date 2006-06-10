@@ -377,3 +377,21 @@ CglLiftAndProject::operator=(
   }
   return *this;
 }
+// Create C++ lines to get to current state
+std::string
+CglLiftAndProject::generateCpp( FILE * fp) 
+{
+  CglLiftAndProject other;
+  fprintf(fp,"0#include \"CglLiftAndProject.hpp\"\n");
+  fprintf(fp,"3  CglLiftAndProject liftAndProject;\n");
+  if (beta_!=other.beta_)
+    fprintf(fp,"3  liftAndProject.setBeta(%d);\n",(int) beta_);
+  else
+    fprintf(fp,"4  liftAndProject.setBeta(%d);\n",(int) beta_);
+  fprintf(fp,"3  liftAndProject.setAggressiveness(%d);\n",getAggressiveness());
+  if (getAggressiveness()!=other.getAggressiveness())
+    fprintf(fp,"3  liftAndProject.setAggressiveness(%d);\n",getAggressiveness());
+  else
+    fprintf(fp,"4  liftAndProject.setAggressiveness(%d);\n",getAggressiveness());
+  return "liftAndProject";
+}

@@ -433,3 +433,24 @@ CglDuplicateRow::refreshSolver(OsiSolverInterface * solver)
     }
   }
 }
+// Create C++ lines to get to current state
+std::string
+CglDuplicateRow::generateCpp( FILE * fp) 
+{
+  CglDuplicateRow other;
+  fprintf(fp,"0#include \"CglDuplicateRow.hpp\"\n");
+  fprintf(fp,"3  CglDuplicateRow duplicateRow;\n");
+  if (logLevel_!=other.logLevel_)
+    fprintf(fp,"3  duplicateRow.setLogLevel(%d);\n",logLevel_);
+  else
+    fprintf(fp,"4  duplicateRow.setLogLevel(%d);\n",logLevel_);
+  if (maximumRhs_!=other.maximumRhs_)
+    fprintf(fp,"3  duplicateRow.setMaximumRhs(%d);\n",maximumRhs_);
+  else
+    fprintf(fp,"4  duplicateRow.setMaximumRhs(%d);\n",maximumRhs_);
+  if (getAggressiveness()!=other.getAggressiveness())
+    fprintf(fp,"3  duplicateRow.setAggressiveness(%d);\n",getAggressiveness());
+  else
+    fprintf(fp,"4  duplicateRow.setAggressiveness(%d);\n",getAggressiveness());
+  return "duplicateRow";
+}

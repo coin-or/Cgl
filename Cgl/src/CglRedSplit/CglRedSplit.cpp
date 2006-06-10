@@ -313,7 +313,7 @@ void CglRedSplit::reduce_contNonBasicTab() {
   }
 
 #ifdef RS_TRACE
-  printf("CglRedSplit::reduce_contNonBasicTab():Initial sum of  norms: %lf\n", 
+  printf("CglRedSplit::reduce_contNonBasicTab():Initial sum of  norms: %f\n", 
 	 sum_norms);
 #endif
 
@@ -382,7 +382,7 @@ void CglRedSplit::reduce_contNonBasicTab() {
   }
 
 #ifdef RS_TRACE
-  printf("CglRedSplit::reduce_contNonBasicTab():Final sum of norms: %lf\n", sum_norms);
+  printf("CglRedSplit::reduce_contNonBasicTab():Final sum of norms: %f\n", sum_norms);
 #endif
 
   delete[] norm;
@@ -655,7 +655,7 @@ void CglRedSplit::check_optsol(const OsiSolverInterface *solver,
       printf("### ERROR: CglRedSplit::check_optsol(): Cut %d cuts given_optsol\n", 
 	     irow);
       rs_printvecDBL("ck_row", ck_row, ncol+nrow);
-      printf("lhs: %lf  rhs: %lf    calling_place: %d\n", 
+      printf("lhs: %f  rhs: %f    calling_place: %d\n", 
 	     ck_lhs, ck_rhs, calling_place);
       exit(1);
     }
@@ -710,7 +710,7 @@ void CglRedSplit::check_optsol(const OsiSolverInterface *solver,
     printf("### ERROR: CglRedSplit::check_optsol(): Cut %d cuts given_optsol\n", 
 	   cut_number);
     rs_printvecDBL("cpy_row", cpy_row, ncol+nrow);
-    printf("lhs: %lf  rhs: %lf    calling_place: %d\n", 
+    printf("lhs: %f  rhs: %f    calling_place: %d\n", 
 	   ck_lhs, ck_rhs, calling_place);
     exit(1);
   }
@@ -1152,7 +1152,7 @@ void CglRedSplit::setMaxTab(double value)
     maxTab_ = value;
   }
   else {
-    printf("### WARNING: CglRedSplit::setMaxTab(): value: %lf ignored\n", 
+    printf("### WARNING: CglRedSplit::setMaxTab(): value: %f ignored\n", 
 	   value);
   }
 }
@@ -1170,7 +1170,7 @@ void CglRedSplit::setLUB(double value)
     LUB = value;
   }
   else {
-    printf("### WARNING: CglRedSplit::setLUB(): value: %lf ignored\n", value);
+    printf("### WARNING: CglRedSplit::setLUB(): value: %f ignored\n", value);
   }
 } /* setLUB */
 
@@ -1187,7 +1187,7 @@ void CglRedSplit::setEPS(double value)
     EPS = value;
   }
   else {
-    printf("### WARNING: CglRedSplit::setEPS(): value: %lf ignored\n", value);
+    printf("### WARNING: CglRedSplit::setEPS(): value: %f ignored\n", value);
   }
 } /* setEPS */
 
@@ -1204,7 +1204,7 @@ void CglRedSplit::setEPS_COEFF(double value)
     EPS_COEFF = value;
   }
   else {
-    printf("### WARNING: CglRedSplit::setEPS_COEFF(): value: %lf ignored\n", 
+    printf("### WARNING: CglRedSplit::setEPS_COEFF(): value: %f ignored\n", 
 	   value);
   }
 } /* setEPS_COEFF */
@@ -1222,7 +1222,7 @@ void CglRedSplit::setEPS_COEFF_LUB(double value)
     EPS_COEFF_LUB = value;
   }
   else {
-    printf("### WARNING: CglRedSplit::setEPS_COEFF_LUB(): value: %lf ignored\n", 
+    printf("### WARNING: CglRedSplit::setEPS_COEFF_LUB(): value: %f ignored\n", 
 	   value);
   }
 } /* setEPS_COEFF_LUB */
@@ -1240,7 +1240,7 @@ void CglRedSplit::setEPS_RELAX(double value)
     EPS_RELAX = value;
   }
   else {
-    printf("### WARNING: CglRedSplit::setEPS_RELAX(): value: %lf ignored\n", 
+    printf("### WARNING: CglRedSplit::setEPS_RELAX(): value: %f ignored\n", 
 	   value);
   }
 } /* setEPS_RELAX */
@@ -1258,7 +1258,7 @@ void CglRedSplit::setNormIsZero(double value)
     normIsZero = value;
   }
   else {
-    printf("### WARNING: CglRedSplit::setNormIsZero(): value: %lf ignored\n",
+    printf("### WARNING: CglRedSplit::setNormIsZero(): value: %f ignored\n",
 	   value);
   }
 } /* setNormIsZero */
@@ -1276,7 +1276,7 @@ void CglRedSplit::setMinReduc(double value)
     minReduc = value;
   }
   else {
-    printf("### WARNING: CglRedSplit::MinReduc(): value: %lf ignored\n",
+    printf("### WARNING: CglRedSplit::MinReduc(): value: %f ignored\n",
 	   value);
   }
 } /* setMinReduc */
@@ -1511,4 +1511,57 @@ bool
 CglRedSplit::needsOptimalBasis() const
 {
   return true;
+}
+// Create C++ lines to get to current state
+std::string
+CglRedSplit::generateCpp( FILE * fp) 
+{
+  CglRedSplit other;
+  fprintf(fp,"0#include \"CglRedSplit.hpp\"\n");
+  fprintf(fp,"3  CglRedSplit redSplit;\n");
+  if (getLimit()!=other.getLimit())
+    fprintf(fp,"3  redSplit.setLimit(%d);\n",getLimit());
+  else
+    fprintf(fp,"4  redSplit.setLimit(%d);\n",getLimit());
+  if (getAway()!=other.getAway())
+    fprintf(fp,"3  redSplit.setAway(%g);\n",getAway());
+  else
+    fprintf(fp,"4  redSplit.setAway(%g);\n",getAway());
+  if (getLUB()!=other.getLUB())
+    fprintf(fp,"3  redSplit.setLUB(%g);\n",getLUB());
+  else
+    fprintf(fp,"4  redSplit.setLUB(%g);\n",getLUB());
+  if (getEPS()!=other.getEPS())
+    fprintf(fp,"3  redSplit.setEPS(%g);\n",getEPS());
+  else
+    fprintf(fp,"4  redSplit.setEPS(%g);\n",getEPS());
+  if (getEPS_COEFF()!=other.getEPS_COEFF())
+    fprintf(fp,"3  redSplit.setEPS_COEFF(%g);\n",getEPS_COEFF());
+  else
+    fprintf(fp,"4  redSplit.setEPS_COEFF(%g);\n",getEPS_COEFF());
+  if (getEPS_COEFF_LUB()!=other.getEPS_COEFF_LUB())
+    fprintf(fp,"3  redSplit.setEPS_COEFF_LUB(%g);\n",getEPS_COEFF_LUB());
+  else
+    fprintf(fp,"4  redSplit.setEPS_COEFF_LUB(%g);\n",getEPS_COEFF_LUB());
+  if (getEPS_RELAX()!=other.getEPS_RELAX())
+    fprintf(fp,"3  redSplit.setEPS_RELAX(%g);\n",getEPS_RELAX());
+  else
+    fprintf(fp,"4  redSplit.setEPS_RELAX(%g);\n",getEPS_RELAX());
+  if (getNormIsZero()!=other.getNormIsZero())
+    fprintf(fp,"3  redSplit.setNormIsZero(%g);\n",getNormIsZero());
+  else
+    fprintf(fp,"4  redSplit.setNormIsZero(%g);\n",getNormIsZero());
+  if (getMinReduc()!=other.getMinReduc())
+    fprintf(fp,"3  redSplit.setMinReduc(%g);\n",getMinReduc());
+  else
+    fprintf(fp,"4  redSplit.setMinReduc(%g);\n",getMinReduc());
+  if (getMaxTab()!=other.getMaxTab())
+    fprintf(fp,"3  redSplit.setMaxTab(%g);\n",getMaxTab());
+  else
+    fprintf(fp,"4  redSplit.setMaxTab(%g);\n",getMaxTab());
+  if (getAggressiveness()!=other.getAggressiveness())
+    fprintf(fp,"3  redSplit.setAggressiveness(%d);\n",getAggressiveness());
+  else
+    fprintf(fp,"4  redSplit.setAggressiveness(%d);\n",getAggressiveness());
+  return "redSplit";
 }

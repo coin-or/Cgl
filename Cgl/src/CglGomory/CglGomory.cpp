@@ -927,3 +927,28 @@ CglGomory::needsOptimalBasis() const
 {
   return true;
 }
+// Create C++ lines to get to current state
+std::string
+CglGomory::generateCpp( FILE * fp) 
+{
+  CglGomory other;
+  fprintf(fp,"0#include \"CglGomory.hpp\"\n");
+  fprintf(fp,"3  CglGomory gomory;\n");
+  if (limit_!=other.limit_)
+    fprintf(fp,"3  gomory.setLimit(%d);\n",limit_);
+  else
+    fprintf(fp,"4  gomory.setLimit(%d);\n",limit_);
+  if (limitAtRoot_!=other.limitAtRoot_)
+    fprintf(fp,"3  gomory.setLimitAtRoot(%d);\n",limitAtRoot_);
+  else
+    fprintf(fp,"4  gomory.setLimitAtRoot(%d);\n",limitAtRoot_);
+  if (away_!=other.away_)
+    fprintf(fp,"3  gomory.setAway(%g);\n",away_);
+  else
+    fprintf(fp,"4  gomory.setAway(%g);\n",away_);
+  if (getAggressiveness()!=other.getAggressiveness())
+    fprintf(fp,"3  gomory.setAggressiveness(%d);\n",getAggressiveness());
+  else
+    fprintf(fp,"4  gomory.setAggressiveness(%d);\n",getAggressiveness());
+  return "gomory";
+}
