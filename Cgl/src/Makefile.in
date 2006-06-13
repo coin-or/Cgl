@@ -64,7 +64,6 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(includedir)"
 libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 am__DEPENDENCIES_1 =
-libCgl_la_DEPENDENCIES = $(am__DEPENDENCIES_1)
 am_libCgl_la_OBJECTS = CglCutGenerator.lo CglMessage.lo CglStored.lo
 libCgl_la_OBJECTS = $(am_libCgl_la_OBJECTS)
 depcomp = $(SHELL) $(top_srcdir)/../depcomp
@@ -311,6 +310,10 @@ libCgl_la_LDFLAGS = $(LT_LDFLAGS)
 # We want to have all the sublibraries from the Cgl subprojects collected into
 # this library
 libCgl_la_LIBADD = $(CGL_SUBLIBS)
+
+# Since automake is not doing this on its own, we need to declare the
+# dependencies to the subdirectory libraries here
+libCgl_la_DEPENDENCIES = $(libCgl_la_LIBADD)
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.

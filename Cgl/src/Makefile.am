@@ -33,6 +33,10 @@ libCgl_la_LDFLAGS = $(LT_LDFLAGS)
 # this library
 libCgl_la_LIBADD = $(CGL_SUBLIBS)
 
+# Since automake is not doing this on its own, we need to declare the
+# dependencies to the subdirectory libraries here
+libCgl_la_DEPENDENCIES = $(libCgl_la_LIBADD)
+
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.
 # "top_srcdir" refers to the basic directory for the main package that is
