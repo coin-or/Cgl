@@ -7,6 +7,7 @@ Cgl/configure.ac -text
 Cgl/examples/Makefile.in -text
 Cgl/examples/cgl1.cpp -text
 Cgl/inc/config_cgl.h.in -text
+/README -text
 /config.guess -text
 /config.sub -text
 /configure -text
