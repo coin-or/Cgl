@@ -1,0 +1,66 @@
+Cut Generation Library (Cgl) README
+===================================
+
+Welcome to the COIN-OR Cut Generator Library, aka "Cgl". Cgl is 
+distributed under the Common Public License Version 1.0 and is freely 
+redistributable. All source code and documentation is copyright 
+by International Business Machines Corporation and others. 
+This README file may be distributed freely.
+
+The COIN-OR Cut Generation Library is a collection of cut 
+generators that can be used with other COIN-OR projects that make 
+use of cuts, such as, among others, the linear solver Clp or the 
+mixed integer linear programming solvers Cbc or BCP. 
+
+Each cut generator is in a separate directory with its own maintainer. 
+Maintainer names are listed in the AUTHORS file in the Cgl directory. 
+For more information, see the Cgl Trac page.
+
+CGL TRAC PAGE
+=============
+
+https://projects.coin-or.org/Cgl
+
+
+DOCUMENTATION
+=============
+
+The html documentation for the classes in Cgl can be created readily. 
+(see the INSTALL file in the Cgl directory). It is also available from 
+the Cgl Trac page.
+
+INSTALLATION
+============
+
+If you have downloaded the package 
+
+   https://projects.coin-or.org/svn/Cgl/trunk
+
+in the local directory coin-Cgl, please see the INSTALL file in 
+coin-Cgl for a guide to install this package. 
+
+If you have obtained Cgl by downloading another package, Cgl should be 
+installed as part of the installation of that package. See the INSTALL 
+file in the main directory of the package.
+
+SUPPORT
+=======
+
+1. Authors
+
+   See the AUTHORS file.
+
+2. Project Managers
+
+   Robin Lougee-Heimer, robinlh@us.ibm.com
+   Francois Margot, fmargot@andrew.cmu.edu
+
+3. List Serve
+
+   Cgl users should use the Cgl mailing list. To subscribe, go to 
+   http://list.coin-or.org/mailman/listinfo/cgl
+
+4. Bug Reports
+
+   Bug reports should be posted to the Cgl mailing list and/or on the
+   Cgl Trac page.
