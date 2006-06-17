@@ -1,7 +1,7 @@
-Cut Generation Library (Cgl) README
-===================================
+CUT GENERATION LIBRARY README
+=============================
 
-Welcome to the COIN-OR Cut Generator Library, aka "Cgl". Cgl is 
+Welcome to the COIN-OR Cut Generator Library (Cgl). Cgl is 
 distributed under the Common Public License Version 1.0 and is freely 
 redistributable. All source code and documentation is copyright 
 by International Business Machines Corporation and others. 
@@ -14,20 +14,14 @@ mixed integer linear programming solvers Cbc or BCP.
 
 Each cut generator is in a separate directory with its own maintainer. 
 Maintainer names are listed in the AUTHORS file in the Cgl directory. 
-For more information, see the Cgl Trac page.
+For more information, see the Cgl Trac page (see below).
+
 
 CGL TRAC PAGE
 =============
 
 https://projects.coin-or.org/Cgl
 
-
-DOCUMENTATION
-=============
-
-The html documentation for the classes in Cgl can be created readily. 
-(see the INSTALL file in the Cgl directory). It is also available from 
-the Cgl Trac page.
 
 INSTALLATION
 ============
@@ -43,6 +37,32 @@ If you have obtained Cgl by downloading another package, Cgl should be
 installed as part of the installation of that package. See the INSTALL 
 file in the main directory of the package.
 
+
+DOCUMENTATION
+=============
+
+If you have Doxygen available, you can build the html documentation 
+by typing
+
+   make doxydoc
+
+in the main directory of the package, say coin-Pkg. Then open the file 
+
+   coin-Pkg/doxydoc/html/index.html 
+
+with a browser. Note that this creates the documentation for all the
+projects in the package. If you prefer to generate the documentation 
+only for a subset of these projects, you can edit the file 
+  
+   coin-pkg/doxydoc/doxygen.conf 
+
+to exclude directories (using the EXCLUDE variable, for example).
+
+If Doxygen is not available, html documentation is available at:
+
+   http://www.coin-or.org/Doxygen/
+
+
 SUPPORT
 =======
 
@@ -55,7 +75,7 @@ SUPPORT
    Robin Lougee-Heimer, robinlh@us.ibm.com
    Francois Margot, fmargot@andrew.cmu.edu
 
-3. List Serve
+3. Mailing List
 
    Cgl users should use the Cgl mailing list. To subscribe, go to 
    http://list.coin-or.org/mailman/listinfo/cgl
