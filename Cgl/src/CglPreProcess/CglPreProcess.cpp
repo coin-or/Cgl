@@ -1144,12 +1144,12 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
           //maximumDown -= 1.0e-8*fabs(maximumDown);
           double gap = 0.0;
           if ((rowLower[iRow]>maximumDown&&largest>rowLower[iRow]-maximumDown)&&
-              ((maximumUp<=rowUpper[iRow]&&!infiniteUpper)||rowUpper[iRow]>=1.031)) {
+              ((maximumUp<=rowUpper[iRow]&&!infiniteUpper)||rowUpper[iRow]>=1.0e30)) {
             gap = rowLower[iRow]-maximumDown;
             if (infiniteLower)
               gap=0.0; // switch off
           } else if ((maximumUp>rowUpper[iRow]&&largest>maximumUp-rowUpper[iRow])&&
-                     ((maximumDown>=rowLower[iRow]&&!infiniteLower)||rowLower[iRow]<=-1.031)) {
+                     ((maximumDown>=rowLower[iRow]&&!infiniteLower)||rowLower[iRow]<=-1.0e30)) {
             gap = -(maximumUp-rowUpper[iRow]);
             if (infiniteUpper)
               gap=0.0; // switch off
@@ -1172,6 +1172,19 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
                     if (handler_->logLevel()>2)
                       printf("element in Row %d for column %d changed from %g to %g\n",
                              iRow,iColumn,value,newValue);
+#ifdef CGL_DEBUG
+                    const OsiRowCutDebugger * debugger = model.getRowCutDebugger();
+                    if (debugger&&debugger->numberColumns()==numberColumns) {
+                      const double * optimal = debugger->optimalSolution();
+                      double sum=0.0;
+                      for (int jj = rStart;jj < rEnd; ++jj) {
+                        double value=element[j];
+                        int jColumn = column[jj];
+                        sum += value*optimal[jColumn];
+                      }
+                      assert (sum>=rowLower[iRow]-1.0e7&&sum<=rowUpper[iRow]+1.0e-7);
+                    }
+#endif
                   }
                 }
               }
@@ -1179,8 +1192,9 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
           }
         }
       }
-      if (numberChanges&&handler_->logLevel()>1) {
-        printf("%d elements changed\n",numberChanges);
+      if (numberChanges) {
+        if (handler_->logLevel()>1) 
+          printf("%d elements changed\n",numberChanges);
         model.replaceMatrixOptional(copy);
       }
     }
@@ -1314,6 +1328,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
     for (int iGenerator=firstGenerator;iGenerator<lastGenerator;iGenerator++) {
       OsiCuts cs;
       CoinZeroN(whichCut,numberRows);
+      bool probingCut=false;
       if (iGenerator>=0) {
         //char name[20];
         //sprintf(name,"prex%2.2d.mps",iGenerator);
@@ -1322,6 +1337,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
         CglDuplicateRow * dupRow = dynamic_cast<CglDuplicateRow *> (generator_[iGenerator]);
         if (dupRow&&(iPass||iBigPass))
             continue;
+        CglProbing * probing = dynamic_cast<CglProbing *> (generator_[iGenerator]);
+        probingCut = probing != NULL;
         // refresh as model may have changed
         generator_[iGenerator]->refreshSolver(newModel);
         generator_[iGenerator]->generateCuts(*newModel,cs,info);
@@ -1333,6 +1350,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
       } else {
         // special probing
         CglProbing generator1;
+        probingCut=true;
         generator1.setUsingObjective(false);
         generator1.setMaxPass(3);
         generator1.setMaxProbe(100);
@@ -1394,7 +1412,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
               const double * elementCut = thisCut->row().getElements();
               double lower = thisCut->lb();
               double upper = thisCut->ub();
-              if (iGenerator==1) {
+              if (probingCut) {
                 int i;
                 int n1=rowLength[iRow];
                 int start=rowStart[iRow];
