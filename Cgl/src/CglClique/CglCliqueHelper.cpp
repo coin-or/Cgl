@@ -83,7 +83,7 @@ CglClique::selectRowCliques(const OsiSolverInterface& si,int numOriginalRows) co
    // have a 1 coefficient
    const CoinPackedMatrix& mcol = *si.getMatrixByCol();
    for (j = 0; j < sp_numcols; ++j) {
-      const CoinPackedVectorBase& vec = mcol.getVector(sp_orig_col_ind[j]);
+      const CoinShallowPackedVector& vec = mcol.getVector(sp_orig_col_ind[j]);
       const int* ind = vec.getIndices();
       const double* elem = vec.getElements();
       for (i = vec.getNumElements() - 1; i >= 0; --i) {
@@ -103,7 +103,7 @@ CglClique::selectRowCliques(const OsiSolverInterface& si,int numOriginalRows) co
 	 continue;
       }
       if (clique[i] == 1) {
-	 const CoinPackedVectorBase& vec = mrow.getVector(i);
+	 const CoinShallowPackedVector& vec = mrow.getVector(i);
 	 const double* elem = vec.getElements();
 	 for (j = vec.getNumElements() - 1; j >= 0; --j) {
 	    if (elem[j] < 0) {
@@ -147,7 +147,7 @@ CglClique::createSetPackingSubMatrix(const OsiSolverInterface& si) const
       clique[sp_orig_row_ind[i]] = i;
 
    for (j = 0; j < sp_numcols; ++j) {
-      const CoinPackedVectorBase& vec = mcol.getVector(sp_orig_col_ind[j]);
+      const CoinShallowPackedVector& vec = mcol.getVector(sp_orig_col_ind[j]);
       const int* ind = vec.getIndices();
       for (i = vec.getNumElements() - 1; i >= 0; --i) {
 	 if (clique[ind[i]] >= 0) {
@@ -170,7 +170,7 @@ CglClique::createSetPackingSubMatrix(const OsiSolverInterface& si) const
    sp_row_ind = new int[nzcnt];
 
    for (j = 0; j < sp_numcols; ++j) {
-      const CoinPackedVectorBase& vec = mcol.getVector(sp_orig_col_ind[j]);
+      const CoinShallowPackedVector& vec = mcol.getVector(sp_orig_col_ind[j]);
       const int len = vec.getNumElements();
       const int* ind = vec.getIndices();
       for (i = 0; i < len; ++i) {
