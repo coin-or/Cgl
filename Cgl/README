@@ -1,6 +1,17 @@
 CUT GENERATION LIBRARY README
 =============================
 
+In this document, the following names are used:
+
+1. 'coin-Cgl' is the directory in which you have dowloaded Cgl.
+
+2. 'build' is the directory used for the installation of Cgl. It might
+   be coin-Cgl or any other directory of your choosing.
+
+
+OVERVIEW
+========
+
 Welcome to the COIN-OR Cut Generator Library (Cgl). Cgl is 
 distributed under the Common Public License Version 1.0 and is freely 
 redistributable. All source code and documentation is copyright 
@@ -36,31 +47,6 @@ coin-Cgl for a guide to install this package.
 If you have obtained Cgl by downloading another package, Cgl should be 
 installed as part of the installation of that package. See the INSTALL 
 file in the main directory of the package.
-
-
-DOCUMENTATION
-=============
-
-If you have Doxygen available, you can build the html documentation 
-by typing
-
-   make doxydoc
-
-in the main directory of the package, say coin-Pkg. Then open the file 
-
-   coin-Pkg/doxydoc/html/index.html 
-
-with a browser. Note that this creates the documentation for all the
-projects in the package. If you prefer to generate the documentation 
-only for a subset of these projects, you can edit the file 
-  
-   coin-pkg/doxydoc/doxygen.conf 
-
-to exclude directories (using the EXCLUDE variable, for example).
-
-If Doxygen is not available, html documentation is available at:
-
-   http://www.coin-or.org/Doxygen/
 
 
 SUPPORT
