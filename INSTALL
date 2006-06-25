@@ -2,6 +2,22 @@
 CUT GENERATION LIBRARY INSTALLATION
 ===================================
 
+The instruction in this file are useful only if you downloaded the
+Cgl package. If you dowloaded another package, Cgl should be installed
+as part of that package. See the INSTALL file in the main directory
+of the package.
+
+In this document, the following names are used:
+
+1. 'coin-Cgl' is the directory in which you have dowloaded Cgl.
+
+2. 'build' is the directory used for the installation of Cgl. It might
+   be coin-Cgl or any other directory of your choosing.
+
+
+OVERVIEW
+========
+
 More information is available on the Cut Generation Library (Cgl)
 Trac page at:
 
@@ -14,9 +30,8 @@ maintained for this package, you can find instructions at
   https://projects.coin-or.org/MSVisualStudio
 
 
-**********************************************************************
-***                         DOWNLOAD                               ***
-**********************************************************************
+DOWNLOADING CGL
+===============
 
 You can obtain the source code for the Cgl package in two ways:
 
@@ -50,13 +65,13 @@ More detailed download instructions can be found at
    https://projects.coin-or.org/BuildTools/wiki/user-download
 
 
-**********************************************************************
-***                        CONFIGURATION                           ***
-**********************************************************************
 
-Go into the directory coin-Cgl.  There, type
+CONFIGURATION OF CGL
+====================
 
-   ./configure
+Go into the directory 'build' where you want to install Cgl.  There, type
+
+   ~/coin-Cgl/configure
 
 Note that you might have to specify additional options, in case you
 don't want to use the default choices that configure makes (e.g.,
@@ -71,11 +86,10 @@ If everything went fine, you will see at the end of the output
    "Main configuration of Cgl successful"
 
 
-**********************************************************************
-***                COMPILATION AND INSTALLATION                    ***
-**********************************************************************
+COMPILATION AND INSTALLATION
+============================
 
-In the directory coin-Cgl:
+In the directory 'build':
 
 1. Compile the code by typing
 
@@ -91,8 +105,8 @@ In the directory coin-Cgl:
 
    make install
 
-   The executables are installed in coin-Cgl/bin, the libraries in
-   coin-Cgl/lib and the header files in coin-Cgl/include.
+   The executables are installed in build/bin, the libraries in
+   build/lib and the header files in build/include.
 
 More information on the compilation and installation can be found on 
 the Cgl Trac page and at
@@ -100,35 +114,33 @@ the Cgl Trac page and at
    https://projects.coin-or.org/BuildTools/wiki/user-compile
 
 
-**********************************************************************
-***                     DOXYGEN DOCUMENTATION                      ***
-**********************************************************************
+DOCUMENTATION
+=============
 
-If you have Doxygen available, you can build the html documentation 
+If you have Doxygen available, you can create the html documentation 
 by typing
 
    make doxydoc
 
-in the directory coin-Cgl. Then open the file 
+in the directory 'build'. Then open the file 
 
-   coin-Cgl/doxydoc/html/index.html 
+   coin-Pkg/doxydoc/html/index.html 
 
 with a browser. Note that this creates the documentation for all the
-projects in the Cgl package. If you prefer to generate the documentation 
+projects in the package. If you prefer to generate the documentation 
 only for a subset of these projects, you can edit the file 
   
-   coin-Cgl/doxydoc/doxygen.conf 
+   coin-Pkg/doxydoc/doxygen.conf 
 
 to exclude directories (using the EXCLUDE variable, for example).
 
-If Doxygen is not available, the Cgl html documentation is available at:
+If Doxygen is not available, the html documentation is available at:
 
-   http://www.coin-or.org/Doxygen/Cgl/index.html
+   http://www.coin-or.org/Doxygen/
 
 
-**********************************************************************
-***                     USING THE LIBRARIES                        ***
-**********************************************************************
+USING THE LIBRARIES
+===================
 
 Now you can link your own code with the installed libraries.  You can
 find examples in the
