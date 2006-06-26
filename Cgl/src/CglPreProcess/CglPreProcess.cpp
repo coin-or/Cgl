@@ -457,10 +457,36 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       if (makeEquality==2)
         presolveActions |= 8;
       pinfo->setPresolveActions(presolveActions);
-      presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-8,true,5);
+      if (prohibited_)
+        assert (numberProhibited_==oldModel->getNumCols());
+      presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-8,true,5,prohibited_);
       if (!presolvedModel) {
         returnModel=NULL;
         break;
+      }
+      if (prohibited_) {
+        const int * original = pinfo->originalColumns();
+        int numberColumns = presolvedModel->getNumCols();
+        // number prohibited must stay constant
+        int n=0;
+        int i;
+        for (i=0;i<numberProhibited_;i++) {
+          if(prohibited_[i])
+            n++;
+        }
+        int last=-1;
+        int n2=0;
+        for (i=0;i<numberColumns;i++) {
+          int iColumn = original[i];
+          assert (iColumn>last);
+          last=iColumn;
+          char p = prohibited_[iColumn];
+          if (p)
+            n2++;
+          prohibited_[i]=p;
+        }
+        assert (n==n2);
+        numberProhibited_=numberColumns;
       }
       //char name[20];
       //sprintf(name,"prex%2.2d.mps",iPass);
@@ -1601,7 +1627,9 @@ CglPreProcess::CglPreProcess()
   typeSOS_(NULL),
   startSOS_(NULL),
   whichSOS_(NULL),
-  weightSOS_(NULL)
+  weightSOS_(NULL),
+  numberProhibited_(0),
+  prohibited_(NULL)
 {
   handler_ = new CoinMessageHandler();
   handler_->setLogLevel(2);
@@ -1617,7 +1645,8 @@ CglPreProcess::CglPreProcess(const CglPreProcess & rhs)
   appData_(rhs.appData_),
   originalColumn_(NULL),
   originalRow_(NULL),
-  numberCutGenerators_(rhs.numberCutGenerators_)
+  numberCutGenerators_(rhs.numberCutGenerators_),
+  numberProhibited_(rhs.numberProhibited_)
 {
   if (defaultHandler_) {
     handler_ = new CoinMessageHandler();
@@ -1672,6 +1701,7 @@ CglPreProcess::CglPreProcess(const CglPreProcess & rhs)
     whichSOS_ = NULL;
     weightSOS_ = NULL;
   }
+  prohibited_ = CoinCopyOfArray(rhs.prohibited_,numberProhibited_);
 }
   
 // Assignment operator 
@@ -1684,6 +1714,7 @@ CglPreProcess::operator=(const CglPreProcess& rhs)
     defaultHandler_=rhs.defaultHandler_;
     appData_=rhs.appData_;
     numberCutGenerators_=rhs.numberCutGenerators_;
+    numberProhibited_ = rhs.numberProhibited_;
     if (defaultHandler_) {
       handler_ = new CoinMessageHandler();
       handler_->setLogLevel(rhs.handler_->logLevel());
@@ -1735,6 +1766,7 @@ CglPreProcess::operator=(const CglPreProcess& rhs)
       whichSOS_ = NULL;
       weightSOS_ = NULL;
     }
+    prohibited_ = CoinCopyOfArray(rhs.prohibited_,numberProhibited_);
   }
   return *this;
 }
@@ -1785,6 +1817,9 @@ CglPreProcess::gutsOfDestructor()
   startSOS_ = NULL;
   whichSOS_ = NULL;
   weightSOS_ = NULL;
+  delete [] prohibited_;
+  prohibited_=NULL;
+  numberProhibited_=0;
 }
 // Add one generator
 void 
@@ -1975,4 +2010,12 @@ CglPreProcess::someFixed(OsiSolverInterface & model,
     }
   }
   return newModel;
+}
+// Pass in prohibited columns 
+void 
+CglPreProcess::passInProhibited(const char * prohibited,int numberColumns)
+{
+  delete [] prohibited_;
+  prohibited_ = CoinCopyOfArray(prohibited,numberColumns);
+  numberProhibited_ = numberColumns;
 }

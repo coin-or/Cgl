@@ -139,6 +139,11 @@ public:
   /// Weights for each SOS column
   inline const double * weightSOS() const
   { return weightSOS_;};
+  /// Pass in prohibited columns 
+  void passInProhibited(const char * prohibited,int numberColumns);
+  /// Updated prohibited columns
+  inline const char * prohibited()
+  { return prohibited_;};
   //@}
 
   ///@name Cut generator methods 
@@ -280,6 +285,10 @@ private:
   int * whichSOS_;
   /// Weights for each SOS column
   double * weightSOS_;
+  /// Number of columns in original prohibition set
+  int numberProhibited_;
+  /// Columns which should not be presolved e.g. SOS
+  char * prohibited_;
  //@}
 };
 
