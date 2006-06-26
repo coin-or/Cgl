@@ -3,10 +3,11 @@ CUT GENERATION LIBRARY README
 
 In this document, the following names are used:
 
-1. 'coin-Cgl' is the directory in which you have dowloaded Cgl.
+1. 'coin-Cgl' is the full path to the directory in which you have 
+   dowloaded Cgl.
 
-2. 'build' is the directory used for the installation of Cgl. It might
-   be coin-Cgl or any other directory of your choosing.
+2. 'build' is the full path to the directory used for the installation 
+   of Cgl. It might be coin-Cgl or any other directory of your choosing.
 
 
 OVERVIEW
