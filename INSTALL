@@ -9,10 +9,11 @@ of the package.
 
 In this document, the following names are used:
 
-1. 'coin-Cgl' is the directory in which you have dowloaded Cgl.
+1. 'coin-Cgl' is the full path to the directory in which you have 
+   dowloaded Cgl.
 
-2. 'build' is the directory used for the installation of Cgl. It might
-   be coin-Cgl or any other directory of your choosing.
+2. 'build' is the full path to the directory used for the installation 
+   of Cgl. It might be coin-Cgl or any other directory of your choosing.
 
 
 OVERVIEW
@@ -71,7 +72,7 @@ CONFIGURATION OF CGL
 
 Go into the directory 'build' where you want to install Cgl.  There, type
 
-   ~/coin-Cgl/configure
+   coin-Cgl/configure
 
 Note that you might have to specify additional options, in case you
 don't want to use the default choices that configure makes (e.g.,
@@ -124,13 +125,13 @@ by typing
 
 in the directory 'build'. Then open the file 
 
-   coin-Pkg/doxydoc/html/index.html 
+   coin-Cgl/doxydoc/html/index.html 
 
 with a browser. Note that this creates the documentation for all the
 projects in the package. If you prefer to generate the documentation 
 only for a subset of these projects, you can edit the file 
   
-   coin-Pkg/doxydoc/doxygen.conf 
+   coin-Cgl/doxydoc/doxygen.conf 
 
 to exclude directories (using the EXCLUDE variable, for example).
 
