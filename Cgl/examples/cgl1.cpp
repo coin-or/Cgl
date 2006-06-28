@@ -21,6 +21,7 @@
 // The knapsack cut generator assumes the primal solution is feasible.
 #include <cassert>
 #include <iostream>
+#include <string>
 
 #include "CoinError.hpp"
 #include "OsiCuts.hpp"
@@ -33,12 +34,17 @@
 using std::cerr;
 using std::cout;
 using std::endl;
+using std::string;
 
 int main(int argc, const char *argv[])
 {
-  // Make sure a file name and objective sense
+  // If no parms specified then use these
+  string mpsFileName = "../../Data/Sample/p0033.mps";
+  string objSense = "min";
+
+  // Make sure a file name and objective sense or nothing
   // were specified
-  if ( argc<3 ) {
+  if ( argc!=1 && argc!=3 ) {
     cerr <<"Incorrect number of command line parameters." <<endl;
     cerr <<"  usage:" <<endl;
     cerr <<"    "<<argv[0] <<" mpsFileName objectiveSense" <<endl;
@@ -51,14 +57,18 @@ int main(int argc, const char *argv[])
   }  
   
   // Make sure valid objective sense was specified
-  if( strcmp(argv[2],"min") && strcmp(argv[2],"max" ) ){
-    cerr <<"Unrecognized objective sense specifed" <<endl;
-    cerr <<"  specified value: \"" <<argv[2] <<"\"" <<endl;
-    
-    cerr <<"  valid values: \"min\" for minimization," <<endl; 
-    cerr <<"                \"max\" for maximization." <<endl; 
-    return 1;
-  }  
+  if (argc==3) {
+    mpsFileName = argv[1];
+    objSense = argv[2];
+    if( objSense!="min" && objSense!="max" ){
+      cerr <<"Unrecognized objective sense specifed" <<endl;
+      cerr <<"  specified value: \"" <<argv[2] <<"\"" <<endl;
+
+      cerr <<"  valid values: \"min\" for minimization," <<endl; 
+      cerr <<"                \"max\" for maximization." <<endl; 
+      return 1;
+    }  
+  }
   
   try {
     // Instantiate a specific solver interface
@@ -66,11 +76,11 @@ int main(int argc, const char *argv[])
     //OsiOslSolverInterface si;
     
     // Read file describing problem
-    si.readMps(argv[1],"mps"); 
+    si.readMps(mpsFileName.c_str(),"mps"); 
     
     // Set objective min to max
     // First make sure min or max were specified
-    if ( !strcmp(argv[2],"min") ) si.setObjSense(1.0);
+    if ( objSense=="min" ) si.setObjSense(1.0);
     else si.setObjSense(-1.0);
     
     // Solve continuous problem
@@ -109,15 +119,15 @@ int main(int argc, const char *argv[])
       acRc = si.applyCuts(cuts,0.0);
       
       // Print applyCuts return code
-      cout << endl << endl;
+      cout <<endl <<endl;
       cout <<cuts.sizeCuts() <<" cuts were generated" <<endl;
       cout <<"  " <<acRc.getNumInconsistent() <<" were inconsistent" <<endl;
       cout <<"  " <<acRc.getNumInconsistentWrtIntegerModel() 
-        <<" were inconsistent for this problem" <<endl;
+           <<" were inconsistent for this problem" <<endl;
       cout <<"  " <<acRc.getNumInfeasible() <<" were infeasible" <<endl;
       cout <<"  " <<acRc.getNumIneffective() <<" were ineffective" <<endl;
       cout <<"  " <<acRc.getNumApplied() <<" were applied" <<endl;
-      cout << endl << endl;
+      cout <<endl <<endl;
       
       // Increment the counter of total cuts applied
       totalNumberApplied += acRc.getNumApplied();
@@ -128,9 +138,9 @@ int main(int argc, const char *argv[])
       // Resolve
       si.resolve();
       
-      cout << endl;
-      cout <<"After applying cuts objective value changed from "
-        <<obj <<" to " <<si.getObjValue() <<endl << endl;
+      cout <<endl;
+      cout <<"After applying cuts, objective value changed from "
+        <<obj <<" to " <<si.getObjValue() <<endl <<endl;
       
       // -----------------------------------------------
       // Set Boolean flag to true if new objective is 
@@ -145,17 +155,17 @@ int main(int argc, const char *argv[])
     
     // Print total number of cuts applied, 
     // and total improvement in the lp objective value
-    cout << endl << endl;
+    cout <<endl <<endl;
     cout << "----------------------------------------------------------" 
-      << endl;
-    cout << "Cut generation phase completed:" << endl;
+         <<endl;
+    cout << "Cut generation phase completed:" <<endl;
     cout << "   " << totalNumberApplied << " cuts were applied in total," 
-      << endl;
+         <<endl;
     cout << "   changing the lp objective value from " << origLpObj 
-      << " to " << si.getObjValue() << endl;
+         << " to " << si.getObjValue() <<endl;
     cout << "----------------------------------------------------------" 
-      << endl;
-    cout << endl << endl;
+         <<endl;
+    cout <<endl <<endl;
     
     // If you want to solve problem, change "#if 0" to "#if 1"
 #if 0
