@@ -1252,63 +1252,85 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
   OsiHintStrength saveStrength2;
   originalModel_->getHintParam(OsiDoDualInInitial,
                         saveHint2,saveStrength2);
-  OsiSolverInterface * modelM = &modelIn;
-  for (int iPass=numberSolvers_-1;iPass>=0;iPass--) {
-    OsiSolverInterface * model = model_[iPass];
-    if (model->getNumCols()) {
-      int numberColumns = modelM->getNumCols();
-      const double * solutionM = modelM->getColSolution();
-      int iColumn;
-      for (iColumn=0;iColumn<numberColumns;iColumn++) {
-        if (modelM->isInteger(iColumn)) {
-          double value = solutionM[iColumn];
-          double value2 = floor(value+0.5);
-          // if test fails then empty integer
-          if (fabs(value-value2)<1.0e-3) {
-            model->setColLower(iColumn,value2);
-            model->setColUpper(iColumn,value2);
-          }
-        }
+  if (modelIn.isProvenOptimal()) {
+    OsiSolverInterface * modelM = &modelIn;
+    for (int iPass=numberSolvers_-1;iPass>=0;iPass--) {
+      OsiSolverInterface * model = model_[iPass];
+      if (model->getNumCols()) {
+	int numberColumns = modelM->getNumCols();
+	const double * solutionM = modelM->getColSolution();
+	int iColumn;
+	for (iColumn=0;iColumn<numberColumns;iColumn++) {
+	  if (modelM->isInteger(iColumn)) {
+	    double value = solutionM[iColumn];
+	    double value2 = floor(value+0.5);
+	    // if test fails then empty integer
+	    if (fabs(value-value2)<1.0e-3) {
+	      model->setColLower(iColumn,value2);
+	      model->setColUpper(iColumn,value2);
+	    }
+	  }
+	}
+      }
+      // Give a hint to do primal
+      //model->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
+      model->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
+      model->initialSolve();
+      presolve_[iPass]->postsolve(true);
+      delete modifiedModel_[iPass];;
+      delete model_[iPass];;
+      delete presolve_[iPass];
+      modifiedModel_[iPass]=NULL;
+      model_[iPass]=NULL;
+      presolve_[iPass]=NULL;
+      if (iPass)
+	modelM = modifiedModel_[iPass-1];
+      else
+	modelM = startModel_;
+    }
+    // should be back to startModel_;
+    OsiSolverInterface * model = originalModel_;
+    // Use number of columns in original
+    int numberColumns = model->getNumCols();
+    const double * solutionM = modelM->getColSolution();
+    int iColumn;
+    for (iColumn=0;iColumn<numberColumns;iColumn++) {
+      if (modelM->isInteger(iColumn)) {
+	double value = solutionM[iColumn];
+	double value2 = floor(value+0.5);
+	// if test fails then empty integer
+	if (fabs(value-value2)<1.0e-3) {
+	  model->setColLower(iColumn,value2);
+	  model->setColUpper(iColumn,value2);
+	}
       }
     }
-    // Give a hint to do primal
-    //model->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
-    model->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
-    model->initialSolve();
-    presolve_[iPass]->postsolve(true);
-    delete modifiedModel_[iPass];;
-    delete model_[iPass];;
-    delete presolve_[iPass];
-    modifiedModel_[iPass]=NULL;
-    model_[iPass]=NULL;
-    presolve_[iPass]=NULL;
-    if (iPass)
-      modelM = modifiedModel_[iPass-1];
-    else
-      modelM = startModel_;
-  }
-  // should be back to startModel_;
-  OsiSolverInterface * model = originalModel_;
-  // Use number of columns in original
-  int numberColumns = model->getNumCols();
-  const double * solutionM = modelM->getColSolution();
-  int iColumn;
-  for (iColumn=0;iColumn<numberColumns;iColumn++) {
-    if (modelM->isInteger(iColumn)) {
-      double value = solutionM[iColumn];
-      double value2 = floor(value+0.5);
-      // if test fails then empty integer
-      if (fabs(value-value2)<1.0e-3) {
-        model->setColLower(iColumn,value2);
-        model->setColUpper(iColumn,value2);
-      }
+  } else {
+    // infeasible 
+    for (int iPass=numberSolvers_-1;iPass>=0;iPass--) {
+      delete modifiedModel_[iPass];;
+      delete model_[iPass];;
+      delete presolve_[iPass];
+      modifiedModel_[iPass]=NULL;
+      model_[iPass]=NULL;
+      presolve_[iPass]=NULL;
     }
-  }
-  //model->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
-  model->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
-  model->initialSolve();
-  model->setHintParam(OsiDoDualInInitial,saveHint2,saveStrength2);
-  model->setHintParam(OsiDoPresolveInInitial,saveHint,saveStrength);
+    // Back to startModel_;
+    OsiSolverInterface * model = originalModel_;
+    // Use number of columns in original
+    int numberColumns = model->getNumCols();
+    const double * columnLower = model->getColLower();
+    int iColumn;
+    for (iColumn=0;iColumn<numberColumns;iColumn++) {
+      if (model->isInteger(iColumn)) 
+	model->setColUpper(iColumn,columnLower[iColumn]);
+    }
+  } 
+  //originalModel_->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
+  originalModel_->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
+  originalModel_->initialSolve();
+  originalModel_->setHintParam(OsiDoDualInInitial,saveHint2,saveStrength2);
+  originalModel_->setHintParam(OsiDoPresolveInInitial,saveHint,saveStrength);
 }
 /* Return model with useful modifications.  
    If constraints true then adds any x+y=1 or x-y=0 constraints
