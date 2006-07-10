@@ -1,7 +1,10 @@
 /* inc/config_cgl.h.in.  Generated from configure.ac by autoheader.  */
 
-/* If defined, debug sanity checks are performed during runtime */
-#undef COIN_DEBUG
+/* Define to the debug sanity check level (0 is no test) */
+#undef COIN_CGL_CHECKLEVEL
+
+/* Define to the debug verbosity level (0 is no output) */
+#undef COIN_CGL_VERBOSITY
 
 /* Define to 1 if the Cbc package is used */
 #undef COIN_HAS_CBC

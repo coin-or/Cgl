@@ -21,8 +21,11 @@ unitTest_LDADD = ../src/libCgl.la
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows
-AM_CPPFLAGS = -I`$(CYGPATH_W) $(COINUTILSSRCDIR)/src` \
+AM_CPPFLAGS = \
+	-I`$(CYGPATH_W) $(COINUTILSSRCDIR)/src` \
+	-I`$(CYGPATH_W) $(COINUTILSOBJDIR)/inc` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src` \
+	-I`$(CYGPATH_W) $(OSIOBJDIR)/inc` \
 	-I`$(CYGPATH_W) $(srcdir)/../src` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglFlowCover` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglGomory` \
@@ -65,10 +68,12 @@ if COIN_HAS_CPX
 endif
 
 if COIN_HAS_DYLP
-  AM_CPPFLAGS += -I`$(CYGPATH_W) $(DYLPSRCDIR)/src` \
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(DYLPSRCDIR)/src/Dylp` \
+	-I`$(CYGPATH_W) $(DYLPSRCDIR)/src/DylpStdLib` \
+	-I`$(CYGPATH_W) $(DYLPOBJDIR)/inc` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiDylp`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiDylp/libOsiDylp.la \
-	$(DYLPOBJDIR)/src/libDylp.la
+	$(DYLPOBJDIR)/src/Dylp/libDylp.la
   LIBS += `cat $(DYLPOBJDIR)/dylp_addlibs.txt`
 endif
 
