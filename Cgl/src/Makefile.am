@@ -43,6 +43,7 @@ libCgl_la_DEPENDENCIES = $(libCgl_la_LIBADD)
 # being compiled.
 AM_CPPFLAGS = \
 	-I`$(CYGPATH_W) $(COINUTILSSRCDIR)/src` \
+	-I`$(CYGPATH_W) $(COINUTILSOBJDIR)/inc` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src`
 
 # This line is necessary to allow VPATH compilation with MS compilers

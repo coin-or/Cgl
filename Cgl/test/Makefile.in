@@ -68,11 +68,13 @@ noinst_PROGRAMS = unitTest$(EXEEXT)
 @COIN_HAS_CPX_TRUE@	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiCpx`
 
 @COIN_HAS_CPX_TRUE@am__append_8 = $(OSIOBJDIR)/src/OsiCpx/libOsiCpx.la
-@COIN_HAS_DYLP_TRUE@am__append_9 = -I`$(CYGPATH_W) $(DYLPSRCDIR)/src` \
+@COIN_HAS_DYLP_TRUE@am__append_9 = -I`$(CYGPATH_W) $(DYLPSRCDIR)/src/Dylp` \
+@COIN_HAS_DYLP_TRUE@	-I`$(CYGPATH_W) $(DYLPSRCDIR)/src/DylpStdLib` \
+@COIN_HAS_DYLP_TRUE@	-I`$(CYGPATH_W) $(DYLPOBJDIR)/inc` \
 @COIN_HAS_DYLP_TRUE@	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiDylp`
 
 @COIN_HAS_DYLP_TRUE@am__append_10 = $(OSIOBJDIR)/src/OsiDylp/libOsiDylp.la \
-@COIN_HAS_DYLP_TRUE@	$(DYLPOBJDIR)/src/libDylp.la
+@COIN_HAS_DYLP_TRUE@	$(DYLPOBJDIR)/src/Dylp/libDylp.la
 
 @COIN_HAS_DYLP_TRUE@am__append_11 = `cat $(DYLPOBJDIR)/dylp_addlibs.txt`
 @COIN_HAS_FMP_TRUE@am__append_12 = -I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiFmp`
@@ -134,7 +136,7 @@ unitTest_OBJECTS = $(am_unitTest_OBJECTS)
 @COIN_HAS_CPX_TRUE@	$(OSIOBJDIR)/src/OsiCpx/libOsiCpx.la
 @COIN_HAS_DYLP_TRUE@am__DEPENDENCIES_4 =  \
 @COIN_HAS_DYLP_TRUE@	$(OSIOBJDIR)/src/OsiDylp/libOsiDylp.la \
-@COIN_HAS_DYLP_TRUE@	$(DYLPOBJDIR)/src/libDylp.la
+@COIN_HAS_DYLP_TRUE@	$(DYLPOBJDIR)/src/Dylp/libDylp.la
 @COIN_HAS_FMP_TRUE@am__DEPENDENCIES_5 =  \
 @COIN_HAS_FMP_TRUE@	$(OSIOBJDIR)/src/OsiFmp/libOsiFmp.la
 @COIN_HAS_GLPK_TRUE@am__DEPENDENCIES_6 =  \
@@ -206,8 +208,6 @@ CLPOBJDIR = @CLPOBJDIR@
 CLPSRCDIR = @CLPSRCDIR@
 COINUTILSOBJDIR = @COINUTILSOBJDIR@
 COINUTILSSRCDIR = @COINUTILSSRCDIR@
-COIN_DEBUG_FALSE = @COIN_DEBUG_FALSE@
-COIN_DEBUG_TRUE = @COIN_DEBUG_TRUE@
 COIN_HAS_CBC_FALSE = @COIN_HAS_CBC_FALSE@
 COIN_HAS_CBC_TRUE = @COIN_HAS_CBC_TRUE@
 COIN_HAS_CGL_FALSE = @COIN_HAS_CGL_FALSE@
@@ -248,6 +248,8 @@ CXXDEFS = @CXXDEFS@
 CXXDEPMODE = @CXXDEPMODE@
 CXXFLAGS = @CXXFLAGS@
 CYGPATH_W = @CYGPATH_W@
+DBG_CFLAGS = @DBG_CFLAGS@
+DBG_CXXFLAGS = @DBG_CXXFLAGS@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 DYLPOBJDIR = @DYLPOBJDIR@
@@ -294,6 +296,8 @@ MPICXX = @MPICXX@
 MSKINCDIR = @MSKINCDIR@
 MSKLIB = @MSKLIB@
 OBJEXT = @OBJEXT@
+OPT_CFLAGS = @OPT_CFLAGS@
+OPT_CXXFLAGS = @OPT_CXXFLAGS@
 OSIOBJDIR = @OSIOBJDIR@
 OSISRCDIR = @OSISRCDIR@
 OSLINCDIR = @OSLINCDIR@
@@ -386,8 +390,10 @@ unitTest_LDADD = ../src/libCgl.la $(am__append_2) $(am__append_5) \
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows
 AM_CPPFLAGS = -I`$(CYGPATH_W) $(COINUTILSSRCDIR)/src` -I`$(CYGPATH_W) \
-	$(OSISRCDIR)/src` -I`$(CYGPATH_W) $(srcdir)/../src` \
-	-I`$(CYGPATH_W) $(srcdir)/../src/CglFlowCover` -I`$(CYGPATH_W) \
+	$(COINUTILSOBJDIR)/inc` -I`$(CYGPATH_W) $(OSISRCDIR)/src` \
+	-I`$(CYGPATH_W) $(OSIOBJDIR)/inc` -I`$(CYGPATH_W) \
+	$(srcdir)/../src` -I`$(CYGPATH_W) \
+	$(srcdir)/../src/CglFlowCover` -I`$(CYGPATH_W) \
 	$(srcdir)/../src/CglGomory` -I`$(CYGPATH_W) \
 	$(srcdir)/../src/CglKnapsackCover` -I`$(CYGPATH_W) \
 	$(srcdir)/../src/CglOddHole` -I`$(CYGPATH_W) \
