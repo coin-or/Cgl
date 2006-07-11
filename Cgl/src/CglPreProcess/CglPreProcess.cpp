@@ -316,14 +316,17 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   }
   OsiSolverInterface * returnModel=NULL;
   int numberChanges;
+  startModel_->initialSolve();
+  if (!startModel_->isProvenOptimal()) {
+    if (!startModel_->isProvenDualInfeasible()) {
+      handler_->message(CGL_INFEASIBLE,messages_)<< CoinMessageEol ;
+    } else {
+      handler_->message(CGL_UNBOUNDED,messages_)<< CoinMessageEol ;
+    }
+    return NULL;
+  }
   if (!numberSolvers_) {
     // just fix
-    startModel_->initialSolve();
-    if (!startModel_->isProvenOptimal()) {
-      handler_->message(CGL_INFEASIBLE,messages_)
-        <<CoinMessageEol;
-      return NULL;
-    }
     OsiSolverInterface * newModel = modified(startModel_,false,numberChanges,0);
     if (startModel_!=originalModel_)
       delete startModel_;
