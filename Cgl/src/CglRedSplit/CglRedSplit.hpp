@@ -29,7 +29,13 @@ public:
 
       Insert the generated cuts into OsiCuts cs.
 
-      Note: When calling the generator, the solver interface si 
+      Warning: This generator currently works only with the Lp solvers Clp or 
+      Cplex9.0 or higher. It requires access to the optimal tableau and 
+      optimal basis inverse and makes assumptions on the way slack variables 
+      are added by the solver. The Osi implementations for Clp and Cplex 
+      verify these assumptions.
+
+      When calling the generator, the solver interface si 
       must contain an optimized
       problem and information related to the optimal basis must be available 
       through the OsiSolverInterface methods (si->optimalBasisIsAvailable()
