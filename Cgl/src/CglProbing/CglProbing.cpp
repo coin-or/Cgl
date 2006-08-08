@@ -80,7 +80,6 @@ public:
     const int * xIndices = x.row().getIndices();
     const double * xElements = x.row().getElements();
     size_t hashValue;
-    assert (sizeof(size_t)==sizeof(unsigned int));
     double value=1.0;
     if (xLb>-1.0e10)
       value += xLb*multiplier[0];
