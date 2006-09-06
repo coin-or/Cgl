@@ -263,7 +263,6 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
           //double value = ceil(rowLower[i]);
           if(!ncSi)
           {
-            si.writeMps("WTF");
             ncSi = const_cast<OsiSolverInterface *>(&si);
           }
           integerSlacks_[i]=false;
@@ -275,7 +274,6 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
           //double value = floor(rowUpper[i]);
           if(!ncSi)
           {
-            si.writeMps("WTF");
             ncSi = const_cast<OsiSolverInterface *>(&si);
           }
           integerSlacks_[i]=false;
@@ -403,7 +401,7 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
 #endif
   {
     handler_ = new CoinMessageHandler();
-    handler_->setLogLevel(1);
+    handler_->setLogLevel(0);
     messages_ = LapMessages();
 #ifdef DO_STAT
     logStream = &std::cout;
