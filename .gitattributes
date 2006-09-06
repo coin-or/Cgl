@@ -7,6 +7,15 @@ Cgl/configure.ac -text
 Cgl/examples/Makefile.in -text
 Cgl/examples/cgl1.cpp -text
 Cgl/inc/config_cgl.h.in -text
+Cgl/src/CglLandP/CglLandP.cpp -text
+Cgl/src/CglLandP/CglLandP.hpp -text
+Cgl/src/CglLandP/CglLandPSimplex.cpp -text
+Cgl/src/CglLandP/CglLandPSimplex.hpp -text
+Cgl/src/CglLandP/CglLandPTest.cpp -text
+Cgl/src/CglLandP/CglLandPValidator.cpp -text
+Cgl/src/CglLandP/CglLandPValidator.hpp -text
+Cgl/src/CglLandP/Makefile.am -text
+Cgl/src/CglLandP/Makefile.in -text
 /LICENSE -text
 /README -text
 /config.guess -text
