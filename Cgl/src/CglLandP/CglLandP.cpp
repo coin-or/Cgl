@@ -139,34 +139,38 @@ CglLandP::Parameters & CglLandP::Parameters::operator=(const Parameters &other){
   }
 
 CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
-  nBasics_ = source.nBasics_;
-  nNonBasics_ = source.nNonBasics_; 
-  if(basics_ == NULL) delete [] basics_; basics_ = NULL;
-  if(nonBasics_ == NULL) delete [] nonBasics_; nonBasics_ = NULL;
-  if(basis_ == NULL) delete [] basis_; basis_ = NULL;
-  if(colsol_ == NULL) delete [] colsol_; colsol_ = NULL;
-  if(slacks_ == NULL) delete [] slacks_; slacks_ = NULL;
-  if(integerSlacks_ == NULL) delete [] integerSlacks_; integerSlacks_ = NULL;
-  if(nBasics_>0)
+  if(this != &source)
   {
-    basics_ = new int[nBasics_];
-    CoinCopyN(source.basics_, nBasics_, basics_);
-    integerSlacks_ = new bool [nBasics_];
-    CoinCopyN(source.integerSlacks_, nBasics_, integerSlacks_);     
+    nBasics_ = source.nBasics_;
+    nNonBasics_ = source.nNonBasics_; 
+    if(basics_ == NULL) delete [] basics_; basics_ = NULL;
+    if(nonBasics_ == NULL) delete [] nonBasics_; nonBasics_ = NULL;
+    if(basis_ == NULL) delete [] basis_; basis_ = NULL;
+    if(colsol_ == NULL) delete [] colsol_; colsol_ = NULL;
+    if(slacks_ == NULL) delete [] slacks_; slacks_ = NULL;
+    if(integerSlacks_ == NULL) delete [] integerSlacks_; integerSlacks_ = NULL;
+    if(nBasics_>0)
+    {
+      basics_ = new int[nBasics_];
+      CoinCopyN(source.basics_, nBasics_, basics_);
+      integerSlacks_ = new bool [nBasics_];
+      CoinCopyN(source.integerSlacks_, nBasics_, integerSlacks_);     
+    }
+    if(nNonBasics_>0)
+    {
+      nonBasics_ = new int[nNonBasics_];
+      CoinCopyN(source.nonBasics_, nBasics_, nonBasics_);
+    }
+    if(nBasics_ + nNonBasics_ > 0)
+    {
+      colsol_ = new double[nBasics_ + nNonBasics_];
+      slacks_ = &colsol_[nNonBasics_];
+      CoinCopyN(source.colsol_, nBasics_ + nNonBasics_, colsol_);
   }
-  if(nNonBasics_>0)
-  {
-    nonBasics_ = new int[nNonBasics_];
-    CoinCopyN(source.nonBasics_, nBasics_, nonBasics_);
+    if(source.basis_!=NULL)
+      basis_ = new CoinWarmStartBasis(*source.basis_);
   }
-  if(nBasics_ + nNonBasics_ > 0)
-  {
-    colsol_ = new double[nBasics_ + nNonBasics_];
-    slacks_ = &colsol_[nNonBasics_];
-    CoinCopyN(source.colsol_, nBasics_ + nNonBasics_, colsol_);
-  }
-  if(source.basis_!=NULL)
-    basis_ = new CoinWarmStartBasis(*source.basis_);
+  return *this;
 }
 
   void 
