@@ -184,8 +184,8 @@ int main (int argc, const char *argv[])
 // Display message on stdout and stderr
 void testingMessage( const char * const msg )
 {
-   std::cerr <<msg;
-   //cout <<endl <<"*****************************************"
-   //     <<endl <<msg <<endl;
+  //std::cerr <<msg;
+   std::cout <<std::endl <<"*****************************************"
+	     <<std::endl <<msg <<std::endl;
 }
 

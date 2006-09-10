@@ -1409,7 +1409,10 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 
   // get branch and bound cutoff
   double cutoff;
-  si.getDblParam(OsiDualObjectiveLimit,cutoff);
+  bool cutoff_available = si.getDblParam(OsiDualObjectiveLimit,cutoff);
+  if (!cutoff_available) { // cut off isn't set or isn't valid
+    cutoff = si.getInfinity();
+  }
   cutoff *= si.getObjSense();
   if (fabs(cutoff)>1.0e30)
     assert (cutoff>1.0e30);
@@ -1454,7 +1457,10 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     const double * colsol =si.getColSolution();
     double direction = si.getObjSense();
     double cutoff;
-    si.getDblParam(OsiDualObjectiveLimit,cutoff);
+    bool cutoff_available = si.getDblParam(OsiDualObjectiveLimit,cutoff);
+    if (!cutoff_available) { // cut off isn't set or isn't valid
+      cutoff = si.getInfinity();
+    }
     cutoff *= direction;
     if (fabs(cutoff)>1.0e30)
       assert (cutoff>1.0e30);
@@ -2471,7 +2477,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
   int ipass=0,nfixed=-1;
 
   double cutoff;
-  si.getDblParam(OsiDualObjectiveLimit,cutoff);
+  bool cutoff_available = si.getDblParam(OsiDualObjectiveLimit,cutoff);
+  if (!cutoff_available) { // cut off isn't set or isn't valid
+    cutoff = si.getInfinity();
+  }
   cutoff *= direction;
   if (fabs(cutoff)>1.0e30)
     assert (cutoff>1.0e30);
@@ -4029,7 +4038,10 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
   int ipass=0,nfixed=-1;
 
   double cutoff;
-  si.getDblParam(OsiDualObjectiveLimit,cutoff);
+  bool cutoff_available = si.getDblParam(OsiDualObjectiveLimit,cutoff);
+  if (!cutoff_available) { // cut off isn't set or isn't valid
+    cutoff = si.getInfinity();
+  }
   cutoff *= si.getObjSense();
   if (fabs(cutoff)>1.0e30)
     assert (cutoff>1.0e30);
