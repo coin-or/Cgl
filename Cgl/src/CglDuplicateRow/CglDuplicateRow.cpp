@@ -17,6 +17,7 @@
 #include "CoinFinite.hpp"
 #include "OsiRowCutDebugger.hpp"
 #include "CglDuplicateRow.hpp"
+#include "CglStored.hpp"
 //-------------------------------------------------------------------
 // Generate duplicate row column cuts
 //------------------------------------------------------------------- 
@@ -30,8 +31,12 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   }
 #endif
   // Don't do in tree ?
-  if (info.inTree)
+  if (info.inTree) {
+    // but do any stored cuts
+    if (storedCuts_)
+      storedCuts_->generateCuts(si,cs,info);
     return;
+  }
   int numberColumns = matrix_.getNumCols();
   CoinPackedVector ubs;
   
@@ -52,11 +57,11 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   int nFixed=0;
   int i;
   int numberRows=matrix_.getNumRows();
+  const double * rowLower = si.getRowLower();
+  const double * rowUpper = si.getRowUpper();
   int * effectiveRhs = CoinCopyOfArray(rhs_,numberRows);
   int * effectiveLower = CoinCopyOfArray(lower_,numberRows);
-  double * colUpper2 = new double [numberColumns];
-  bool infeasible=false;
-  // mark bad rows
+  // mark bad rows - also used for domination
   for (i=0;i<numberRows;i++) {
     duplicate_[i]=-1;
     int j;
@@ -68,8 +73,264 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       }
     }
   }
+  double * colUpper2 = CoinCopyOfArray(columnUpper,numberColumns);
+  if (!info.pass&&(mode_&2)!=0) {
+    // First look at duplicate or dominated columns
+    double * random = new double[numberRows];
+    double * sort = new double[numberColumns+1];
+    for (i=0;i<numberRows;i++) {
+      if (rowLower[i]<-1.0e20||rowUpper[i]>1.0e20)
+	random[i]=0.0;
+      else
+	random[i] = CoinDrand48();
+    }
+    int * which = new int[numberColumns];
+    int nPossible=0;
+    for ( i=0;i<numberColumns;i++) {
+      if (si.isBinary(i)) {
+	double value = 0.0;
+	for (int jj=columnStart[i];jj<columnStart[i]+columnLength[i];jj++) {
+	  int iRow = row[jj];
+	  value += element[jj]*random[iRow];
+	}
+	sort[nPossible]=value;
+	which[nPossible++]=i;
+      }
+    }
+    sort[nPossible]=COIN_DBL_MAX;
+    CoinSort_2(sort,sort+nPossible,which);
+    int last=maximumDominated_-1;
+    double lastValue=-1.0;
+    const double *objective = si.getObjCoefficients() ;
+    double direction = si.getObjSense();
+    // arrays for checking
+    double * elementEqualJ = new double [2*numberRows];
+    CoinZeroN(elementEqualJ,numberRows); // for memory checkers
+    double * elementGeJ = elementEqualJ + numberRows;
+    CoinZeroN(elementGeJ,numberRows);
+    int * rowEqualJ = new int[2*numberRows];
+    CoinZeroN(rowEqualJ,numberRows); // for memory checkers
+    int * rowGeJ = rowEqualJ + numberRows;
+    char * mark = new char[numberRows];
+    CoinZeroN(mark,numberRows);
+    for (i=0;i<nPossible+1;i++) {
+      if (sort[i]>lastValue) {
+	if (i-last<=maximumDominated_) {
+	  // look to see if dominated
+	  for (int j=last;j<i;j++) {
+	    int jColumn = which[j];
+	    // skip if already fixed
+	    if (!colUpper2[jColumn])
+	      continue;
+	    int nGeJ=0;
+	    int nEqualJ=0;
+	    int jj;
+	    for (jj=columnStart[jColumn];jj<columnStart[jColumn]+columnLength[jColumn];jj++) {
+	      int iRow = row[jj];
+	      if (random[iRow]) {
+		elementEqualJ[nEqualJ]=element[jj];
+		rowEqualJ[nEqualJ++]=iRow;
+	      } else {
+		// swap sign so all rows look like G
+		elementGeJ[iRow]=(rowUpper[iRow]>1.0e20) ? element[jj] : -element[jj];
+		rowGeJ[nGeJ++]=iRow;
+	      }
+	    }
+	    double objValueJ = objective[jColumn]*direction;
+	    for (int k=j+1;k<i;k++) {
+	      int kColumn = which[k];
+	      // skip if already fixed
+	      if (!colUpper2[kColumn])
+		continue;
+	      int nEqualK=0;
+	      // -2 no good, -1 J dominates K, 0 unknown or equal, 1 K dominates J
+	      int dominate=0;
+	      // mark
+	      int kk;
+	      for (kk=0;kk<nGeJ;kk++)
+		mark[rowGeJ[kk]]=1;
+	      for (kk=columnStart[kColumn];kk<columnStart[kColumn]+columnLength[kColumn];kk++) {
+		int iRow = row[kk];
+		if (random[iRow]) {
+		  if (iRow!=rowEqualJ[nEqualK]||
+		      element[kk]!=elementEqualJ[nEqualK]) {
+		    dominate=-2;
+		    break;
+		  } else {
+		    nEqualK++;
+		  }
+		} else {
+		  // swap sign so all rows look like G
+		  double valueK = (rowUpper[iRow]>1.0e20) ? element[kk] : -element[kk];
+		  double valueJ = elementGeJ[iRow];
+		  mark[iRow]=0;
+		  if (valueJ==valueK) {
+		    // equal
+		  } else if (valueJ>valueK) {
+		    // J would dominate K
+		    if (dominate==1) {
+		      // no good
+		      dominate=-2;
+		      break;
+		    } else {
+		      dominate=-1;
+		    }
+		  } else {
+		    // K would dominate J
+		    if (dominate==-1) {
+		      // no good
+		      dominate=-2;
+		      break;
+		    } else {
+		      dominate=1;
+		    }
+		  }
+		}
+	      }
+	      kk=0;
+	      if (dominate!=-2) {
+		// unmark and check
+		for (;kk<nGeJ;kk++) {
+		  int iRow = rowGeJ[kk];
+		  if (mark[iRow]) {
+		    double valueK = 0.0;
+		    double valueJ = elementGeJ[iRow];
+		    if (valueJ>valueK) {
+		      // J would dominate K
+		      if (dominate==1) {
+			// no good
+			dominate=-2;
+			break;
+		      } else {
+			dominate=-1;
+		      }
+		    } else {
+		      // K would dominate J
+		      if (dominate==-1) {
+			// no good
+			dominate=-2;
+			break;
+		      } else {
+			dominate=1;
+		      }
+		    }
+		  }
+		  mark[iRow]=0;
+		}
+	      } 
+	      // just unmark rest
+	      for (;kk<nGeJ;kk++)
+		mark[rowGeJ[kk]]=0;
+	      if (nEqualK==nEqualJ&&dominate!=-2) {
+		double objValueK = objective[kColumn]*direction;
+		if (objValueJ==objValueK) {
+		  if (dominate<=0) {
+		    // say J dominates
+		    assert (colUpper2[kColumn]);
+		    dominate=-1;
+		  } else {
+		    // say K dominates
+		    assert (colUpper2[jColumn]);
+		    dominate=1;
+		  }
+		} else if (objValueJ<objValueK&&dominate<=0) {
+		  // say J dominates
+		  assert (colUpper2[kColumn]);
+		  dominate=-1;
+		} else if (objValueJ>objValueK&&dominate==1) {
+		  // say K dominates
+		  assert (colUpper2[jColumn]);
+		  dominate=1;
+		} else {
+		  dominate=0;
+		}
+		if (dominate) {
+		  // see if both can be 1
+		  bool canFix=false;
+		  for (int jj=0;jj<nEqualJ;jj++) {
+		    double value = 2.0*elementEqualJ[jj];
+		    int iRow = rowEqualJ[jj];
+		    if (duplicate_[iRow]==-1&&rowUpper[iRow]<1.999999) {
+		      canFix=true;
+		    } else {
+		      double minSum=0.0;
+		      double maxSum=0.0;
+		      for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+			int iColumn = column[j];
+			if (iColumn!=jColumn&&iColumn!=kColumn) {
+			  double elValue = elementByRow[j];
+			  double lo = columnLower[iColumn];
+			  double up = columnUpper[iColumn];
+			  if (elValue>0.0) {
+			    minSum += lo*elValue;
+			    maxSum += up*elValue;
+			  } else {
+			    maxSum += lo*elValue;
+			    minSum += up*elValue;
+			  }
+			}
+		      }
+		      if (minSum+value>rowUpper[iRow]+1.0e-5)
+			canFix=true;
+		      else if (maxSum+value<rowLower[iRow]-1.0e-5)
+			canFix=true;
+		    }
+		    if (canFix)
+		      break;
+		  }
+		  if (canFix) {
+		    int iColumn = (dominate>0) ? jColumn : kColumn;
+		    nFixed++;
+		    assert (!columnLower[iColumn]);
+		    colUpper2[iColumn]=0.0;
+		    ubs.insert(iColumn,0.0);
+		    if (iColumn==jColumn)
+		      break; // no need to carry on on jColumn
+		  } else {
+		    int iDominated = (dominate>0) ? jColumn : kColumn;
+		    int iDominating = (dominate<0) ? jColumn : kColumn;
+		    double els[]={1.0,-1.0};
+		    int inds[2];
+		    inds[0]=iDominating;
+		    inds[1]=iDominated;
+		    if (!storedCuts_)
+		      storedCuts_ = new CglStored();
+		    storedCuts_->addCut(0.0,COIN_DBL_MAX,2,inds,els);
+		  }
+		}
+	      }
+	    }
+	    for (jj=0;jj<nGeJ;jj++) {
+	      int iRow = rowGeJ[jj];
+	      elementGeJ[iRow]=0.0;
+	    }
+	  }
+	}
+	last=i;
+	lastValue = sort[i];
+      }
+    }
+    delete [] mark;
+    delete [] elementEqualJ;
+    delete [] rowEqualJ;
+    delete [] random;
+    delete [] sort;
+    delete [] which;
+    int numberCuts = storedCuts_ ? storedCuts_->sizeRowCuts() : 0;
+#ifdef COIN_DEVELOP
+    if (nFixed||numberCuts) 
+      printf("** %d fixed and %d cuts from domination\n",nFixed,numberCuts);
+#endif
+  }
+  bool infeasible=false;
+  // if we were just doing columns - mark all as bad
+  if ((mode_&1)==0) {
+    for (i=0;i<numberRows;i++) {
+      duplicate_[i]=-3;
+      rhs_[i]=-1000000;
+    }
+  }
   for ( i=0;i<numberColumns;i++) {
-    colUpper2[i]=columnUpper[i];
     if (columnLower[i]) {
       double value = columnLower[i];
       for (int jj=columnStart[i];jj<columnStart[i]+columnLength[i];jj++) {
@@ -294,8 +555,11 @@ CglDuplicateRow::CglDuplicateRow ()
   rhs_(NULL),
   duplicate_(NULL),
   lower_(NULL),
+  storedCuts_(NULL),
+  maximumDominated_(1000),
   maximumRhs_(1),
   sizeDynamic_(INT_MAX),
+  mode_(3),
   logLevel_(0)
 {
 }
@@ -305,8 +569,11 @@ CglDuplicateRow::CglDuplicateRow(OsiSolverInterface * solver)
     rhs_(NULL),
     duplicate_(NULL),
     lower_(NULL),
+    storedCuts_(NULL),
+    maximumDominated_(1000),
     maximumRhs_(1),
     sizeDynamic_(INT_MAX),
+    mode_(3),
     logLevel_(0)
 {
   refreshSolver(solver);
@@ -320,14 +587,19 @@ CglDuplicateRow::CglDuplicateRow (  const CglDuplicateRow & rhs)
   CglCutGenerator(rhs),
   matrix_(rhs.matrix_),
   matrixByRow_(rhs.matrixByRow_),
+  storedCuts_(NULL),
+  maximumDominated_(rhs.maximumDominated_),
   maximumRhs_(rhs.maximumRhs_),
   sizeDynamic_(rhs.sizeDynamic_),
+  mode_(rhs.mode_),
   logLevel_(rhs.logLevel_)
 {  
   int numberRows=matrix_.getNumRows();
   rhs_ = CoinCopyOfArray(rhs.rhs_,numberRows);
   duplicate_ = CoinCopyOfArray(rhs.duplicate_,numberRows);
   lower_ = CoinCopyOfArray(rhs.lower_,numberRows);
+  if (rhs.storedCuts_)
+    storedCuts_ = new CglStored(*rhs.storedCuts_);
 }
 
 //-------------------------------------------------------------------
@@ -348,6 +620,7 @@ CglDuplicateRow::~CglDuplicateRow ()
   delete [] rhs_;
   delete [] duplicate_;
   delete [] lower_;
+  delete storedCuts_;
 }
 
 //----------------------------------------------------------------
@@ -362,15 +635,21 @@ CglDuplicateRow::operator=(
     delete [] rhs_;
     delete [] duplicate_;
     delete [] lower_;
+    delete storedCuts_;
+    storedCuts_ = NULL;
     matrix_=rhs.matrix_;
     matrixByRow_=rhs.matrixByRow_;
+    maximumDominated_ = rhs.maximumDominated_;
     maximumRhs_=rhs.maximumRhs_;
     sizeDynamic_ = rhs.sizeDynamic_;
+    mode_ = rhs.mode_;
     logLevel_ = rhs.logLevel_;
     int numberRows=matrix_.getNumRows();
     rhs_ = CoinCopyOfArray(rhs.rhs_,numberRows);
     duplicate_ = CoinCopyOfArray(rhs.duplicate_,numberRows);
     lower_ = CoinCopyOfArray(rhs.lower_,numberRows);
+  if (rhs.storedCuts_)
+    storedCuts_ = new CglStored(*rhs.storedCuts_);
   }
   return *this;
 }
@@ -384,6 +663,7 @@ CglDuplicateRow::refreshSolver(OsiSolverInterface * solver)
   delete [] lower_;
   matrix_ = *solver->getMatrixByCol();
   matrix_.removeGaps();
+  matrix_.orderMatrix();
   matrixByRow_ = *solver->getMatrixByRow();
   int numberRows=matrix_.getNumRows();
   rhs_ = new int[numberRows];
@@ -433,6 +713,81 @@ CglDuplicateRow::refreshSolver(OsiSolverInterface * solver)
     }
   }
 }
+  /** Fix variables and find duplicate/dominated rows for the model of the 
+      solver interface, si.
+
+      This is a very simple minded idea but I (JJF) am using it in a project so thought
+      I might as well add it.  It should really be called before first solve and I may
+      modify CBC to allow for that.
+
+      This is designed for problems with few rows and many integer variables where the rhs
+      are <= or == and all coefficients and rhs are small integers.
+
+      If effective rhs is K then we can fix all variables with coefficients > K to their lower bounds
+      (effective rhs just means original with variables with nonzero lower bounds subtracted out).
+
+      If one row is a subset of another and the effective rhs are same we can fix some variables
+      and then the two rows are identical.
+
+      This version does deletions and fixings and may return stored cuts for
+      dominated columns 
+  */
+CglStored * 
+CglDuplicateRow::outDuplicates( OsiSolverInterface * solver)
+{
+  
+  CglTreeInfo info;
+  info.level = 0;
+  info.pass = 0;
+  int numberRows = solver->getNumRows();
+  info.formulation_rows = numberRows;
+  info.inTree = false;
+  info.strengthenRow= NULL;
+  info.pass = 0;
+  OsiCuts cs;
+  generateCuts(*solver,cs,info);
+  // Get rid of duplicate rows
+  int * which = new int[numberRows]; 
+  int numberDrop=0;
+  for (int iRow=0;iRow<numberRows;iRow++) {
+    if (duplicate_[iRow]==-2||duplicate_[iRow]>=0) 
+      which[numberDrop++]=iRow;
+  }
+  if (numberDrop) {
+    solver->deleteRows(numberDrop,which);
+  }
+  delete [] which;
+  // see if we have any column cuts
+  int numberColumnCuts = cs.sizeColCuts() ;
+  const double * columnLower = solver->getColLower();
+  const double * columnUpper = solver->getColUpper();
+  for (int k = 0;k<numberColumnCuts;k++) {
+    OsiColCut * thisCut = cs.colCutPtr(k) ;
+    const CoinPackedVector & lbs = thisCut->lbs() ;
+    const CoinPackedVector & ubs = thisCut->ubs() ;
+    int j ;
+    int n ;
+    const int * which ;
+    const double * values ;
+    n = lbs.getNumElements() ;
+    which = lbs.getIndices() ;
+    values = lbs.getElements() ;
+    for (j = 0;j<n;j++) {
+      int iColumn = which[j] ;
+      if (values[j]>columnLower[iColumn]) 
+        solver->setColLower(iColumn,values[j]) ;
+    }
+    n = ubs.getNumElements() ;
+    which = ubs.getIndices() ;
+    values = ubs.getElements() ;
+    for (j = 0;j<n;j++) {
+      int iColumn = which[j] ;
+      if (values[j]<columnUpper[iColumn]) 
+        solver->setColUpper(iColumn,values[j]) ;
+    }
+  }
+  return storedCuts_;
+}
 // Create C++ lines to get to current state
 std::string
 CglDuplicateRow::generateCpp( FILE * fp) 
@@ -448,6 +803,14 @@ CglDuplicateRow::generateCpp( FILE * fp)
     fprintf(fp,"3  duplicateRow.setMaximumRhs(%d);\n",maximumRhs_);
   else
     fprintf(fp,"4  duplicateRow.setMaximumRhs(%d);\n",maximumRhs_);
+  if (maximumDominated_!=other.maximumDominated_)
+    fprintf(fp,"3  duplicateRow.setMaximumDominated(%d);\n",maximumDominated_);
+  else
+    fprintf(fp,"4  duplicateRow.setMaximumDominated(%d);\n",maximumDominated_);
+  if (mode_!=other.mode_)
+    fprintf(fp,"3  duplicateRow.setMode(%d);\n",mode_);
+  else
+    fprintf(fp,"4  duplicateRow.setMode(%d);\n",mode_);
   if (getAggressiveness()!=other.getAggressiveness())
     fprintf(fp,"3  duplicateRow.setAggressiveness(%d);\n",getAggressiveness());
   else

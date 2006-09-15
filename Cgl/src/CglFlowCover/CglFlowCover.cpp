@@ -26,6 +26,7 @@
 
 
 #define CGLFLOW_DEBUG 0
+#define MY_FLOW_DEBUG 0
 //-------------------------------------------------------------------
 // Overloaded operator<< for printing VUB and VLB.
 //-------------------------------------------------------------------  
@@ -604,6 +605,19 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     
     double diff, tempD, lambda;
     int xID = -1;
+    if (knapRHS >1.0e10) {
+#if CGLFLOW_DEBUG
+      std::cout << "knapsack RHS too large. RETURN." << std::endl; 
+#endif
+      delete [] sign;                              
+      delete [] up; 
+      delete [] x;   
+      delete [] y;  
+      delete [] candidate;
+      delete [] label;
+      delete [] ratio;
+      return generated;
+    }
 
     while (tempSum < knapRHS + EPSILON_) { // Not a cover yet
 	diff = INFTY_;
@@ -788,7 +802,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	else
 	    label[ix] = CGLFLOW_COL_INCUTDONE;
     }
-    
+    //printf("mins %g %g\n",minNegM,minPlsM);
     if( index == 0 || numPlusPlus == 0) {
 	// No col in C++ and L-(not all). RETURN.
 #if CGLFLOW_DEBUG
@@ -845,9 +859,28 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	printf("mt[%i]=%f, M[%i]=%f\n",i-1, mt[i-1], i, M[i]);
 #endif
     }
-    
+    // Exit if very big M
+    if (M[index]>1.0e30) {
+#if CGLFLOW_DEBUG
+      std::cout << "M[index]>1.0e30. RETURN." << std::endl; 
+#endif
+      delete [] sign;
+      delete [] up; 
+      delete [] x;   
+      delete [] y;  
+      delete [] candidate;
+      delete [] label;
+      delete [] ratio;
+      delete [] rho;
+      delete [] xCoef;
+      delete [] yCoef;
+      delete [] mt; 
+      delete [] M; 
+      return generated;
+    }
     /* Get ml */
     double ml = CoinMin(sum, lambda);
+    //printf("ml %g sum %g lambda %g\n",ml,sum,lambda);
     /* rho_i = max[0, m_i - (minPlsM - lamda) - ml */
     if (t < index ) { /* rho exits only for t <= index-1 */
 	value = (minPlsM - lambda) + ml;
@@ -1003,6 +1036,8 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	}
     
 	cutLen = j;
+	// Skip if no elements ? - bug somewhere
+	assert (cutLen);
         
 	// Recheck the violation.
 	violation = 0.0;

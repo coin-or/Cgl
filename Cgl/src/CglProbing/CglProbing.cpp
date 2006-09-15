@@ -22,6 +22,7 @@
 #include "CglProbing.hpp"
 //#define PROBING_EXTRA_STUFF true
 #define PROBING_EXTRA_STUFF false
+#define FIXED_ALLOWANCE 10
 typedef struct {double infeasibility;int sequence;} double_int_pair;
 class double_int_pair_compare {
 public:
@@ -80,7 +81,6 @@ public:
     const int * xIndices = x.row().getIndices();
     const double * xElements = x.row().getElements();
     size_t hashValue;
-    assert (sizeof(size_t)==sizeof(unsigned int));
     double value=1.0;
     if (xLb>-1.0e10)
       value += xLb*multiplier[0];
@@ -1003,8 +1003,9 @@ static int nPath=0;
 // Generate disaggregation cuts
 //------------------------------------------------------------------- 
 void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-			      const CglTreeInfo info) const
+			      const CglTreeInfo info2) const
 {
+
 #ifdef CGL_DEBUG
   const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
   if (debugger&&debugger->onOptimalPath(si)) {
@@ -1031,7 +1032,7 @@ void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 #endif
   int saveRowCuts=rowCuts_;
   if (rowCuts_<0) {
-    if (info.inTree)
+    if (info2.inTree)
       rowCuts_=4;
     else
       rowCuts_=-rowCuts_;
@@ -1049,7 +1050,8 @@ void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   double * colLower = new double[nCols];
   double * colUpper = new double[nCols];
 
-  int ninfeas=gutsOfGenerateCuts(si,cs,rowLower,rowUpper,colLower,colUpper,info);
+  CglTreeInfo info = info2;
+  int ninfeas=gutsOfGenerateCuts(si,cs,rowLower,rowUpper,colLower,colUpper,&info);
   if (ninfeas) {
     // generate infeasible cut and return
     OsiRowCut rc;
@@ -1070,7 +1072,7 @@ void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 }
 int CglProbing::generateCutsAndModify(const OsiSolverInterface & si, 
 				      OsiCuts & cs,
-				      const CglTreeInfo info) 
+				      CglTreeInfo * info) 
 {
 #ifdef CGL_DEBUG
   const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
@@ -1098,7 +1100,7 @@ int CglProbing::generateCutsAndModify(const OsiSolverInterface & si,
 #endif
   int saveRowCuts=rowCuts_;
   if (rowCuts_<0) {
-    if (info.inTree)
+    if (info->inTree)
       rowCuts_=4;
     else
       rowCuts_=-rowCuts_;
@@ -1106,7 +1108,7 @@ int CglProbing::generateCutsAndModify(const OsiSolverInterface & si,
   int saveMode = mode_;
   bool rowCliques=false;
   if (!mode_) {
-    if (info.pass!=4||info.inTree) {
+    if (info->pass!=4||info->inTree) {
       mode_=1;
     } else {
       saveMode=1; // make sure do just once
@@ -1401,7 +1403,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                                    OsiCuts & cs ,
                                    double * rowLower, double * rowUpper,
                                    double * colLower, double * colUpper,
-                                   const CglTreeInfo info) const
+                                   CglTreeInfo * info) const
 {
   // Get basic problem information
   int nRows;
@@ -1447,7 +1449,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     }
   }
   bool feasible=true;
-  if (!info.inTree) {
+  if (!info->inTree) {
     // make more integer
     feasible = analyze(&si,intVar,colLower,colUpper);
   }
@@ -1503,8 +1505,8 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   }
   int ninfeas=0;
   // Set up maxes
-  int maxProbe = info.inTree ? maxProbe_ : maxProbeRoot_;
-  int maxElements = info.inTree ? maxElements_ : maxElementsRoot_;
+  int maxProbe = info->inTree ? maxProbe_ : maxProbeRoot_;
+  int maxElements = info->inTree ? maxElements_ : maxElementsRoot_;
 
   // Get objective offset
   double offset;
@@ -1572,10 +1574,14 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
   const int * rowLength = rowCopy->getVectorLengths(); 
   const double * rowElements = rowCopy->getElements();
-  
+  // Arrays so user can find out what happened
+  if (!lookedAt_) {
+    lookedAt_ = new int[nCols];
+  }
+  numberThisTime_=0;
   // Let us never add more than twice the number of rows worth of row cuts
   // Keep cuts out of cs until end so we can find duplicates quickly
-  int nRowsFake = info.inTree ? nRowsSafe/3 : nRowsSafe;
+  int nRowsFake = info->inTree ? nRowsSafe/3 : nRowsSafe;
   row_cut rowCut(nRowsFake);
   int * markR = new int [nRows];
   double * minR = new double [nRows];
@@ -1629,8 +1635,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	}
       }
       if (maxProbe>0) {
-        int * look = new int[nCols];
-        int nLook=0;
+        numberThisTime_=0;
         // get min max etc for rows
         tighten2(colLower, colUpper, column, rowElements,
                  rowStart, rowLength, rowLower, rowUpper,
@@ -1645,22 +1650,22 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
           for (i=0;i<nCols;i++) {
             if (intVar[i]&&colUpper[i]-colLower[i]>1.0e-8) {
               double away = fabs(0.5-(colsol[i]-floor(colsol[i])));
-              if (away<0.49999||!info.inTree) {
-                array[nLook].infeasibility=away;
-                array[nLook++].sequence=i;
+              if (away<0.49999||!info->inTree) {
+                array[numberThisTime_].infeasibility=away;
+                array[numberThisTime_++].sequence=i;
               }
             }
           }
-          std::sort(array,array+nLook,double_int_pair_compare());
-          nLook=CoinMin(nLook,maxProbe);
-          for (i=0;i<nLook;i++) {
-            look[i]=array[i].sequence;
+          std::sort(array,array+numberThisTime_,double_int_pair_compare());
+          numberThisTime_=CoinMin(numberThisTime_,maxProbe);
+          for (i=0;i<numberThisTime_;i++) {
+            lookedAt_[i]=array[i].sequence;
           }
           delete [] array;
         } else {
           for (i=0;i<nCols;i++) {
             if (intVar[i]&&colUpper[i]-colLower[i]>1.0e-8) {
-              look[nLook++]=i;
+              lookedAt_[numberThisTime_++]=i;
             }
           }
         }
@@ -1669,18 +1674,19 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
           if (rowLength[i]>maxElements)
             markR[i]=-2;
         }
+	// sort to be clean
+	std::sort(lookedAt_,lookedAt_+numberThisTime_);
         if (!numberCliques_) {
           ninfeas= probe(si, debugger, cs, colLower, colUpper, rowCopy,
                          rowLower, rowUpper,
                          intVar, minR, maxR, markR,
-                         look,nLook,info);
+                         info);
         } else {
           ninfeas= probeCliques(si, debugger, cs, colLower, colUpper, rowCopy,
                                 rowLower, rowUpper,
                                 intVar, minR, maxR, markR,
-                                look,nLook,info);
+                                info);
         }
-        delete [] look;
       }
     }
   } else if (maxProbe>0) {
@@ -1688,8 +1694,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     // could check more thoroughly that integers are correct
     assert(numberIntegers==numberIntegers_);
     // make up list of new variables to look at 
-    int * look = new int[nCols];
-    int nLook=0;
+    numberThisTime_=0;
     const double * colsol = si.getColSolution();
     double_int_pair * array = new double_int_pair [nCols];
 #   ifdef ZEROFAULT
@@ -1699,15 +1704,17 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       int j=cutVector_[i].sequence;
       if (!cutVector_[i].index&&colUpper[j]-colLower[j]>1.0e-8) {
 	double away = fabs(0.5-(colsol[j]-floor(colsol[j])));
-        array[nLook].infeasibility=away;
-        array[nLook++].sequence=i;
+        array[numberThisTime_].infeasibility=away;
+        array[numberThisTime_++].sequence=i;
       }
     }
-    std::sort(array,array+nLook,double_int_pair_compare());
-    nLook=CoinMin(nLook,maxProbe);
-    for (i=0;i<nLook;i++) {
-      look[i]=array[i].sequence;
+    std::sort(array,array+numberThisTime_,double_int_pair_compare());
+    numberThisTime_=CoinMin(numberThisTime_,maxProbe);
+    for (i=0;i<numberThisTime_;i++) {
+      lookedAt_[i]=array[i].sequence;
     }
+    // sort to be clean
+    std::sort(lookedAt_,lookedAt_+numberThisTime_);
     delete [] array;
     // get min max etc for rows
     tighten2(colLower, colUpper, column, rowElements,
@@ -1724,7 +1731,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       ninfeas= probeCliques(si, debugger, csNew, colLower, colUpper, rowCopy,
 		     rowLower, rowUpper,
 		     intVar, minR, maxR, markR,
-		     look,nLook,info);
+		     info);
     }
     if (!ninfeas) {
       // go through row cuts
@@ -2215,7 +2222,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                   if (logLevel_>1)
                     printf("XX Could eliminate one of %d %d 0-1 variables %c\n",i,affected,
                            (lastAction>=0) ? '*' : ' ');
-                  if (info.strengthenRow) {
+                  if (info->strengthenRow) {
                     OsiRowCut rc;
                     int index[2];
                     double element[2];
@@ -2254,7 +2261,6 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       }
       delete [] sortit;
     }
-    delete [] look;
     if (cutVector_) {
       // now see if any disaggregation cuts are violated
       for (i=0;i<number01Integers_;i++) {
@@ -2369,7 +2375,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   delete [] maxR;
   // Add in row cuts
   if (!ninfeas) {
-    rowCut.addCuts(cs,info.strengthenRow);
+    rowCut.addCuts(cs,info->strengthenRow);
   }
   // delete stuff
   if (!rowCopy_) {
@@ -2401,8 +2407,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		       double * rowLower, double * rowUpper,
 		       char * intVar, double * minR, double * maxR, 
 		       int * markR, 
-		       int * look, int nLook,
-                       const CglTreeInfo info) const
+                       CglTreeInfo * info) const
 {
   int nRows=rowCopy->getNumRows();
   int nRowsSafe=CoinMin(nRows,si.getNumRows());
@@ -2425,12 +2430,12 @@ int CglProbing::probe( const OsiSolverInterface & si,
   int * index = new int[nCols];
   // Let us never add more than twice the number of rows worth of row cuts
   // Keep cuts out of cs until end so we can find duplicates quickly
-  int nRowsFake = info.inTree ? nRowsSafe/3 : nRowsSafe;
+  int nRowsFake = info->inTree ? nRowsSafe/3 : nRowsSafe;
   row_cut rowCut(nRowsFake);
   CoinPackedMatrix * columnCopy=NULL;
   // Set up maxes
-  int maxStack = info.inTree ? maxStack_ : maxStackRoot_;
-  int maxPass = info.inTree ? maxPass_ : maxPassRoot_;
+  int maxStack = info->inTree ? maxStack_ : maxStackRoot_;
+  int maxPass = info->inTree ? maxPass_ : maxPassRoot_;
   if (!rowCopy_) {
     columnCopy = new CoinPackedMatrix(*rowCopy);
     columnCopy->reverseOrdering();
@@ -2502,7 +2507,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
   }
   double tolerance = 1.0e1*primalTolerance_;
   // If we are going to replace coefficient then we don't need to be effective
-  double needEffectiveness = info.strengthenRow ? -1.0e10 : 1.0e-3;
+  double needEffectiveness = info->strengthenRow ? -1.0e10 : 1.0e-3;
   if (PROBING_EXTRA_STUFF) {
     int nCut=0;
     for (int iRow=0;iRow<nRows;iRow++) {
@@ -2563,14 +2568,15 @@ int CglProbing::probe( const OsiSolverInterface & si,
     int iLook;
     ipass++;
     nfixed=0;
-    for (iLook=0;iLook<nLook;iLook++) {
+    bool saveFixingInfo = info->initializeFixing();
+    for (iLook=0;iLook<numberThisTime_;iLook++) {
       double solval;
       double down;
       double up;
       if (rowCut.outOfSpace())
         break;
       int awayFromBound=1;
-      j=look[iLook];
+      j=lookedAt_[iLook];
       solval=colsol[j];
       down = floor(solval+tolerance);
       up = ceil(solval-tolerance);
@@ -2840,8 +2846,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       }
                     }
                   }
-                  if (nstackC<2*maxStack) 
+                  if (nstackC<2*maxStack) {
                     markC[kcol] = markIt;
+		  }
                   if (moveUp&&nstackC<2*maxStack) {
                     fixThis++;
 #ifdef PRINT_DEBUG
@@ -2881,11 +2888,12 @@ int CglProbing::probe( const OsiSolverInterface & si,
                         objVal += moveUp*djs[kcol];
                       }
                     }
-                    if (intVar[kcol])
+                    if (intVar[kcol]) 
                       newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
                     colLower[kcol]=newLower;
-                    if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6)
+                    if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
                       markC[kcol]=3; // say fixed
+		    }
                     /* update immediately */
                     for (jj=columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
                       krow = row[jj];
@@ -2962,8 +2970,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     if (intVar[kcol])
                       newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
                     colUpper[kcol]=newUpper;
-                    if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6)
+                    if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
                       markC[kcol]=3; // say fixed
+		    }
                     /* update immediately */
                     for (jj=columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
                       krow = row[jj];
@@ -3028,11 +3037,21 @@ int CglProbing::probe( const OsiSolverInterface & si,
               break;
             }
           }
+	  if (!notFeasible&&saveFixingInfo) {
+	    // save fixing info
+	    assert (j==stackC[0]);
+	    int toValue = (way[iway]==1) ? -1 : +1;
+	    for (istackC=1;istackC<nstackC;istackC++) {
+	      int icol=stackC[istackC];
+	      if (colUpper[icol]-colLower[icol]<1.0e-12)
+		info->fixes(j,toValue,icol,colLower[icol]);
+	    }
+	  }
         } else if (iway==1&&feasible==0) {
           /* not feasible at all */
           ninfeas=1;
           j=nCols-1;
-          iLook=nLook;
+          iLook=numberThisTime_;
           ipass=maxPass;
           break;
         }
@@ -3246,7 +3265,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       }
                     }
                   }
-                  if (sum-gap*colsol[j]>maxR[irow]+primalTolerance_||(info.strengthenRow&&rowLower[irow]<-1.0e20)) {
+                  if (sum-gap*colsol[j]>maxR[irow]+primalTolerance_||(info->strengthenRow&&rowLower[irow]<-1.0e20)) {
                     // can be a cut
                     // subtract gap from upper and integer coefficient
                     // saveU and saveL spare
@@ -3283,7 +3302,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
                       // If strengthenRow point to row
-                      //if(info.strengthenRow)
+                      //if(info->strengthenRow)
                       //printf("a point to row %d\n",irow);
                       rowCut.addCutIfNotDuplicate(rc,rowLower[irow]<-1.0e20 ? irow :-1);
                     }
@@ -3336,7 +3355,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       }
                     }
                   }
-                  if (sum+gap*colsol[j]<minR[irow]-primalTolerance_||(info.strengthenRow&&rowUpper[irow]>1.0e20)) {
+                  if (sum+gap*colsol[j]<minR[irow]-primalTolerance_||(info->strengthenRow&&rowUpper[irow]>1.0e20)) {
                     // can be a cut
                     // add gap to lower and integer coefficient
                     // saveU and saveL spare
@@ -3372,7 +3391,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
                       if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-                      //if(info.strengthenRow)
+                      //if(info->strengthenRow)
                       //printf("b point to row %d\n",irow);
                       rowCut.addCutIfNotDuplicate(rc,rowUpper[irow]>1.0e20 ? irow : -1);
                     }
@@ -3387,7 +3406,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
             if (iway==1&&feasible==3) {
               iway=3;
               // look for singletons that can move (just at root)
-              if ((rowCuts&2)!=0&&goingToTrueBound&&info.strengthenRow) {
+              if ((rowCuts&2)!=0&&goingToTrueBound&&info->strengthenRow) {
                 for (istackR=0;istackR<nstackR;istackR++) {
                   int irow=stackR[istackR];
                   double gap = rowUpper[irow]-maxR[irow];
@@ -3494,7 +3513,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 if (istackC1>=0) {
                   if (CoinMin(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
                     saveL[istackC1]=CoinMin(lo0[istackC],colLower[icol]);
-                    if (intVar[icol]||!info.inTree) {
+                    if (intVar[icol]||!info->inTree) {
                       element[nFix]=saveL[istackC1];
                       index[nFix++]=icol;
                       nInt++;
@@ -3516,7 +3535,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 if (istackC1>=0) {
                   if (CoinMax(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
                     saveU[istackC1]=CoinMax(up0[istackC],colUpper[icol]);
-                    if (intVar[icol]||!info.inTree) {
+                    if (intVar[icol]||!info->inTree) {
                       element[nFix]=saveU[istackC1];
                       index[nFix++]=icol;
                       nInt++;
@@ -3524,7 +3543,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                         ifCut=true;
                     }
                     nfixed++;
-                  } else if (!info.inTree&&saveL[0]==0.0&&saveU[0]==1.0) {
+                  } else if (!info->inTree&&saveL[0]==0.0&&saveU[0]==1.0) {
                     // See if can do two cut
                     double upperWhenDown = up0[istackC];
                     double lowerWhenDown = lo0[istackC];
@@ -3655,6 +3674,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
               int irow=stackR[istackR];
               // switch off strengthening if not wanted
               if ((rowCuts&2)!=0&&goingToTrueBound) {
+		bool canReplace = info->strengthenRow&&(goingToTrueBound==2);
                 bool ifCut=anyColumnCuts;
                 double gap = rowUpper[irow]-maxR[irow];
                 double sum=0.0;
@@ -3664,7 +3684,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                        kk++) {
                     sum += rowElements[kk]*colsol[column[kk]];
                   }
-                  if (sum+gap*colsol[j]>rowUpper[irow]+primalTolerance_||(info.strengthenRow&&rowLower[irow]<-1.e20)) {
+                  if (sum+gap*colsol[j]>rowUpper[irow]+primalTolerance_||(canReplace&&rowLower[irow]<-1.e20)) {
                     // can be a cut
                     // add gap to integer coefficient
                     // saveU and saveL spare
@@ -3700,9 +3720,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
                       if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-                      //if(info.strengthenRow)
+                      //if(canReplace)
                       //printf("c point to row %d\n",irow);
-                      rowCut.addCutIfNotDuplicate(rc,rowLower[irow]<-1.0e20 ? irow : -1);
+                      rowCut.addCutIfNotDuplicate(rc,(canReplace&&rowLower[irow]<-1.0e20) ? irow : -1);
                     }
                   }
                 }
@@ -3715,7 +3735,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       sum += rowElements[kk]*colsol[column[kk]];
                     }
                   }
-                  if (sum-gap*colsol[j]<rowLower[irow]-primalTolerance_||(info.strengthenRow&&rowUpper[irow]>1.0e20)) {
+                  if (sum-gap*colsol[j]<rowLower[irow]-primalTolerance_||(canReplace&&rowUpper[irow]>1.0e20)) {
                     // can be a cut
                     // subtract gap from integer coefficient
                     // saveU and saveL spare
@@ -3751,9 +3771,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
                       if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-                      //if(info.strengthenRow)
+                      //if(canReplace)
                       //printf("d point to row %d\n",irow);
-                      rowCut.addCutIfNotDuplicate(rc,rowUpper[irow]>1.0e20 ? irow : -1);
+                      rowCut.addCutIfNotDuplicate(rc,(canReplace&&rowUpper[irow]>1.0e20) ? irow : -1);
                     }
                   }
                 }
@@ -3767,12 +3787,12 @@ int CglProbing::probe( const OsiSolverInterface & si,
       }
     }
   }
-  if ((!ninfeas&&!rowCut.outOfSpace())&&(info.strengthenRow||
-                 !rowCut.numberCuts())) {
+  if ((!ninfeas&&!rowCut.outOfSpace())&&(info->strengthenRow||
+                 !rowCut.numberCuts())&&rowCuts) {
     // Try and find ALL big M's
     for (i = 0; i < nRowsSafe; ++i) {
       if ((rowLower[i]>-1.0e20||rowUpper[i]<1.0e20)&&
-          (!info.strengthenRow||!info.strengthenRow[i])) {
+          (!info->strengthenRow||!info->strengthenRow[i])) {
 	int iflagu = 0;
 	int iflagl = 0;
 	double dmaxup = 0.0;
@@ -3886,7 +3906,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                   gap=rowLower[i]-sum;
                 else if (sum>rowUpper[i])
                   gap=sum-rowUpper[i];
-                if (gap>1.0e-4||info.strengthenRow!=NULL) {
+                if (gap>1.0e-4||info->strengthenRow!=NULL) {
                   rc.setEffectiveness(gap);
                   rc.setRow(n,index,element);
                   int returnCode=rowCut.addCutIfNotDuplicate(rc,i);
@@ -3918,7 +3938,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
   delete [] colsol;
   // Add in row cuts
   if (!ninfeas) {
-    rowCut.addCuts(cs,info.strengthenRow);
+    rowCut.addCuts(cs,info->strengthenRow);
   }
   if (!columnCopy_)
     delete columnCopy; // if just created
@@ -3933,11 +3953,10 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		       double * rowLower, double * rowUpper,
 		       char * intVar, double * minR, double * maxR, 
 		       int * markR, 
-		       int * look, int nLook,
-                       const CglTreeInfo info) const
+                       CglTreeInfo * info) const
 {
   // Set up maxes
-  int maxStack = info.inTree ? maxStack_ : maxStackRoot_;
+  int maxStack = info->inTree ? maxStack_ : maxStackRoot_;
   int nRows=rowCopy->getNumRows();
   int nCols=rowCopy->getNumCols();
   double * colsol = new double[nCols];
@@ -3976,7 +3995,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
   }
   // Let us never add more than twice the number of rows worth of row cuts
   // Keep cuts out of cs until end so we can find duplicates quickly
-  int nRowsFake = info.inTree ? nRows/3 : nRows;
+  int nRowsFake = info->inTree ? nRows/3 : nRows;
   row_cut rowCut(nRowsFake);
   CoinPackedMatrix * columnCopy=NULL;
   if (!rowCopy_) {
@@ -4064,19 +4083,19 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
     }
   }
   double tolerance = 1.0e1*primalTolerance_;
-  int maxPass = info.inTree ? maxPass_ : maxPassRoot_;
+  int maxPass = info->inTree ? maxPass_ : maxPassRoot_;
   // If we are going to replace coefficient then we don't need to be effective
-  double needEffectiveness = info.strengthenRow ? -1.0e10 : 1.0e-3;
+  double needEffectiveness = info->strengthenRow ? -1.0e10 : 1.0e-3;
   while (ipass<maxPass&&nfixed) {
     int iLook;
     ipass++;
     nfixed=0;
-    for (iLook=0;iLook<nLook;iLook++) {
+    for (iLook=0;iLook<numberThisTime_;iLook++) {
       double solval;
       double down;
       double up;
       int awayFromBound=1;
-      j=look[iLook];
+      j=lookedAt_[iLook];
       solval=colsol[j];
       down = floor(solval+tolerance);
       up = ceil(solval-tolerance);
@@ -4163,7 +4182,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 	    printf("** Trying %d up to 1\n",j);
 #endif
 	  }
-	  if (fabs(colUpper[j]-colLower[j])<1.0e-6)
+	  if (fabs(colUpper[j]-colLower[j])<1.0e-6) 
 	    markC[j]=3; // say fixed
 	  istackC=0;
 	  /* update immediately */
@@ -4501,8 +4520,9 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			}
 		      }
 		    }
-		    if (nstackC<2*maxStack) 
+		    if (nstackC<2*maxStack) {
                       markC[kcol] = markIt;
+		    }
 		    if (moveUp&&nstackC<2*maxStack) {
 		      fixThis++;
 #ifdef PRINT_DEBUG
@@ -4544,8 +4564,9 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		      if (intVar[kcol])
 			newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
 		      colLower[kcol]=newLower;
-		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6)
+		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
 			markC[kcol]=3; // say fixed
+		      }
 		      /* update immediately */
 		      for (jj=columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
 			krow = row[jj];
@@ -4621,8 +4642,9 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		      if (intVar[kcol])
 			newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
 		      colUpper[kcol]=newUpper;
-		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6)
+		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
 			markC[kcol]=3; // say fixed
+		      }
 		      /* update immediately */
 		      for (jj=columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
 			krow = row[jj];
@@ -4691,7 +4713,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 	    /* not feasible at all */
 	    ninfeas=1;
 	    j=nCols-1;
-            iLook=nLook;
+            iLook=numberThisTime_;
 	    ipass=maxPass;
 	    break;
 	  }
@@ -4913,7 +4935,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			 kk++) {
 		      sum += rowElements[kk]*colsol[column[kk]];
 		    }
-		    if (sum-gap*colsol[j]>maxR[irow]+primalTolerance_||(info.strengthenRow&&rowLower[irow]<-1.0e20)) {
+		    if (sum-gap*colsol[j]>maxR[irow]+primalTolerance_||(info->strengthenRow&&rowLower[irow]<-1.0e20)) {
 		      // can be a cut
 		      // subtract gap from upper and integer coefficient
 		      // saveU and saveL spare
@@ -4950,7 +4972,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
                         // If strengthenRow point to row
-                        //if(info.strengthenRow)
+                        //if(info->strengthenRow)
                         //printf("a point to row %d\n",irow);
 			rowCut.addCutIfNotDuplicate(rc,rowLower[irow]<-1.0e20 ? irow : -1);
 		      }
@@ -4965,7 +4987,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			sum += rowElements[kk]*colsol[column[kk]];
 		      }
 		    }
-		    if (sum+gap*colsol[j]<minR[irow]+primalTolerance_||(info.strengthenRow&&rowUpper[irow]>1.0e20)) {
+		    if (sum+gap*colsol[j]<minR[irow]+primalTolerance_||(info->strengthenRow&&rowUpper[irow]>1.0e20)) {
 		      // can be a cut
 		      // add gap to lower and integer coefficient
 		      // saveU and saveL spare
@@ -5001,7 +5023,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
 			if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-                        //if(info.strengthenRow)
+                        //if(info->strengthenRow)
                         //printf("b point to row %d\n",irow);
 			rowCut.addCutIfNotDuplicate(rc,rowUpper[irow]>1.0e20 ? irow : -1);
 		      }
@@ -5211,7 +5233,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			 kk++) {
 		      sum += rowElements[kk]*colsol[column[kk]];
 		    }
-		    if (sum+gap*colsol[j]>rowUpper[irow]+primalTolerance_||(info.strengthenRow&&rowLower[irow]<-1.0e20)) {
+		    if (sum+gap*colsol[j]>rowUpper[irow]+primalTolerance_||(info->strengthenRow&&rowLower[irow]<-1.0e20)) {
 		      // can be a cut
 		      // add gap to integer coefficient
 		      // saveU and saveL spare
@@ -5247,7 +5269,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
 			if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-                        //if(info.strengthenRow)
+                        //if(info->strengthenRow)
                         //printf("c point to row %d\n",irow);
 			rowCut.addCutIfNotDuplicate(rc,rowLower[irow]<-1.0e20? irow : -1);
 		      }
@@ -5262,7 +5284,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			sum += rowElements[kk]*colsol[column[kk]];
 		      }
 		    }
-		    if (sum-gap*colsol[j]<rowLower[irow]+primalTolerance_||(info.strengthenRow&&rowUpper[irow]>1.0e20)) {
+		    if (sum-gap*colsol[j]<rowLower[irow]+primalTolerance_||(info->strengthenRow&&rowUpper[irow]>1.0e20)) {
 		      // can be a cut
 		      // subtract gap from integer coefficient
 		      // saveU and saveL spare
@@ -5298,7 +5320,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
 			if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-                        //if(info.strengthenRow)
+                        //if(info->strengthenRow)
                         //printf("d point to row %d\n",irow);
 			rowCut.addCutIfNotDuplicate(rc,rowUpper[irow]>1.0e20 ? irow : -1);
 		      }
@@ -5336,7 +5358,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
   delete [] colsol;
   // Add in row cuts
   if (!ninfeas) {
-    rowCut.addCuts(cs,info.strengthenRow);
+    rowCut.addCuts(cs,info->strengthenRow);
   }
   if (!columnCopy_)
     delete columnCopy; // if just created
@@ -5350,13 +5372,13 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                           double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
                           double * rowLower, double * rowUpper,
                           char * intVar, double * minR, double * maxR,int * markR,
-                          const CglTreeInfo info) const
+                          CglTreeInfo * info) const
 {
   if (!numberCliques_)
     return 0;
   // Set up maxes
-  int maxProbe = info.inTree ? maxProbe_ : maxProbeRoot_;
-  int maxStack = info.inTree ? maxStack_ : maxStackRoot_;
+  int maxProbe = info->inTree ? maxProbe_ : maxProbeRoot_;
+  int maxStack = info->inTree ? maxStack_ : maxStackRoot_;
   int nRows=rowCopy->getNumRows();
   int nCols=rowCopy->getNumCols();
   double * colsol = new double[nCols];
@@ -5401,7 +5423,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
   int * index = new int[nCols];
   // Let us never add more than twice the number of rows worth of row cuts
   // Keep cuts out of cs until end so we can find duplicates quickly
-  int nRowsFake = info.inTree ? nRows/3 : nRows;
+  int nRowsFake = info->inTree ? nRows/3 : nRows;
   row_cut rowCut(nRowsFake);
   CoinPackedMatrix * columnCopy=NULL;
   if (!rowCopy_) {
@@ -5451,8 +5473,8 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
   }
   double tolerance = 1.0e1*primalTolerance_;
   // If we are going to replace coefficient then we don't need to be effective
-  int maxPass = info.inTree ? maxPass_ : maxPassRoot_;
-  double needEffectiveness = info.strengthenRow ? -1.0e10 : 1.0e-3;
+  int maxPass = info->inTree ? maxPass_ : maxPassRoot_;
+  double needEffectiveness = info->strengthenRow ? -1.0e10 : 1.0e-3;
   while (ipass<maxPass&&nfixed) {
     int iLook;
     ipass++;
@@ -5511,7 +5533,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
           printf("** Trying %d up to 1\n",j);
 #endif
         }
-        if (fabs(colUpper[j]-colLower[j])<1.0e-6)
+        if (fabs(colUpper[j]-colLower[j])<1.0e-6) 
           markC[j]=3; // say fixed
         istackC=0;
         /* update immediately */
@@ -5839,8 +5861,9 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                       }
                     }
                   }
-                  if (nstackC<2*maxStack) 
+                  if (nstackC<2*maxStack) {
                     markC[kcol] = markIt;
+		  }
                   if (moveUp&&nstackC<2*maxStack) {
                     fixThis++;
 #ifdef PRINT_DEBUG
@@ -5874,8 +5897,9 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                     if (intVar[kcol])
                       newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
                     colLower[kcol]=newLower;
-                    if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6)
+                    if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
                       markC[kcol]=3; // say fixed
+		    }
                     /* update immediately */
                     for (jj=columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
                       krow = row[jj];
@@ -5943,8 +5967,9 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                     if (intVar[kcol])
                       newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
                     colUpper[kcol]=newUpper;
-                    if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6)
+                    if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
                       markC[kcol]=3; // say fixed
+		    }
                     /* update immediately */
                     for (jj=columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
                       krow = row[jj];
@@ -6112,7 +6137,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                        kk++) {
                     sum += rowElements[kk]*colsol[column[kk]];
                   }
-                  if (sum-gap*colsol[j]>maxR[irow]+primalTolerance_||info.strengthenRow) {
+                  if (sum-gap*colsol[j]>maxR[irow]+primalTolerance_||info->strengthenRow) {
                     // can be a cut
                     // subtract gap from upper and integer coefficient
                     // saveU and saveL spare
@@ -6149,7 +6174,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                       if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
                       // If strengthenRow point to row
-                      //if(info.strengthenRow)
+                      //if(info->strengthenRow)
                       //printf("a point to row %d\n",irow);
                       rowCut.addCutIfNotDuplicate(rc,irow);
                     }
@@ -6164,7 +6189,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                       sum += rowElements[kk]*colsol[column[kk]];
                     }
                   }
-                  if (sum+gap*colsol[j]<minR[irow]+primalTolerance_||info.strengthenRow) {
+                  if (sum+gap*colsol[j]<minR[irow]+primalTolerance_||info->strengthenRow) {
                     // can be a cut
                     // add gap to lower and integer coefficient
                     // saveU and saveL spare
@@ -6200,7 +6225,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
                       if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-                      //if(info.strengthenRow)
+                      //if(info->strengthenRow)
                       //printf("b point to row %d\n",irow);
                       rowCut.addCutIfNotDuplicate(rc,irow);
                     }
@@ -6305,7 +6330,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                        kk++) {
                     sum += rowElements[kk]*colsol[column[kk]];
                   }
-                  if (sum+gap*colsol[j]>rowUpper[irow]+primalTolerance_||info.strengthenRow) {
+                  if (sum+gap*colsol[j]>rowUpper[irow]+primalTolerance_||info->strengthenRow) {
                     // can be a cut
                     // add gap to integer coefficient
                     // saveU and saveL spare
@@ -6341,7 +6366,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
 			if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-                        //if(info.strengthenRow)
+                        //if(info->strengthenRow)
                         //printf("c point to row %d\n",irow);
 			rowCut.addCutIfNotDuplicate(rc,irow);
 		      }
@@ -6356,7 +6381,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 			sum += rowElements[kk]*colsol[column[kk]];
 		      }
 		    }
-		    if (sum-gap*colsol[j]<rowLower[irow]+primalTolerance_||info.strengthenRow) {
+		    if (sum-gap*colsol[j]<rowLower[irow]+primalTolerance_||info->strengthenRow) {
 		      // can be a cut
 		      // subtract gap from integer coefficient
 		      // saveU and saveL spare
@@ -6392,7 +6417,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
 			if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-                        //if(info.strengthenRow)
+                        //if(info->strengthenRow)
                         //printf("d point to row %d\n",irow);
 			rowCut.addCutIfNotDuplicate(rc,irow);
 		      }
@@ -6425,7 +6450,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
   delete [] colsol;
   // Add in row cuts
   if (!ninfeas) {
-    rowCut.addCuts(cs,info.strengthenRow);
+    rowCut.addCuts(cs,info->strengthenRow);
   }
   if (!columnCopy_)
     delete columnCopy; // if just created
@@ -6770,6 +6795,8 @@ usingObjective_(false)
   colUpper_=NULL;
   numberIntegers_=0;
   number01Integers_=0;
+  numberThisTime_=0;
+  lookedAt_=NULL;
   cutVector_=NULL;
   numberCliques_=0;
   cliqueType_=NULL;
@@ -6781,6 +6808,7 @@ usingObjective_(false)
   whichClique_=NULL;
   cliqueRow_=NULL;
   cliqueRowStart_=NULL;
+  tightenBounds_=NULL;
 }
 
 //-------------------------------------------------------------------
@@ -6838,6 +6866,8 @@ CglProbing::CglProbing (  const CglProbing & rhs)
     number01Integers_=0;
     cutVector_=NULL;
   }
+  numberThisTime_=rhs.numberThisTime_;
+  lookedAt_=CoinCopyOfArray(rhs.lookedAt_,numberColumns_);
   if (numberCliques_) {
     cliqueType_ = new cliqueType [numberCliques_];
     memcpy(cliqueType_,rhs.cliqueType_,numberCliques_*sizeof(cliqueType));
@@ -6881,6 +6911,12 @@ CglProbing::CglProbing (  const CglProbing & rhs)
     cliqueRowStart_=NULL;
     whichClique_=NULL;
   }
+  if (rhs.tightenBounds_) {
+    assert (numberColumns_);
+    tightenBounds_=CoinCopyOfArray(rhs.tightenBounds_,numberColumns_);
+  } else {
+    tightenBounds_=NULL;
+  }
 }
 
 //-------------------------------------------------------------------
@@ -6904,6 +6940,7 @@ CglProbing::~CglProbing ()
   delete [] colUpper_;
   delete rowCopy_;
   delete columnCopy_;
+  delete [] lookedAt_;
   delete [] cliqueType_;
   delete [] cliqueStart_;
   delete [] cliqueEntry_;
@@ -6919,6 +6956,7 @@ CglProbing::~CglProbing ()
     }
     delete [] cutVector_;
   }
+  delete [] tightenBounds_;
 }
 
 //----------------------------------------------------------------
@@ -6939,6 +6977,7 @@ CglProbing::operator=(
     delete [] colUpper_;
     delete rowCopy_;
     delete columnCopy_;
+    delete [] lookedAt_;
     delete [] cliqueType_;
     delete [] cliqueStart_;
     delete [] cliqueEntry_;
@@ -6948,6 +6987,7 @@ CglProbing::operator=(
     delete [] whichClique_;
     delete [] cliqueRow_;
     delete [] cliqueRowStart_;
+    delete [] tightenBounds_;
     mode_=rhs.mode_;
     rowCuts_=rhs.rowCuts_;
     maxPass_=rhs.maxPass_;
@@ -6997,6 +7037,8 @@ CglProbing::operator=(
       number01Integers_=0;
       cutVector_=NULL;
     }
+    numberThisTime_=rhs.numberThisTime_;
+    lookedAt_=CoinCopyOfArray(rhs.lookedAt_,numberColumns_);
     if (numberCliques_) {
       cliqueType_ = new cliqueType [numberCliques_];
       memcpy(cliqueType_,rhs.cliqueType_,numberCliques_*sizeof(cliqueType));
@@ -7039,6 +7081,12 @@ CglProbing::operator=(
       whichClique_=NULL;
       cliqueRow_=NULL;
       cliqueRowStart_=NULL;
+    }
+    if (rhs.tightenBounds_) {
+      assert (numberColumns_);
+      tightenBounds_=CoinCopyOfArray(rhs.tightenBounds_,numberColumns_);
+    } else {
+      tightenBounds_=NULL;
     }
   }
   return *this;
@@ -7538,6 +7586,22 @@ CglProbing::setupRowCliqueInformation(const OsiSolverInterface & si)
   delete [] array;
   if (rowCopy!=rowCopy_)
     delete rowCopy;
+}
+// Mark variables to be tightened
+void 
+CglProbing::tightenThese(const OsiSolverInterface & solver,int number, const int * which)
+{
+  delete [] tightenBounds_;
+  int numberColumns = solver.getNumCols();
+  if (numberColumns_)
+    assert (numberColumns_==numberColumns);
+  tightenBounds_ = new char [numberColumns];
+  memset(tightenBounds_,0,numberColumns);
+  for (int i=0;i<number;i++) {
+    int k=which[i];
+    if (k>=0&&k<numberColumns)
+      tightenBounds_[k]=1;
+  }
 }
 // Create C++ lines to get to current state
 std::string

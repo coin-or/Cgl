@@ -60,7 +60,8 @@ public:
       if 2 add slacks to get sos (but only if looks plausible) and keep sos info
   */
   OsiSolverInterface * preProcessNonDefault(OsiSolverInterface & model, 
-                                  int makeEquality=0, int numberPasses=5);
+                                  int makeEquality=0, int numberPasses=5,
+					    int tuning=5);
   /// Creates solution in original model
   void postProcess(OsiSolverInterface &model);
   /** Tightens primal bounds to make dual and branch and cutfaster.  Unless
@@ -81,6 +82,8 @@ public:
                                  double fractionToKeep=0.25,
                                  bool fixContinuousAsWell=false,
                                  char * keep=NULL) const;
+  /// If we have a cutoff - fix variables
+  int reducedCostFix(OsiSolverInterface & model);
   //@}
 
   //---------------------------------------------------------------------------
