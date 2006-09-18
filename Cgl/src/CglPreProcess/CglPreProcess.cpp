@@ -847,7 +847,7 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
   memcpy(columnLower,colLower,numberColumns*sizeof(double));
   double * columnUpper = new double [numberColumns];
   memcpy(columnUpper,colUpper,numberColumns*sizeof(double));
-  const double * solution = model.getColSolution();
+  const double * solution = factor ? model.getColSolution() : NULL;
 
   int iRow, iColumn;
 
