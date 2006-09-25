@@ -267,7 +267,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
             originalModel_->setColUpper(which[numberColumns-i-1],0.0);
         }
       } else {
-        if (makeEquality==-1&&numberM1+numberP1<minimumLength)
+        if (!makeEquality||(makeEquality==-1&&numberM1+numberP1<minimumLength))
           continue;
         if (makeEquality==2||makeEquality==3) {
           if (numberM1||numberP1<minimumLength) 
