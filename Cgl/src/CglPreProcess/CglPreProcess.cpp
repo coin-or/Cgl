@@ -1346,6 +1346,22 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
       // Give a hint to do primal
       //model->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
       model->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
+      // clean
+      {
+	int numberColumns = model->getNumCols();
+	const double * lower = model->getColLower();
+	const double * upper = model->getColUpper();
+	double * solution = CoinCopyOfArray(model->getColSolution(),numberColumns);
+	int i;
+	for ( i=0;i<numberColumns;i++) {
+	  double value = solution[i];
+	  value = CoinMin(value,upper[i]);
+	  value = CoinMax(value,lower[i]);
+	  solution[i]=value;
+	}
+	model->setColSolution(solution);
+	delete [] solution;
+      }
       if (0) {
 	int numberColumns = model->getNumCols();
 	int numberRows = model->getNumRows();
@@ -1371,6 +1387,8 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 	  } else if (value>upper[i]) {
 	    value=upper[i];
 	  }
+	  assert (upper[i]>=lower[i]);
+	  assert ((fabs(value)<1.0e20));
 	  if (value) {
 	    for (j=columnStart[i];
 		 j<columnStart[i]+columnLength[i];j++) {
@@ -1393,7 +1411,8 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
       model->initialSolve();
       if (!model->isProvenOptimal()) {
 #ifdef COIN_DEVELOP
-	printf("bad unwind in postprocess\n");
+	  model->writeMps("bad2");
+	  printf("bad unwind in postprocess\n");
 #endif
       }
       presolve_[iPass]->postsolve(true);
