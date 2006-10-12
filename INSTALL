@@ -19,7 +19,8 @@ In this document, the following names are used:
 OVERVIEW
 ========
 
-More information is available on the Cut Generation Library (Cgl)
+More information, including current stable version number and current release
+number, is available on the Cut Generation Library (Cgl)
 Trac page at:
 
    https://projects.coin-or.org/Cgl
@@ -44,21 +45,21 @@ You can obtain the source code for the Cgl package in two ways:
    Assuming that you want to download the code into a subdirectory
    "coin-Cgl", you type
 
-   svn co https://projects.coin-or.org/svn/Cgl/trunk coin-Cgl
+   svn co https://projects.coin-or.org/svn/Cgl/stable/0.5 coin-Cgl
 
 2. Download the tarball from http://www.coin-or.org/Tarballs/Cgl and
    extract it, for example, with
 
-   gunzip Cgl_2006Jun07.tgz
-   tar xvf Cgl_2006Jun07.tar
+   gunzip Cgl-0.5.tgz
+   tar xvf Cgl-0.5.tar
 
-   (Here "2006Jun07" is of course replaced by the string in the
+   (Here "-0.5" is of course replaced by the string in the
    tarball you downloaded.)
 
    To match the description in the remainder of this installation file,
-   rename the directory "Cgl_2006Jun07" to "coin-Cgl" using
+   rename the directory "Cgl-0.5" to "coin-Cgl" using
 
-   mv Cgl_2006Jun07 coin-Cgl
+   mv Cgl-0.5 coin-Cgl
 
 
 More detailed download instructions can be found at
