@@ -50,6 +50,8 @@ public:
   void addCut(double lb, double ub, const CoinPackedVector & vector);
   /// Add a row cut from elements
   void addCut(double lb, double ub, int size, const int * colIndices, const double * elements);
+  inline int sizeRowCuts() const
+  { return cuts_.sizeRowCuts();};
   //@}
 
   /**@name Constructors and destructors */

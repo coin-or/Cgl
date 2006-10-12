@@ -16,10 +16,11 @@ static Cgl_message us_english[]=
   {CGL_CLIQUES,1,2,"%d cliques of average size %g"},
   {CGL_FIXED,2,1,"%d variables fixed"},
   {CGL_PROCESS_STATS,3,1,"%d fixed, %d tightened bounds, %d strengthened rows, %d substitutions"},
-  {CGL_SLACKS,4,2,"%d converted to equality constraints"},
+  {CGL_SLACKS,8,1,"%d inequality constraints converted to equality constraints"},
   {CGL_PROCESS_STATS2,4,1,"processed model has %d rows, %d columns (%d integer) and %d elements"},
   {CGL_PROCESS_SOS1,5,1,"%d SOS with %d members"},
   {CGL_PROCESS_SOS2,6,1,"%d SOS (%d members out of %d) with %d overlaps - too much overlap or too many others"},
+  {CGL_UNBOUNDED,0,7,"Continuous relaxation is unbounded!"},
   {CGL_DUMMY_END,999999,0,""}
 };
 /* Constructor */

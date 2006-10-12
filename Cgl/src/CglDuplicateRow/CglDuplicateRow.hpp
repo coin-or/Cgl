@@ -6,6 +6,7 @@
 #include <string>
 
 #include "CglCutGenerator.hpp"
+class CglStored;
 
 /** DuplicateRow Cut Generator Class */
 class CglDuplicateRow : public CglCutGenerator {
@@ -35,6 +36,27 @@ public:
   */
   virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
 			     const CglTreeInfo info = CglTreeInfo()) const;
+  /** Fix variables and find duplicate/dominated rows for the model of the 
+      solver interface, si.
+
+      This is a very simple minded idea but I (JJF) am using it in a project so thought
+      I might as well add it.  It should really be called before first solve and I may
+      modify CBC to allow for that.
+
+      This is designed for problems with few rows and many integer variables where the rhs
+      are <= or == and all coefficients and rhs are small integers.
+
+      If effective rhs is K then we can fix all variables with coefficients > K to their lower bounds
+      (effective rhs just means original with variables with nonzero lower bounds subtracted out).
+
+      If one row is a subset of another and the effective rhs are same we can fix some variables
+      and then the two rows are identical.
+
+      This version does deletions and fixings and may return stored cuts for
+      dominated columns 
+  */
+  CglStored * outDuplicates( OsiSolverInterface * solver);
+
   //@}
 
   /**@name Get information on size of problem */
@@ -68,6 +90,25 @@ public:
   /// Set
   inline void setMaximumRhs(int value)
   { maximumRhs_=value;};
+  //@}
+
+  /**@name We only check for dominated amongst groups of columns whose size <= this */
+  //@{
+  /// Get
+  inline int maximumDominated() const
+  { return maximumDominated_;};
+  /// Set
+  inline void setMaximumDominated(int value)
+  { maximumDominated_=value;};
+  //@}
+  /**@name gets and sets */
+  //@{
+  /// Get mode
+  inline int mode() const
+  { return mode_;};
+  /// Set mode
+  inline void setMode(int value)
+  { mode_=value;};
   //@}
 
   /**@name Constructors and destructors */
@@ -117,10 +158,16 @@ protected:
   mutable int * duplicate_;
   /// To allow for <= rows
   int * lower_;
+  /// Stored cuts if we found dominance cuts
+  mutable CglStored * storedCuts_;
+  /// Check dominated columns if less than this number of candidates
+  int maximumDominated_;
   /// Check duplicates if effective rhs <= this
   int maximumRhs_;
   /// Size of dynamic program
   mutable int sizeDynamic_;
+  /// 1 do rows, 2 do columns, 3 do both
+  int mode_;
   /// Controls print out
   int logLevel_;
   //@}

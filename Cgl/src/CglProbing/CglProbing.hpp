@@ -85,7 +85,7 @@ public:
   virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
 			     const CglTreeInfo info = CglTreeInfo()) const;
   int generateCutsAndModify( const OsiSolverInterface & si, OsiCuts & cs, 
-			     const CglTreeInfo info = CglTreeInfo());
+			     CglTreeInfo * info);
   //@}
 
   /**@name snapshot etc */
@@ -120,6 +120,9 @@ public:
   const double * tightLower() const;
   /// Upper
   const double * tightUpper() const;
+  /// Array which says tighten continuous
+  const char * tightenBounds() const
+  { return tightenBounds_;};
   //@}
 
   /**@name Get possible freed up row bounds - only valid after mode==3 */
@@ -186,6 +189,16 @@ public:
   virtual bool mayGenerateRowCutsInTree() const;
   //@}
 
+  /**@name Get information back from probing */
+  //@{
+  /// Number looked at this time
+  inline int numberThisTime() const
+  { return numberThisTime_;};
+  /// Which ones looked at this time
+  inline const int * lookedAt() const
+  { return lookedAt_;};
+  //@}
+
   /**@name Stop or restart row cuts (otherwise just fixing from probing) */
   //@{
   /// Set
@@ -201,6 +214,12 @@ public:
   void setUsingObjective(bool yesNo);
   /// Get
   int getUsingObjective() const;
+  //@}
+
+  /**@name Mark which continuous variables are to be tightened */
+  //@{
+  /// Mark variables to be tightened
+  void tightenThese(const OsiSolverInterface & solver, int number, const int * which);
   //@}
 
   /**@name Constructors and destructors */
@@ -242,8 +261,7 @@ private:
 	     double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
 	     double * rowLower, double * rowUpper,
 	     char * intVar, double * minR, double * maxR, int * markR, 
-	     int * look, int nlook,
-             const CglTreeInfo info) const;
+              CglTreeInfo * info) const;
   /// Does probing and adding cuts (with cliques)
   int probeCliques( const OsiSolverInterface & si, 
 	     const OsiRowCutDebugger * debugger, 
@@ -251,8 +269,7 @@ private:
 	     double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
 	     double * rowLower, double * rowUpper,
 	     char * intVar, double * minR, double * maxR, int * markR, 
-	     int * look, int nlook,
-             const CglTreeInfo info) const;
+             CglTreeInfo * info) const;
   /// Does probing and adding cuts for clique slacks
   int probeSlacks( const OsiSolverInterface & si, 
                     const OsiRowCutDebugger * debugger, 
@@ -260,14 +277,14 @@ private:
                     double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
                     double * rowLower, double * rowUpper,
                     char * intVar, double * minR, double * maxR,int * markR,
-                    const CglTreeInfo info) const;
+                     CglTreeInfo * info) const;
   /** Does most of work of generateCuts 
       Returns number of infeasibilities */
   int gutsOfGenerateCuts( const OsiSolverInterface & si, 
 			  OsiCuts & cs,
 			  double * rowLower, double * rowUpper,
 			  double * colLower, double * colUpper,
-                          const CglTreeInfo info) const;
+                           CglTreeInfo * info) const;
   /// Sets up clique information for each row
   void setupRowCliqueInformation(const OsiSolverInterface & si);
   /** This tightens column bounds (and can declare infeasibility)
@@ -345,6 +362,10 @@ private:
   int numberIntegers_;
   /// Number of 0-1 integer variables
   int number01Integers_;
+  /// Number looked at this time
+  mutable int numberThisTime_;
+  /// Which ones looked at this time
+  mutable int * lookedAt_;
   /** Only useful type of disaggregation is most normal
       For now just done for 0-1 variables
       Can be used for building cliques
@@ -396,6 +417,8 @@ private:
   cliqueEntry * cliqueRow_;
   /// cliqueRow_ starts for each row
   int * cliqueRowStart_;
+  /// If not null and [i] !=0 then also tighten even if continuous
+  char * tightenBounds_;
   //@}
 };
 

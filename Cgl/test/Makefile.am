@@ -30,6 +30,7 @@ AM_CPPFLAGS = \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglFlowCover` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglGomory` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglKnapsackCover` \
+        -I`$(CYGPATH_W) $(srcdir)/../src/CglLandP` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglOddHole` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglProbing` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglSimpleRounding`

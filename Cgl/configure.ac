@@ -124,6 +124,7 @@ AC_CONFIG_FILES([Makefile
 		 src/CglFlowCover/Makefile
 		 src/CglGomory/Makefile
 		 src/CglKnapsackCover/Makefile
+		 src/CglLandP/Makefile
 		 src/CglLiftAndProject/Makefile
 		 src/CglMixedIntegerRounding/Makefile
 		 src/CglMixedIntegerRounding2/Makefile
