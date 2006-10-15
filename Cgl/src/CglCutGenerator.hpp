@@ -97,7 +97,16 @@ public:
   /// Destructor 
   virtual ~CglCutGenerator ();
 
-  /// Create C++ lines to get to current state
+  /** Create C++ lines to set the generator in the current state.
+      The output must be parsed by the calling code, as each line
+      starts with a key indicating the following:<BR>
+      0: must be kept (for #includes etc)<BR>
+      3: Set to changed (not default) values<BR>
+      4: Set to default values (redundant)<BR>
+
+      Keys 1, 2, 5, 6, 7, 8 are defined, but not applicable to 
+      cut generators.
+  */
   virtual std::string generateCpp( FILE * fp) {return "";};
 
   /// This can be used to refresh any inforamtion
