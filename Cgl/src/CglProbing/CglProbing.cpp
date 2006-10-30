@@ -3654,6 +3654,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
               int irow=stackR[istackR];
               // switch off strengthening if not wanted
               if ((rowCuts&2)!=0&&goingToTrueBound) {
+		bool canReplace = info.strengthenRow&&(goingToTrueBound==2);
                 bool ifCut=anyColumnCuts;
                 double gap = rowUpper[irow]-maxR[irow];
                 double sum=0.0;
@@ -3663,7 +3664,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                        kk++) {
                     sum += rowElements[kk]*colsol[column[kk]];
                   }
-                  if (sum+gap*colsol[j]>rowUpper[irow]+primalTolerance_||(info.strengthenRow&&rowLower[irow]<-1.e20)) {
+                  if (sum+gap*colsol[j]>rowUpper[irow]+primalTolerance_||(canReplace&&rowLower[irow]<-1.e20)) {
                     // can be a cut
                     // add gap to integer coefficient
                     // saveU and saveL spare
@@ -3699,9 +3700,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
                       if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-                      //if(info.strengthenRow)
+                      //if(canReplace)
                       //printf("c point to row %d\n",irow);
-                      rowCut.addCutIfNotDuplicate(rc,rowLower[irow]<-1.0e20 ? irow : -1);
+                      rowCut.addCutIfNotDuplicate(rc,(canReplace&&rowLower[irow]<-1.0e20) ? irow : -1);
                     }
                   }
                 }
@@ -3714,7 +3715,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       sum += rowElements[kk]*colsol[column[kk]];
                     }
                   }
-                  if (sum-gap*colsol[j]<rowLower[irow]-primalTolerance_||(info.strengthenRow&&rowUpper[irow]>1.0e20)) {
+                  if (sum-gap*colsol[j]<rowLower[irow]-primalTolerance_||(canReplace&&rowUpper[irow]>1.0e20)) {
                     // can be a cut
                     // subtract gap from integer coefficient
                     // saveU and saveL spare
@@ -3750,9 +3751,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
                       if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
-                      //if(info.strengthenRow)
+                      //if(canReplace)
                       //printf("d point to row %d\n",irow);
-                      rowCut.addCutIfNotDuplicate(rc,rowUpper[irow]>1.0e20 ? irow : -1);
+                      rowCut.addCutIfNotDuplicate(rc,(canReplace&&rowUpper[irow]>1.0e20) ? irow : -1);
                     }
                   }
                 }
