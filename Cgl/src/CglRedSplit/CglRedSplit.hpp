@@ -235,7 +235,10 @@ private:
   /// Use multiples of the initial inequalities to cancel out the coefficients
   /// of the slack variables.
   void eliminate_slacks(double *row, 
-			const CoinPackedMatrix *byRow, 
+			const double *elements, 
+			const int *start,
+			const int *indices,
+			const int *rowLength,
 			const double *rhs, double *rowrhs);
 
   /// Change the sign of the coefficients of the continuous non basic
