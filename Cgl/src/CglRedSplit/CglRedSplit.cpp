@@ -1,4 +1,4 @@
-// Last edit: 12/27/05
+// Last edit: 11/4/06
 //
 // Name:     CglRedSplit.cpp
 // Author:   Francois Margot                                                  
@@ -462,17 +462,17 @@ int CglRedSplit::generate_cgcut(double *row, double *rhs) {
 
 /************************************************************************/
 void CglRedSplit::eliminate_slacks(double *row, 
-				   const CoinPackedMatrix *byRow, 
+				   const double *elements, 
+				   const int *rowStart,
+				   const int *indices,
+				   const int *rowLength,
 				   const double *rhs, double *rowrhs) {
 
-  const double *elements = byRow->getElements();
-  const int *start = byRow->getVectorStarts();
-  const int *indices = byRow->getIndices();
 
   for(int i=0; i<nrow; i++) {
     if(fabs(row[ncol+i]) > EPS) {
-      int upto = start[i] + byRow->getVectorSize(i);
-      for(int j=start[i]; j<upto; j++) {
+      int upto = rowStart[i] + rowLength[i];
+      for(int j=rowStart[i]; j<upto; j++) {
 	row[indices[j]] -= row[ncol+i] * elements[j];
       }
       *rowrhs -= row[ncol+i] * rhs[i];
@@ -1059,6 +1059,11 @@ void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   double *rowelem = new double[ncol];
 
   const CoinPackedMatrix *byRow = solver->getMatrixByRow();
+  const double *elements = byRow->getElements();
+  const int *rowStart = byRow->getVectorStarts();
+  const int *indices = byRow->getIndices();
+  const int *rowLength = byRow->getVectorLengths(); 
+
   for(i=0; i<mTab; i++) {
     generate_row(i, row);
     flip(row);
@@ -1078,7 +1083,8 @@ void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	check_optsol(solver, 3, row, rowrhs, i, 0);
       }
 
-      eliminate_slacks(row, byRow, rhs, &rowrhs);
+      eliminate_slacks(row, elements, rowStart, indices, 
+		       rowLength, rhs, &rowrhs);
 
       if(given_optsol) {
 	check_optsol(solver, 4, row, rowrhs, i, 0);
