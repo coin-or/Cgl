@@ -925,6 +925,8 @@ CglKnapsackCover::deriveAKnapsack(
     if (sum<b-1.0e-4) {
       return 0;
     } else {
+
+#ifdef PRINT_DEBUG
       printf("*** Doubleton Row is ");
       for(i=0; i<2; i++){
 	int iColumn = indices[i];
@@ -933,6 +935,8 @@ CglKnapsackCover::deriveAKnapsack(
 	       elements[i],xstar[iColumn]);
       }
       printf("<= %g - go for it\n",b);
+#endif
+
     }
   }
 
@@ -2049,6 +2053,8 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
   }
   unsatRhs=b-sumAtOne;
   int firstFrac = fracCover.getIndices()[0];
+
+#ifdef PRINT_DEBUG
   if (unsatRhs<=0.0&&fabs(xstar[firstFrac])>epsilon2_) {
     printf("At one %d\n",atOne.getNumElements());
     for (i=0; i<atOne.getNumElements(); i++){
@@ -2063,6 +2069,8 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
 	     xstar[iColumn]);
     }
   }
+#endif
+
   //assert ( unsatRhs > 0 );
 
   // If there is something to lift, then calculate the lifted coefficients
