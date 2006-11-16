@@ -29,9 +29,9 @@ class CoinWarmStartBasis;
 namespace LAP {
 enum LapMessagesTypes
 {
-	BEGIN_ROUND,
-	END_ROUND,
-	DURING_SEP,
+  BEGIN_ROUND,
+  END_ROUND,
+  DURING_SEP,
   CUT_REJECTED,
   CUT_FAILED
 };
@@ -39,8 +39,8 @@ enum LapMessagesTypes
 class LapMessages : public CoinMessages
 {
 public:
-	/** Constructor */
-	LapMessages( );
+  /** Constructor */
+  LapMessages( );
 };
 class CglLandPSimplex;
 }
@@ -53,11 +53,11 @@ class CglLandP : public CglCutGenerator
 
 public:
 
-    enum SelectionRules {
-      mostNegativeRc /** select most negative reduced cost */,
-      bestPivot /** select best possible pivot.*/
-    };
-    /** Class storing parameters.
+  enum SelectionRules {
+    mostNegativeRc /** select most negative reduced cost */,
+    bestPivot /** select best possible pivot.*/
+  };
+  /** Class storing parameters.
       \remark I take all parameters from Ionut's code */
   class Parameters {
   public:
