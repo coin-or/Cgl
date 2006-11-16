@@ -1,4 +1,4 @@
-// Last edit: 12/27/05
+// Last edit: 11/16/06
 //
 // Name:     CglRedSplit.hpp
 // Author:   Francois Margot
@@ -106,7 +106,10 @@ public:
   /// Get value of away
   double getAway() const;
 
-  /** Set the value of LUB, value considered large for the absolute value of
+  // Compute entries of low_is_lub and up_is_lub.
+  void compute_is_lub();
+
+ /** Set the value of LUB, value considered large for the absolute value of
       a lower or upper bound on a variable;
       Default: 1000 */
   void setLUB(double value);
@@ -249,9 +252,7 @@ private:
   /// variables at their upper bound and do the translations restoring
   /// the original bounds. Modify the right hand side
   /// accordingly.
-  void unflip(double *row, double *rowrhs,
-	      const double *colLower, const double *colUpper,
-	      double *slack_val);
+  void unflip(double *row, double *rowrhs, double *slack_val);
 
   /// Generate the packed cut from the row representation.
   int generate_packed_row(const OsiSolverInterface * solver,double *row,
@@ -283,6 +284,18 @@ private:
 
   /// Number of structural variables in the current LP.
   int ncol;
+
+  /// Lower bounds for structural variables
+  const double *colLower;
+
+  /// Upper bounds for structural variables
+  const double *colUpper;
+  
+  /// Lower bounds for constraints
+  const double *rowLower;
+
+  /// Upper bounds for constraints
+  const double *rowUpper;
 
   /// Value considered large for the absolute value of lower or upper 
   /// bound on a variable. Default: 1000.
@@ -392,6 +405,19 @@ private:
 
   /// Number of entries in given_optsol.
   int card_given_optsol;
+
+  /// Characteristic vectors of structural integer variables or continuous
+  /// variables currently fixed to integer values. 
+  int *is_integer;
+
+  /// Characteristic vector of the structural variables whose lower bound 
+  /// in absolute value is larger than LUB. 
+  int *low_is_lub;
+
+  /// Characteristic vector of the structural variables whose upper bound 
+  /// in absolute value is larger than LUB. 
+  int *up_is_lub;
+
   //@}
 };
   

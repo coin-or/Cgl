@@ -1,4 +1,4 @@
-// Last edit: 11/4/06
+// Last edit: 11/16/06
 //
 // Name:     CglRedSplit.cpp
 // Author:   Francois Margot                                                  
@@ -471,6 +471,12 @@ void CglRedSplit::eliminate_slacks(double *row,
 
   for(int i=0; i<nrow; i++) {
     if(fabs(row[ncol+i]) > EPS) {
+
+      if(rowLower[i] > rowUpper[i] - EPS) {
+	row[ncol+i] = 0;
+	continue;
+      }
+
       int upto = rowStart[i] + rowLength[i];
       for(int j=rowStart[i]; j<upto; j++) {
 	row[indices[j]] -= row[ncol+i] * elements[j];
@@ -495,9 +501,7 @@ void CglRedSplit::flip(double *row) {
 } /* flip */
 
 /************************************************************************/
-void CglRedSplit::unflip(double *row, double *rowrhs,
-			 const double *colLower, const double *colUpper,
-			 double *slack_val) {
+void CglRedSplit::unflip(double *row, double *rowrhs, double *slack_val) {
   
   int i;
   for( i=0; i<card_nonBasicAtLower; i++) {
@@ -533,8 +537,6 @@ int CglRedSplit::generate_packed_row( const OsiSolverInterface *solver,
                                              int *rowind, double *rowelem, 
                                              int *card_row, double & rhs) {
   *card_row = 0;
-  const double *colLower = solver->getColLower();
-  const double *colUpper = solver->getColUpper();
   for(int i=0; i<ncol; i++) {
     double value = row[i];
     if(fabs(value) > EPS_COEFF) {
@@ -547,13 +549,15 @@ int CglRedSplit::generate_packed_row( const OsiSolverInterface *solver,
 #endif	
 	return(0);
       }
-    } else {
-      // small - adjust rhs if rhs reasonable
-      if (value>0.0&&colLower[i] > -LUB) {
-        rhs -= value*colLower[i];
-      } else if (value<0.0&&colUpper[i] < LUB) {
-        rhs -= value*colUpper[i];
-      } else if (fabs(value) > EPS_COEFF_LUB) {
+    } 
+    else {
+      if((value > 0.0) && (low_is_lub[i])) {
+        rhs -= value * colLower[i];
+      } 
+      else if((value < 0.0) && (up_is_lub[i])) {
+        rhs -= value * colUpper[i];
+      } 
+      else if(fabs(value) > EPS_COEFF_LUB) {
         // take anyway
         rowind[*card_row] = i;
         rowelem[*card_row] = value;
@@ -761,8 +765,32 @@ void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   const double *xlp = solver->getColSolution();
   const double *row_act = solver->getRowActivity();
   const double *rhs = solver->getRightHandSide();
-  const double *colLower = solver->getColLower();
-  const double *colUpper = solver->getColUpper();
+  colLower = solver->getColLower();
+  colUpper = solver->getColUpper();
+  rowLower = solver->getRowLower();
+  rowUpper = solver->getRowUpper();
+  low_is_lub = new int[ncol]; 
+  up_is_lub = new int[ncol]; 
+  is_integer = new int[ncol]; 
+
+  compute_is_lub();
+
+  for(i=0; i<ncol; i++) {
+    if(solver->isInteger(i)) {
+      is_integer[i] = 1;
+    }
+    else {
+      if((colUpper[i] - colLower[i] < EPS) && 
+	 (rs_above_integer(colUpper[i]) < EPS)) {
+	
+	// continuous variable fixed to an integer value
+	is_integer[i] = 1;
+      }
+      else {
+	is_integer[i] = 0;
+      }
+    }
+  }
 
   int *cstat = new int[ncol];
   int *rstat = new int[nrow];
@@ -795,8 +823,8 @@ void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     case 1: // basic variable
       
       dist_int = rs_above_integer(xlp[i]);
-      if(solver->isInteger(i) && 
-	  (dist_int > away_) && (dist_int < 1 - away_)) {
+      if(is_integer[i] && 
+	 (dist_int > away_) && (dist_int < 1 - away_)) {
 	cv_intBasicVar_frac[i] = 1;
 	card_intBasicVar_frac++;
 
@@ -815,7 +843,7 @@ void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       nonBasicAtUpper[card_nonBasicAtUpper] = i;
       card_nonBasicAtUpper++;
 
-      if(solver->isInteger(i)) {
+      if(is_integer[i]) {
 	intNonBasicVar[card_intNonBasicVar] = i;
 	card_intNonBasicVar++;
       }
@@ -833,7 +861,7 @@ void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       nonBasicAtLower[card_nonBasicAtLower] = i;
       card_nonBasicAtLower++;
 
-      if(solver->isInteger(i)) {
+      if(is_integer[i]) {
 	intNonBasicVar[card_intNonBasicVar] = i;
 	card_intNonBasicVar++;
       }
@@ -1077,7 +1105,7 @@ void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     double rowrhs = rs_dotProd(pi_mat[i], rhsTab, mTab); 
 
     if(generate_cgcut(row, &rowrhs)) {
-      unflip(row, &rowrhs, colLower, colUpper, slack_val);
+      unflip(row, &rowrhs, slack_val);
 
       if(given_optsol) {
 	check_optsol(solver, 3, row, rowrhs, i, 0);
@@ -1170,10 +1198,27 @@ double CglRedSplit::getMaxTab() const
 }
 
 /***********************************************************************/
+void CglRedSplit::compute_is_lub() {
+
+  int i;
+  for(i=0; i<ncol; i++) {
+    low_is_lub[i] = 0;
+    up_is_lub[i] = 0;
+    if(fabs(colUpper[i]) > LUB) {
+      up_is_lub[i] = 1;
+    }
+    if(fabs(colLower[i]) > LUB) {
+      low_is_lub[i] = 1;
+    }
+  }
+} /* compute_is_lub */
+
+/***********************************************************************/
 void CglRedSplit::setLUB(double value)
 {
   if (value>0.0) {
     LUB = value;
+    compute_is_lub();
   }
   else {
     printf("### WARNING: CglRedSplit::setLUB(): value: %f ignored\n", value);
