@@ -52,13 +52,13 @@ CglValidator::cleanCut(OsiRowCut & aCut, const double * solCut, const OsiSolverI
       if(val==0) {offset++; continue;}    
 
       int & iCol = indices[i];
-      if(elems[i]>0. && colUpper[iCol] > -10000.)
+      if(elems[i]>0. && colUpper[iCol] < 10000.)
 	{
 	  offset++;
 	  rhs -= elems[i] * colUpper[iCol];
 	  elems[i]=0;
 	}
-      else if (elems[i]<0. && colLower[iCol] < 10000.)
+      else if (elems[i]<0. && colLower[iCol] > -10000.)
 	{
 	  offset++;
 	  rhs -= elems[i] * colLower[iCol];
@@ -199,13 +199,13 @@ CglValidator::cleanCut2(OsiRowCut & aCut, const double * solCut, const OsiSolver
 	    {
  	      if(val< veryTiny) {offset++; continue;}
  	      int & iCol = indices[i];
- 	      if(elems[i]>0. && colUpper[iCol] > -1000.)
+ 	      if(elems[i]>0. && colUpper[iCol] < 1000.)
         {
           offset++;
           rhs -= elems[i] * colUpper[iCol];
           elems[i]=0;
         }
-      else if (elems[i]<0. && colLower[iCol] < 1000.)
+      else if (elems[i]<0. && colLower[iCol] > -1000.)
         {
           offset++;
           rhs -= elems[i] * colLower[iCol];
