@@ -26,45 +26,43 @@ Trac page at:
    https://projects.coin-or.org/Cgl
 
 The instructions below are for UNIX-like systems (including Linux, Cygwin
-and MSys) only.  If Microsoft Developer Studio projects are
+and MSys) only. If Microsoft Developer Studio projects are
 maintained for this package, you can find instructions at
 
   https://projects.coin-or.org/MSVisualStudio
+
+For other systems or for more information about dowloading and installing
+go to:
+
+   https://projects.coin-or.org/CoinHelp
 
 
 DOWNLOADING CGL
 ===============
 
-You can obtain the source code for the Cgl package in two ways:
+You can obtain the source code for the Cgl package as follow:
 
-1. Obtain the source directly from the COIN-OR subversion repository
-   (recommended).  For this you needs the program 'svn' installed on
-   your machine, and output of "svn --version" must contain 
-   "handles 'https' scheme".
+   Download the most recent tarball from 
+   http://www.coin-or.org/download/source/Cgl. Its name should be
+   Cgl-x.y.x.tgz where x, y, and z are three numbers.
 
-   Assuming that you want to download the code into a subdirectory
-   "coin-Cgl", you type
+   Extract the code, for example, with
 
-   svn co https://projects.coin-or.org/svn/Cgl/stable/0.5 coin-Cgl
+   gunzip Cgl-x.y.z.tgz
+   tar xvf Cgl-x.y.z.tar
 
-2. Download the tarball from http://www.coin-or.org/Tarballs/Cgl and
-   extract it, for example, with
-
-   gunzip Cgl-0.5.tgz
-   tar xvf Cgl-0.5.tar
-
-   (Here "-0.5" is of course replaced by the string in the
+   (Here "x.y.z" is of course replaced by the string in the
    tarball you downloaded.)
 
    To match the description in the remainder of this installation file,
-   rename the directory "Cgl-0.5" to "coin-Cgl" using
+   rename the directory "Cgl-x.y" to "coin-Cgl" using
 
-   mv Cgl-0.5 coin-Cgl
+   mv Cgl-x.y coin-Cgl
 
 
 More detailed download instructions can be found at
 
-   https://projects.coin-or.org/BuildTools/wiki/user-download
+   https://projects.coin-or.org/CoinHelp
 
 
 
@@ -79,7 +77,7 @@ Note that you might have to specify additional options, in case you
 don't want to use the default choices that configure makes (e.g.,
 compilers).  Please visit
 
-   https://projects.coin-or.org/BuildTools/wiki/user-configure
+   https://projects.coin-or.org/CoinHelp
 
 and the Cgl Trac page for more information.
 
@@ -113,7 +111,7 @@ In the directory 'build':
 More information on the compilation and installation can be found on 
 the Cgl Trac page and at
 
-   https://projects.coin-or.org/BuildTools/wiki/user-compile
+   https://projects.coin-or.org/CoinHelp
 
 
 DOCUMENTATION
@@ -151,6 +149,6 @@ find examples in the
 
 subdirectory, see also the information at
 
-   https://projects.coin-or.org/BuildTools/wiki/user-examples
+   https://projects.coin-or.org/CoinHelp
 
 
