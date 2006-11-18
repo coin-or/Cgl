@@ -12,7 +12,7 @@
 /** Gomory Reduce-and-Split Cut Generator Class; See method generateCuts().
     Based on the paper by K. Anderson, G. Cornuejols, Yanjun Li, 
     "Reduce-and-Split Cuts: Improving the Performance of Mixed Integer 
-    Gomory Cuts", (2005), to appear in Management Science */
+    Gomory Cuts", Management Science 51 (2005). */
 
 #ifndef CglRedSplit_H
 #define CglRedSplit_H
