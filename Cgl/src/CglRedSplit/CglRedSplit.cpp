@@ -551,10 +551,10 @@ int CglRedSplit::generate_packed_row( const OsiSolverInterface *solver,
       }
     } 
     else {
-      if((value > 0.0) && (low_is_lub[i])) {
+      if((value > 0.0) && (!low_is_lub[i])) {
         rhs -= value * colLower[i];
       } 
-      else if((value < 0.0) && (up_is_lub[i])) {
+      else if((value < 0.0) && (!up_is_lub[i])) {
         rhs -= value * colUpper[i];
       } 
       else if(fabs(value) > EPS_COEFF_LUB) {
