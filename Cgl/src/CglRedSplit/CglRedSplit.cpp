@@ -1090,6 +1090,9 @@ void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     delete[] contNonBasicVar;
     delete[] nonBasicAtUpper;
     delete[] nonBasicAtLower;
+    delete[] low_is_lub;
+    delete[] up_is_lub;
+    delete[] is_integer;
     solver->disableFactorization();
 
     return; // no cuts can be generated
@@ -1120,6 +1123,9 @@ void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     delete[] contNonBasicVar;
     delete[] nonBasicAtUpper;
     delete[] nonBasicAtLower;
+    delete[] low_is_lub;
+    delete[] up_is_lub;
+    delete[] is_integer;
     solver->disableFactorization();
 
     return; // no cuts can be generated
@@ -1320,6 +1326,9 @@ void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   delete[] contNonBasicVar;
   delete[] nonBasicAtUpper;
   delete[] nonBasicAtLower;
+  delete[] low_is_lub;
+  delete[] up_is_lub;
+  delete[] is_integer;
   rs_deallocmatDBL(&contNonBasicTab, mTab, nTab);
   rs_deallocmatDBL(&intNonBasicTab, mTab, card_intNonBasicVar);
   rs_deallocmatINT(&pi_mat, mTab, mTab);
@@ -1455,10 +1464,8 @@ void CglRedSplit::printOptTab(OsiSolverInterface *solver) const
   delete[] slack_val;
 } /* printOptTab */
 
-//-------------------------------------------------------------------
-// Default Constructor 
-//-------------------------------------------------------------------
-CglRedSplit::CglRedSplit () :
+/*********************************************************************/
+CglRedSplit::CglRedSplit() :
 CglCutGenerator(),
 nrow(0),
 ncol(0),
@@ -1483,11 +1490,38 @@ given_optsol(0),
 card_given_optsol(0)
 {}
 
-//-------------------------------------------------------------------
-// Copy constructor 
-//-------------------------------------------------------------------
+/*********************************************************************/
+CglRedSplit::CglRedSplit(const CglRedSplitParam &RS_param) :
+CglCutGenerator(),
+nrow(0),
+ncol(0),
+card_intBasicVar_frac(0),
+card_intNonBasicVar(0),
+card_contNonBasicVar(0),
+card_nonBasicAtUpper(0),
+card_nonBasicAtLower(0),
+cv_intBasicVar_frac(0),
+intBasicVar_frac(0),
+intNonBasicVar(0), 
+contNonBasicVar(0),
+nonBasicAtUpper(0),
+nonBasicAtLower(0),
+mTab(0),
+nTab(0),
+pi_mat(0),
+contNonBasicTab(0),
+intNonBasicTab(0),
+rhsTab(0),
+given_optsol(0),
+card_given_optsol(0)
+{
+  param = RS_param;
+}
+ 
+/*********************************************************************/
 CglRedSplit::CglRedSplit (const CglRedSplit & source) :
   CglCutGenerator(source),
+  param(source.param),
   nrow(0),
   ncol(0),
   card_intBasicVar_frac(0),
