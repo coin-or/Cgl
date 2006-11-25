@@ -9,21 +9,21 @@
 //-----------------------------------------------------------------------------
 // Copyright (C) 2005, Francois Margot and others.  All Rights Reserved.
 
-/** Gomory Reduce-and-Split Cut Generator Class; See method generateCuts().
-    Based on the paper by K. Anderson, G. Cornuejols, Yanjun Li, 
-    "Reduce-and-Split Cuts: Improving the Performance of Mixed Integer 
-    Gomory Cuts", Management Science 51 (2005). */
-
 #ifndef CglRedSplit_H
 #define CglRedSplit_H
 
 #include "CglCutGenerator.hpp"
 #include "CglRedSplitParam.hpp"
 
+/** Gomory Reduce-and-Split Cut Generator Class; See method generateCuts().
+    Based on the paper by K. Anderson, G. Cornuejols, Yanjun Li, 
+    "Reduce-and-Split Cuts: Improving the Performance of Mixed Integer 
+    Gomory Cuts", Management Science 51 (2005). */
+
 class CglRedSplit : public CglCutGenerator {
  
 public:
-  /**@name CglRedSplit */
+  /**@name generateCuts */
   //@{
   /** Generate Reduce-and-Split Mixed Integer Gomory cuts 
       for the model of the solver interface si.
