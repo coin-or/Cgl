@@ -56,7 +56,7 @@ CONFIG_HEADER = $(top_builddir)/inc/config_cgl.h
 CONFIG_CLEAN_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libCglRedSplit_la_LIBADD =
-am_libCglRedSplit_la_OBJECTS = CglRedSplit.lo
+am_libCglRedSplit_la_OBJECTS = CglRedSplit.lo CglRedSplitParam.lo
 libCglRedSplit_la_OBJECTS = $(am_libCglRedSplit_la_OBJECTS)
 depcomp = $(SHELL) $(top_srcdir)/../depcomp
 am__depfiles_maybe = depfiles
@@ -293,7 +293,8 @@ noinst_LTLIBRARIES = libCglRedSplit.la
 
 # List all source files for this library, including headers
 libCglRedSplit_la_SOURCES = \
-	CglRedSplit.cpp  CglRedSplit.hpp
+	CglRedSplit.cpp  CglRedSplit.hpp \
+	CglRedSplitParam.cpp  CglRedSplitParam.hpp
 
 
 # This is for libtool (on Windows)
@@ -321,7 +322,8 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 # Here list all the header files that are required by a user of the library,
 # and that therefore should be installed in 'install'
 include_HEADERS = \
-	CglRedSplit.hpp
+	CglRedSplit.hpp \
+	CglRedSplitParam.hpp
 
 all: all-am
 
@@ -375,6 +377,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglRedSplit.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglRedSplitParam.Plo@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \

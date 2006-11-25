@@ -45,7 +45,7 @@ inline double CglRedSplit::rs_above_integer(double value)
 {
   double value2=floor(value);
   double value3=floor(value+0.5);
-  if (fabs(value3-value)< EPS * (fabs(value3)+1.0))
+  if (fabs(value3-value)< param.getEPS() * (fabs(value3)+1.0))
     return 0.0;
   return value-value2;
 } /* rs_above_integer */
@@ -282,7 +282,7 @@ int CglRedSplit::test_pair(int r1, int r2, double *norm) {
    
    find_step(r1, r2, &step, &reduc, norm); 
 
-   if(reduc/norm[r1] >= minReduc ) {
+   if(reduc/norm[r1] >= param.getMinReduc()) {
      update_pi_mat(r1, r2, step);
      update_redTab(r1, r2, step);
      norm[r1] = rs_dotProd(contNonBasicTab[r1], contNonBasicTab[r1], nTab);
@@ -342,9 +342,9 @@ void CglRedSplit::reduce_contNonBasicTab() {
 #endif
 
     for(i=0; i<mTab; i++) {
-      if(norm[i] > normIsZero) {
+      if(norm[i] > param.getNormIsZero()) {
 	for(j=i+1; j<mTab; j++) {
-	  if(norm[j] > normIsZero) {
+	  if(norm[j] > param.getNormIsZero()) {
 	    if((checked[i][j] < changed[i]) || (checked[i][j] < changed[j])) {
 	      if(test_pair(i, j, norm)) {
 		changed[i] = iter+1;
@@ -428,7 +428,7 @@ int CglRedSplit::generate_cgcut(double *row, double *rhs) {
   // See Wolsey "Integer Programming" (1998), p. 130, second line of proof of 
   // Proposition 8.8
 
-  if((f0 < away_) || (f0compl < away_)) {
+  if((f0 < param.getAway()) || (f0compl < param.getAway())) {
     return(0);
   }
 
@@ -470,9 +470,9 @@ void CglRedSplit::eliminate_slacks(double *row,
 
 
   for(int i=0; i<nrow; i++) {
-    if(fabs(row[ncol+i]) > EPS) {
+    if(fabs(row[ncol+i]) > param.getEPS()) {
 
-      if(rowLower[i] > rowUpper[i] - EPS) {
+      if(rowLower[i] > rowUpper[i] - param.getEPS()) {
 	row[ncol+i] = 0;
 	continue;
       }
@@ -539,11 +539,11 @@ int CglRedSplit::generate_packed_row( const OsiSolverInterface *solver,
   *card_row = 0;
   for(int i=0; i<ncol; i++) {
     double value = row[i];
-    if(fabs(value) > EPS_COEFF) {
+    if(fabs(value) > param.getEPS_COEFF()) {
       rowind[*card_row] = i;
       rowelem[*card_row] = value;
       (*card_row)++;
-      if(*card_row > limit_) {
+      if(*card_row > param.getMAX_SUPPORT()) {
 #ifdef RS_TRACE
 	printf("Cut discarded since too many non zero coefficients\n");
 #endif	
@@ -557,12 +557,12 @@ int CglRedSplit::generate_packed_row( const OsiSolverInterface *solver,
       else if((value < 0.0) && (!up_is_lub[i])) {
         rhs -= value * colUpper[i];
       } 
-      else if(fabs(value) > EPS_COEFF_LUB) {
+      else if(fabs(value) > param.getEPS_COEFF_LUB()) {
         // take anyway
         rowind[*card_row] = i;
         rowelem[*card_row] = value;
         (*card_row)++;
-        if(*card_row > limit_) {
+        if(*card_row > param.getMAX_SUPPORT()) {
 #ifdef RS_TRACE
           printf("Cut discarded since too many non zero coefficients\n");
 #endif	
@@ -573,6 +573,177 @@ int CglRedSplit::generate_packed_row( const OsiSolverInterface *solver,
   }
   return(1);
 } /* generate_packed_row */
+
+
+// TO BE REMOVED
+/***********************************************************************/
+void CglRedSplit::setLimit(int limit)
+{
+  if (limit>0)
+    param.setMAX_SUPPORT(limit);
+} /* setLimit */
+
+/***********************************************************************/
+int CglRedSplit::getLimit() const
+{
+  return param.getMAX_SUPPORT();
+} /* getLimit */
+
+/***********************************************************************/
+void CglRedSplit::setAway(double value)
+{
+  if (value>0.0 && value<=0.5)
+    param.setAway(value);
+}
+
+/***********************************************************************/
+double CglRedSplit::getAway() const
+{
+  return param.getAway();
+}
+
+/***********************************************************************/
+void CglRedSplit::setMaxTab(double value)
+{
+  if (value > 10) {
+    param.setMaxTab(value);
+  }
+  else {
+    printf("### WARNING: CglRedSplit::setMaxTab(): value: %f ignored\n", 
+	   value);
+  }
+}
+
+/***********************************************************************/
+double CglRedSplit::getMaxTab() const
+{
+  return param.getMaxTab();
+}
+
+/***********************************************************************/
+void CglRedSplit::setLUB(double value)
+{
+  if (value > 0.0) {
+    param.setLUB(value);
+    compute_is_lub();
+  }
+  else {
+    printf("### WARNING: CglRedSplit::setLUB(): value: %f ignored\n", value);
+  }
+} /* setLUB */
+
+/***********************************************************************/
+double CglRedSplit::getLUB() const
+{
+  return param.getLUB();
+} /* getLUB */
+
+/***********************************************************************/
+void CglRedSplit::setEPS(double value)
+{
+  if (value>0.0 && value<=0.1) {
+    param.setEPS(value);
+  }
+  else {
+    printf("### WARNING: CglRedSplit::setEPS(): value: %f ignored\n", value);
+  }
+} /* setEPS */
+
+/***********************************************************************/
+double CglRedSplit::getEPS() const
+{
+  return param.getEPS();
+} /* getEPS */
+
+/***********************************************************************/
+void CglRedSplit::setEPS_COEFF(double value)
+{
+  if (value > 0.0 && value <= 0.1) {
+    param.setEPS_COEFF(value);
+  }
+  else {
+    printf("### WARNING: CglRedSplit::setEPS_COEFF(): value: %f ignored\n", 
+	   value);
+  }
+} /* setEPS_COEFF */
+
+/***********************************************************************/
+double CglRedSplit::getEPS_COEFF() const
+{
+  return param.getEPS_COEFF();
+} /* getEPS_COEFF */
+
+/***********************************************************************/
+void CglRedSplit::setEPS_COEFF_LUB(double value)
+{
+  if (value > 0.0 && value <= 0.1) {
+    param.setEPS_COEFF_LUB(value);
+  }
+  else {
+    printf("### WARNING: CglRedSplit::setEPS_COEFF_LUB(): value: %f ignored\n", 
+	   value);
+  }
+} /* setEPS_COEFF_LUB */
+
+/***********************************************************************/
+double CglRedSplit::getEPS_COEFF_LUB() const
+{
+  return param.getEPS_COEFF_LUB();
+} /* getEPS_COEFF_LUB */
+
+/***********************************************************************/
+void CglRedSplit::setEPS_RELAX(double value)
+{
+  if (value > 0.0 && value <= 0.1) {
+    param.setEPS_RELAX_ABS(value);
+  }
+  else {
+    printf("### WARNING: CglRedSplit::setEPS_RELAX(): value: %f ignored\n", 
+	   value);
+  }
+} /* setEPS_RELAX */
+
+/***********************************************************************/
+double CglRedSplit::getEPS_RELAX() const
+{
+  return param.getEPS_RELAX_ABS();
+} /* getEPS_RELAX */
+
+/***********************************************************************/
+void CglRedSplit::setNormIsZero(double value)
+{
+  if (value>0.0 && value<=1) {
+    param.setNormIsZero(value);
+  }
+  else {
+    printf("### WARNING: CglRedSplit::setNormIsZero(): value: %f ignored\n",
+	   value);
+  }
+} /* setNormIsZero */
+
+/***********************************************************************/
+double CglRedSplit::getNormIsZero() const
+{
+  return param.getNormIsZero();
+} /* getNormIsZero */
+
+/***********************************************************************/
+void CglRedSplit::setMinReduc(double value)
+{
+  if (value>0.0 && value<=1) {
+    param.setMinReduc(value);
+  }
+  else {
+    printf("### WARNING: CglRedSplit::MinReduc(): value: %f ignored\n",
+	   value);
+  }
+} /* setMinReduc */
+
+/***********************************************************************/
+double CglRedSplit::getMinReduc() const
+{
+  return param.getMinReduc();
+} /* getMinReduc */
 
 /************************************************************************/
 void CglRedSplit::set_given_optsol(const double *given_sol, int card_sol) {
@@ -655,7 +826,7 @@ void CglRedSplit::check_optsol(const OsiSolverInterface *solver,
     double ck_rhs = rs_dotProd(ck_row, xlp, ncol);
     ck_rhs += rs_dotProd(&(ck_row[ncol]), slack_val, nrow);
     
-    if((ck_lhs < ck_rhs - EPS) || (ck_lhs > ck_rhs + EPS)) {
+    if((ck_lhs < ck_rhs - param.getEPS()) || (ck_lhs > ck_rhs + param.getEPS())) {
       printf("### ERROR: CglRedSplit::check_optsol(): Cut %d cuts given_optsol\n", 
 	     irow);
       rs_printvecDBL("ck_row", ck_row, ncol+nrow);
@@ -710,7 +881,7 @@ void CglRedSplit::check_optsol(const OsiSolverInterface *solver,
   double ck_lhs = rs_dotProd(cpy_row, given_optsol, ncol);
   ck_lhs += rs_dotProd(&(cpy_row[ncol]), ck_slack, nrow);
     
-  if(ck_lhs > ck_rhs + EPS) {
+  if(ck_lhs > ck_rhs + param.getEPS()) {
     printf("### ERROR: CglRedSplit::check_optsol(): Cut %d cuts given_optsol\n", 
 	   cut_number);
     rs_printvecDBL("cpy_row", cpy_row, ncol+nrow);
@@ -780,8 +951,8 @@ void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       is_integer[i] = 1;
     }
     else {
-      if((colUpper[i] - colLower[i] < EPS) && 
-	 (rs_above_integer(colUpper[i]) < EPS)) {
+      if((colUpper[i] - colLower[i] < param.getEPS()) && 
+	 (rs_above_integer(colUpper[i]) < param.getEPS())) {
 	
 	// continuous variable fixed to an integer value
 	is_integer[i] = 1;
@@ -824,7 +995,7 @@ void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       
       dist_int = rs_above_integer(xlp[i]);
       if(is_integer[i] && 
-	 (dist_int > away_) && (dist_int < 1 - away_)) {
+	 (dist_int > param.getAway()) && (dist_int < 1 - param.getAway())) {
 	cv_intBasicVar_frac[i] = 1;
 	card_intBasicVar_frac++;
 
@@ -931,11 +1102,11 @@ void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   double nc = (double) card_contNonBasicVar;
   double nc3 = nc * nc * nc;
 
-  if(nc3 > maxTab_) {
-    new_mTab = (int) (sqrt(maxTab_/card_contNonBasicVar));
+  if(nc3 > param.getMaxTab()) {
+    new_mTab = (int) (sqrt(param.getMaxTab()/card_contNonBasicVar));
   }
   else {
-    new_mTab = (int) (CoinCbrt(maxTab_));
+    new_mTab = (int) (CoinCbrt(param.getMaxTab()));
   }
 
   if(new_mTab == 0) {
@@ -1121,9 +1292,14 @@ void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       if(generate_packed_row(solver,row, rowind, rowelem, &card_row,rowrhs)) {
       	OsiRowCut rc;
 	rc.setRow(card_row, rowind, rowelem);
-	rc.setLb(-DBL_MAX);
-	rc.setUb(rowrhs + EPS_RELAX);   // relax the constraint slightly
-	cs.insertIfNotDuplicate(rc, CoinAbsFltEq(EPS_COEFF));
+	rc.setLb(-param.getINFINIT());
+	double adjust = param.getEPS_RELAX_ABS();
+	if(param.getEPS_RELAX_REL() > 0.0) {
+	  adjust += fabs(rowrhs) * param.getEPS_RELAX_REL();
+	}
+	rc.setUb(rowrhs + adjust);   
+                                  // relax the constraint slightly
+	cs.insertIfNotDuplicate(rc, CoinAbsFltEq(param.getEPS_COEFF()));
       }
     }
   }
@@ -1154,48 +1330,14 @@ void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 } /* generateCuts */
 
 /***********************************************************************/
-void CglRedSplit::setLimit(int limit)
-{
-  if (limit>0)
-    limit_=limit;
-} /* setLimit */
+void CglRedSplit::setParam(const CglRedSplitParam &source) {
+  param = source;
+} /* setParam */
 
 /***********************************************************************/
-int CglRedSplit::getLimit() const
-{
-  return limit_;
-} /* getLimit */
-
-/***********************************************************************/
-void CglRedSplit::setAway(double value)
-{
-  if (value>0.0 && value<=0.5)
-    away_ = value;
-}
-
-/***********************************************************************/
-double CglRedSplit::getAway() const
-{
-  return away_;
-}
-
-/***********************************************************************/
-void CglRedSplit::setMaxTab(double value)
-{
-  if (value > 10) {
-    maxTab_ = value;
-  }
-  else {
-    printf("### WARNING: CglRedSplit::setMaxTab(): value: %f ignored\n", 
-	   value);
-  }
-}
-
-/***********************************************************************/
-double CglRedSplit::getMaxTab() const
-{
-  return maxTab_;
-}
+CglRedSplitParam CglRedSplit::getParam() const {
+  return param;
+} /* getParam */
 
 /***********************************************************************/
 void CglRedSplit::compute_is_lub() {
@@ -1204,139 +1346,14 @@ void CglRedSplit::compute_is_lub() {
   for(i=0; i<ncol; i++) {
     low_is_lub[i] = 0;
     up_is_lub[i] = 0;
-    if(fabs(colUpper[i]) > LUB) {
+    if(fabs(colUpper[i]) > param.getLUB()) {
       up_is_lub[i] = 1;
     }
-    if(fabs(colLower[i]) > LUB) {
+    if(fabs(colLower[i]) > param.getLUB()) {
       low_is_lub[i] = 1;
     }
   }
 } /* compute_is_lub */
-
-/***********************************************************************/
-void CglRedSplit::setLUB(double value)
-{
-  if (value>0.0) {
-    LUB = value;
-    compute_is_lub();
-  }
-  else {
-    printf("### WARNING: CglRedSplit::setLUB(): value: %f ignored\n", value);
-  }
-} /* setLUB */
-
-/***********************************************************************/
-double CglRedSplit::getLUB() const
-{
-  return LUB;
-} /* getLUB */
-
-/***********************************************************************/
-void CglRedSplit::setEPS(double value)
-{
-  if (value>0.0 && value<=0.1) {
-    EPS = value;
-  }
-  else {
-    printf("### WARNING: CglRedSplit::setEPS(): value: %f ignored\n", value);
-  }
-} /* setEPS */
-
-/***********************************************************************/
-double CglRedSplit::getEPS() const
-{
-  return EPS;
-} /* getEPS */
-
-/***********************************************************************/
-void CglRedSplit::setEPS_COEFF(double value)
-{
-  if (value > 0.0 && value <= 0.1) {
-    EPS_COEFF = value;
-  }
-  else {
-    printf("### WARNING: CglRedSplit::setEPS_COEFF(): value: %f ignored\n", 
-	   value);
-  }
-} /* setEPS_COEFF */
-
-/***********************************************************************/
-double CglRedSplit::getEPS_COEFF() const
-{
-  return EPS_COEFF;
-} /* getEPS_COEFF */
-
-/***********************************************************************/
-void CglRedSplit::setEPS_COEFF_LUB(double value)
-{
-  if (value > 0.0 && value <= 0.1) {
-    EPS_COEFF_LUB = value;
-  }
-  else {
-    printf("### WARNING: CglRedSplit::setEPS_COEFF_LUB(): value: %f ignored\n", 
-	   value);
-  }
-} /* setEPS_COEFF_LUB */
-
-/***********************************************************************/
-double CglRedSplit::getEPS_COEFF_LUB() const
-{
-  return EPS_COEFF_LUB;
-} /* getEPS_COEFF_LUB */
-
-/***********************************************************************/
-void CglRedSplit::setEPS_RELAX(double value)
-{
-  if (value > 0.0 && value <= 0.1) {
-    EPS_RELAX = value;
-  }
-  else {
-    printf("### WARNING: CglRedSplit::setEPS_RELAX(): value: %f ignored\n", 
-	   value);
-  }
-} /* setEPS_RELAX */
-
-/***********************************************************************/
-double CglRedSplit::getEPS_RELAX() const
-{
-  return EPS_RELAX;
-} /* getEPS_RELAX */
-
-/***********************************************************************/
-void CglRedSplit::setNormIsZero(double value)
-{
-  if (value>0.0 && value<=1) {
-    normIsZero = value;
-  }
-  else {
-    printf("### WARNING: CglRedSplit::setNormIsZero(): value: %f ignored\n",
-	   value);
-  }
-} /* setNormIsZero */
-
-/***********************************************************************/
-double CglRedSplit::getNormIsZero() const
-{
-  return normIsZero;
-} /* getNormIsZero */
-
-/***********************************************************************/
-void CglRedSplit::setMinReduc(double value)
-{
-  if (value>0.0 && value<=1) {
-    minReduc = value;
-  }
-  else {
-    printf("### WARNING: CglRedSplit::MinReduc(): value: %f ignored\n",
-	   value);
-  }
-} /* setMinReduc */
-
-/***********************************************************************/
-double CglRedSplit::getMinReduc() const
-{
-  return minReduc;
-} /* getMinReduc */
 
 /***********************************************************************/
 void CglRedSplit::print() const
@@ -1445,13 +1462,6 @@ CglRedSplit::CglRedSplit () :
 CglCutGenerator(),
 nrow(0),
 ncol(0),
-LUB(1000.0),
-EPS(1e-07),
-EPS_COEFF(1e-08),
-EPS_COEFF_LUB(1e-13),
-EPS_RELAX(1e-8),
-normIsZero(1e-05),
-minReduc(0.05),
 card_intBasicVar_frac(0),
 card_intNonBasicVar(0),
 card_contNonBasicVar(0),
@@ -1469,9 +1479,6 @@ pi_mat(0),
 contNonBasicTab(0),
 intNonBasicTab(0),
 rhsTab(0),
-away_(0.05),
-limit_(50),
-maxTab_(1e7),
 given_optsol(0),
 card_given_optsol(0)
 {}
@@ -1483,13 +1490,6 @@ CglRedSplit::CglRedSplit (const CglRedSplit & source) :
   CglCutGenerator(source),
   nrow(0),
   ncol(0),
-  LUB(source.LUB),
-  EPS(source.EPS),
-  EPS_COEFF(source.EPS_COEFF),
-  EPS_COEFF_LUB(source.EPS_COEFF_LUB),
-  EPS_RELAX(source.EPS_RELAX),
-  normIsZero(source.normIsZero),
-  minReduc(source.minReduc),
   card_intBasicVar_frac(0),
   card_intNonBasicVar(0),
   card_contNonBasicVar(0),
@@ -1506,18 +1506,14 @@ CglRedSplit::CglRedSplit (const CglRedSplit & source) :
   pi_mat(NULL),
   contNonBasicTab(NULL),
   intNonBasicTab(NULL),
-  rhsTab(NULL),
-  away_(source.away_),
-  limit_(source.limit_),
-  maxTab_(source.maxTab_),
-  given_optsol(NULL),
-  card_given_optsol(source.card_given_optsol)
+  rhsTab(NULL)
 {  
   if (source.nrow) {
     printf("### ERROR: CglRedSplit::CglRedSplit(): copy not implemented\n");
     exit(1);
   } else {
     // we are in good shape
+    param = source.param;
     if (card_given_optsol) {
       assert (source.given_optsol);
       given_optsol = CoinCopyOfArray(source.given_optsol,card_given_optsol);
@@ -1525,44 +1521,37 @@ CglRedSplit::CglRedSplit (const CglRedSplit & source) :
   }
 }
 
-//-------------------------------------------------------------------
-// Clone
-//-------------------------------------------------------------------
+/*********************************************************************/
 CglCutGenerator *
 CglRedSplit::clone() const
 {
   return new CglRedSplit(*this);
 }
 
-//-------------------------------------------------------------------
-// Destructor 
-//-------------------------------------------------------------------
+/*********************************************************************/
 CglRedSplit::~CglRedSplit ()
 {}
 
-//----------------------------------------------------------------
-// Assignment operator 
-//-------------------------------------------------------------------
+/*********************************************************************/
 CglRedSplit &
 CglRedSplit::operator=(const CglRedSplit& rhs)
 {  
 
-  printf("### ERROR: CglRedSplit::CglRedSplit(): operator '=' not implemented\n");
-  exit(1);
-
   if (this != &rhs) {
     CglCutGenerator::operator=(rhs);
-    away_=rhs.away_;
-    limit_=rhs.limit_;
+    param = rhs.param;
   }
   return *this;
 }
+/*********************************************************************/
 // Returns true if needs optimal basis to do cuts
 bool 
 CglRedSplit::needsOptimalBasis() const
 {
   return true;
 }
+
+/*********************************************************************/
 // Create C++ lines to get to current state
 std::string
 CglRedSplit::generateCpp( FILE * fp) 
@@ -1570,46 +1559,46 @@ CglRedSplit::generateCpp( FILE * fp)
   CglRedSplit other;
   fprintf(fp,"0#include \"CglRedSplit.hpp\"\n");
   fprintf(fp,"3  CglRedSplit redSplit;\n");
-  if (getLimit()!=other.getLimit())
-    fprintf(fp,"3  redSplit.setLimit(%d);\n",getLimit());
+  if (param.getMAX_SUPPORT()!=other.param.getMAX_SUPPORT())
+    fprintf(fp,"3  redSplit.setLimit(%d);\n",param.getMAX_SUPPORT());
   else
-    fprintf(fp,"4  redSplit.setLimit(%d);\n",getLimit());
-  if (getAway()!=other.getAway())
-    fprintf(fp,"3  redSplit.setAway(%g);\n",getAway());
+    fprintf(fp,"4  redSplit.setLimit(%d);\n",param.getMAX_SUPPORT());
+  if (param.getAway()!=other.param.getAway())
+    fprintf(fp,"3  redSplit.setAway(%g);\n",param.getAway());
   else
-    fprintf(fp,"4  redSplit.setAway(%g);\n",getAway());
-  if (getLUB()!=other.getLUB())
-    fprintf(fp,"3  redSplit.setLUB(%g);\n",getLUB());
+    fprintf(fp,"4  redSplit.setAway(%g);\n",param.getAway());
+  if (param.getLUB()!=other.param.getLUB())
+    fprintf(fp,"3  redSplit.setLUB(%g);\n",param.getLUB());
   else
-    fprintf(fp,"4  redSplit.setLUB(%g);\n",getLUB());
-  if (getEPS()!=other.getEPS())
-    fprintf(fp,"3  redSplit.setEPS(%g);\n",getEPS());
+    fprintf(fp,"4  redSplit.setLUB(%g);\n",param.getLUB());
+  if (param.getEPS()!=other.param.getEPS())
+    fprintf(fp,"3  redSplit.set.EPS(%g);\n",param.getEPS());
   else
-    fprintf(fp,"4  redSplit.setEPS(%g);\n",getEPS());
-  if (getEPS_COEFF()!=other.getEPS_COEFF())
-    fprintf(fp,"3  redSplit.setEPS_COEFF(%g);\n",getEPS_COEFF());
+    fprintf(fp,"4  redSplit.setEPS(%g);\n",param.getEPS());
+  if (param.getEPS_COEFF()!=other.param.getEPS_COEFF())
+    fprintf(fp,"3  redSplit.setEPS_COEFF(%g);\n",param.getEPS_COEFF());
   else
-    fprintf(fp,"4  redSplit.setEPS_COEFF(%g);\n",getEPS_COEFF());
-  if (getEPS_COEFF_LUB()!=other.getEPS_COEFF_LUB())
-    fprintf(fp,"3  redSplit.setEPS_COEFF_LUB(%g);\n",getEPS_COEFF_LUB());
+    fprintf(fp,"4  redSplit.set.EPS_COEFF(%g);\n",param.getEPS_COEFF());
+  if (param.getEPS_COEFF_LUB()!=other.param.getEPS_COEFF_LUB())
+    fprintf(fp,"3  redSplit.set.EPS_COEFF_LUB(%g);\n",param.getEPS_COEFF_LUB());
   else
-    fprintf(fp,"4  redSplit.setEPS_COEFF_LUB(%g);\n",getEPS_COEFF_LUB());
-  if (getEPS_RELAX()!=other.getEPS_RELAX())
-    fprintf(fp,"3  redSplit.setEPS_RELAX(%g);\n",getEPS_RELAX());
+    fprintf(fp,"4  redSplit.set.EPS_COEFF_LUB(%g);\n",param.getEPS_COEFF_LUB());
+  if (param.getEPS_RELAX_ABS()!=other.param.getEPS_RELAX_ABS())
+    fprintf(fp,"3  redSplit.set.EPS_RELAX(%g);\n",param.getEPS_RELAX_ABS());
   else
-    fprintf(fp,"4  redSplit.setEPS_RELAX(%g);\n",getEPS_RELAX());
-  if (getNormIsZero()!=other.getNormIsZero())
-    fprintf(fp,"3  redSplit.setNormIsZero(%g);\n",getNormIsZero());
+    fprintf(fp,"4  redSplit.set.EPS_RELAX(%g);\n",param.getEPS_RELAX_ABS());
+  if (param.getNormIsZero()!=other.param.getNormIsZero())
+    fprintf(fp,"3  redSplit.setNormIsZero(%g);\n",param.getNormIsZero());
   else
-    fprintf(fp,"4  redSplit.setNormIsZero(%g);\n",getNormIsZero());
-  if (getMinReduc()!=other.getMinReduc())
-    fprintf(fp,"3  redSplit.setMinReduc(%g);\n",getMinReduc());
+    fprintf(fp,"4  redSplit.setNormIsZero(%g);\n",param.getNormIsZero());
+  if (param.getMinReduc()!=other.param.getMinReduc())
+    fprintf(fp,"3  redSplit.setMinReduc(%g);\n",param.getMinReduc());
   else
-    fprintf(fp,"4  redSplit.setMinReduc(%g);\n",getMinReduc());
-  if (getMaxTab()!=other.getMaxTab())
-    fprintf(fp,"3  redSplit.setMaxTab(%g);\n",getMaxTab());
+    fprintf(fp,"4  redSplit.setMinReduc(%g);\n",param.getMinReduc());
+  if (param.getMaxTab()!=other.param.getMaxTab())
+    fprintf(fp,"3  redSplit.setMaxTab(%g);\n",param.getMaxTab());
   else
-    fprintf(fp,"4  redSplit.setMaxTab(%g);\n",getMaxTab());
+    fprintf(fp,"4  redSplit.setMaxTab(%g);\n",param.getMaxTab());
   if (getAggressiveness()!=other.getAggressiveness())
     fprintf(fp,"3  redSplit.setAggressiveness(%d);\n",getAggressiveness());
   else

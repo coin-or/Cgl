@@ -1,4 +1,4 @@
-// Last edit: 11/16/06
+// Last edit: 11/24/06
 //
 // Name:     CglRedSplit.hpp
 // Author:   Francois Margot
@@ -18,11 +18,12 @@
 #define CglRedSplit_H
 
 #include "CglCutGenerator.hpp"
+#include "CglRedSplitParam.hpp"
 
 class CglRedSplit : public CglCutGenerator {
  
 public:
-  /**@name Generate Cuts */
+  /**@name CglRedSplit */
   //@{
   /** Generate Reduce-and-Split Mixed Integer Gomory cuts 
       for the model of the solver interface si.
@@ -51,32 +52,6 @@ public:
       Note that this generator might not be able to generate cuts for some 
       solutions violating integrality constraints. 
 
-      Parameters of the generator are listed below. Modifying the default 
-      values for parameters other than the last five might result in 
-      invalid cuts.
-
-      - LUB: Value considered large for the absolute value of a lower or upper
-             bound on a variable. See method setLUB().
-      - EPS: Precision of double computations. See method setEPS().
-      - EPS_COEFF: Precision for deciding if a coefficient of a generated cut 
-                   is zero. See method setEPS_COEFF().
-      - EPS_COEFF_LUB: Precision for deciding if a coefficient of a 
-                       generated cut is zero when the corresponding 
-                       variable has a lower or upper bound larger than 
-                       LUB in absolute value. See method setEPS_COEFF_LUB().
-      - EPS_RELAX: Value used to relax slightly the right hand side of each
-                   generated cut. See method setEPS_RELAX().
-
-      - normIsZero: Norm of a vector is considered zero if smaller than
-                    this value. See method setNormIsZero().
-      - minReduc: Reduction is performed only if the norm of the vector is
-                  reduced by this fraction. See method setMinReduc().
-      - limit: Generate cuts with at most this number of nonzero entries. 
-               See method setLimit().
-      - away: Look only at basic integer variables whose current value
-              is at least this value from being integer. See method setAway().
-      - maxTab: Controls the number of rows selected for the generation. See
-                method setMaxTab().
   */
   virtual void generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 			    const CglTreeInfo info = CglTreeInfo());
@@ -90,8 +65,35 @@ public:
   //@}
   
   
-  /**@name Parameters */
+  /**@name Public Methods */
   //@{
+
+  // Set the parameters to the values of the given CglRedSplitParam object.
+  void setParam(const CglRedSplitParam &source); 
+  // Return the CglRedSplitParam object of the generator. 
+  CglRedSplitParam getParam() const;
+
+  // Compute entries of low_is_lub and up_is_lub.
+  void compute_is_lub();
+
+  /// Set given_optsol to the given optimal solution given_sol.
+  /// If given_optsol is set using this method, 
+  /// the code will stop as soon as
+  /// a generated cut is violated by the given solution; exclusively 
+  /// for debugging purposes.
+  void set_given_optsol(const double *given_sol, const int card_sol);
+
+  /// Print some of the data members  
+  void print() const;
+
+  /// Print the current simplex tableau  
+  void printOptTab(OsiSolverInterface *solver) const;
+  //@}
+
+ /**@name Public Methods (soon to be obsolete)*/
+  //@{
+  //************************************************************
+  // TO BE REMOVED
   /** Set limit, the maximum number of non zero coefficients in generated cut;
       Default: 50 */
   void setLimit(int limit);
@@ -105,10 +107,6 @@ public:
   void setAway(double value);
   /// Get value of away
   double getAway() const;
-
-  // Compute entries of low_is_lub and up_is_lub.
-  void compute_is_lub();
-
  /** Set the value of LUB, value considered large for the absolute value of
       a lower or upper bound on a variable;
       Default: 1000 */
@@ -162,25 +160,18 @@ public:
   void setMaxTab(double value);
   /// Get the value of maxTab
   double getMaxTab() const;
+  // END TO BE REMOVED
+  //************************************************************
 
-  /// Set given_optsol to the given optimal solution given_sol.
-  /// If given_optsol is set using this method, 
-  /// the code will stop as soon as
-  /// a generated cut is violated by the given solution; exclusively 
-  /// for debugging purposes.
-  void set_given_optsol(const double *given_sol, const int card_sol);
-
-  /// Print some of the data members  
-  void print() const;
-
-  /// Print the current simplex tableau  
-  void printOptTab(OsiSolverInterface *solver) const;
   //@}
 
   /**@name Constructors and destructors */
   //@{
   /// Default constructor 
-  CglRedSplit ();
+  CglRedSplit();
+
+  /// Constructor with specified parameters 
+  CglRedSplit(const CglRedSplitParam &RS_param);
  
   /// Copy constructor 
   CglRedSplit (const CglRedSplit &);
@@ -207,6 +198,7 @@ private:
 /**@name Private member methods */
 
   //@{
+
   /// Compute the fractional part of value, allowing for small error.
   inline double rs_above_integer(double value); 
 
@@ -279,6 +271,10 @@ private:
 /**@name Private member data */
 
   //@{
+
+  /// Object with all RedSplit parameters. 
+  CglRedSplitParam param;
+
   /// Number of rows ( = number of slack variables) in the current LP.
   int nrow; 
 
@@ -297,34 +293,8 @@ private:
   /// Upper bounds for constraints
   const double *rowUpper;
 
-  /// Value considered large for the absolute value of lower or upper 
-  /// bound on a variable. Default: 1000.
-  double LUB;
-
-  /// Epsilon for precision. Default: 1e-7.
-  double EPS;
-
-  /// Epsilon for value of coefficients. Default: 1e-8.
-  double EPS_COEFF;
-
-  /// Epsilon for value of coefficients for variables with absolute value of
-  /// lower or upper bound larger than LUB. Default: 1e-13.
-  double EPS_COEFF_LUB;
-
-  /// Epsilon for relaxing the right hand side of each generated constraint. 
-  /// Default: 1e-8.
-  double EPS_RELAX;
-
-  /// Norm of a vector is considered zero if smaller than normIsZero;
-  /// Default: 1e-5.
-  double normIsZero;
-
-  /// Minimum reduction in percent that must be achieved by a potential 
-  /// reduction step in order to be performed; Between 0 and 1, default: 0.05.
-  double minReduc;
-
   /// Number of integer basic structural variables that are fractional in the
-  /// current lp solution (at least away_ from being integer).  
+  /// current lp solution (at least param.away_ from being integer).  
   int card_intBasicVar_frac;
 
   /// Number of integer non basic structural variables in the
@@ -389,16 +359,6 @@ private:
   /// Right hand side of the tableau.
   /// Only rows used for generation.
   double *rhsTab ;
-
-  /// Use row only if pivot variable should be integer but is more 
-  /// than away_ from being integer.
-  double away_;
-  /// Generate cut only if at most limit_ non zero coefficients in cut.
-  int limit_;
-  
-  /// Maximum value for (mTab * mTab * max(mTab, nTab)). See method 
-  /// setMaxTab().
-  double maxTab_;
 
   /// Given optimal solution that should not be cut; only for debug. 
   double *given_optsol;

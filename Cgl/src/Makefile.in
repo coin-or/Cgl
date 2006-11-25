@@ -64,7 +64,8 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(includedir)"
 libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 am__DEPENDENCIES_1 =
-am_libCgl_la_OBJECTS = CglCutGenerator.lo CglMessage.lo CglStored.lo
+am_libCgl_la_OBJECTS = CglCutGenerator.lo CglMessage.lo CglStored.lo \
+	CglParam.lo
 libCgl_la_OBJECTS = $(am_libCgl_la_OBJECTS)
 depcomp = $(SHELL) $(top_srcdir)/../depcomp
 am__depfiles_maybe = depfiles
@@ -307,7 +308,8 @@ libCgl_la_SOURCES = \
 	CglConfig.h \
 	CglCutGenerator.cpp CglCutGenerator.hpp\
 	CglMessage.cpp CglMessage.hpp \
-	CglStored.cpp CglStored.hpp
+	CglStored.cpp CglStored.hpp \
+	CglParam.cpp CglParam.hpp
 
 
 # This is for libtool (on Windows)
@@ -345,7 +347,8 @@ include_HEADERS = \
 	../inc/config_cgl.h \
 	CglCutGenerator.hpp \
 	CglMessage.hpp \
-	CglStored.hpp
+	CglStored.hpp \
+	CglParam.hpp
 
 
 #############################################################################
@@ -425,6 +428,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglCutGenerator.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglMessage.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglParam.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglStored.Plo@am__quote@
 
 .cpp.o:
