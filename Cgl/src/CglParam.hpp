@@ -22,32 +22,32 @@ public:
   //@{
 
   /** Set INFINIT */
-  void setINFINIT(const double inf);
+  virtual void setINFINIT(const double inf);
   /** Get value of INFINIT */
   inline double getINFINIT() const {return INFINIT;};
 
   /** Set EPS */
-  void setEPS(const double eps);
+  virtual void setEPS(const double eps);
   /** Get value of EPS */
   inline double getEPS() const {return EPS;};
 
   /** Set EPS_COEFF */
-  void setEPS_COEFF(const double eps_c);
+  virtual void setEPS_COEFF(const double eps_c);
   /** Get value of EPS_COEFF */
   inline double getEPS_COEFF() const {return EPS_COEFF;};
 
   /** Set EPS_RELAX_ABS */
-  void setEPS_RELAX_ABS(const double eps_ra);
+  virtual void setEPS_RELAX_ABS(const double eps_ra);
   /** Get value of EPS_RELAX_ABS */
   inline double getEPS_RELAX_ABS() const {return EPS_RELAX_ABS;};
 
   /** Set EPS_RELAX_REL */
-  void setEPS_RELAX_REL(const double eps_rr);
+  virtual void setEPS_RELAX_REL(const double eps_rr);
   /** Get value of EPS_RELAX_REL */
   inline double getEPS_RELAX_REL() const {return EPS_RELAX_REL;};
 
   /** Set MAX_SUPPORT */
-  void setMAX_SUPPORT(const int max_s);
+  virtual void setMAX_SUPPORT(const int max_s);
   /** Get value of MAX_SUPPORT */
   inline int getMAX_SUPPORT() const {return MAX_SUPPORT;};
   //@}
@@ -66,7 +66,7 @@ public:
   virtual CglParam* clone() const;
 
   /// Assignment operator 
-  CglParam& operator=(const CglParam &rhs);
+  virtual CglParam& operator=(const CglParam &rhs);
 
   /// Destructor 
   virtual ~CglParam();

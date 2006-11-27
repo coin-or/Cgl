@@ -1,4 +1,4 @@
-// Last edit: 11/24/06
+// Last edit: 11/27/06
 //
 // Name:     CglRedSplit.hpp
 // Author:   Francois Margot
@@ -227,6 +227,10 @@ private:
   /// variables are non negative and at their lower bound.
   int generate_cgcut(double *row, double *rhs);
 
+  /// Generate a mixed integer Chvatal-Gomory cut, when all non basic 
+  /// variables are non negative and at their lower bound (different formula)
+  int generate_cgcut_2(int basic_ind, double *row, double *rhs);
+
   /// Use multiples of the initial inequalities to cancel out the coefficients
   /// of the slack variables.
   void eliminate_slacks(double *row, 
@@ -245,6 +249,15 @@ private:
   /// the original bounds. Modify the right hand side
   /// accordingly.
   void unflip(double *row, double *rowrhs, double *slack_val);
+
+  /// Return the scale factor for the row. 
+  /// Compute max_coeff: maximum absolute value of the coefficients.
+  /// Compute min_coeff: minimum absolute value of the coefficients
+  /// larger than EPS_COEFF.
+  /// Return -1 if max_coeff < EPS_COEFF or if max_coeff/min_coeff > MAXDYN
+  /// or MAXDYN_LUB (depending if the row has a non zero coeff. for a variable
+  /// with large lower/upper bound) */.
+  double row_scale_factor(double *row);
 
   /// Generate the packed cut from the row representation.
   int generate_packed_row(const OsiSolverInterface * solver,double *row,
