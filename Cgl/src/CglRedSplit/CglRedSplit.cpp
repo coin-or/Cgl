@@ -925,8 +925,7 @@ void CglRedSplit::set_given_optsol(const double *given_sol, int card_sol) {
 } /* set_given_optsol */
 
 /************************************************************************/
-void CglRedSplit::check_optsol(const OsiSolverInterface *solver, 
-			       const int calling_place,
+void CglRedSplit::check_optsol(const int calling_place,
 			       const double *xlp, const double *slack_val,
 			       const int do_flip) {
 
@@ -937,19 +936,16 @@ void CglRedSplit::check_optsol(const OsiSolverInterface *solver,
   }
 
   int i;
-  const CoinPackedMatrix *ck_byRow = solver->getMatrixByRow();
-  const double *rhs = solver->getRightHandSide();
-
   double *ck_slack = new double[nrow];
 
 #ifdef RS_TRACEALL
   print();
 #endif
 
-  ck_byRow->timesMinor(given_optsol, ck_slack);
+  byRow->timesMinor(given_optsol, ck_slack);
   int irow;
   for(irow=0; irow<nrow; irow++) {
-    ck_slack[irow] = rhs[irow] - ck_slack[irow];  
+    ck_slack[irow] = rowRhs[irow] - ck_slack[irow];  
                                         // slack values for optimal solution
   }
   
@@ -1007,8 +1003,7 @@ void CglRedSplit::check_optsol(const OsiSolverInterface *solver,
 } /* check_optsol */
 
 /************************************************************************/
-void CglRedSplit::check_optsol(const OsiSolverInterface *solver, 
-			       const int calling_place,
+void CglRedSplit::check_optsol(const int calling_place,
 			       const double *ck_row, const double ck_rhs,
 			       const int cut_number, const int do_flip) {
 
@@ -1018,7 +1013,6 @@ void CglRedSplit::check_optsol(const OsiSolverInterface *solver,
     exit(1);
   }
 
-  const CoinPackedMatrix *ck_byRow = solver->getMatrixByRow();
   double *cpy_row = new double[ncol+nrow];
   double *ck_slack = new double[nrow];
 
@@ -1031,7 +1025,7 @@ void CglRedSplit::check_optsol(const OsiSolverInterface *solver,
     cpy_row[i] = ck_row[i];
   }
 
-  ck_byRow->timesMinor(given_optsol, ck_slack);
+  byRow->timesMinor(given_optsol, ck_slack);
   for(irow=0; irow<nrow; irow++) {
     ck_slack[irow] = rowRhs[irow] - ck_slack[irow];  
                                        // slack values for optimal solution
@@ -1154,28 +1148,28 @@ void CglRedSplit::check_data(const CglRedSplitData rsData) {
   }
 
   const CoinPackedMatrix *byCol = solver->getMatrixByCol();
-  if(rs_are_different_matrices(byCol, *rsData.getMatrixByColPtr(), 
+  if(rs_are_different_matrices(byCol, rsData.getMatrixByCol(), 
 			       rsData.getNcol(), rsData.getNrow())) {
     printf("### ERROR: CglRedSplit::check_data(): inconsistant matrices by columns\n");
     exit(1);
   }
 
   const CoinPackedMatrix *byRow = solver->getMatrixByRow();
-  if(rs_are_different_matrices(byRow, *rsData.getMatrixByRowPtr(), 
+  if(rs_are_different_matrices(byRow, rsData.getMatrixByRow(), 
 			       rsData.getNrow(), rsData.getNcol())) {
     printf("### ERROR: CglRedSplit::check_data(): inconsistant matrices by rows\n");
     exit(1);
   }
 
   const double *solObj = solver->getObjCoefficients();
-  if(rs_are_different_vectors(solObj, *rsData.getObjPtr(), 
+  if(rs_are_different_vectors(solObj, rsData.getObj(), 
 			      rsData.getNrow())) {
     printf("### ERROR: CglRedSplit::check_data(): inconsistant objective\n");
     exit(1);
   }
 
   const double *solColLow = solver->getColLower();
-  if(rs_are_different_vectors(solColLow, *rsData.getColLowerPtr(), 
+  if(rs_are_different_vectors(solColLow, rsData.getColLower(), 
 			      rsData.getNrow())) {
     printf("### ERROR: CglRedSplit::check_data(): inconsistant ColLower\n");
     exit(1);
@@ -1183,14 +1177,14 @@ void CglRedSplit::check_data(const CglRedSplitData rsData) {
 
 
   const double *solColUp = solver->getColUpper();
-  if(rs_are_different_vectors(solColUp, *rsData.getColUpperPtr(), 
+  if(rs_are_different_vectors(solColUp, rsData.getColUpper(), 
 			      rsData.getNcol())) {
     printf("### ERROR: CglRedSplit::check_data(): inconsistant ColUpper\n");
     exit(1);
   }
 
   const double *solRhsLow = solver->getRowLower();
-  if(rs_are_different_vectors(solRhsLow, *rsData.getRowLowerPtr(), 
+  if(rs_are_different_vectors(solRhsLow, rsData.getRowLower(), 
 			      rsData.getNrow())) {
     printf("### ERROR: CglRedSplit::check_data(): inconsistant RowLower\n");
     exit(1);
@@ -1198,21 +1192,21 @@ void CglRedSplit::check_data(const CglRedSplitData rsData) {
 
 
   const double *solRhsUp = solver->getRowUpper();
-  if(rs_are_different_vectors(solRhsUp, *rsData.getRowUpperPtr(), 
+  if(rs_are_different_vectors(solRhsUp, rsData.getRowUpper(), 
 			      rsData.getNrow())) {
     printf("### ERROR: CglRedSplit::check_data(): inconsistant RowUpper\n");
     exit(1);
   }
 
   const double *solRhs = solver->getRightHandSide();
-  if(rs_are_different_vectors(solRhs, *rsData.getRowRhsPtr(), 
+  if(rs_are_different_vectors(solRhs, rsData.getRowRhs(), 
 			      rsData.getNrow())) {
     printf("### ERROR: CglRedSplit::check_data(): inconsistant RowRhs\n");
     exit(1);
   }
 
   int j;
-  const char *colType = *rsData.getColTypePtr();
+  const char *colType = rsData.getColType();
   for(j=0; j<rsData.getNcol(); j++) {
     if((solver->isBinary(j)) && (colType[j] != 'B')) {
       printf("### ERROR: CglRedSplit::check_data(): isBinary(%d) = 1  colType[%d]: %c.\n",
@@ -1320,20 +1314,55 @@ void CglRedSplit::generateCuts(const CglRedSplitData rsData, OsiCuts &cs)
 
   // Get basic problem information from rsData
   ncol = rsData.getNcol(); 
+  if((ncol < 0) || (nrow < 0)) {
+    printf("### WARNING: CglRedSplit::generateCuts(): nrow: %d  ncol: %d\n", 
+	   nrow, ncol);
+    return;
+  }
+
   nrow = rsData.getNrow(); 
-  colLower = *rsData.getColLowerPtr();
-  colUpper = *rsData.getColUpperPtr();
-  rowLower = *rsData.getRowLowerPtr();
-  rowUpper = *rsData.getRowUpperPtr();
-  rowRhs = *rsData.getRowRhsPtr();
+  colLower = rsData.getColLower();
+  colUpper = rsData.getColUpper();
+  rowLower = rsData.getRowLower();
+  rowUpper = rsData.getRowUpper();
+  rowRhs = rsData.getRowRhs();
 
-  xlp = *rsData.getSeparateThisPtr();
-  rowActivity = *rsData.getRowActivityPtr();
-  colType = *rsData.getColTypePtr();
-  byRow = *rsData.getMatrixByRowPtr();
+  if((colLower == NULL) || (colUpper == NULL) || 
+     (rowLower == NULL) || (rowUpper == NULL) ||
+     (rowRhs == NULL)) {
+    printf("### WARNING: CglRedSplit::generateCuts(): unitialized data pointer\ncolLower: %p  colUpper: %p  rowLower: %p  rowUpper: %p rowRhs: %p\n",
+	   (void *) colLower, (void *) colUpper, (void *) rowLower, 
+	   (void *) rowUpper, (void *) rowRhs);
+    return;
+  }
 
-  if(rsData.getDoNotSeparateThisPtr() != NULL) {
-    given_optsol = *rsData.getDoNotSeparateThisPtr();
+  xlp = rsData.getSeparateThis();
+  if(xlp == NULL) {
+    printf("### WARNING: CglRedSplit::generateCuts(): xlp: %p\n", 
+	   (void *) xlp);
+    return;
+  }
+  rowActivity = rsData.getRowActivity();
+  if(rowActivity == NULL) {
+    printf("### WARNING: CglRedSplit::generateCuts(): rowActivity: %p\n",
+	   (void *) rowActivity);
+    return;
+  }
+  colType = rsData.getColType();
+  if(colType == NULL) {
+    printf("### WARNING: CglRedSplit::generateCuts(): colType: %p\n", 
+	   (void *) colType);
+    return;
+  }
+  byRow = rsData.getMatrixByRow();
+  if(byRow == NULL) {
+    printf("### WARNING: CglRedSplit::generateCuts(): byRow: %p\n", 
+	  (void *) byRow);
+    return;
+  }
+
+  if(rsData.getDoNotSeparateThis() != NULL) {
+    given_optsol = rsData.getDoNotSeparateThis();
     card_given_optsol = ncol;
   }
 
@@ -1649,13 +1678,13 @@ double *slack_val = new double[nrow];
 #endif
 
   if(given_optsol) {
-    check_optsol(solver, 1, xlp, slack_val, 0);
+    check_optsol(1, xlp, slack_val, 0);
   }
 
   reduce_contNonBasicTab();
 
   if(given_optsol) {
-    check_optsol(solver, 2, xlp, slack_val, 0);
+    check_optsol(2, xlp, slack_val, 0);
   }
 
   int card_row;
@@ -1692,14 +1721,14 @@ double *slack_val = new double[nrow];
       unflip(row, &tabrowrhs, slack_val);
 
       if(given_optsol) {
-	check_optsol(solver, 3, row, tabrowrhs, i, 0);
+	check_optsol(3, row, tabrowrhs, i, 0);
       }
 
       eliminate_slacks(row, elements, rowStart, indices, 
 		       rowLength, rowRhs, &tabrowrhs);
 
       if(given_optsol) {
-	check_optsol(solver, 4, row, tabrowrhs, i, 0);
+	check_optsol(4, row, tabrowrhs, i, 0);
       }
 
       if(generate_packed_row(xlp, row, rowind, rowelem, &card_row, 
@@ -1744,11 +1773,6 @@ double *slack_val = new double[nrow];
 
   //return(cs.sizeRowCuts());
 } /* generateCuts */
-
-/***********************************************************************/
-void CglRedSplit::setData(const CglRedSplitData &source) {
-  data = source;
-} /* setData */
 
 /***********************************************************************/
 void CglRedSplit::setParam(const CglRedSplitParam &source) {
@@ -1941,7 +1965,6 @@ card_given_optsol(0)
 /*********************************************************************/
 CglRedSplit::CglRedSplit(const CglRedSplitParam &RS_param) :
 CglCutGenerator(),
-data(0),
 nrow(0),
 ncol(0),
 card_intBasicVar_frac(0),
@@ -1970,7 +1993,6 @@ card_given_optsol(0)
 /*********************************************************************/
 CglRedSplit::CglRedSplit (const CglRedSplit & source) :
   CglCutGenerator(source),
-  data(source.data),
   param(source.param),
   nrow(0),
   ncol(0),
@@ -2013,7 +2035,6 @@ CglRedSplit::operator=(const CglRedSplit &source)
 
   if (this != &source) {
     CglCutGenerator::operator=(source);
-    data = source.data;
     param = source.param;
     given_optsol = source.given_optsol;
     card_given_optsol = source.card_given_optsol;

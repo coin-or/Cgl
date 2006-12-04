@@ -29,7 +29,7 @@ endif
 # Here we need include all files that are not mentioned in other Makefiles
 
 EXTRA_DIST = examples/cgl1.cpp \
-	examples/cgl2.cpp \
+	examples/cgl_data_test.cpp \
 	examples/Makefile.in
 
 ########################################################################

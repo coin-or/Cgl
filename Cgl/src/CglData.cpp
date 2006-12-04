@@ -32,133 +32,133 @@ void CglData::setNcol(const int givenNcol)
 } /* setNcol */
 
 /***********************************************************************/
-void CglData::setMatrixByColPtr(const CoinPackedMatrix **givenMatrixByColPtr)
+void CglData::setMatrixByCol(const CoinPackedMatrix *givenMatrixByCol)
 {
-  matrixByColPtr = givenMatrixByColPtr;
-} /* setMatrixByColPtr*/
+  matrixByCol = givenMatrixByCol;
+} /* setMatrixByCol */
 
 /***********************************************************************/
-void CglData::setMatrixByRowPtr(const CoinPackedMatrix **givenMatrixByRowPtr)
+void CglData::setMatrixByRow(const CoinPackedMatrix *givenMatrixByRow)
 {
-  matrixByRowPtr = givenMatrixByRowPtr;
-} /* setMatrixByRowPtr*/
+  matrixByRow = givenMatrixByRow;
+} /* setMatrixByRow */
 
 /***********************************************************************/
-void CglData::setObjPtr(const double **givenObjPtr)
+void CglData::setObj(const double *givenObj)
 {
-  objPtr = givenObjPtr;
-} /* setObjPtr*/
+  obj = givenObj;
+} /* setObj */
 
 /***********************************************************************/
-void CglData::setColLowerPtr(const double **givenColLowerPtr)
+void CglData::setColLower(const double *givenColLower)
 {
-  colLowerPtr = givenColLowerPtr;
-} /* setColLowerPtr */
+  colLower = givenColLower;
+} /* setColLower */
 
 /***********************************************************************/
-void CglData::setColUpperPtr(const double **givenColUpperPtr)
+void CglData::setColUpper(const double *givenColUpper)
 {
-  colUpperPtr = givenColUpperPtr;
-} /* setColUpperPtr */
+  colUpper = givenColUpper;
+} /* setColUpper */
 
 /***********************************************************************/
-void CglData::setRowLowerPtr(const double **givenRowLowerPtr)
+void CglData::setRowLower(const double *givenRowLower)
 {
-  rowLowerPtr = givenRowLowerPtr;
-} /* setRowLowerPtr */
+  rowLower = givenRowLower;
+} /* setRowLower */
 
 /***********************************************************************/
-void CglData::setRowUpperPtr(const double **givenRowUpperPtr)
+void CglData::setRowUpper(const double *givenRowUpper)
 {
-  rowUpperPtr = givenRowUpperPtr;
-} /* setRowUpperPtr */
+  rowUpper = givenRowUpper;
+} /* setRowUpper */
 
 /***********************************************************************/
-void CglData::setRowRhsPtr(const double **givenRowRhsPtr)
+void CglData::setRowRhs(const double *givenRowRhs)
 {
-  rowRhsPtr = givenRowRhsPtr;
-} /* setRowUpperPtr */
+  rowRhs = givenRowRhs;
+} /* setRowUpper */
 
 /***********************************************************************/
-void CglData::setRowActivityPtr(const double **givenRowActivityPtr)
+void CglData::setRowActivity(const double *givenRowActivity)
 {
-  rowActivityPtr = givenRowActivityPtr;
-} /* setRowActivityPtr */
+  rowActivity = givenRowActivity;
+} /* setRowActivity */
 
 /***********************************************************************/
-void CglData::setColTypePtr(char * const *givenColTypePtr)
+void CglData::setColType(const char *givenColType)
 {
-  colTypePtr = givenColTypePtr;
-} /* setColTypePtr */
+  colType = givenColType;
+} /* setColType */
 
 /***********************************************************************/
-void CglData::setSeparateThisPtr(const double **givenSeparateThisPtr)
+void CglData::setSeparateThis(const double *givenSeparateThis)
 {
-  separateThisPtr = givenSeparateThisPtr;
-} /* setSeparateThisPtr */
+  separateThis = givenSeparateThis;
+} /* setSeparateThis */
 
 /***********************************************************************/
-void CglData::setDoNotSeparateThisPtr(const 
-		  double **givenDoNotSeparateThisPtr)
+void CglData::setDoNotSeparateThis(const 
+		  double *givenDoNotSeparateThis)
 {
-  doNotSeparateThisPtr = givenDoNotSeparateThisPtr;
-} /* setDoNotSeparateThisPtr */
+  doNotSeparateThis = givenDoNotSeparateThis;
+} /* setDoNotSeparateThis */
 
 /***********************************************************************/
-void CglData::setTreeInfoPtr(const CglTreeInfo **givenTreeInfoPtr)
+void CglData::setTreeInfo(const CglTreeInfo *givenTreeInfo)
 {
-  givenTreeInfoPtr = givenTreeInfoPtr;
-} /* setTreeInfoPtr */
+  givenTreeInfo = givenTreeInfo;
+} /* setTreeInfo */
 
 /***********************************************************************/
 CglData::CglData(const int &givenNrow, const int &givenNcol,
-		 const CoinPackedMatrix **givenMatrixByColPtr,
-		 const CoinPackedMatrix ** givenMatrixByRowPtr,
-		 const double **givenObjPtr,
-		 const double **givenColLowerPtr, 
-		 const double **givenColUpperPtr,   
-		 const double **givenRowLowerPtr, 
-		 const double **givenRowUpperPtr,
-		 const double **givenRowRhsPtr,
-		 const double **givenRowActivityPtr,
-		 char * const *givenColTypePtr,
-		 const double **givenSeparateThisPtr,
-		 const CglTreeInfo **givenTreeInfoPtr,
-		 const double **givenDoNotSeparateThisPtr) :
+		 const CoinPackedMatrix *givenMatrixByCol,
+		 const CoinPackedMatrix * givenMatrixByRow,
+		 const double *givenObj,
+		 const double *givenColLower, 
+		 const double *givenColUpper,   
+		 const double *givenRowLower, 
+		 const double *givenRowUpper,
+		 const double *givenRowRhs,
+		 const double *givenRowActivity,
+		 const char *givenColType,
+		 const double *givenSeparateThis,
+		 const CglTreeInfo *givenTreeInfo,
+		 const double *givenDoNotSeparateThis) :
   nrow(givenNrow),
   ncol(givenNcol),
-  matrixByColPtr(givenMatrixByColPtr),
-  matrixByRowPtr(givenMatrixByRowPtr),
-  objPtr(givenObjPtr),
-  colLowerPtr(givenColLowerPtr),
-  colUpperPtr(givenColUpperPtr),
-  rowLowerPtr(givenRowLowerPtr),
-  rowUpperPtr(givenRowUpperPtr),
-  rowRhsPtr(givenRowRhsPtr),
-  rowActivityPtr(givenRowActivityPtr),
-  colTypePtr(givenColTypePtr),
-  separateThisPtr(givenSeparateThisPtr),
-  treeInfoPtr(givenTreeInfoPtr),
-  doNotSeparateThisPtr(givenDoNotSeparateThisPtr)
+  matrixByCol(givenMatrixByCol),
+  matrixByRow(givenMatrixByRow),
+  obj(givenObj),
+  colLower(givenColLower),
+  colUpper(givenColUpper),
+  rowLower(givenRowLower),
+  rowUpper(givenRowUpper),
+  rowRhs(givenRowRhs),
+  rowActivity(givenRowActivity),
+  colType(givenColType),
+  separateThis(givenSeparateThis),
+  treeInfo(givenTreeInfo),
+  doNotSeparateThis(givenDoNotSeparateThis)
 {}
 
 /***********************************************************************/
 CglData::CglData(const CglData &source) :
   nrow(source.nrow),
   ncol(source.ncol),
-  matrixByColPtr(source.matrixByColPtr),
-  matrixByRowPtr(source.matrixByRowPtr),
-  objPtr(source.objPtr),
-  colLowerPtr(source.colLowerPtr),
-  colUpperPtr(source.colUpperPtr),
-  rowLowerPtr(source.rowLowerPtr),
-  rowUpperPtr(source.rowUpperPtr),
-  rowRhsPtr(source.rowRhsPtr),
-  rowActivityPtr(source.rowActivityPtr),
-  colTypePtr(source.colTypePtr),
-  separateThisPtr(source.separateThisPtr),
-  treeInfoPtr(source.treeInfoPtr),
-  doNotSeparateThisPtr(source.doNotSeparateThisPtr)
+  matrixByCol(source.matrixByCol),
+  matrixByRow(source.matrixByRow),
+  obj(source.obj),
+  colLower(source.colLower),
+  colUpper(source.colUpper),
+  rowLower(source.rowLower),
+  rowUpper(source.rowUpper),
+  rowRhs(source.rowRhs),
+  rowActivity(source.rowActivity),
+  colType(source.colType),
+  separateThis(source.separateThis),
+  treeInfo(source.treeInfo),
+  doNotSeparateThis(source.doNotSeparateThis)
 {}
 
 /***********************************************************************/
@@ -173,19 +173,19 @@ CglData& CglData::operator=(const CglData &rhs)
   if(this != &rhs) {
     nrow = rhs.nrow;
     ncol = rhs.ncol;
-    matrixByColPtr = rhs.matrixByColPtr;
-    matrixByRowPtr = rhs.matrixByRowPtr;
-    objPtr = rhs.objPtr;
-    colLowerPtr = rhs.colLowerPtr;
-    colUpperPtr = rhs.colUpperPtr;
-    rowLowerPtr = rhs.rowLowerPtr;
-    rowUpperPtr = rhs.rowUpperPtr;
-    rowRhsPtr = rhs.rowRhsPtr;
-    rowActivityPtr = rhs.rowActivityPtr;
-    colTypePtr = rhs.colTypePtr;
-    separateThisPtr = rhs.separateThisPtr; 
-    treeInfoPtr = rhs.treeInfoPtr;
-    doNotSeparateThisPtr = rhs.doNotSeparateThisPtr; 
+    matrixByCol = rhs.matrixByCol;
+    matrixByRow = rhs.matrixByRow;
+    obj = rhs.obj;
+    colLower = rhs.colLower;
+    colUpper = rhs.colUpper;
+    rowLower = rhs.rowLower;
+    rowUpper = rhs.rowUpper;
+    rowRhs = rhs.rowRhs;
+    rowActivity = rhs.rowActivity;
+    colType = rhs.colType;
+    separateThis = rhs.separateThis; 
+    treeInfo = rhs.treeInfo;
+    doNotSeparateThis = rhs.doNotSeparateThis; 
   }
   return *this;
 }

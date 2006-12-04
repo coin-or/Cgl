@@ -75,11 +75,6 @@ public:
   /**@name Public Methods */
   //@{
 
-  // Set the data members to the values of the given CglRedSplitData object.
-  void setData(const CglRedSplitData &source); 
-  // Return the CglRedSplitData object of the generator. 
-  inline CglRedSplitData getData() const {return data;};
-
   // Set the parameters to the values of the given CglRedSplitParam object.
   void setParam(const CglRedSplitParam &source); 
   // Return the CglRedSplitParam object of the generator. 
@@ -287,14 +282,12 @@ private:
 			  int *card_row, double & rhs);
 
   /// Check that the generated cuts do not cut a given optimal solution.
-  void check_optsol(const OsiSolverInterface *solver, 
-		    const int calling_place,
+  void check_optsol(const int calling_place,
 		    const double *xlp, const double *slack_val,
 		    const int do_flip);
 
   /// Check that the generated cuts do not cut a given optimal solution.
-  void check_optsol(const OsiSolverInterface *solver, 
-		    const int calling_place,
+  void check_optsol(const int calling_place,
 		    const double *ck_row, const double ck_rhs, 
 		    const int cut_number, const int do_flip);
 
@@ -321,9 +314,6 @@ private:
 /**@name Private member data */
 
   //@{
-
-  /// Object with CglRedSplitData members. 
-  CglRedSplitData data;
 
   /// Object with CglRedSplitParam members. 
   CglRedSplitParam param;

@@ -14,8 +14,8 @@
     may have a derived class to add additional pointers on data. 
     If a data member is not used by
     a generator, the data member need not be defined (or may be NULL).
-    If a data member is NULL and the generator needs the data, an
-    error is raised. If a data member is not NULL, the calling method
+    If a data member is NULL and the generator needs the data, the call to
+    generateCuts() is aborted. If a data member is not NULL, the calling method
     is responsible for the accuracy of the data. 
     Ownership of the data remains with the calling method.
 */
@@ -40,101 +40,101 @@ public:
   /** Get ncol */
   inline int getNcol() const {return ncol;};
 
-  /** Set  matrixByColPtr to point on the coefficient matrix ordered by 
+  /** Set  matrixByCol to point on the coefficient matrix ordered by 
       columns */
-  virtual void setMatrixByColPtr(const CoinPackedMatrix **givenMatrixByColPtr);
-  /** Get matrixByColPtr */
-  inline const CoinPackedMatrix ** getMatrixByColPtr() const {return matrixByColPtr;};
+  virtual void setMatrixByCol(const CoinPackedMatrix *givenMatrixByCol);
+  /** Get matrixByCol */
+  inline const CoinPackedMatrix *getMatrixByCol() const {return matrixByCol;};
 
-  /** Set  matrixByRowPtr to point on the coefficient matrix ordered by 
+  /** Set  matrixByRow to point on the coefficient matrix ordered by 
       rows */
-  virtual void setMatrixByRowPtr(const CoinPackedMatrix **givenMatrixByRowPtr);
-  /** Get matrixByRowPtr */
-  inline const CoinPackedMatrix ** getMatrixByRowPtr() const {return matrixByRowPtr;};
+  virtual void setMatrixByRow(const CoinPackedMatrix *givenMatrixByRow);
+  /** Get matrixByRow */
+  inline const CoinPackedMatrix *getMatrixByRow() const {return matrixByRow;};
 
-  /** Set objPtr to point on a vector holding the objective coefficient values */
-  virtual void setObjPtr(const double **givenObjPtr);
-  /** Get objPtr */
-  inline const double ** getObjPtr() const {return objPtr;};
+  /** Set obj to point on a vector holding the objective coefficient values */
+  virtual void setObj(const double *givenObj);
+  /** Get obj */
+  inline const double *getObj() const {return obj;};
 
-  /** Set  colLowerPtr to point on a vector holding the lower bounds on the 
+  /** Set  colLower to point on a vector holding the lower bounds on the 
       variables */
-  virtual void setColLowerPtr(const double **givenColLowerPtr);
-  /** Get colLowerPtr */
-  inline const double ** getColLowerPtr() const {return colLowerPtr;};
+  virtual void setColLower(const double *givenColLower);
+  /** Get colLower */
+  inline const double *getColLower() const {return colLower;};
 
-  /** Set  colUpperPtr to point on a vector holding the upper bounds on the 
+  /** Set  colUpper to point on a vector holding the upper bounds on the 
       variables */
-  virtual void setColUpperPtr(const double **givenColUpperPtr);
-  /** Get colUpperPtr */
-  inline const double ** getColUpperPtr() const {return colUpperPtr;};
+  virtual void setColUpper(const double *givenColUpper);
+  /** Get colUpper */
+  inline const double *getColUpper() const {return colUpper;};
 
-  /** Set  rowLowerPtr to point on a vector holding the lower bounds on the 
+  /** Set  rowLower to point on a vector holding the lower bounds on the 
       constraints */
-  virtual void setRowLowerPtr(const double **givenRowLowerPtr);
-  /** Get rowLowerPtr */
-  inline const double ** getRowLowerPtr() const {return rowLowerPtr;};
+  virtual void setRowLower(const double *givenRowLower);
+  /** Get rowLower */
+  inline const double *getRowLower() const {return rowLower;};
 
-  /** Set  rowUpperPtr to point on a vector holding the upper bounds on the 
+  /** Set  rowUpper to point on a vector holding the upper bounds on the 
       constraints */
-  virtual void setRowUpperPtr(const double **givenRowUpperPtr);
-  /** Get rowUpperPtr */
-  inline const double ** getRowUpperPtr() const {return rowUpperPtr;};
+  virtual void setRowUpper(const double *givenRowUpper);
+  /** Get rowUpper */
+  inline const double *getRowUpper() const {return rowUpper;};
 
-  /** Set  rowRhsPtr to point on a vector holding the right hand side of the 
+  /** Set  rowRhs to point on a vector holding the right hand side of the 
       constraints (for a ranged constraint, it contains the upper bound). */
-  virtual void setRowRhsPtr(const double **givenRowRhsPtr);
-  /** Get rowRhsPtr */
-  inline const double ** getRowRhsPtr() const {return rowRhsPtr;};
+  virtual void setRowRhs(const double *givenRowRhs);
+  /** Get rowRhs */
+  inline const double *getRowRhs() const {return rowRhs;};
 
-  /** Set  rowActivityPtr to point on a vector holding the activity of the 
+  /** Set  rowActivity to point on a vector holding the activity of the 
       constraints (i.e. coefficient matrix times separateThis). */
-  virtual void setRowActivityPtr(const double **givenRowActivityPtr);
-  /** Get rowActivityPtr */
-  inline const double ** getRowActivityPtr() const {return rowActivityPtr;};
+  virtual void setRowActivity(const double *givenRowActivity);
+  /** Get rowActivity */
+  inline const double *getRowActivity() const {return rowActivity;};
 
-  /** Set colTypePtr to point on a vector holding the type of the
+  /** Set colType to point on a vector holding the type of the
       variables ('B', 'I', or 'C' for Binary, Integer and Continuous) */ 
-  virtual void setColTypePtr(char * const *givenColTypePtr);
-  /** Get colTypePtr*/
-  inline char *const *getColTypePtr() const {return colTypePtr;};
+  virtual void setColType(const char *givenColType);
+  /** Get colType */
+  inline const char *getColType() const {return colType;};
 
-  /** Set separateThisPtr to point on a vector holding the point to separate */
-  virtual void setSeparateThisPtr(const double **givenSeparateThisPtr);
-  /** Get separateThisPtr */
-  inline const double ** getSeparateThisPtr() const {return separateThisPtr;};
+  /** Set separateThis to point on a vector holding the point to separate */
+  virtual void setSeparateThis(const double *givenSeparateThis);
+  /** Get separateThis */
+  inline const double *getSeparateThis() const {return separateThis;};
 
-  /** Set doNotSeparateThisPtr to point on a vector holding a point that
+  /** Set doNotSeparateThis to point on a vector holding a point that
       should not be cut; only for debug */
-  virtual void setDoNotSeparateThisPtr(
-                        const double **givenDoNotSeparateThisPtr);
-  /** Get doNotSeparateThisPtr */
-  inline const double ** getDoNotSeparateThisPtr() const 
-                                     {return doNotSeparateThisPtr;};
+  virtual void setDoNotSeparateThis(
+                        const double *givenDoNotSeparateThis);
+  /** Get doNotSeparateThis */
+  inline const double *getDoNotSeparateThis() const 
+                                     {return doNotSeparateThis;};
 
-  /** Set treeInfoPtr to point on a CglTreeInfo object */
-  virtual void setTreeInfoPtr(const CglTreeInfo **givenTreeInfoPtr);
-  /** Get treeInfoPtr*/
-  inline const CglTreeInfo ** getTreeInfoPtr() const {return treeInfoPtr;};
+  /** Set treeInfo to point on a CglTreeInfo object */
+  virtual void setTreeInfo(const CglTreeInfo *givenTreeInfo);
+  /** Get treeInfo*/
+  inline const CglTreeInfo *getTreeInfo() const {return treeInfo;};
   //@}
 
   /**@name Constructors and destructors */
   //@{
   /// Default constructor 
   CglData(const int &givenNrow = 0, const int &givenNcol = 0,
-	  const CoinPackedMatrix **givenMatrixByColPtr = NULL,
-	  const CoinPackedMatrix **givenMatrixByRowPtr = NULL,
-	  const double **givenObjPtr = NULL,
-	  const double **givenColLowerPtr = NULL, 
-	  const double **givenColUpperPtr = NULL,   
-	  const double **givenRowLowerPtr = NULL, 
-	  const double **givenRowUpperPtr = NULL,
-	  const double **givenRowRhsPtr = NULL,
-	  const double **givenRowActivityPtr = NULL,
-	  char * const *givenColTypePtr = NULL,
-	  const double **givenSeparateThisPtr = NULL,
-	  const CglTreeInfo **givenTreeInfoPtr = NULL,
-	  const double **givendoNotSeparateThisPtr = NULL);
+	  const CoinPackedMatrix *givenMatrixByCol = NULL,
+	  const CoinPackedMatrix *givenMatrixByRow = NULL,
+	  const double *givenObj = NULL,
+	  const double *givenColLower = NULL, 
+	  const double *givenColUpper = NULL,   
+	  const double *givenRowLower = NULL, 
+	  const double *givenRowUpper = NULL,
+	  const double *givenRowRhs = NULL,
+	  const double *givenRowActivity = NULL,
+	  const char *givenColType = NULL,
+	  const double *givenSeparateThis = NULL,
+	  const CglTreeInfo *givenTreeInfo = NULL,
+	  const double *givenDoNotSeparateThis = NULL);
 
   /// Copy constructor
   CglData(const CglData&);
@@ -164,32 +164,32 @@ protected:
   int ncol;
 
   // Pointer on matrix of coefficients (ordered by columns).
-  CoinPackedMatrix const **matrixByColPtr;
+  CoinPackedMatrix const *matrixByCol;
 
   // Pointer on matrix of coefficients (ordered by rows).
-  CoinPackedMatrix const **matrixByRowPtr;
+  CoinPackedMatrix const *matrixByRow;
 
   // Pointer on vector of objective coefficients. 
-  const double **objPtr;
+  const double *obj;
 
   // Pointer on vector of lower bounds on variables.
-  const double **colLowerPtr; 
+  const double *colLower; 
 
   // Pointer on vector of upper bounds for variables.
-  const double **colUpperPtr;   
+  const double *colUpper;   
 
   // Pointer on vector of lower bounds for constraints.
-  const double **rowLowerPtr; 
+  const double *rowLower; 
 
   // Pointer on vector of upper bounds for constraints.
-  const double **rowUpperPtr;
+  const double *rowUpper;
 
   // Pointer on vector of upper bounds for constraints.
-  const double **rowRhsPtr;
+  const double *rowRhs;
 
   // Pointer on vector of activity of constraints (i.e. coefficient matrix 
   // times separateThis)..
-  const double **rowActivityPtr;
+  const double *rowActivity;
 
   /** Pointer on vector of characters for columns types.
       colType[i] can have values
@@ -199,16 +199,16 @@ protected:
       <LI> 'I' : integer
       </UL>
   */
-  char * const *colTypePtr;
+  const char *colType;
 
   // Pointer on vector for point to separate.  
-  const double **separateThisPtr;
+  const double *separateThis;
 
   // Pointer on tree information.
-  const CglTreeInfo **treeInfoPtr;
+  const CglTreeInfo *treeInfo;
 
   /// Pointer on vector for point that should not be cut; only for debug. 
-  const double **doNotSeparateThisPtr;
+  const double *doNotSeparateThis;
 
   //@}
 };
