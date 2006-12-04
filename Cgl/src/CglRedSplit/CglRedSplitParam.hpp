@@ -12,14 +12,12 @@
 
 #include "CglParam.hpp"
 
-/** Class collecting parameters the Reduced-and-split cut generator. */
-
-class CglRedSplitParam : public CglParam {
-
-public:
 
   /**@name CglRedSplit Parameters */
-  /**
+  //@{
+
+  /** Class collecting parameters the Reduced-and-split cut generator.
+
       Parameters of the generator are listed below. Modifying the default 
       values for parameters other than the last four might result in 
       invalid cuts.
@@ -37,9 +35,15 @@ public:
                        generated cut is zero when the corresponding 
                        variable has a lower or upper bound larger than 
                        LUB in absolute value. See method setEPS_COEFF_LUB().
-
+      - MINVIOL: Minimum violation for the current basic solution in 
+                 a generated cut. See method setMINVIOL().
+      - USE_INTSLACKS: Use integer slacks to generate cuts. (not implemented).
+                       See method setUSE_INTSLACKS().
+      - USE_CG2: Use alternative formula to generate a mixed integer Gomory
+                 cut (see methods CglRedSPlit::generate_cgcut() 
+                 and CglRedSPlit::generate_cgcut_2()). See method setUSE_CG2().
       - normIsZero: Norm of a vector is considered zero if smaller than
-                    this value. See method setNormIsZero().
+                    this value. See method setNormIsZero(). 
       - minReduc: Reduction is performed only if the norm of the vector is
                   reduced by this fraction. See method setMinReduc().
       - away: Look only at basic integer variables whose current value
@@ -47,6 +51,11 @@ public:
       - maxTab: Controls the number of rows selected for the generation. See
                 method setMaxTab().
   */
+  //@}
+
+class CglRedSplitParam : public CglParam {
+
+public:
 
   /**@name Set/get methods */
   //@{
@@ -64,6 +73,16 @@ public:
   virtual void setLUB(const double value);
   /** Get the value of LUB */
   inline double getLUB() const {return LUB;};
+
+  /** Set EPS_RELAX_ABS */
+  virtual void setEPS_RELAX_ABS(const double eps_ra);
+  /** Get value of EPS_RELAX_ABS */
+  inline double getEPS_RELAX_ABS() const {return EPS_RELAX_ABS;};
+
+  /** Set EPS_RELAX_REL */
+  virtual void setEPS_RELAX_REL(const double eps_rr);
+  /** Get value of EPS_RELAX_REL */
+  inline double getEPS_RELAX_REL() const {return EPS_RELAX_REL;};
 
   // Set the maximum ratio between largest and smallest non zero 
   // coefficients in a cut. Default: 1e8.
@@ -85,6 +104,22 @@ public:
   virtual void setEPS_COEFF_LUB(const double value);
   /** Get the value of EPS_COEFF_LUB */
   inline double getEPS_COEFF_LUB() const {return EPS_COEFF_LUB;};
+
+  /** Set the value of MINVIOL, the minimum violation for the current 
+      basic solution in a generated cut. Default: 1e-7 */
+  virtual void setMINVIOL(double value);
+  /** Get the value of MINVIOL */
+  inline double getMINVIOL() const {return MINVIOL;};
+
+  /** Set the value of USE_INTSLACKS. Default: 0 */
+  virtual void setUSE_INTSLACKS(int value);
+  /** Get the value of USE_INTSLACKS */
+  inline int getUSE_INTSLACKS() const {return USE_INTSLACKS;};
+
+  /** Set the value of USE_CG2. Default: 0 */
+  virtual void setUSE_CG2(int value);
+  /** Get the value of USE_CG2 */
+  inline int getUSE_CG2() const {return USE_CG2;};
 
   /** Set the value of normIsZero, the threshold for considering a norm to be 
       0; Default: 1e-5 */
@@ -111,16 +146,15 @@ public:
   /**@name Constructors and destructors */
   //@{
   /// Default constructor 
-  CglRedSplitParam(const double inf = DBL_MAX, 
-		   const double eps = 1e-7,
-		   const double eps_coeff = 1e-8,
+  CglRedSplitParam(const double lub = 1000.0,
 		   const double eps_relax_abs = 1e-8,
 		   const double eps_relax_rel = 0.0,
-		   const int max_support = 50,
-		   const double lub = 1000.0,
 		   const double max_dyn = 1e8,
 		   const double max_dyn_lub = 1e13,
 		   const double eps_coeff_lub = 1e-13,
+		   const double min_viol = 1e-7,
+		   const int use_int_slacks = 0,
+		   const int use_cg2 = 0,
 		   const double norm_zero = 1e-5,
 		   const double min_reduc = 0.05,
 		   const double away = 0.05,
@@ -129,9 +163,14 @@ public:
    /// Constructor from CglParam
   CglRedSplitParam(const CglParam &source,
 		   const double lub = 1000.0,
+		   const double eps_relax_abs = 1e-8,
+		   const double eps_relax_rel = 0.0,
 		   const double max_dyn = 1e8,
 		   const double max_dyn_lub = 1e13,
 		   const double eps_coeff_lub = 1e-13,
+		   const double min_viol = 1e-7,
+		   const int use_int_slacks = 0,
+		   const int use_cg2 = 0,
 		   const double norm_zero = 1e-5,
 		   const double min_reduc = 0.05,
 		   const double away = 0.05,
@@ -159,6 +198,15 @@ protected:
   /// bound on a variable. Default: 1000.
   double LUB;
 
+  /** Value added to the right hand side of each generated cut to relax it.
+      Default: 1e-8 */
+  double EPS_RELAX_ABS;
+
+  /** For a generated cut with right hand side rhs_val, 
+      EPS_RELAX_EPS * fabs(rhs_val) is used to relax the constraint.
+      Default: 0 */
+  double EPS_RELAX_REL;
+
   // Maximum ratio between largest and smallest non zero 
   // coefficients in a cut. Default: 1e8.
   double MAXDYN;
@@ -172,6 +220,17 @@ protected:
   /// Epsilon for value of coefficients for variables with absolute value of
   /// lower or upper bound larger than LUB. Default: 1e-13.
   double EPS_COEFF_LUB;
+
+  /// Minimum violation for the current basic solution in a generated cut.
+  /// Default: 1e-7.
+  double MINVIOL;
+
+  /// Use integer slacks to generate cuts if USE_INTSLACKS = 1. Default: 0.
+  int USE_INTSLACKS;
+
+  /// Use second way to generate a mixed integer Gomory cut 
+  /// (see methods generate_cgcut()) and generate_cgcut_2()). Default: 0.
+  int USE_CG2;
 
   /// Norm of a vector is considered zero if smaller than normIsZero;
   /// Default: 1e-5.

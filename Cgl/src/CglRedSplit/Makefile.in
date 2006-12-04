@@ -56,7 +56,8 @@ CONFIG_HEADER = $(top_builddir)/inc/config_cgl.h
 CONFIG_CLEAN_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libCglRedSplit_la_LIBADD =
-am_libCglRedSplit_la_OBJECTS = CglRedSplit.lo CglRedSplitParam.lo
+am_libCglRedSplit_la_OBJECTS = CglRedSplit.lo CglRedSplitData.lo \
+	CglRedSplitParam.lo
 libCglRedSplit_la_OBJECTS = $(am_libCglRedSplit_la_OBJECTS)
 depcomp = $(SHELL) $(top_srcdir)/../depcomp
 am__depfiles_maybe = depfiles
@@ -294,6 +295,7 @@ noinst_LTLIBRARIES = libCglRedSplit.la
 # List all source files for this library, including headers
 libCglRedSplit_la_SOURCES = \
 	CglRedSplit.cpp  CglRedSplit.hpp \
+	CglRedSplitData.cpp  CglRedSplitData.hpp \
 	CglRedSplitParam.cpp  CglRedSplitParam.hpp
 
 
@@ -323,7 +325,7 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 # and that therefore should be installed in 'install'
 include_HEADERS = \
 	CglRedSplit.hpp \
-	CglRedSplitParam.hpp
+	CglRedSplitData.hpp
 
 all: all-am
 
@@ -377,6 +379,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglRedSplit.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglRedSplitData.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglRedSplitParam.Plo@am__quote@
 
 .cpp.o:
@@ -597,6 +600,7 @@ uninstall-am: uninstall-includeHEADERS uninstall-info-am
 	tags uninstall uninstall-am uninstall-includeHEADERS \
 	uninstall-info-am
 
+	CglRedSplitParam.hpp
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

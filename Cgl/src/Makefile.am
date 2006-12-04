@@ -25,7 +25,9 @@ libCgl_la_SOURCES = \
 	CglCutGenerator.cpp CglCutGenerator.hpp\
 	CglMessage.cpp CglMessage.hpp \
 	CglStored.cpp CglStored.hpp \
-	CglParam.cpp CglParam.hpp
+	CglData.cpp CglData.hpp \
+	CglParam.cpp CglParam.hpp \
+	CglTreeInfo.cpp CglTreeInfo.hpp
 
 # This is for libtool (on Windows)
 libCgl_la_LDFLAGS = $(LT_LDFLAGS)
@@ -62,7 +64,9 @@ include_HEADERS = \
 	CglCutGenerator.hpp \
 	CglMessage.hpp \
 	CglStored.hpp \
-	CglParam.hpp
+	CglData.hpp \
+	CglParam.hpp \
+	CglTreeInfo.hpp
 
 #############################################################################
 # Create the Config.h file that always defines HAVE_CONFIG_H and install it #

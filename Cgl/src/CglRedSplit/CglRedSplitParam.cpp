@@ -50,6 +50,20 @@ void CglRedSplitParam::setLUB(const double value)
 } /* setLUB */
 
 /***********************************************************************/
+void CglRedSplitParam::setEPS_RELAX_ABS(const double eps_ra)
+{
+  if(eps_ra >= 0)
+    EPS_RELAX_ABS = eps_ra;
+} /* setEPS_RELAX_ABS */
+
+/***********************************************************************/
+void CglRedSplitParam::setEPS_RELAX_REL(const double eps_rr)
+{
+  if(eps_rr >= 0)
+    EPS_RELAX_REL = eps_rr;
+} /* setEPS_RELAX_REL */
+
+/***********************************************************************/
 void CglRedSplitParam::setMAXDYN(double value)
 {
     if (value > 1.0) {
@@ -86,6 +100,30 @@ void CglRedSplitParam::setEPS_COEFF_LUB(const double value)
 } /* setEPS_COEFF_LUB */
 
 /***********************************************************************/
+void CglRedSplitParam::setMINVIOL(double value)
+{
+  if (value > 0.0 && value <= 0.1) {
+    MINVIOL = value;
+  }
+  else {
+    printf("### WARNING: CglRedSplitParam::setMINVIOL(): value: %f ignored\n", 
+	   value);
+  }
+} /* setMINVIOL */
+
+/***********************************************************************/
+void CglRedSplitParam::setUSE_INTSLACKS(int value)
+{
+  USE_INTSLACKS = value;
+} /* setUSE_INTSLACKS */
+
+/***********************************************************************/
+void CglRedSplitParam::setUSE_CG2(int value)
+{
+  USE_CG2 = value;
+} /* setUSE_CG2 */
+
+/***********************************************************************/
 void CglRedSplitParam::setNormIsZero(const double value)
 {
   if (value > 0.0 && value <= 1) {
@@ -110,25 +148,29 @@ void CglRedSplitParam::setMinReduc(const double value)
 } /* setMinReduc */
 
 /***********************************************************************/
-CglRedSplitParam::CglRedSplitParam(const double inf, 
-				   const double eps,
-				   const double eps_coeff,
+CglRedSplitParam::CglRedSplitParam(const double lub,
 				   const double eps_relax_abs,
 				   const double eps_relax_rel,
-				   const int max_support,
-				   const double lub,
 				   const double max_dyn,
 				   const double max_dyn_lub,
 				   const double eps_coeff_lub,
+				   const double min_viol,
+				   const int use_int_slacks,
+				   const int use_cg2,
 				   const double norm_zero,
 				   const double min_reduc,
 				   const double away,
 				   const double max_tab) :
-  CglParam(inf, eps, eps_coeff, eps_relax_abs, eps_relax_rel, max_support),
+  CglParam(),
   LUB(lub),
-  MAXDYN(1e8),
-  MAXDYN_LUB(1e13),
+  EPS_RELAX_ABS(eps_relax_abs),
+  EPS_RELAX_REL(eps_relax_rel),
+  MAXDYN(max_dyn),
+  MAXDYN_LUB(max_dyn_lub),
   EPS_COEFF_LUB(eps_coeff_lub),
+  MINVIOL(min_viol),
+  USE_INTSLACKS(use_int_slacks),
+  USE_CG2(use_cg2),
   normIsZero(norm_zero),
   minReduc(min_reduc),
   away_(away),
@@ -138,37 +180,47 @@ CglRedSplitParam::CglRedSplitParam(const double inf,
 /***********************************************************************/
 CglRedSplitParam::CglRedSplitParam(const CglParam &source,
 				   const double lub,
+				   const double eps_ra, 
+				   const double eps_rr, 
 				   const double max_dyn,
 				   const double max_dyn_lub,
 				   const double eps_coeff_lub,
+				   const double min_viol,
+				   const int use_int_slacks,
+				   const int use_cg2,
 				   const double norm_zero,
 				   const double min_reduc,
 				   const double away,
 				   const double max_tab) :
 
   CglParam(source), 
-	   //  CglParam(source.getINFINIT(), source.getEPS(), source.getEPS_COEFF(), 
-	   //source.getEPS_RELAX_ABS(), source.getEPS_RELAX_REL(), 
-	   //source.getMAX_SUPPORT()),
-  LUB(100),
-  MAXDYN(1e8),
-  MAXDYN_LUB(1e13),
-  EPS_COEFF_LUB(1e-13),
-  normIsZero(1e-05),
-  minReduc(0.05),
-  away_(0.05),
-  maxTab_(1e7)
+  LUB(lub),
+  EPS_RELAX_ABS(eps_ra),
+  EPS_RELAX_REL(eps_rr),
+  MAXDYN(max_dyn),
+  MAXDYN_LUB(max_dyn_lub),
+  EPS_COEFF_LUB(eps_coeff_lub),
+  MINVIOL(min_viol),
+  USE_INTSLACKS(use_int_slacks),
+  USE_CG2(use_cg2),
+  normIsZero(norm_zero),
+  minReduc(min_reduc),
+  away_(away),
+  maxTab_(max_tab)
 {}
 
 /***********************************************************************/
 CglRedSplitParam::CglRedSplitParam(const CglRedSplitParam &source) :
-  CglParam(source.INFINIT, source.EPS, source.EPS_COEFF, 
-	   source.EPS_RELAX_ABS, source.EPS_RELAX_REL, 
-	   source.MAX_SUPPORT),
+  CglParam(source),
   LUB(source.LUB),
+  EPS_RELAX_ABS(source.EPS_RELAX_ABS),
+  EPS_RELAX_REL(source.EPS_RELAX_REL),
   MAXDYN(source.MAXDYN),
   MAXDYN_LUB(source.MAXDYN_LUB),
   EPS_COEFF_LUB(source.EPS_COEFF_LUB),
+  MINVIOL(source.MINVIOL),
+  USE_INTSLACKS(source.USE_INTSLACKS),
+  USE_CG2(source.USE_CG2),
   normIsZero(source.normIsZero),
   minReduc(source.minReduc),
   away_(source.away_),
@@ -185,17 +237,17 @@ CglRedSplitParam* CglRedSplitParam::clone() const
 CglRedSplitParam& CglRedSplitParam::operator=(const CglRedSplitParam &rhs)
 {
   if(this != &rhs) {
-    INFINIT = rhs.INFINIT;
-    EPS = rhs.EPS; 
-    EPS_COEFF = rhs.EPS_COEFF; 
-    EPS_RELAX_ABS = rhs.EPS_RELAX_ABS;
-    EPS_RELAX_REL = rhs.EPS_RELAX_REL;
-    MAX_SUPPORT = rhs.MAX_SUPPORT;
+    CglParam::operator=(rhs);
 
     LUB = rhs.LUB;
+    EPS_RELAX_ABS = rhs.EPS_RELAX_ABS;
+    EPS_RELAX_REL = rhs.EPS_RELAX_REL;
     MAXDYN = rhs.MAXDYN;
     MAXDYN_LUB = rhs.MAXDYN_LUB;
     EPS_COEFF_LUB = rhs.EPS_COEFF_LUB;
+    MINVIOL = rhs.MINVIOL;
+    USE_INTSLACKS = rhs.USE_INTSLACKS;
+    USE_CG2 = rhs.USE_CG2;
     normIsZero = rhs.normIsZero;
     minReduc = rhs.minReduc;
     away_ = rhs.away_;

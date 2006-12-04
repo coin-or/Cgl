@@ -19,6 +19,7 @@ noinst_LTLIBRARIES = libCglRedSplit.la
 # List all source files for this library, including headers
 libCglRedSplit_la_SOURCES = \
 	CglRedSplit.cpp  CglRedSplit.hpp \
+	CglRedSplitData.cpp  CglRedSplitData.hpp \
 	CglRedSplitParam.cpp  CglRedSplitParam.hpp
 
 # This is for libtool (on Windows)
@@ -46,4 +47,5 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 # and that therefore should be installed in 'install'
 include_HEADERS = \
 	CglRedSplit.hpp \
+	CglRedSplitData.hpp
 	CglRedSplitParam.hpp

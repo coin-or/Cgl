@@ -13,6 +13,7 @@
 #define CglRedSplit_H
 
 #include "CglCutGenerator.hpp"
+#include "CglRedSplitData.hpp"
 #include "CglRedSplitParam.hpp"
 
 /** Gomory Reduce-and-Split Cut Generator Class; See method generateCuts().
@@ -60,6 +61,12 @@ public:
   virtual void generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 			    const CglTreeInfo info = CglTreeInfo()) const;
 
+  // Method getting all data from CglRedSplitData
+  void generateCuts(const CglRedSplitData rsData, OsiCuts & cs);
+
+  // Method getting all data from CglRedSplitData (const method).
+  void generateCuts(const CglRedSplitData rsData, OsiCuts & cs) const;
+
   /// Return true if needs optimal basis to do cuts (will return true)
   virtual bool needsOptimalBasis() const;
   //@}
@@ -68,13 +75,21 @@ public:
   /**@name Public Methods */
   //@{
 
+  // Set the data members to the values of the given CglRedSplitData object.
+  void setData(const CglRedSplitData &source); 
+  // Return the CglRedSplitData object of the generator. 
+  inline CglRedSplitData getData() const {return data;};
+
   // Set the parameters to the values of the given CglRedSplitParam object.
   void setParam(const CglRedSplitParam &source); 
   // Return the CglRedSplitParam object of the generator. 
-  CglRedSplitParam getParam() const;
+  inline CglRedSplitParam getParam() const {return param;};
 
   // Compute entries of low_is_lub and up_is_lub.
   void compute_is_lub();
+
+  // Compute entries of is_integer.
+  void compute_is_integer();
 
   /// Set given_optsol to the given optimal solution given_sol.
   /// If given_optsol is set using this method, 
@@ -88,6 +103,10 @@ public:
 
   /// Print the current simplex tableau  
   void printOptTab(OsiSolverInterface *solver) const;
+  
+  // Check that info in rsData match info from rsData.solver; only for debug.
+  void check_data(const CglRedSplitData rsData);
+
   //@}
 
  /**@name Public Methods (soon to be obsolete)*/
@@ -199,6 +218,9 @@ private:
 
   //@{
 
+  // Method generating the cuts after all CglRedSplit members are properly set.
+  void generateCuts(OsiCuts & cs);
+
   /// Compute the fractional part of value, allowing for small error.
   inline double rs_above_integer(double value); 
 
@@ -260,7 +282,7 @@ private:
   double row_scale_factor(double *row);
 
   /// Generate the packed cut from the row representation.
-  int generate_packed_row(const OsiSolverInterface * solver,double *row,
+  int generate_packed_row(const double *xlp, double *row,
 			  int *rowind, double *rowelem, 
 			  int *card_row, double & rhs);
 
@@ -276,6 +298,21 @@ private:
 		    const double *ck_row, const double ck_rhs, 
 		    const int cut_number, const int do_flip);
 
+  // Check that two vectors are different.
+  bool rs_are_different_vectors(const int *vect1, 
+				const int *vect2,
+				const int dim);
+
+  // Check that two vectors are different.
+  bool rs_are_different_vectors(const double *vect1, 
+				const double *vect2,
+				const int dim);
+
+  // Check that two matrices are different.
+  bool rs_are_different_matrices(const CoinPackedMatrix *mat1, 
+				 const CoinPackedMatrix *mat2,
+				 const int nmaj,
+				 const int nmin);
   //@}
 
   
@@ -285,7 +322,10 @@ private:
 
   //@{
 
-  /// Object with all RedSplit parameters. 
+  /// Object with CglRedSplitData members. 
+  CglRedSplitData data;
+
+  /// Object with CglRedSplitParam members. 
   CglRedSplitParam param;
 
   /// Number of rows ( = number of slack variables) in the current LP.
@@ -305,6 +345,9 @@ private:
 
   /// Upper bounds for constraints
   const double *rowUpper;
+
+  /// Righ hand side for constraints (upper bound for ranged constraints).
+  const double *rowRhs;
 
   /// Number of integer basic structural variables that are fractional in the
   /// current lp solution (at least param.away_ from being integer).  
@@ -374,7 +417,7 @@ private:
   double *rhsTab ;
 
   /// Given optimal solution that should not be cut; only for debug. 
-  double *given_optsol;
+  const double *given_optsol;
 
   /// Number of entries in given_optsol.
   int card_given_optsol;
@@ -390,6 +433,22 @@ private:
   /// Characteristic vector of the structural variables whose upper bound 
   /// in absolute value is larger than LUB. 
   int *up_is_lub;
+
+  /// Pointer on solver. Reset by each call to generateCuts().
+  OsiSolverInterface *solver;
+
+  /// Pointer on point to separate. Reset by each call to generateCuts().
+  const double *xlp;
+
+  /// Pointer on row activity. Reset by each call to generateCuts().
+  const double *rowActivity;
+
+  /// Pointer on column type. Reset by each call to generateCuts().
+  const char *colType;
+
+  /// Pointer on matrix of coefficient ordered by rows. 
+  /// Reset by each call to generateCuts().
+  const CoinPackedMatrix *byRow;
 
   //@}
 };
