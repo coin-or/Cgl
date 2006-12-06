@@ -1413,7 +1413,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   // get branch and bound cutoff
   double cutoff;
   bool cutoff_available = si.getDblParam(OsiDualObjectiveLimit,cutoff);
-  if (!cutoff_available) { // cut off isn't set or isn't valid
+  if (!cutoff_available||usingObjective_<0) { // cut off isn't set or isn't valid
     cutoff = si.getInfinity();
   }
   cutoff *= si.getObjSense();
@@ -1461,7 +1461,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     double direction = si.getObjSense();
     double cutoff;
     bool cutoff_available = si.getDblParam(OsiDualObjectiveLimit,cutoff);
-    if (!cutoff_available) { // cut off isn't set or isn't valid
+    if (!cutoff_available||usingObjective_<0) { // cut off isn't set or isn't valid
       cutoff = si.getInfinity();
     }
     cutoff *= direction;
@@ -1521,7 +1521,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       mode=1;
     rowCopy = new CoinPackedMatrix(*si.getMatrixByRow());
     // add in objective if there is a cutoff
-    if (cutoff<1.0e30&&usingObjective_) {
+    if (cutoff<1.0e30&&usingObjective_>0) {
       int * columns = new int[nCols];
       double * elements = new double[nCols];
       int n=0;
@@ -1556,7 +1556,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     rowUpper = new double[nRows];
     memcpy(rowLower,rowLower_,nRows*sizeof(double));
     memcpy(rowUpper,rowUpper_,nRows*sizeof(double));
-    if (usingObjective_) {
+    if (usingObjective_>0) {
       rowLower[nRows-1]=-DBL_MAX;
       rowUpper[nRows-1]=cutoff+offset;
     }
@@ -2484,7 +2484,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 
   double cutoff;
   bool cutoff_available = si.getDblParam(OsiDualObjectiveLimit,cutoff);
-  if (!cutoff_available) { // cut off isn't set or isn't valid
+  if (!cutoff_available||usingObjective_<0) { // cut off isn't set or isn't valid
     cutoff = si.getInfinity();
   }
   cutoff *= direction;
@@ -2636,6 +2636,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
         // switch off disaggregation if not wanted
         if ((rowCuts&1)==0)
           goingToTrueBound=0;
+	bool canReplace = info->strengthenRow&&(goingToTrueBound==2);
 #ifdef PRINT_DEBUG
         if (fabs(movement)>1.01) {
           printf("big %d %g %g %g\n",j,colLower[j],solval,colUpper[j]);
@@ -3304,7 +3305,37 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       // If strengthenRow point to row
                       //if(info->strengthenRow)
                       //printf("a point to row %d\n",irow);
-                      rowCut.addCutIfNotDuplicate(rc,rowLower[irow]<-1.0e20 ? irow :-1);
+		      //#define STRENGTHEN_PRINT
+#ifdef STRENGTHEN_PRINT
+		      if (canReplace&&rowLower[irow]<-1.0e20) {
+			printf("1Cut %g <= ",rc.lb());
+			int k;
+			//printf("original row %d - %g <= <= %g - j = %d\n",iow,rowLower[irow],rowUpper[irow],j);
+			//for (int kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];kk++) 
+			//printf("(%d,%g) ",column[kk],rowElements[kk]);
+			//printf("\n");
+			for ( k=0;k<n;k++) {
+			  int iColumn = index[k];
+			  printf("%g*",element[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rc.ub());
+			printf("Row %g <= ",rowLower[irow]);
+			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
+			  int iColumn = column[k];
+			  printf("%g*",rowElements[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rowUpper[irow]);
+		      }
+#endif
+                      rowCut.addCutIfNotDuplicate(rc,canReplace&&rowLower[irow]<-1.0e20 ? irow :-1);
                     }
                   }
                 }
@@ -3393,7 +3424,32 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #endif
                       //if(info->strengthenRow)
                       //printf("b point to row %d\n",irow);
-                      rowCut.addCutIfNotDuplicate(rc,rowUpper[irow]>1.0e20 ? irow : -1);
+#ifdef STRENGTHEN_PRINT
+		      if (canReplace&&rowUpper[irow]>1.0e20) {
+			printf("2Cut %g <= ",rc.lb());
+			int k;
+			for ( k=0;k<n;k++) {
+			  int iColumn = index[k];
+			  printf("%g*",element[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rc.ub());
+			printf("Row %g <= ",rowLower[irow]);
+			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
+			  int iColumn = column[k];
+			  printf("%g*",rowElements[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rowUpper[irow]);
+		      }
+#endif
+                      rowCut.addCutIfNotDuplicate(rc,canReplace&&rowUpper[irow]>1.0e20 ? irow : -1);
                     }
                   }
                 }
@@ -3722,6 +3778,31 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #endif
                       //if(canReplace)
                       //printf("c point to row %d\n",irow);
+#ifdef STRENGTHEN_PRINT
+		      if (canReplace&&rowLower[irow]<-1.0e20) {
+			printf("3Cut %g <= ",rc.lb());
+			int k;
+			for ( k=0;k<n;k++) {
+			  int iColumn = index[k];
+			  printf("%g*",element[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rc.ub());
+			printf("Row %g <= ",rowLower[irow]);
+			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
+			  int iColumn = column[k];
+			  printf("%g*",rowElements[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rowUpper[irow]);
+		      }
+#endif
                       rowCut.addCutIfNotDuplicate(rc,(canReplace&&rowLower[irow]<-1.0e20) ? irow : -1);
                     }
                   }
@@ -3773,6 +3854,31 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #endif
                       //if(canReplace)
                       //printf("d point to row %d\n",irow);
+#ifdef STRENGTHEN_PRINT
+		      if (canReplace&&rowUpper[irow]>1.0e20) {
+			printf("4Cut %g <= ",rc.lb());
+			int k;
+			for ( k=0;k<n;k++) {
+			  int iColumn = index[k];
+			  printf("%g*",element[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rc.ub());
+			printf("Row %g <= ",rowLower[irow]);
+			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
+			  int iColumn = column[k];
+			  printf("%g*",rowElements[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rowUpper[irow]);
+		      }
+#endif
                       rowCut.addCutIfNotDuplicate(rc,(canReplace&&rowUpper[irow]>1.0e20) ? irow : -1);
                     }
                   }
@@ -3909,6 +4015,32 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 if (gap>1.0e-4||info->strengthenRow!=NULL) {
                   rc.setEffectiveness(gap);
                   rc.setRow(n,index,element);
+#ifdef STRENGTHEN_PRINT
+		      {
+			printf("1aCut %g <= ",rc.lb());
+			irow=i;
+			int k;
+			for ( k=0;k<n;k++) {
+			  int iColumn = index[k];
+			  printf("%g*",element[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rc.ub());
+			printf("Row %g <= ",rowLower[irow]);
+			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
+			  int iColumn = column[k];
+			  printf("%g*",rowElements[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rowUpper[irow]);
+		      }
+#endif
                   int returnCode=rowCut.addCutIfNotDuplicate(rc,i);
                   if (returnCode<0)
                     break; // out of space
@@ -4059,7 +4191,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 
   double cutoff;
   bool cutoff_available = si.getDblParam(OsiDualObjectiveLimit,cutoff);
-  if (!cutoff_available) { // cut off isn't set or isn't valid
+  if (!cutoff_available||usingObjective_<0) { // cut off isn't set or isn't valid
     cutoff = si.getInfinity();
   }
   cutoff *= si.getObjSense();
@@ -4974,6 +5106,31 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
                         // If strengthenRow point to row
                         //if(info->strengthenRow)
                         //printf("a point to row %d\n",irow);
+#ifdef STRENGTHEN_PRINT
+		      if (rowLower[irow]<-1.0e20) {
+			printf("5Cut %g <= ",rc.lb());
+			int k;
+			for ( k=0;k<n;k++) {
+			  int iColumn = index[k];
+			  printf("%g*",element[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rc.ub());
+			printf("Row %g <= ",rowLower[irow]);
+			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
+			  int iColumn = column[k];
+			  printf("%g*",rowElements[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rowUpper[irow]);
+		      }
+#endif
 			rowCut.addCutIfNotDuplicate(rc,rowLower[irow]<-1.0e20 ? irow : -1);
 		      }
 		    }
@@ -5025,6 +5182,31 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 #endif
                         //if(info->strengthenRow)
                         //printf("b point to row %d\n",irow);
+#ifdef STRENGTHEN_PRINT
+		      if (rowUpper[irow]>1.0e20) {
+			printf("6Cut %g <= ",rc.lb());
+			int k;
+			for ( k=0;k<n;k++) {
+			  int iColumn = index[k];
+			  printf("%g*",element[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rc.ub());
+			printf("Row %g <= ",rowLower[irow]);
+			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
+			  int iColumn = column[k];
+			  printf("%g*",rowElements[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rowUpper[irow]);
+		      }
+#endif
 			rowCut.addCutIfNotDuplicate(rc,rowUpper[irow]>1.0e20 ? irow : -1);
 		      }
 		    }
@@ -5271,6 +5453,31 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 #endif
                         //if(info->strengthenRow)
                         //printf("c point to row %d\n",irow);
+#ifdef STRENGTHEN_PRINT
+		      if (rowLower[irow]<-1.0e20) {
+			printf("7Cut %g <= ",rc.lb());
+			int k;
+			for ( k=0;k<n;k++) {
+			  int iColumn = index[k];
+			  printf("%g*",element[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rc.ub());
+			printf("Row %g <= ",rowLower[irow]);
+			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
+			  int iColumn = column[k];
+			  printf("%g*",rowElements[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rowUpper[irow]);
+		      }
+#endif
 			rowCut.addCutIfNotDuplicate(rc,rowLower[irow]<-1.0e20? irow : -1);
 		      }
 		    }
@@ -5322,6 +5529,31 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 #endif
                         //if(info->strengthenRow)
                         //printf("d point to row %d\n",irow);
+#ifdef STRENGTHEN_PRINT
+		      if (rowUpper[irow]>1.0e20) {
+			printf("8Cut %g <= ",rc.lb());
+			int k;
+			for ( k=0;k<n;k++) {
+			  int iColumn = index[k];
+			  printf("%g*",element[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rc.ub());
+			printf("Row %g <= ",rowLower[irow]);
+			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
+			  int iColumn = column[k];
+			  printf("%g*",rowElements[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rowUpper[irow]);
+		      }
+#endif
 			rowCut.addCutIfNotDuplicate(rc,rowUpper[irow]>1.0e20 ? irow : -1);
 		      }
 		    }
@@ -6176,6 +6408,31 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                       // If strengthenRow point to row
                       //if(info->strengthenRow)
                       //printf("a point to row %d\n",irow);
+#ifdef STRENGTHEN_PRINT
+		      {
+			printf("9Cut %g <= ",rc.lb());
+			int k;
+			for ( k=0;k<n;k++) {
+			  int iColumn = index[k];
+			  printf("%g*",element[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rc.ub());
+			printf("Row %g <= ",rowLower[irow]);
+			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
+			  int iColumn = column[k];
+			  printf("%g*",rowElements[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rowUpper[irow]);
+		      }
+#endif
                       rowCut.addCutIfNotDuplicate(rc,irow);
                     }
                   }
@@ -6227,6 +6484,31 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 #endif
                       //if(info->strengthenRow)
                       //printf("b point to row %d\n",irow);
+#ifdef STRENGTHEN_PRINT
+		      {
+			printf("10Cut %g <= ",rc.lb());
+			int k;
+			for ( k=0;k<n;k++) {
+			  int iColumn = index[k];
+			  printf("%g*",element[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rc.ub());
+			printf("Row %g <= ",rowLower[irow]);
+			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
+			  int iColumn = column[k];
+			  printf("%g*",rowElements[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rowUpper[irow]);
+		      }
+#endif
                       rowCut.addCutIfNotDuplicate(rc,irow);
                     }
                   }
@@ -6368,6 +6650,31 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 #endif
                         //if(info->strengthenRow)
                         //printf("c point to row %d\n",irow);
+#ifdef STRENGTHEN_PRINT
+		      {
+			printf("11Cut %g <= ",rc.lb());
+			int k;
+			for ( k=0;k<n;k++) {
+			  int iColumn = index[k];
+			  printf("%g*",element[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rc.ub());
+			printf("Row %g <= ",rowLower[irow]);
+			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
+			  int iColumn = column[k];
+			  printf("%g*",rowElements[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rowUpper[irow]);
+		      }
+#endif
 			rowCut.addCutIfNotDuplicate(rc,irow);
 		      }
 		    }
@@ -6419,6 +6726,31 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 #endif
                         //if(info->strengthenRow)
                         //printf("d point to row %d\n",irow);
+#ifdef STRENGTHEN_PRINT
+		      {
+			printf("12Cut %g <= ",rc.lb());
+			int k;
+			for ( k=0;k<n;k++) {
+			  int iColumn = index[k];
+			  printf("%g*",element[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rc.ub());
+			printf("Row %g <= ",rowLower[irow]);
+			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
+			  int iColumn = column[k];
+			  printf("%g*",rowElements[k]);
+			  if (si.isInteger(iColumn))
+			    printf("i%d ",iColumn);
+			  else
+			    printf("x%d ",iColumn);
+			}
+			printf("<= %g\n",rowUpper[irow]);
+		      }
+#endif
 			rowCut.addCutIfNotDuplicate(rc,irow);
 		      }
 		    }
@@ -6722,7 +7054,7 @@ int CglProbing::getMaxElementsRoot() const
   return maxElementsRoot_;
 }
 // Set whether to use objective
-void CglProbing::setUsingObjective(bool yesNo)
+void CglProbing::setUsingObjective(int yesNo)
 {
   usingObjective_=yesNo;
 }
@@ -6782,7 +7114,7 @@ maxPassRoot_(3),
 maxProbeRoot_(100),
 maxStackRoot_(50),
 maxElementsRoot_(1000),
-usingObjective_(false)
+usingObjective_(0)
 {
 
   numberRows_=0;
@@ -7655,9 +7987,9 @@ CglProbing::generateCpp( FILE * fp)
   else
     fprintf(fp,"4  probing.setRowCuts(%d);\n",rowCuts());
   if (getUsingObjective()!=other.getUsingObjective())
-    fprintf(fp,"3  probing.setUsingObjective(%s);\n",getUsingObjective() ? "true" : "false");
+    fprintf(fp,"3  probing.setUsingObjective(%d);\n",getUsingObjective());
   else
-    fprintf(fp,"4  probing.setUsingObjective(%s);\n",getUsingObjective() ? "true" : "false");
+    fprintf(fp,"4  probing.setUsingObjective(%d);\n",getUsingObjective());
   if (getAggressiveness()!=other.getAggressiveness())
     fprintf(fp,"3  probing.setAggressiveness(%d);\n",getAggressiveness());
   else

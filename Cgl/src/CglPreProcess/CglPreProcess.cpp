@@ -353,6 +353,14 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   delete [] element;
    
   // tighten bounds
+/*
+
+  Virtuous solvers may require a refresh via initialSolve if this
+  call is ever changed to give a nonzero value to the (default) second
+  parameter. Previous actions may have made significant changes to the
+  constraint system. Safe as long as tightenPrimalBounds doesn't ask for
+  the current solution.
+*/
   int infeas = tightenPrimalBounds(*startModel_);
   if (infeas) {
     handler_->message(CGL_INFEASIBLE,messages_)
@@ -507,7 +515,16 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       pinfo->setPresolveActions(presolveActions);
       if (prohibited_)
         assert (numberProhibited_==oldModel->getNumCols());
-      presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-8,true,5,prohibited_);
+/*
+  VIRTUOUS but possible bad for performance 
+  
+  At this point, the solution is most likely stale: we may have added cuts as
+  we left the previous call to modified(), or we may have changed row bounds
+  in VUB analysis just above. Continuous presolve doesn't need a solution
+  unless we want it to transform the current solution to match the presolved
+  model.
+*/
+      presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-8,true,5,prohibited_,false);
       if (!presolvedModel) {
         returnModel=NULL;
         break;
@@ -847,12 +864,15 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
   memcpy(columnLower,colLower,numberColumns*sizeof(double));
   double * columnUpper = new double [numberColumns];
   memcpy(columnUpper,colUpper,numberColumns*sizeof(double));
-  const double * solution = factor ? model.getColSolution() : NULL;
 
   int iRow, iColumn;
 
   // If wanted - tighten column bounds using solution
   if (factor) {
+    /*
+      Callers need to ensure that the solution is fresh 
+    */
+    const double * solution =  model.getColSolution();
     double largest=0.0;
     if (factor>0.0) {
       assert (factor>1.0);
@@ -1347,6 +1367,16 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
       //model->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
       model->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
       // clean
+/*
+  VIRTUOUS - I am not happy here (JJF) - This was put in for Special Ordered Sets of type 2
+
+  Previous loop has likely made nontrivial bound changes, hence invalidated
+  solution. Why do we need this? We're about to do an initialSolve, which
+  will overwrite solution. Perhaps belongs in same guarded block with
+  following feasibility check? If this is necessary for clp, solution should
+  be acquired before bounds changes.
+*/
+      if (0)
       {
 	int numberColumns = model->getNumCols();
 	const double * lower = model->getColLower();
@@ -1414,6 +1444,8 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 	  model->writeMps("bad2");
 	  printf("bad unwind in postprocess\n");
 #endif
+      } else {
+	//model->writeMps("good2");
       }
       presolve_[iPass]->postsolve(true);
       OsiSolverInterface * modelM2;
@@ -1569,7 +1601,13 @@ CglPreProcess::modified(OsiSolverInterface * model,
     int numberChangedThisPass=0;
     int numberFromCglDuplicate=0;
     const int * duplicate=NULL;
+    /*
+      needResolve    solution is stale
+      rebuilt   constraint system deleted and recreated (implies initialSolve)
+    */
     for (int iGenerator=firstGenerator;iGenerator<lastGenerator;iGenerator++) {
+      bool needResolve = false ;
+      bool rebuilt = false ;
       OsiCuts cs;
       CoinZeroN(whichCut,numberRows);
       CglProbing * probingCut=NULL;
@@ -1631,6 +1669,13 @@ CglPreProcess::modified(OsiSolverInterface * model,
       const double * columnLower = newModel->getColLower();
       const double * columnUpper = newModel->getColUpper();
       if ((numberStrengthened||numberDrop)&&feasible) {
+	/*
+	  
+	Deleting all rows and rebuilding invalidates everything, initialSolve will
+	be required.
+	*/
+	needResolve = true ;
+	rebuilt = true ;
         // Easier to recreate entire matrix
         const CoinPackedMatrix * rowCopy = newModel->getMatrixByRow();
         const int * column = rowCopy->getIndices();
@@ -1871,6 +1916,12 @@ CglPreProcess::modified(OsiSolverInterface * model,
       int numberBounds=0;
       for (int k = 0;k<numberColumnCuts;k++) {
         OsiColCut * thisCut = cs.colCutPtr(k) ;
+	/*
+	  Nontrivial bound changes will invalidate current solution.
+	*/
+	if (thisCut->effectiveness() > 1.0) {
+	  needResolve = true ;
+	}
 	const CoinPackedVector & lbs = thisCut->lbs() ;
 	const CoinPackedVector & ubs = thisCut->ubs() ;
 	int j ;
@@ -1927,6 +1978,15 @@ CglPreProcess::modified(OsiSolverInterface * model,
           <<CoinMessageEol;
       if (!feasible)
         break;
+      /*
+	If solution needs to be refreshed, do resolve or initialSolve as appropriate.
+      */
+      if (needResolve) {
+	if (rebuilt)
+	  newModel->initialSolve() ;
+	else
+	  newModel->resolve() ;
+      }
     }
     if (!feasible)
       break;

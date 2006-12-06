@@ -210,8 +210,12 @@ public:
 
   /**@name Whether use objective as constraint */
   //@{
-  /// Set
-  void setUsingObjective(bool yesNo);
+  /** Set
+      0 don't
+      1 do
+      -1 don't even think about it
+  */
+  void setUsingObjective(int yesNo);
   /// Get
   int getUsingObjective() const;
   //@}
@@ -357,7 +361,7 @@ private:
   /// Maximum number of elements in row for scan at root
   int maxElementsRoot_;
   /// Whether to include objective as constraint
-  bool usingObjective_;
+  int usingObjective_;
   /// Number of integer variables
   int numberIntegers_;
   /// Number of 0-1 integer variables
