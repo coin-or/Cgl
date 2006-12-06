@@ -74,18 +74,18 @@ public:
     ~CglStored ();
   //@}
       
-private:
+protected:
   
- // Private member methods
+ // Protected member methods
 
-  // Private member data
+  // Protected member data
 
-  /**@name Private member data */
+  /**@name Protected member data */
   //@{
   /// Only add if more than this requiredViolation
   double requiredViolation_;
   /// Cuts
-  OsiCuts cuts_;
+  mutable OsiCuts cuts_;
   //@}
 };
 #endif
