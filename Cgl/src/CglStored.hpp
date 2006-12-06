@@ -50,6 +50,8 @@ public:
   void addCut(double lb, double ub, const CoinPackedVector & vector);
   /// Add a row cut from elements
   void addCut(double lb, double ub, int size, const int * colIndices, const double * elements);
+  inline int sizeRowCuts() const
+  { return cuts_.sizeRowCuts();};
   //@}
 
   /**@name Constructors and destructors */
@@ -72,18 +74,18 @@ public:
     ~CglStored ();
   //@}
       
-private:
+protected:
   
- // Private member methods
+ // Protected member methods
 
-  // Private member data
+  // Protected member data
 
-  /**@name Private member data */
+  /**@name Protected member data */
   //@{
   /// Only add if more than this requiredViolation
   double requiredViolation_;
   /// Cuts
-  OsiCuts cuts_;
+  mutable OsiCuts cuts_;
   //@}
 };
 #endif
