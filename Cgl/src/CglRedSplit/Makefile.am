@@ -47,5 +47,5 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 # and that therefore should be installed in 'install'
 include_HEADERS = \
 	CglRedSplit.hpp \
-	CglRedSplitData.hpp
+	CglRedSplitData.hpp \
 	CglRedSplitParam.hpp
