@@ -21,7 +21,6 @@
 */
 
 #include "CoinPackedMatrix.hpp"
-#include "CglTreeInfo.hpp"
 
 class CglData {
 
@@ -111,11 +110,6 @@ public:
   /** Get doNotSeparateThis */
   inline const double *getDoNotSeparateThis() const 
                                      {return doNotSeparateThis;};
-
-  /** Set treeInfo to point on a CglTreeInfo object */
-  virtual void setTreeInfo(const CglTreeInfo *givenTreeInfo);
-  /** Get treeInfo*/
-  inline const CglTreeInfo *getTreeInfo() const {return treeInfo;};
   //@}
 
   /**@name Constructors and destructors */
@@ -133,7 +127,6 @@ public:
 	  const double *givenRowActivity = NULL,
 	  const char *givenColType = NULL,
 	  const double *givenSeparateThis = NULL,
-	  const CglTreeInfo *givenTreeInfo = NULL,
 	  const double *givenDoNotSeparateThis = NULL);
 
   /// Copy constructor
@@ -203,9 +196,6 @@ protected:
 
   // Pointer on vector for point to separate.  
   const double *separateThis;
-
-  // Pointer on tree information.
-  const CglTreeInfo *treeInfo;
 
   /// Pointer on vector for point that should not be cut; only for debug. 
   const double *doNotSeparateThis;

@@ -105,12 +105,6 @@ void CglData::setDoNotSeparateThis(const
 } /* setDoNotSeparateThis */
 
 /***********************************************************************/
-void CglData::setTreeInfo(const CglTreeInfo *givenTreeInfo)
-{
-  givenTreeInfo = givenTreeInfo;
-} /* setTreeInfo */
-
-/***********************************************************************/
 CglData::CglData(const int &givenNrow, const int &givenNcol,
 		 const CoinPackedMatrix *givenMatrixByCol,
 		 const CoinPackedMatrix * givenMatrixByRow,
@@ -123,7 +117,6 @@ CglData::CglData(const int &givenNrow, const int &givenNcol,
 		 const double *givenRowActivity,
 		 const char *givenColType,
 		 const double *givenSeparateThis,
-		 const CglTreeInfo *givenTreeInfo,
 		 const double *givenDoNotSeparateThis) :
   nrow(givenNrow),
   ncol(givenNcol),
@@ -138,7 +131,6 @@ CglData::CglData(const int &givenNrow, const int &givenNcol,
   rowActivity(givenRowActivity),
   colType(givenColType),
   separateThis(givenSeparateThis),
-  treeInfo(givenTreeInfo),
   doNotSeparateThis(givenDoNotSeparateThis)
 {}
 
@@ -157,7 +149,6 @@ CglData::CglData(const CglData &source) :
   rowActivity(source.rowActivity),
   colType(source.colType),
   separateThis(source.separateThis),
-  treeInfo(source.treeInfo),
   doNotSeparateThis(source.doNotSeparateThis)
 {}
 
@@ -184,7 +175,6 @@ CglData& CglData::operator=(const CglData &rhs)
     rowActivity = rhs.rowActivity;
     colType = rhs.colType;
     separateThis = rhs.separateThis; 
-    treeInfo = rhs.treeInfo;
     doNotSeparateThis = rhs.doNotSeparateThis; 
   }
   return *this;

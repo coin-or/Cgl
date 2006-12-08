@@ -1330,7 +1330,7 @@ void CglRedSplit::generateCuts(const CglRedSplitData rsData, OsiCuts &cs)
   if((colLower == NULL) || (colUpper == NULL) || 
      (rowLower == NULL) || (rowUpper == NULL) ||
      (rowRhs == NULL)) {
-    printf("### WARNING: CglRedSplit::generateCuts(): unitialized data pointer\ncolLower: %p  colUpper: %p  rowLower: %p  rowUpper: %p rowRhs: %p\n",
+    printf("### WARNING: CglRedSplit::generateCuts(): uninitialized data pointer\ncolLower: %p  colUpper: %p  rowLower: %p  rowUpper: %p rowRhs: %p\n",
 	   (void *) colLower, (void *) colUpper, (void *) rowLower, 
 	   (void *) rowUpper, (void *) rowRhs);
     return;

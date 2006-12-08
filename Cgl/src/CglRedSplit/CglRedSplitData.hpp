@@ -12,6 +12,8 @@
 
 #include "CglData.hpp"
 
+class OsiSolverInterface;
+
   /**@name CglRedSplit Data */
   //@{
 
