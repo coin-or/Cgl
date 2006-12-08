@@ -13,7 +13,7 @@ int main(int argc, char **argv)
   int i, ncol;
 
   if((argc < 2) || (argc > 2)) {
-    printf("### ERROR: main(): Usage: cgl_data_test input_file_name.mps\n");
+    printf("### ERROR: main(): Usage: One of the following\ncgl_data_test input_file_name.mps\ncgl_data_test input_file_name.lp\n");
     exit(1);
   }
 
@@ -26,7 +26,9 @@ int main(int argc, char **argv)
     strcpy(f_name, f_name_lp);
   }
   last_dot_pos = strrchr(f_name, '.');
-  last_dot_pos[0] = '\0';
+  if(last_dot_pos != NULL) {
+    last_dot_pos = '\0';
+  }
 
   OsiClpSolverInterface *clp = new OsiClpSolverInterface;
   clp->messageHandler()->setLogLevel(0);
@@ -77,7 +79,7 @@ int main(int argc, char **argv)
   int round, max_rounds = 10;
   for(round=0; round<max_rounds; round++) {
 
-    // Setup the data; only members used by the CglRedSPlitGenerator
+    // Setup the data; only members used by the RedSplit cut generator
     // see CglRedSplit::generateCuts(const CglRedSplitData rsData, OsiCuts &cs)
 
     rsdat.setNrow(clp->getNumRows()); 
@@ -129,6 +131,7 @@ int main(int argc, char **argv)
   
     if(clp->isProvenPrimalInfeasible()) {
       printf("### WARNING: Problem is infeasible\n");
+      exit(1);
     }
   }
 
