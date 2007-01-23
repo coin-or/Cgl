@@ -11,6 +11,8 @@
 #include <cassert>
 #include <iostream>
 //#define CGL_DEBUG 2
+//#define FM_NO_GCD
+
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedVector.hpp"
 #include "CoinPackedMatrix.hpp"
@@ -444,7 +446,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      continue;
 	    } else {
 #if CGL_DEBUG>1
-	      if (iColumn==52) printf("for basic %d, column %d has alpha %g, colsol %g\n",
+	      if (iColumn==332) printf("for basic %d, column %d has alpha %g, colsol %g\n",
 		     iColumn,j,value,colsol[j]);
 #endif
 	      // deal with bounds
@@ -456,7 +458,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		//reducedValue -= value*colLower[j];
 	      }
 #if CGL_DEBUG>1
-	      if (iColumn==52) printf("%d value %g reduced %g int %d rhs %g swap %d\n",
+	      if (iColumn==332) printf("%d value %g reduced %g int %d rhs %g swap %d\n",
 		     j,value,reducedValue,intVar[j],rhs,swap[j]);
 #endif
 	      double coefficient;
@@ -486,6 +488,11 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      if (fabs(coefficient)>= COIN_INDEXED_TINY_ELEMENT) {
 		 cutElement[j] = coefficient;
 		 cutIndex[number++]=j;
+#if CGL_DEBUG>1
+	      if (iColumn==332) printf("coeff %g   for var %d\n",
+				       coefficient,j);
+#endif
+
 		 // If too many - break from loop
 		 if (number>limit) 
 		   break;
@@ -536,6 +543,10 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		coefficient = -ratio*value;
 	      }
 	    }
+#if CGL_DEBUG>1
+	    if (iColumn==332) printf("coeff %g   for slack var %d\n",
+				     coefficient, numberColumns+iRow);
+#endif
 	    if ((type&1)!=0) {
 	      // slack at ub - treat as +1.0
 	      rhs -= coefficient*rowUpper[iRow];
@@ -599,6 +610,11 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	  }
 #endif
 #endif
+
+#ifdef FM_NO_GCD
+	  numberNonInteger = 1;
+#endif
+
 	  if (!numberNonInteger&&number) {
 #ifdef CGL_DEBUG
 	    assert (sizeof(Rational)==sizeof(double));
