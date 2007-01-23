@@ -1259,9 +1259,9 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
                   if (fabs(value-newValue)>1.0e-12) {
                     numberChanges++;
                     element[j]=newValue;
-                    if (handler_->logLevel()>2)
-                      printf("element in Row %d for column %d changed from %g to %g\n",
-                             iRow,iColumn,value,newValue);
+		    handler_->message(CGL_ELEMENTS_CHANGED2,messages_)
+		      <<iRow<<iColumn<<value<<newValue
+		      <<CoinMessageEol;
 #ifdef CGL_DEBUG
                     const OsiRowCutDebugger * debugger = model.getRowCutDebugger();
                     if (debugger&&debugger->numberColumns()==numberColumns) {
@@ -1283,8 +1283,8 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
         }
       }
       if (numberChanges) {
-        if (handler_->logLevel()>1) 
-          printf("%d elements changed\n",numberChanges);
+	handler_->message(CGL_ELEMENTS_CHANGED1,messages_)
+			<<numberChanges<<CoinMessageEol;
         model.replaceMatrixOptional(copy);
       }
     }
