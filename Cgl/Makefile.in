@@ -304,8 +304,7 @@ SUBDIRS = src $(am__append_1)
 ########################################################################
 
 # Here we need include all files that are not mentioned in other Makefiles
-EXTRA_DIST = examples/cgl1.cpp examples/cgl2.cpp examples/Makefile.in \
-	$(am__append_2)
+EXTRA_DIST = examples/cgl1.cpp examples/Makefile.in $(am__append_2)
 
 ########################################################################
 #                  Installation of the addlibs file                    #
