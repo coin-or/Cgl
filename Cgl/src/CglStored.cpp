@@ -55,6 +55,7 @@ CglStored::addCut(double lb, double ub, const CoinPackedVector & vector)
 {
   OsiRowCut rc;
   rc.setRow(vector);
+  rc.mutableRow().setTestForDuplicateIndex(false);
   rc.setLb(lb);
   rc.setUb(ub);   
   cuts_.insert(rc);
@@ -64,7 +65,7 @@ void
 CglStored::addCut(double lb, double ub, int size, const int * colIndices, const double * elements)
 {
   OsiRowCut rc;
-  rc.setRow(size,colIndices,elements);
+  rc.setRow(size,colIndices,elements,false);
   rc.setLb(lb);
   rc.setUb(ub);   
   cuts_.insert(rc);

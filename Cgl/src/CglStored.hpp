@@ -52,6 +52,8 @@ public:
   void addCut(double lb, double ub, int size, const int * colIndices, const double * elements);
   inline int sizeRowCuts() const
   { return cuts_.sizeRowCuts();};
+  const OsiRowCut * rowCutPointer(int index) const
+  { return cuts_.rowCutPtr(index);};
   //@}
 
   /**@name Constructors and destructors */
