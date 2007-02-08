@@ -2240,7 +2240,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                       rc.setUb(1.0);   
                       element[1]= 1.0;
                     }
-                    rc.setRow(2,index,element);
+                    rc.setRow(2,index,element,false);
                     cs.insert(rc);
                   }
                 } else {
@@ -2355,7 +2355,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
               }
               if (infeasibility) {
                 rc.setEffectiveness(infeasibility);
-                rc.setRow(2,index,element);
+                rc.setRow(2,index,element,false);
                 if (logLevel_>1)
                   printf("%g <= %g * x%d + %g * x%d <= %g\n",
                          rc.lb(),element[0],index[0],element[1],index[1],rc.ub());
@@ -2553,7 +2553,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 index[1]=whichInt;
                 element[0]=1.0;
                 element[1]=-upper;
-                rc.setRow(2,index,element);
+                rc.setRow(2,index,element,false);
                 cs.insert(rc);
               }
             }
@@ -3170,7 +3170,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                   assert(newSol>solMove);
                   rc.setEffectiveness(newSol-solMove);
                   if (rc.effectiveness()>disaggEffectiveness) {
-                    rc.setRow(2,index,element);
+                    rc.setRow(2,index,element,false);
 #ifdef CGL_DEBUG
                     if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -3197,7 +3197,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                   assert(newSol>solMove);
                   rc.setEffectiveness(newSol-solMove);
                   if (rc.effectiveness()>disaggEffectiveness) {
-                    rc.setRow(2,index,element);
+                    rc.setRow(2,index,element,false);
 #ifdef CGL_DEBUG
                     if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -3298,7 +3298,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     // effectiveness is how far j moves
                     rc.setEffectiveness((sum-gap*colsol[j]-maxR[irow])/gap);
                     if (rc.effectiveness()>needEffectiveness) {
-                      rc.setRow(n,index,element);
+                      rc.setRow(n,index,element,false);
 #ifdef CGL_DEBUG
                       if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -3418,7 +3418,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     // effectiveness is how far j moves
                     rc.setEffectiveness((minR[irow]-sum-gap*colsol[j])/gap);
                     if (rc.effectiveness()>needEffectiveness) {
-                      rc.setRow(n,index,element);
+                      rc.setRow(n,index,element,false);
 #ifdef CGL_DEBUG
                       if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -3618,7 +3618,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       index[1]=icol;
                       element[0]=-(upperOriginal-lowerOriginal);
                       element[1]=1.0;
-                      rc.setRow(2,index,element);
+                      rc.setRow(2,index,element,false);
                       cs.insert(rc);
                     } else if (upperWhenUp<lowerOriginal+1.0e-12&&lowerWhenDown>upperOriginal-1.0e-12) {
                       OsiRowCut rc;
@@ -3631,7 +3631,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       index[1]=icol;
                       element[0]=upperOriginal-lowerOriginal;
                       element[1]=1.0;
-                      rc.setRow(2,index,element);
+                      rc.setRow(2,index,element,false);
                       cs.insert(rc);
                     } 
                   }
@@ -3684,7 +3684,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                   assert(newSol>solMove);
                   rc.setEffectiveness(newSol-solMove);
                   if (rc.effectiveness()>disaggEffectiveness) {
-                    rc.setRow(2,index,element);
+                    rc.setRow(2,index,element,false);
 #ifdef CGL_DEBUG
                     if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -3711,7 +3711,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                   assert(newSol>solMove);
                   rc.setEffectiveness(newSol-solMove);
                   if (rc.effectiveness()>disaggEffectiveness) {
-                    rc.setRow(2,index,element);
+                    rc.setRow(2,index,element,false);
 #ifdef CGL_DEBUG
                     if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -3772,7 +3772,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     // effectiveness is how far j moves
                     rc.setEffectiveness((sum+gap*colsol[j]-rowUpper[irow])/gap);
                     if (rc.effectiveness()>needEffectiveness) {
-                      rc.setRow(n,index,element);
+                      rc.setRow(n,index,element,false);
 #ifdef CGL_DEBUG
                       if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -3848,7 +3848,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     // effectiveness is how far j moves
                     rc.setEffectiveness((rowLower[irow]-sum+gap*colsol[j])/gap);
                     if (rc.effectiveness()>needEffectiveness) {
-                      rc.setRow(n,index,element);
+                      rc.setRow(n,index,element,false);
 #ifdef CGL_DEBUG
                       if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -4014,7 +4014,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                   gap=sum-rowUpper[i];
                 if (gap>1.0e-4||info->strengthenRow!=NULL) {
                   rc.setEffectiveness(gap);
-                  rc.setRow(n,index,element);
+                  rc.setRow(n,index,element,false);
 #ifdef STRENGTHEN_PRINT
 		      {
 			printf("1aCut %g <= ",rc.lb());
@@ -4997,7 +4997,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		      assert(newSol>solMove);
 		    rc.setEffectiveness(newSol-solMove);
 		    if (rc.effectiveness()>disaggEffectiveness) {
-		      rc.setRow(2,index,element);
+		      rc.setRow(2,index,element,false);
 #ifdef CGL_DEBUG
 		      if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -5025,7 +5025,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		      assert(newSol>solMove);
 		    rc.setEffectiveness(newSol-solMove);
 		    if (rc.effectiveness()>disaggEffectiveness) {
-		      rc.setRow(2,index,element);
+		      rc.setRow(2,index,element,false);
 #ifdef CGL_DEBUG
 		      if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -5099,7 +5099,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		      // effectiveness is how far j moves
 		      rc.setEffectiveness((sum-gap*colsol[j]-maxR[irow])/gap);
 		      if (rc.effectiveness()>needEffectiveness) {
-			rc.setRow(n,index,element);
+			rc.setRow(n,index,element,false);
 #ifdef CGL_DEBUG
 			if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -5176,7 +5176,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		      // effectiveness is how far j moves
 		      rc.setEffectiveness((minR[irow]-sum-gap*colsol[j])/gap);
 		      if (rc.effectiveness()>needEffectiveness) {
-			rc.setRow(n,index,element);
+			rc.setRow(n,index,element,false);
 #ifdef CGL_DEBUG
 			if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -5347,7 +5347,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		      assert(newSol>solMove);
 		    rc.setEffectiveness(newSol-solMove);
 		    if (rc.effectiveness()>disaggEffectiveness) {
-		      rc.setRow(2,index,element);
+		      rc.setRow(2,index,element,false);
 #ifdef CGL_DEBUG
 		      if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -5375,7 +5375,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		      assert(newSol>solMove);
 		    rc.setEffectiveness(newSol-solMove);
 		    if (rc.effectiveness()>disaggEffectiveness) {
-		      rc.setRow(2,index,element);
+		      rc.setRow(2,index,element,false);
 #ifdef CGL_DEBUG
 		      if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -5447,7 +5447,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		      // effectiveness is how far j moves
 		      rc.setEffectiveness((sum+gap*colsol[j]-rowUpper[irow])/gap);
 		      if (rc.effectiveness()>needEffectiveness) {
-			rc.setRow(n,index,element);
+			rc.setRow(n,index,element,false);
 #ifdef CGL_DEBUG
 			if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -5523,7 +5523,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		      // effectiveness is how far j moves
 		      rc.setEffectiveness((rowLower[irow]-sum+gap*colsol[j])/gap);
 		      if (rc.effectiveness()>needEffectiveness) {
-			rc.setRow(n,index,element);
+			rc.setRow(n,index,element,false);
 #ifdef CGL_DEBUG
 			if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -6401,7 +6401,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                     // effectiveness is how far j moves
                     rc.setEffectiveness((sum-gap*colsol[j]-maxR[irow])/gap);
                     if (rc.effectiveness()>needEffectiveness) {
-                      rc.setRow(n,index,element);
+                      rc.setRow(n,index,element,false);
 #ifdef CGL_DEBUG
                       if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -6478,7 +6478,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                     // effectiveness is how far j moves
                     rc.setEffectiveness((minR[irow]-sum-gap*colsol[j])/gap);
                     if (rc.effectiveness()>needEffectiveness) {
-                      rc.setRow(n,index,element);
+                      rc.setRow(n,index,element,false);
 #ifdef CGL_DEBUG
                       if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -6644,7 +6644,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 		      // effectiveness is how far j moves
 		      rc.setEffectiveness((sum+gap*colsol[j]-rowUpper[irow])/gap);
 		      if (rc.effectiveness()>needEffectiveness) {
-			rc.setRow(n,index,element);
+			rc.setRow(n,index,element,false);
 #ifdef CGL_DEBUG
 			if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -6720,7 +6720,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 		      // effectiveness is how far j moves
 		      rc.setEffectiveness((rowLower[irow]-sum+gap*colsol[j])/gap);
 		      if (rc.effectiveness()>needEffectiveness) {
-			rc.setRow(n,index,element);
+			rc.setRow(n,index,element,false);
 #ifdef CGL_DEBUG
 			if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
