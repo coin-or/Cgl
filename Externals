@@ -1,7 +1,7 @@
 BuildTools    https://projects.coin-or.org/svn/BuildTools/releases/0.5.4
 Data/Netlib   https://projects.coin-or.org/svn/Data/releases/1.0.0/Netlib
 Data/Sample   https://projects.coin-or.org/svn/Data/releases/1.0.0/Sample
-CoinUtils     https://projects.coin-or.org/svn/CoinUtils/branches/devel/CoinUtils
+CoinUtils     https://projects.coin-or.org/svn/CoinUtils/trunk/CoinUtils
 Clp           https://projects.coin-or.org/svn/Clp/branches/devel/Clp
 Osi           https://projects.coin-or.org/svn/Osi/branches/devel/Osi
 Vol           https://projects.coin-or.org/svn/Vol/releases/1.0.0/Vol
