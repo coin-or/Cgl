@@ -33,6 +33,7 @@
 #include "CglOddHole.hpp"
 #include "CglProbing.hpp"
 #include "CglGomory.hpp"
+#include "CglLandP.hpp"
 //#include "CglFlowCover.hpp"
 
 
@@ -118,6 +119,11 @@ int main (int argc, const char *argv[])
   }  
   {
     OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglLandp with OsiClpSolverInterface\n" );
+    CglLandPUnitTest(&clpSi,mpsDir);
+  }  
+  {
+    OsiClpSolverInterface clpSi;
     testingMessage( "Testing CglSimpleRounding with OsiClpSolverInterface\n" );
     CglSimpleRoundingUnitTest(&clpSi,mpsDir);
   } 
@@ -184,8 +190,8 @@ int main (int argc, const char *argv[])
 // Display message on stdout and stderr
 void testingMessage( const char * const msg )
 {
+  std::cout <<std::endl <<"*****************************************"
+            <<std::endl <<msg <<std::endl;
   //std::cerr <<msg;
-   std::cout <<std::endl <<"*****************************************"
-	     <<std::endl <<msg <<std::endl;
 }
 
