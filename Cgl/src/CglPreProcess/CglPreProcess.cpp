@@ -1943,10 +1943,13 @@ CglPreProcess::modified(OsiSolverInterface * model,
               delete xx;
             }
             numberChangedThisPass++;
-            if (columnLower[iColumn]==columnUpper[iColumn])
+            if (columnLower[iColumn]==columnUpper[iColumn]) {
               numberFixed++;
-            else
+            } else {
               numberBounds++;
+	      if (columnLower[iColumn]>columnUpper[iColumn]) 
+		feasible=false;
+	    }
           }
 	}
 	n = ubs.getNumElements() ;
@@ -1964,10 +1967,13 @@ CglPreProcess::modified(OsiSolverInterface * model,
               delete xx;
             }
             numberChangedThisPass++;
-            if (columnLower[iColumn]==columnUpper[iColumn])
+            if (columnLower[iColumn]==columnUpper[iColumn]) {
               numberFixed++;
-            else
+            } else {
               numberBounds++;
+	      if (columnLower[iColumn]>columnUpper[iColumn]) 
+		feasible=false;
+	    }
           }
         }
       }
@@ -1986,7 +1992,10 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  newModel->initialSolve() ;
 	else
 	  newModel->resolve() ;
+	feasible = newModel->isProvenOptimal();
       }
+      if (!feasible)
+        break;
     }
     if (!feasible)
       break;
