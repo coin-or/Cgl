@@ -1449,7 +1449,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     }
   }
   bool feasible=true;
-  if (!info->inTree) {
+  if (!info->inTree&&!info->pass) {
     // make more integer
     feasible = analyze(&si,intVar,colLower,colUpper);
   }

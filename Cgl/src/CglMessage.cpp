@@ -39,6 +39,8 @@ CglMessage::CglMessage(Language language) :
 			       message->message);
      addMessage(message->internalNumber,oneMessage);
      message ++;
-}
+  }
+  // Put into compact form
+  toCompact();
 
 }
