@@ -14,7 +14,7 @@
 
 #define RED_COST_CHECK 1e-6
 
-#define OLD_COMPUTATION
+//#define OLD_COMPUTATION
 #include <algorithm>
 //#define TEST_M3
 namespace LAP
@@ -90,6 +90,7 @@ void CglLandPSimplex::printTableau(std::ostream & os)
 CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
                                  const CglLandP::CachedData &cached,
                                  bool reducedSpace):
+gammas_(false),
 rWk1_(NULL),
 rWk2_(NULL),
 rWk3_(NULL),
@@ -281,7 +282,7 @@ void eraseLastCuts(OsiCuts & cuts, int k = 2)
 
 bool 
 CglLandPSimplex::findBestCut
-(int row, OsiCuts & cuts,const CglLandP::CachedData &cached,const CglLandP::Parameters & params)
+(int row, OsiRowCut & cut,const CglLandP::CachedData &cached,const CglLandP::Parameters & params)
 {
   bool optimal = false;
   int nRowFailed = 0;
@@ -321,6 +322,7 @@ CglLandPSimplex::findBestCut
   si_->enableSimplexInterface(0);
 
 #ifdef LandP_DEBUG 
+  TOTO
   //Check that basics_ is correct
   int * basic2 = new int [numrows_];
   si_->getBasics(basic2);
@@ -379,7 +381,7 @@ CglLandPSimplex::findBestCut
   while (  !optimal && numPivots < params.pivotLimit)
   {
     if(timeLimit - CoinCpuTime() < 0.) break;
-#if GENERATE_ALL //Code to generate all the cuts found during the procedure
+#ifdef GENERATE_ALL //Code to generate all the cuts found during the procedure
     {
       OsiRowCut cut;
       TabRow aRow(row_k_);
@@ -439,7 +441,7 @@ CglLandPSimplex::findBestCut
     {
       if(params.pivotSelection == CglLandP::mostNegativeRc)
       {
-        if(!params.modularize)
+        if(1 || !params.modularize)
           incoming = fastFindBestPivotColumn(direction, gammaSign, 
                                              params.pivotTol, params.away, 
                                              params.reducedSpace,
@@ -459,7 +461,7 @@ CglLandPSimplex::findBestCut
           leaving = rescanReducedCosts(direction, gammaSign, params.pivotTol);
           if(leaving >= 0)
           {
-            if(!params.modularize)
+            if(1 || !params.modularize)
               incoming = fastFindBestPivotColumn(direction, gammaSign, 
                                                  params.pivotTol, 
                                                  params.away,
@@ -568,7 +570,6 @@ CglLandPSimplex::findBestCut
           handler_->message(PivotFailedSigmaUnchanged,messages_)<<CoinMessageEol<<CoinMessageEol;
           numFailedPivots = params.failedPivotLimit + 1;
           resetSolver(cached.basis_);
-          eraseLastCuts(cuts);
           return 0;
           if(numFailedPivots > params.failedPivotLimit)
             break;
@@ -635,16 +636,14 @@ CglLandPSimplex::findBestCut
   row_k_.rhs = row_k_.rhs - floor(row_k_.rhs);
   
   //  double normalization = 100*normCoef(row_k_);
-#if GENERATE_ALL  // Code to be used when genrating all cuts found during procedure
+#ifdef GENERATE_ALL  // Code to be used when genrating all cuts found during procedure
   if(!optimal || !params.generateAll)
 #endif
   {
-    OsiRowCut cut;
     if(params.strengthen || params.modularize)
       createMIG(row_k_, cut);
     else
       createIntersectionCut(row_k_, cut);
-    cuts.insert(cut);
   }  
   
   double cosToObj = 0;
@@ -2132,7 +2131,8 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
     double bestRc;
     //now scan the heap
     int best_l = 0;
-    for(int l = 0; l < k /* && l < 1000 */ ; l++)
+    int notImproved = 0;
+    for(int l = 0; l < k && l < 10	; l++, notImproved++)
     {
       if(!rowFlags_[rc[l].row]) continue;//this row has been marked to be skipped
                                          //     if(bestLeaving != -1 && rc[l].value > -1e-02) break;
@@ -2152,7 +2152,7 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
            sigma);
         if(incoming!=-1 && bestSigma > sigma)
         {
-          //std::cout<<"I found a better pivot "<<sigma - sigma_<<std::endl;
+//          std::cout<<"I found a better pivot "<<sigma - sigma_<< " for indice number "<<l<<std::endl;
           best_l = l;
           bestSigma = sigma;
           bestIncoming = incoming;
@@ -2160,6 +2160,7 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
           bestDirection = rc[l].direction > 0 ? 1 : -1;
           bestGammaSign = rc[l].gammaSign;
           bestRc = rc[l].value;
+          notImproved = 0;
         }
         
         //Now evenutally compute f+ or f- for the other negative rc (if if exists)
@@ -2184,6 +2185,7 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
               bestDirection = rc[l].direction;
               bestGammaSign = rc[l].gammaSign2;
               bestRc = rc[l].value2;
+              notImproved = 0;
             }
         }
     }
@@ -2193,6 +2195,7 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
     assert(best_l <= nNegativeRcRows_);
     if(bestLeaving!=-1)
     {
+      std::cout<<"Best pivot pivot "<<best_l<<std::endl;
       pullTableauRow(row_i_);
       extra.nNegativeRcRows += nNegativeRcRows_;
 #if LandP_DEBUG > 2
@@ -2486,12 +2489,11 @@ CglLandPSimplex::createIntersectionCut(const TabRow & row, OsiRowCut &cut)
   //  return ;
   
   cut.setUb(DBL_MAX);
-  double * vec = new double[numcols_];
-  CoinFillN(vec, numcols_, 0.);
+  double * vec = new double[numcols_+ numrows_ ];
+  CoinFillN(vec, numcols_ + numrows_, 0.);
   double infty = si_->getInfinity();
   double cutRhs = row.rhs;
   cutRhs = cutRhs ;//* (1 - cutRhs);
-    const CoinPackedMatrix * mat = si_->getMatrixByRow();
     for(int j = 0; j < numcols_ ; j++)
     {
       if(fabs(row.row[nonBasics_[j]])>1e-10)
@@ -2527,15 +2529,26 @@ CglLandPSimplex::createIntersectionCut(const TabRow & row, OsiRowCut &cut)
             cutRhs -= value*rowUpper[iRow];
             assert(basis_.getArtifStatus(iRow)==CoinWarmStartBasis::atLowerBound);
           }
-          int start = mat->getVectorStarts()[iRow];
-          int end = start + mat->getVectorLengths()[iRow];
-          for(int k = start ; k < end ; k++)
-          {
-            vec[mat->getIndices()[k]] -= value * mat->getElements()[k];	      
-            assert(fabs(cutRhs)<1e100);
-          }
+          vec[nonBasics_[j]] = value;
+          assert(fabs(cutRhs)<1e100);
         }
       }
+    }
+
+    const CoinPackedMatrix * mat = si_->getMatrixByCol();
+    const CoinBigIndex * starts = mat->getVectorStarts();
+    const int * lengths = mat->getVectorLengths();
+    const double * values = mat->getElements();
+    const CoinBigIndex * indices = mat->getIndices();
+    for(int j = 0 ; j < numcols_ ; j++)
+    {
+      const int& start = starts[j];
+      int end = start + lengths[j];
+          for(int k = start ; k < end ; k++)
+          {
+            vec[j] -= vec[numcols_ + indices[k]] * mat->getElements()[k];	      
+          }
+      
     }
     
     //Pack vec into the cut
@@ -2601,14 +2614,13 @@ CglLandPSimplex::createMIG( TabRow &row, OsiRowCut &cut)
     row.rhs = f_0;
     
     cut.setUb(DBL_MAX);
-    double * vec = new double[numcols_];
-    CoinFillN(vec, numcols_, 0.);
+    double * vec = new double[numcols_ + numrows_];
+    CoinFillN(vec, numcols_ + numrows_, 0.);
     //f_0 = row.rhs - floor(row.rhs);
     double infty = si_->getInfinity();
     double cutRhs = row.rhs - floor(row.rhs);
     cutRhs = cutRhs * (1 - cutRhs);
     assert(fabs(cutRhs)<1e100);
-    const CoinPackedMatrix * mat = si_->getMatrixByRow();
     for(int j = 0; j < numcols_ ; j++)
     {
       int iRow = nonBasics_[j] - numcols_;
@@ -2651,29 +2663,44 @@ CglLandPSimplex::createMIG( TabRow &row, OsiRowCut &cut)
               cutRhs -= value*rowUpper[iRow];
               //		  assert(basis_.getArtifStatus(iRow)==CoinWarmStartBasis::atLowerBound);
             }
-            //	      assert(fabs(cutRhs)<1e9);
-            int start = mat->getVectorStarts()[iRow];
-            int end = start + mat->getVectorLengths()[iRow];
-            for(int k = start ; k < end ; k++)
-            {
-              vec[mat->getIndices()[k]] -= value * mat->getElements()[k];	      
-            }
+            vec[nonBasics_[j]] = value;
+            assert(fabs(cutRhs)<1e100);
           }
         }
       }
-    }
+      }
+      
+    //Eliminate slacks
+      const CoinPackedMatrix * mat = si_->getMatrixByCol();
+      const CoinBigIndex * starts = mat->getVectorStarts();
+      const int * lengths = mat->getVectorLengths();
+      const double * values = mat->getElements();
+      const CoinBigIndex * indices = mat->getIndices();
+      for(int j = 0 ; j < numcols_ ; j++)
+      {
+        const int& start = starts[j];
+        int end = start + lengths[j];
+        for(int k = start ; k < end ; k++)
+        {
+          vec[j] -= vec[numcols_ + indices[k]] * values[k];	      
+        }
+      }
     
     //Pack vec into the cut
-    CoinPackedVector cutRow;
-    
+    int * inds = new int [numcols_];
+    int nelem = 0;
     for(int i = 0 ; i < numcols_ ; i++)
     {
-      //      if(fabs(vec[i]) > COIN_INDEXED_TINY_ELEMENT)
-      cutRow.insert(i, vec[i]);
+     if(fabs(vec[i]) > COIN_INDEXED_TINY_ELEMENT)
+     {
+       vec[nelem] = vec[i];
+       inds[nelem++] = i;
+     }
     }
-    delete [] vec;
+      
     cut.setLb(cutRhs);
-    cut.setRow(cutRow);
+    cut.setRow(nelem, inds, vec, false);
+    delete [] vec;
     
     }
   

@@ -107,7 +107,7 @@ public:
   /** reset the solver to optimal basis */
   bool resetSolver(const CoinWarmStartBasis * basis);
   /** Perfom pivots to find the best cuts */
-  bool findBestCut(int var, OsiCuts & cuts, const CglLandP::CachedData &cached, const CglLandP::Parameters & params);
+  bool findBestCut(int var, OsiRowCut & cut, const CglLandP::CachedData &cached, const CglLandP::Parameters & params);
 
   /// No default constructor
   CglLandPSimplex()

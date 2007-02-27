@@ -17,10 +17,12 @@
 
 #include "CglLandPValidator.hpp"
 #include "CglCutGenerator.hpp"
+
 #ifdef DO_STAT
 #include "CglLandPStats.hpp"
 #endif
 #include <iostream>
+#include <fstream>
 class CoinWarmStartBasis;
 /** Performs one round of Lift & Project using CglLandPSimplex
     to build cuts
@@ -159,8 +161,31 @@ virtual bool needsOptimalBasis() const
 #ifdef DO_STAT
   void setLogStream(std::ostream & os)
   {
-     logStream = &os;
-  } 
+    releaseLogStream();
+    logStream = &os;
+  }
+
+void openLogStream(std::string name){
+  releaseLogStream();
+  logStream = new std::ofstream(name.c_str(),std::ios::app);
+  logAssignCount = new int;
+  (*logAssignCount) = 1;
+}
+
+inline void releaseLogStream(){
+  if(logAssignCount && *logAssignCount){
+    (*logAssignCount)--;
+    if(*logAssignCount == 0){
+      delete logStream;
+      delete logAssignCount;
+      logAssignCount=NULL;
+    }
+    else logAssignCount = NULL;
+}
+}
+
+void lookupProblem(const std::string &s);
+
 #endif
   class NoBasisError : public CoinError
   {
@@ -211,11 +236,15 @@ private:
   CoinMessages messages_;
   /** cut validator */
   CglValidator validator_;
-#ifdef DO_STATS
+#ifdef DO_STAT
   /** store statistics on separation */
   mutable roundsStatistics roundsStats_;
   /** log file output */
-  mutable std::ostream* logStream;
+  mutable std::ostream * logStream;
+  /**counter of number time logStream used.*/
+  mutable int * logAssignCount;
+  /** set to 1 if generator is used (and print statistics).*/
+  mutable bool used;
 #endif
 };
 void CglLandPUnitTest(OsiSolverInterface *si, const std::string & mpsDir);

@@ -9,7 +9,7 @@
 AUTOMAKE_OPTIONS = foreign
 
 ########################################################################
-#                           libCglGomory                               #
+#                           libCglLandP                                #
 ########################################################################
 
 # Name of the library compiled in this directory.  We don't want it to be
@@ -22,6 +22,7 @@ libCglLandP_la_SOURCES = \
         CglLandPSimplex.cpp CglLandPSimplex.hpp \
         CglLandPValidator.cpp CglLandPValidator.hpp \
         CglLandPTest.cpp
+
 
 # This is for libtool (on Windows)
 libCglLandP_la_LDFLAGS = $(LT_LDFLAGS)
@@ -40,6 +41,7 @@ AM_CPPFLAGS = \
 	-I`$(CYGPATH_W) $(CLPSRCDIR)/src` \
 	-I`$(CYGPATH_W) $(top_builddir)/../Clp/inc` 
 
+
 # This line is necessary to allow VPATH compilation with MS compilers
 # on Cygwin
 DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
@@ -52,3 +54,4 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 # and that therefore should be installed in 'install'
 include_HEADERS = \
 	CglLandP.hpp CglLandPSimplex.hpp CglLandPValidator.hpp 
+

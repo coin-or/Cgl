@@ -401,7 +401,8 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
     params_(params), cached_(), validator_(validator)
 #ifdef DO_STAT
     ,
-    roundsStats_()
+    roundsStats_(),
+    used(false)
 #endif
   {
     handler_ = new CoinMessageHandler();
@@ -409,19 +410,26 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
     messages_ = LapMessages();
 #ifdef DO_STAT
     logStream = &std::cout;
+    logAssignCount = NULL;
 #endif
   }
   
   
-  CglLandP::~CglLandP()
-  {}
+  CglLandP::~CglLandP(){
+#if DO_STAT
+    releaseLogStream();
+    if(used) displayStats();
+#endif
+  }
   
   CglLandP::CglLandP(const CglLandP & source):
     params_(source.params_), cached_(source.cached_), 
     validator_(source.validator_)
 #ifdef DO_STAT
     ,
-    roundsStats_(source.roundsStats_)
+    roundsStats_(source.roundsStats_),
+    logAssignCount(source.logAssignCount),
+    used(false)
 #endif
   {
     handler_ = new CoinMessageHandler();
@@ -429,6 +437,7 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
     messages_ = LapMessages();  
 #ifdef DO_STAT
     logStream = source.logStream;
+    if(logAssignCount && *logAssignCount) (*logAssignCount)++;
 #endif
   }
 
@@ -441,7 +450,10 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
     cached_ = rhs.cached_;
     validator_ = rhs.validator_;
 #ifdef DO_STAT
-    logStream = source.logStream;
+    releaseLogStream();
+    logAssignCount = rhs.logAssignCount;
+    logStream = rhs.logStream;
+    if(logAssignCount && *logAssignCount) (*logAssignCount)++;
 #endif
   }
   return *this;
@@ -460,6 +472,9 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
   CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 			 const CglTreeInfo info ) const
 {
+#if DO_STAT
+  used = true;
+#endif
   double cur_time=CoinCpuTime();
   Parameters params(params_);
   //double timeLimit = params.timeLimit;
@@ -475,10 +490,7 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
     //CglLandP * my = const_cast<CglLandP *>(this);
     //my->params_.pivotLimit = 1;
     
-    CglGomory gom;
-    gom.setLimit(50); 
-    gom.generateCuts(si,cs,info);
-    return;
+    params.pivotLimit = 5;
   }
 #endif
   if(!si.basisIsAvailable())
@@ -489,7 +501,7 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
   
   
   cached_.getData(si);
-  CglLandPSimplex landpSi(si,cached_, params_.reducedSpace);
+  CglLandPSimplex landpSi(si,cached_, params.reducedSpace);
   landpSi.setLogLevel(handler_->logLevel());
   int nCut = 0;
   
@@ -518,7 +530,7 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
   
   
   
-  for(; i < nFrac && nCut < params_.maxCutPerRound && 
+  for(; i < nFrac && nCut < params.maxCutPerRound && 
       nCut < cached_.nBasics_ ; i++)
   {
     
@@ -527,9 +539,7 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
     params.timeLimit -= cur_time = CoinCpuTime();
     if(params.timeLimit < 0.) break;
     int iRow = 0;
-    
-    OsiCuts cuts;
-    
+        
     for(; iRow < numrows ; iRow++)
     {
       if(cached_.basics_[iRow]== indices[i])
@@ -543,13 +553,11 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
     ncSi->setDblParam(OsiDualObjectiveLimit, DBL_MAX);
     landpSi.setSi(ncSi);
     ncSi->messageHandler()->setLogLevel(0);
-    if(!landpSi.findBestCut(iRow, cuts, cached_, params))
+    if(!landpSi.findBestCut(iRow, cut, cached_, params))
     {
 #ifdef DO_STAT
       stat.numberFailures++;
 #endif
-      if(cuts.sizeRowCuts()==0)
-      {
         std::cerr<<"Failed to generate a cut generate a Gomory cut instead"<<std::endl;
         
         landpSi.freeSi();
@@ -557,13 +565,12 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
         //       landpSi.cacheUpdate(cached_, params_.reducedSpace);
         landpSi.setSi(ncSi);
         params.pivotLimit = 0;
-        if(!landpSi.findBestCut(iRow, cuts, cached_, params))
+        if(!landpSi.findBestCut(iRow, cut, cached_, params))
           //Failing to generate anyything??!!!
         {
           throw -1;
         }
         params.pivotLimit = params_.pivotLimit;
-      }
     }
     
     
@@ -571,11 +578,7 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
     landpSi.freeSi();
     //      assert(code!=-1);
     
-    int numCuts = cuts.sizeRowCuts();
-    for(int ii = 0 ; ii < numCuts ; ii++)
-    {
-      OsiRowCut & cut = cuts.rowCut(ii);
-      code = validator_(cut, cached_.colsol_, si);
+    code = validator_(cut, cached_.colsol_, si);
       
       if(code)
 	    {
@@ -606,7 +609,6 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
 #endif
 	      nCut++;
 	    }
-    }
   }
   
 #ifdef DO_STAT
@@ -642,4 +644,14 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
   std::cout<<"Total restauration time :"<<restaurationTime<<std::endl;
 #endif
 }
+
+#ifdef DO_STAT
+void 
+CglLandP::lookupProblem(const std::string &s){
+  OsiClpSolverInterface si;
+  si.readMps(s.c_str());
+  si.initialSolve();
+  roundsStats_.lookupProblem(s.c_str(), si.getObjValue());
+}
+#endif
 
