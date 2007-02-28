@@ -16,7 +16,7 @@ std::vector<std::string> CglValidator::rejections_ = std::vector<std::string>(Du
 \return 3 if dynamic is too big
 \return 4 if too many non zero element*/
 int 
-CglValidator::cleanCut(OsiRowCut & aCut, const double * solCut, const OsiSolverInterface &si) const
+CglValidator::cleanCut(OsiRowCut & aCut, const double * solCut, const OsiSolverInterface &si, const CglParam& par) const
 {
   /** Compute fill-in in si */
   int numcols = si.getNumCols();
@@ -46,7 +46,7 @@ CglValidator::cleanCut(OsiRowCut & aCut, const double * solCut, const OsiSolverI
   for(int i = 0 ; i < n ; i++)
   {
     double val = fabs(elems[i]);
-    if(val <= tiny_)//try to remove coef
+    if(val <= par.getEPS())//try to remove coef
     {
       if(val>0 && val<1e-40) {offset++; continue; throw;}    
       if(val==0) {offset++; continue;}    
@@ -126,7 +126,7 @@ CglValidator::cleanCut(OsiRowCut & aCut, const double * solCut, const OsiSolverI
 /**Clean cut 2, different algorithm. First check the dynamic of the cut if < maxRatio scale to a biggest coef of 1
    otherwise scale it so that biggest coeff is 1 and try removing tinys ( < 1/maxRatio) either succeed or fail */
 int 
-CglValidator::cleanCut2(OsiRowCut & aCut, const double * solCut, const OsiSolverInterface &si) const
+CglValidator::cleanCut2(OsiRowCut & aCut, const double * solCut, const OsiSolverInterface &si, const CglParam &par) const
 {
   /** Compute fill-in in si */
   int numcols = si.getNumCols();
@@ -259,12 +259,10 @@ CglValidator::cleanCut2(OsiRowCut & aCut, const double * solCut, const OsiSolver
 
 /** Constructor with default values */
 CglValidator::CglValidator(double maxFillIn,
-                           double tiny, 
                            double maxRatio, 
                            double minViolation,
                            bool scale):
   maxFillIn_(maxFillIn), 
-  tiny_(tiny), 
   maxRatio_(maxRatio), 
   minViolation_(minViolation),
   scale_(scale),

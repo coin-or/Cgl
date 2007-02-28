@@ -34,7 +34,9 @@ namespace LAP
 }
 using namespace LAP;
   CglLandP::Parameters::Parameters():
+    CglParam(),
     pivotLimit(20),
+    pivotLimitInTree(5),
     maxCutPerRound(50),    
     failedPivotLimit(1),
     degeneratePivotLimit(0),
@@ -50,10 +52,13 @@ using namespace LAP;
     scaleCuts(false),
   pivotSelection(mostNegativeRc)
   {
+    EPS = 1e-08;
   }
   
   CglLandP::Parameters::Parameters(const Parameters &other):
+    CglParam(other),
     pivotLimit(other.pivotLimit),
+    pivotLimitInTree(other.pivotLimitInTree),
     maxCutPerRound(other.maxCutPerRound),
     failedPivotLimit(other.failedPivotLimit),
     degeneratePivotLimit(other.degeneratePivotLimit),
@@ -73,7 +78,9 @@ using namespace LAP;
 CglLandP::Parameters & CglLandP::Parameters::operator=(const Parameters &other){
   if(this != &other)
   {
+    CglParam::operator=(other);
     pivotLimit = other.pivotLimit;
+    pivotLimitInTree = other.pivotLimitInTree;
     maxCutPerRound = other.maxCutPerRound;
     failedPivotLimit = other.failedPivotLimit;
     degeneratePivotLimit = other.failedPivotLimit;
@@ -485,14 +492,12 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
     si.getStrParam(OsiProbName,name);
     roundsStats_.lookupProblem(name.c_str(), si.getObjValue());
   }
-  else if(info.inTree)//put very low pivot limit
-  {
-    //CglLandP * my = const_cast<CglLandP *>(this);
-    //my->params_.pivotLimit = 1;
-    
-    params.pivotLimit = 5;
-  }
 #endif
+  if(info.inTree)//put lower pivot limit
+  {
+    params.pivotLimit = min(params.pivotLimit, params.pivotLimitInTree);
+  }
+
   if(!si.basisIsAvailable())
   {
     std::cerr<<"No basis!!!"<<std::endl;
@@ -505,7 +510,7 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
   landpSi.setLogLevel(handler_->logLevel());
   int nCut = 0;
   
- #ifdef DO_STAT 
+#ifdef DO_STAT 
   roundStatistic stat;
   stat.time = -CoinCpuTime();
 #endif
@@ -578,7 +583,7 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
     landpSi.freeSi();
     //      assert(code!=-1);
     
-    code = validator_(cut, cached_.colsol_, si);
+    code = validator_(cut, cached_.colsol_, si, params);
       
       if(code)
 	    {

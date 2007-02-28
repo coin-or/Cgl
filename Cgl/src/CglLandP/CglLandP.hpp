@@ -17,6 +17,7 @@
 
 #include "CglLandPValidator.hpp"
 #include "CglCutGenerator.hpp"
+#include "CglParam.hpp"
 
 #ifdef DO_STAT
 #include "CglLandPStats.hpp"
@@ -61,7 +62,7 @@ public:
   };
   /** Class storing parameters.
       \remark I take all parameters from Ionut's code */
-  class Parameters {
+  class Parameters : public CglParam {
   public:
     /** Default constructor (with default values)*/
     Parameters();
@@ -75,6 +76,9 @@ public:
     /** Max number of pivots before we generate the cut 
       \default 20 */
     int pivotLimit;
+    /** Max number of pivots at regular nodes. Put a value if you want it lower than the global pivot limit.
+     \default 100.*/
+    int pivotLimitInTree;
     /** Maximum number of cuts generated at a given round*/
     int maxCutPerRound;
     /** Maximum number of failed pivots before aborting */

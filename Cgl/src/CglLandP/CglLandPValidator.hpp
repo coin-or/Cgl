@@ -8,6 +8,7 @@
 #ifndef CglValidator_H
 #define CglValidator_H
 #include "OsiSolverInterface.hpp"
+#include "CglParam.hpp"
 #include <vector>
 
 /** constants describing rejection codes*/
@@ -32,29 +33,26 @@ public:
 
   /** Constructor with default values */
   CglValidator(double maxFillIn = 1.,
-	       double tiny = 1e-8, 
 	       double maxRatio = 1e8, 
 	       double minViolation = 0,
           bool scale = false);
 
   /** Clean an OsiCut */
-  int cleanCut(OsiRowCut & aCut, const double * solCut,const OsiSolverInterface &si) const;
+  int cleanCut(OsiRowCut & aCut, const double * solCut,const OsiSolverInterface &si, const CglParam & par) const;
     /** Clean an OsiCut by another method */
-  int cleanCut2(OsiRowCut & aCut, const double * solCut, const OsiSolverInterface &si) const;
+  int cleanCut2(OsiRowCut & aCut, const double * solCut, const OsiSolverInterface &si, const CglParam & par) const;
   /** Call the cut cleaner */
-  int operator()(OsiRowCut & aCut, const double * solCut,const OsiSolverInterface &si) const
-  {return cleanCut2(aCut, solCut, si);}
+  int operator()(OsiRowCut & aCut, const double * solCut,const OsiSolverInterface &si, const CglParam & par) const
+  {return cleanCut2(aCut, solCut, si, par);}
   /** @name set functions */
   /** @{ */
   void setMaxFillIn(double value) { maxFillIn_ = value;}
-  void setTiny (double value) {tiny_ = value;}
   void setMaxRatio(double value) { maxRatio_ = value;}
   void setMinViolation(double value) {minViolation_ = value;}
   /** @} */
   /** @name get functions */
   /** @{ */
   double getMaxFillIn() {return maxFillIn_;}
-  double getTiny () {return tiny_;}
   double getMaxRatio() { return maxRatio_;}
   double getMinViolation() {return minViolation_;}
   /** @} */
@@ -67,8 +65,6 @@ private:
   static void fillRejectionReasons();
   /** max percentage of given formulation fillIn should be accepted for cut fillin.*/
   double maxFillIn_;
-  /** smallest value for being non zero */
-  double tiny_;
   /** max ratio between smallest and biggest coefficient */
   double maxRatio_;
   /** minimum violation for accepting a cut */

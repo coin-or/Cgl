@@ -441,16 +441,14 @@ CglLandPSimplex::findBestCut
     {
       if(params.pivotSelection == CglLandP::mostNegativeRc)
       {
-        if(1 || !params.modularize)
           incoming = fastFindBestPivotColumn(direction, gammaSign, 
                                              params.pivotTol, params.away, 
                                              params.reducedSpace,
                                              allowDegeneratePivot,
                                              bestSigma
                                              );
-        else
-          incoming = findBestPivotColumn(direction, params.pivotTol,
-                                         params.reducedSpace,allowDegeneratePivot, params.modularize);
+//          incoming = findBestPivotColumn(direction, params.pivotTol,
+//                                         params.reducedSpace,allowDegeneratePivot, params.modularize);
         while(incoming == -1 && !optimal &&
               nRowFailed++ < maxTryRow)// if no improving was found rescan the tables of reduced cost to find a good one
 	      {
@@ -461,7 +459,6 @@ CglLandPSimplex::findBestCut
           leaving = rescanReducedCosts(direction, gammaSign, params.pivotTol);
           if(leaving >= 0)
           {
-            if(1 || !params.modularize)
               incoming = fastFindBestPivotColumn(direction, gammaSign, 
                                                  params.pivotTol, 
                                                  params.away,
@@ -469,9 +466,8 @@ CglLandPSimplex::findBestCut
                                                  allowDegeneratePivot,
                                                  bestSigma
                                                  );
-            else
-              incoming = findBestPivotColumn(direction,params.pivotTol,
-                                             params.reducedSpace,allowDegeneratePivot, params.modularize); 
+//              incoming = findBestPivotColumn(direction,params.pivotTol,
+//                                             params.reducedSpace,allowDegeneratePivot, params.modularize); 
           }
           else optimal = true;
         }
@@ -2195,7 +2191,7 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
     assert(best_l <= nNegativeRcRows_);
     if(bestLeaving!=-1)
     {
-      std::cout<<"Best pivot pivot "<<best_l<<std::endl;
+      //      std::cout<<"Best pivot pivot "<<best_l<<std::endl;
       pullTableauRow(row_i_);
       extra.nNegativeRcRows += nNegativeRcRows_;
 #if LandP_DEBUG > 2
@@ -2217,6 +2213,7 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
       extra.maxRc = max(extra.maxRc, chosenReducedCostVal_);
     }
     direction = bestDirection;
+    delete [] rc;
     return bestIncoming;
     
 }
@@ -2546,22 +2543,26 @@ CglLandPSimplex::createIntersectionCut(const TabRow & row, OsiRowCut &cut)
       int end = start + lengths[j];
           for(int k = start ; k < end ; k++)
           {
-            vec[j] -= vec[numcols_ + indices[k]] * mat->getElements()[k];	      
+            vec[j] -= vec[numcols_ + indices[k]] * values[k];	      
           }
       
     }
     
     //Pack vec into the cut
-    CoinPackedVector cutRow;
-    
+    int * inds = new int [numcols_];
+    int nelem = 0;
     for(int i = 0 ; i < numcols_ ; i++)
     {
-      //    if(fabs(vec[i]) > COIN_INDEXED_TINY_ELEMENT)
-      cutRow.insert(i, vec[i]);
+     if(fabs(vec[i]) > COIN_INDEXED_TINY_ELEMENT)
+     {
+       vec[nelem] = vec[i];
+       inds[nelem++] = i;
+     }
     }
-    delete [] vec;
+      
     cut.setLb(cutRhs);
-    cut.setRow(cutRow);
+    cut.setRow(nelem, inds, vec, false);
+    delete [] vec;
     
 }
 
