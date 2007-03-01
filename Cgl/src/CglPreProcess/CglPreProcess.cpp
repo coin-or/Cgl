@@ -2002,9 +2002,11 @@ CglPreProcess::modified(OsiSolverInterface * model,
     numberChanges +=  numberChangedThisPass;
     if (iPass<numberPasses-1) {
       if ((!numberFixed&&numberChangedThisPass<1000*(numberRows+numberColumns))||iPass==numberPasses-2) {
-        // do special probing at end
-        firstGenerator=-1;
-        lastGenerator=0;
+        // do special probing at end - but not if very last pass
+	if (iBigPass<numberSolvers_-1) {
+	  firstGenerator=-1;
+	  lastGenerator=0;
+	}
         iPass=numberPasses-2;
       }
     }
@@ -2315,8 +2317,37 @@ CglPreProcess::newLanguage(CoinMessages::Language language)
 const int * 
 CglPreProcess::originalColumns() const
 {
-  if (!originalColumn_)
-    createOriginalIndices();
+  if (!originalColumn_) {
+    // create original columns
+    // Find last model and presolve
+    int iPass;
+    for (iPass=numberSolvers_-1;iPass>=0;iPass--) {
+      if (presolve_[iPass])
+	break;
+    }
+    int nColumns;
+    if (iPass>=0) {
+      nColumns=model_[iPass]->getNumCols();
+    } else {
+      nColumns=originalModel_->getNumCols();
+    }
+    originalColumn_=new int [nColumns];
+    if (iPass>=0) {
+      memcpy(originalColumn_,presolve_[iPass]->originalColumns(),
+	     nColumns*sizeof(int));
+      iPass--;
+      for (;iPass>=0;iPass--) {
+	const int * originalColumns = presolve_[iPass]->originalColumns();
+	int i;
+	for (i=0;i<nColumns;i++)
+	  originalColumn_[i]=originalColumns[originalColumn_[i]];
+      }
+    } else {
+      int i;
+      for (i=0;i<nColumns;i++)
+	originalColumn_[i]=i;
+    }
+  }
   return originalColumn_;
 }
 // Return a pointer to the original rows
@@ -2353,7 +2384,7 @@ CglPreProcess::createOriginalIndices() const
     memcpy(originalRow_,presolve_[iPass]->originalRows(),
            nRows*sizeof(int));
     iPass--;
-    for (;iPass>=0;iPass--) { 
+    for (;iPass>=0;iPass--) {
       const int * originalColumns = presolve_[iPass]->originalColumns();
       int i;
       for (i=0;i<nColumns;i++)
