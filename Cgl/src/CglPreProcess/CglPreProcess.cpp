@@ -2317,37 +2317,8 @@ CglPreProcess::newLanguage(CoinMessages::Language language)
 const int * 
 CglPreProcess::originalColumns() const
 {
-  if (!originalColumn_) {
-    // create original columns
-    // Find last model and presolve
-    int iPass;
-    for (iPass=numberSolvers_-1;iPass>=0;iPass--) {
-      if (presolve_[iPass])
-	break;
-    }
-    int nColumns;
-    if (iPass>=0) {
-      nColumns=model_[iPass]->getNumCols();
-    } else {
-      nColumns=originalModel_->getNumCols();
-    }
-    originalColumn_=new int [nColumns];
-    if (iPass>=0) {
-      memcpy(originalColumn_,presolve_[iPass]->originalColumns(),
-	     nColumns*sizeof(int));
-      iPass--;
-      for (;iPass>=0;iPass--) {
-	const int * originalColumns = presolve_[iPass]->originalColumns();
-	int i;
-	for (i=0;i<nColumns;i++)
-	  originalColumn_[i]=originalColumns[originalColumn_[i]];
-      }
-    } else {
-      int i;
-      for (i=0;i<nColumns;i++)
-	originalColumn_[i]=i;
-    }
-  }
+  if (!originalColumn_) 
+    createOriginalIndices();
   return originalColumn_;
 }
 // Return a pointer to the original rows
@@ -2376,7 +2347,9 @@ CglPreProcess::createOriginalIndices() const
     nRows=originalModel_->getNumRows();
     nColumns=originalModel_->getNumCols();
   }
+  delete [] originalColumn_;
   originalColumn_=new int [nColumns];
+  delete [] originalRow_;
   originalRow_ = new int[nRows];
   if (iPass>=0) {
     memcpy(originalColumn_,presolve_[iPass]->originalColumns(),
@@ -2390,8 +2363,14 @@ CglPreProcess::createOriginalIndices() const
       for (i=0;i<nColumns;i++)
         originalColumn_[i]=originalColumns[originalColumn_[i]];
       const int * originalRows = presolve_[iPass]->originalRows();
-      for (i=0;i<nRows;i++)
-        originalRow_[i]=originalRows[originalRow_[i]];
+      int nRowsNow=model_[iPass]->getNumRows();
+      for (i=0;i<nRows;i++) {
+	int iRow=originalRow_[i];
+	if (iRow>=0&&iRow<nRowsNow)
+	  originalRow_[i]=originalRows[iRow];
+	else
+	  originalRow_[i]=-1;
+      }
     }
   } else {
     int i;
