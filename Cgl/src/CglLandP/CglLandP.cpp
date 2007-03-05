@@ -255,7 +255,7 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
       {
         for(CoinBigIndex k=starts[i] ; k < end; k++)
 	      {
-          if(integers_[inds[k]] && INT_INFEAS(elems[k])>1e-15 )
+          if(integerSlacks[inds[k]] && INT_INFEAS(elems[k])>1e-15 )
             integerSlacks[inds[k]] = false;
 	      }
       }
@@ -263,7 +263,7 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
       {
         for(CoinBigIndex k=starts[i] ; k < end; k++)
 	      {
-          if(integers_[inds[k]])
+          if(integerSlacks[inds[k]])
             integerSlacks[inds[k]] = false;
 	      }
       }
