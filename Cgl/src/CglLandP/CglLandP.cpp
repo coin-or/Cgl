@@ -36,7 +36,7 @@ using namespace LAP;
   CglLandP::Parameters::Parameters():
     CglParam(),
     pivotLimit(20),
-    pivotLimitInTree(5),
+    pivotLimitInTree(0),
     maxCutPerRound(50),    
     failedPivotLimit(1),
     degeneratePivotLimit(0),
@@ -102,12 +102,12 @@ CglLandP::Parameters & CglLandP::Parameters::operator=(const Parameters &other){
   CglLandP::CachedData::CachedData(int nBasics, int nNonBasics):
     basics_(NULL), nonBasics_(NULL), nBasics_(nBasics),
     nNonBasics_(nNonBasics), basis_(NULL), colsol_(NULL),
-    slacks_(NULL), integerSlacks_(NULL)
+    slacks_(NULL), integers_(NULL)
   {
     if(nBasics_>0)
       {
 	basics_ = new int[nBasics_];
-	integerSlacks_ = new bool [nBasics_];
+	integers_ = new bool [nNonBasics_ + nBasics_];
       }
     if(nNonBasics_>0)
       nonBasics_ = new int[nNonBasics_];
@@ -121,14 +121,14 @@ CglLandP::Parameters & CglLandP::Parameters::operator=(const Parameters &other){
   CglLandP::CachedData::CachedData(const CachedData &source):
     basics_(NULL), nonBasics_(NULL), nBasics_(source.nBasics_),
     nNonBasics_(source.nNonBasics_), basis_(NULL),
-    colsol_(NULL), slacks_(NULL), integerSlacks_(NULL)
+    colsol_(NULL), slacks_(NULL), integers_(NULL)
   {
     if(nBasics_>0)
       {
 	basics_ = new int[nBasics_];
 	CoinCopyN(source.basics_, nBasics_, basics_);
-	integerSlacks_ = new bool [nBasics_];
-	CoinCopyN(source.integerSlacks_, nBasics_, integerSlacks_);     
+	integers_ = new bool [nNonBasics_ + nBasics_];
+	CoinCopyN(source.integers_, nBasics_ + nNonBasics_, integers_);
       }
     if(nNonBasics_>0)
       {
@@ -155,13 +155,13 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
     if(basis_ == NULL) delete [] basis_; basis_ = NULL;
     if(colsol_ == NULL) delete [] colsol_; colsol_ = NULL;
     if(slacks_ == NULL) delete [] slacks_; slacks_ = NULL;
-    if(integerSlacks_ == NULL) delete [] integerSlacks_; integerSlacks_ = NULL;
+    if(integers_ == NULL) delete [] integers_; integers_ = NULL;
     if(nBasics_>0)
     {
       basics_ = new int[nBasics_];
       CoinCopyN(source.basics_, nBasics_, basics_);
-      integerSlacks_ = new bool [nBasics_];
-      CoinCopyN(source.integerSlacks_, nBasics_, integerSlacks_);     
+      integers_ = new bool [nBasics_ + nNonBasics_];
+      CoinCopyN(source.integers_, nBasics_ + nNonBasics_, integers_);     
     }
     if(nNonBasics_>0)
     {
@@ -195,13 +195,10 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
     {
       delete [] basics_;
       basics_ = NULL;
-      delete [] integerSlacks_;
-      integerSlacks_ = NULL;
     }
-    if(basics_ == 0)
+    if(basics_ == NULL)
     {
       basics_ = new int[nBasics];
-      integerSlacks_ = new bool[nBasics];
       nBasics_ = nBasics;
     }
     
@@ -210,7 +207,7 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
       delete [] nonBasics_;
       nonBasics_ = NULL;
     }
-    if(nonBasics_ == 0)
+    if(nonBasics_ == NULL)
     {
       nonBasics_ = new int[nNonBasics];
       nNonBasics_ = nNonBasics;
@@ -219,6 +216,8 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
     if( nBasics_ + nNonBasics_ > 0 || nBasics_ + nNonBasics_ != n)
     {
       delete [] colsol_;
+      delete [] integers_;
+      integers_ = NULL;
       colsol_ = NULL;
       slacks_ = NULL;
     }
@@ -226,6 +225,10 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
     {
       colsol_ = new double[n];
       slacks_ = &colsol_[nNonBasics];
+    }
+    
+    if(integers_ == NULL){
+      integers_ = new bool[n];
     }
     
     //determine which slacks are integer
@@ -237,24 +240,29 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
     //    int numElems = m->getNumElements();
     int numCols = m->getNumCols();
     //   int numRows = m->getNumRows();
-    CoinFillN(integerSlacks_,nBasics_,true);
+    CoinFillN(integers_ ,n, true);
+    for(int i = 0 ;  i < numCols ; i++)
+    {
+      if(si.isContinuous(i))
+        integers_[i] = false;
+    }
     for(int i = 0 ;  i < numCols ; i++)
     {
       CoinBigIndex end = starts[i] + lenghts[i];
-      if(si.isInteger(i))
+      if(integers_[i])
       {
         for(CoinBigIndex k=starts[i] ; k < end; k++)
 	      {
-          if(integerSlacks_[inds[k]] && INT_INFEAS(elems[k])>1e-15 )
-            integerSlacks_[inds[k]] = false;
+          if(integers_[inds[k]] && INT_INFEAS(elems[k])>1e-15 )
+            integers_[inds[k]] = false;
 	      }
       }
       else
       {
         for(CoinBigIndex k=starts[i] ; k < end; k++)
 	      {
-          if(integerSlacks_[inds[k]])
-            integerSlacks_[inds[k]] = false;
+          if(integers_[inds[k]])
+            integers_[inds[k]] = false;
 	      }
       }
     }
@@ -266,7 +274,7 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
     OsiSolverInterface * ncSi = NULL;
     for(int i = 0 ; i < nBasics_ ; i++)
     {
-      if(integerSlacks_[i])
+      if(integers_[i])
       {
         integerSlackExists = true;
         if(rowLower[i] > -1e100 && INT_INFEAS(rowLower[i])>1e-5)
@@ -276,7 +284,7 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
           {
             ncSi = const_cast<OsiSolverInterface *>(&si);
           }
-          integerSlacks_[i]=false;
+          integers_[i]=false;
           //		ncSi->setRowLower(i,value);
           //		rowLower = si.getRowLower();
 	      }
@@ -287,7 +295,7 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
           {
             ncSi = const_cast<OsiSolverInterface *>(&si);
           }
-          integerSlacks_[i]=false;
+          integers_[i]=false;
           //		ncSi->setRowUpper(i,value);
           //		rowUpper = si.getRowUpper();
 	      }  
@@ -296,8 +304,8 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
     
     if(ncSi)
     {
-//      std::cout<<"Warning there are some integer slacks in the problems but bounds are not integer valued"<<std::endl;
-//      std::cout<<"You should consider improving your formulation or using a presolve"<<std::endl;
+//      std::cerr<<"Warning there are some integer slacks in the problems but bounds are not integer valued"<<std::endl
+//               <<"You should consider improving your formulation or using a presolve"<<std::endl;
       //        throw -1;
       //	ncSi->resolve();
     }
@@ -306,7 +314,7 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
     for(int i = 0 ; i < si.getNumRows() ; i++)
     {
       slacks_[i]*=-1;
-      if(si.getRowLower()[i]>-1e50)
+      if(rowLower[i]>-1e50)
       {
         slacks_[i] += rowLower[i];
       }
@@ -399,8 +407,8 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
     if(colsol_ != NULL)
       delete [] colsol_;
     delete basis_;
-    if(integerSlacks_)
-      delete [] integerSlacks_;
+    if(integers_)
+      delete [] integers_;
   }
   
   CglLandP::CglLandP(const CglLandP::Parameters &params,
@@ -503,10 +511,14 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
     std::cerr<<"No basis!!!"<<std::endl;
     throw -1;
   }
-  
+  if(0 && params.pivotLimit == 0){
+    CglGomory gom;
+    gom.generateCuts(si, cs, info);
+    return;
+  }
   
   cached_.getData(si);
-  CglLandPSimplex landpSi(si,cached_, params.reducedSpace);
+  CglLandPSimplex landpSi(si,cached_, params.reducedSpace, params.pivotLimit);
   landpSi.setLogLevel(handler_->logLevel());
   int nCut = 0;
   
@@ -553,16 +565,28 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
     assert(iRow < numrows);
     OsiRowCut cut;
     int code=0;
-    OsiSolverInterface * ncSi = si.clone();
-    //      landpSi.cacheUpdate(cached_, params_.reducedSpace);
-    ncSi->setDblParam(OsiDualObjectiveLimit, DBL_MAX);
-    landpSi.setSi(ncSi);
-    ncSi->messageHandler()->setLogLevel(0);
-    if(!landpSi.findBestCut(iRow, cut, cached_, params))
+    OsiSolverInterface * ncSi = NULL;
+    if(params.pivotLimit != 0){
+      ncSi = si.clone();
+      landpSi.setSi(ncSi);
+      ncSi->setDblParam(OsiDualObjectiveLimit, DBL_MAX);
+      ncSi->messageHandler()->setLogLevel(0);
+    }
+    int generated = 0;
+    if(params.pivotLimit == 0)
+    {
+      generated = landpSi.generateMig(iRow, cut, cached_, params);
+    }
+    else
+    {
+      generated = landpSi.findBestCut(iRow, cut, cached_, params);
+    }
+    if(!generated)
     {
 #ifdef DO_STAT
       stat.numberFailures++;
 #endif
+      if(params.pivotLimit !=0){
         std::cerr<<"Failed to generate a cut generate a Gomory cut instead"<<std::endl;
         
         landpSi.freeSi();
@@ -576,11 +600,17 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
           throw -1;
         }
         params.pivotLimit = params_.pivotLimit;
+      }
+      else
+      {
+        throw -1;
+      }
     }
     
     
-    
-    landpSi.freeSi();
+    if(params.pivotLimit != 0){    
+      landpSi.freeSi();
+    }
     //      assert(code!=-1);
     
     code = validator_(cut, cached_.colsol_, si, params);
@@ -629,7 +659,6 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
     stat.meanNnz /=(double) nCut;
     stat.meanNneg /= (double) nCut;
     stat.meanAngleToObj /= (double) nCut;
-    std::cout<<stat.meanNumPivots<<std::endl;
     stat.meanNumPivots /= (double) nCut;
     stat.averageCutViolation /= (double) nCut;
     stat.time += CoinCpuTime();

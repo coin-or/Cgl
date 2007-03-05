@@ -139,7 +139,7 @@ CglValidator::cleanCut2(OsiRowCut & aCut, const double * solCut, const OsiSolver
   assert (aCut.ub()> 1e50);
   
   CoinPackedVector *vec = const_cast<CoinPackedVector *>(&aCut.row());
-  vec->sortIncrIndex();
+//  vec->sortIncrIndex();
 
   int * indices = vec->getIndices();
   double * elems = vec->getElements();
@@ -184,14 +184,15 @@ CglValidator::cleanCut2(OsiRowCut & aCut, const double * solCut, const OsiSolver
   //rescale the cut so that biggest is 1e1.
   double toBeBiggest = 1.;
   rhs *= (toBeBiggest / biggest);
+  toBeBiggest /= biggest;
   for(int i = 0 ; i < n ; i++)
   {
-    elems[i] *= (toBeBiggest/biggest);
+    elems[i] *= toBeBiggest;
   }
   if(biggest > maxRatio_ * smallest)//we have to remove some small coefficients
   {
-    double myTiny = biggest * toBeBiggest / biggest / maxRatio_;
-    veryTiny *= (toBeBiggest / biggest);
+    double myTiny = biggest * toBeBiggest / maxRatio_;
+    veryTiny *= toBeBiggest ;
     for(int i = 0 ; i < n ; i++)
     {
       double val = fabs(elems[i]);

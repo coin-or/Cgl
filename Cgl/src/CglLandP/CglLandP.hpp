@@ -231,7 +231,7 @@ private:
     /** Stores the values of the slacks */
     double * slacks_;
     /** Stores wheter slacks are integer constrained */
-    bool * integerSlacks_;
+    bool * integers_;
   };
   mutable CachedData cached_;
   /** message handler */

@@ -89,7 +89,7 @@ void CglLandPSimplex::printTableau(std::ostream & os)
 
 CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
                                  const CglLandP::CachedData &cached,
-                                 bool reducedSpace):
+                                 bool reducedSpace, int pivotLimit):
 gammas_(false),
 rWk1_(NULL),
 rWk2_(NULL),
@@ -142,27 +142,11 @@ debug_(si.getNumCols(),si.getNumRows())
   }
 #endif
 #endif
-  rWk1_ = new double [numrows_];
-  rWk2_ = new double [numrows_];
-  rWk3_ = new double [numrows_];
-  rWk4_ = new double [numrows_];
-  rIntWork_ = new int[numrows_];
   int rowsize = numcols_ + numrows_ + 1;
   row_k_.size(rowsize);
-  row_i_.size(rowsize);
-  newRow_.size(rowsize);
-  rowFlags_ = new bool[numrows_];
-  colHasToComputeContrib_ = new bool[numcols_ + numrows_];
-  colCandidateToLeave_ = new bool[numcols_];
-  basics_ = new int[numrows_];
-  nonBasics_ = new int[numcols_];
-  inM1_ = new int[numcols_];
-  inM2_ = new int[numcols_];
-  inM3_ = new int[numcols_];
-  colsolToCut_ = new double[numcols_ + numrows_];
-  colsol_ = new double[numcols_ + numrows_];
   loBounds_ = new double[numcols_ + numrows_];
   upBounds_ = new double[numcols_ + numrows_];
+  
   CoinCopyN(si.getColLower(),numcols_, loBounds_);
   CoinCopyN(si.getColUpper(),numcols_,upBounds_);
   const double * rowUpper = si.getRowUpper();
@@ -181,13 +165,42 @@ debug_(si.getNumCols(),si.getNumRows())
     else
       upBounds_[i] = 0.;
   }
-  
+
+  if(pivotLimit != 0){
+    own_ = true;
+    rWk1_ = new double [numrows_];
+    rWk2_ = new double [numrows_];
+    rWk3_ = new double [numrows_];
+    rWk4_ = new double [numrows_];
+    rIntWork_ = new int[numrows_];
+
+    row_i_.size(rowsize);
+    newRow_.size(rowsize);
+    rowFlags_ = new bool[numrows_];
+    colHasToComputeContrib_ = new bool[numcols_ + numrows_];
+    colCandidateToLeave_ = new bool[numcols_];
+    basics_ = new int[numrows_];
+    nonBasics_ = new int[numcols_];
+    inM1_ = new int[numcols_];
+    inM2_ = new int[numcols_];
+    inM3_ = new int[numcols_];
+    colsolToCut_ = new double[numcols_ + numrows_];
+    colsol_ = new double[numcols_ + numrows_];
+  }
+  else{
+    own_ = false;
+    si_->enableSimplexInterface(0);
+    basis_ = *cached.basis_;
+  }
   cacheUpdate(cached,reducedSpace);
 }
 
 CglLandPSimplex::~CglLandPSimplex()
 {
   delete handler_;
+  delete [] loBounds_;
+  delete [] upBounds_;
+  if(own_){
   delete [] rowFlags_;
   delete [] colHasToComputeContrib_;
   delete [] colCandidateToLeave_;
@@ -203,45 +216,50 @@ CglLandPSimplex::~CglLandPSimplex()
   delete []rWk3_;
   delete []rWk4_;
   delete []rIntWork_;
-  delete [] loBounds_;
-  delete [] upBounds_;
+  }
+  else{
+    si_->disableSimplexInterface();
+  }
 }
 
 void
 CglLandPSimplex::cacheUpdate(const CglLandP::CachedData &cached, bool reducedSpace)
 {
-  //  std::cout<<"Updating cache"<<std::endl;
-  integerSlacks_ = cached.integerSlacks_;
-  CoinCopyN(cached.basics_, numrows_, basics_);
-  CoinCopyN(cached.nonBasics_, numcols_, nonBasics_);
-  CoinCopyN(cached.colsol_, numrows_ + numcols_, colsol_);
-  for(int i = 0 ; i < numcols_ ; i++)
-  {
-    colsol_[nonBasics_[i]] = 0;   
-  }
-  CoinCopyN(cached.colsol_, numrows_ + numcols_, colsolToCut_);
-#if LandP_DEBUG > 1
-  CoinCopyN(cached.colsol_, numrows_ + numcols_, debug_.trueInitialSol_);
-#endif
-  //Zero all non basics in colsol setup the reduced space
-  CoinFillN(colHasToComputeContrib_,numcols_+numrows_,true);
-  for(int i = 0 ; i < numcols_ ; i++)
-  {
-    colsolToCut_[nonBasics_[i]] = colsol_[nonBasics_[i]] = 0;
-  }
-  /** Mark the variables at zero in solution to cut so that we know that their contribution to reduced cost has to be computed*/
-  if(reducedSpace)
-  {
-    for(int ii = 0; ii < numcols_ ; ii++)
+  integers_ = cached.integers_;
+  if(own_){
+    CoinCopyN(cached.basics_, numrows_, basics_);
+    CoinCopyN(cached.nonBasics_, numcols_, nonBasics_);
+    CoinCopyN(cached.colsol_, numrows_ + numcols_, colsol_);
+    for(int i = 0 ; i < numcols_ ; i++)
     {
-      if(colsolToCut_[ii] - upBounds_[ii] > 1e-08 || colsolToCut_[ii] - loBounds_[ii] < 1e-08)
-      {
-        colHasToComputeContrib_[ii]=false;
-        //        std::cout<<colsolToCut_[ii]<<"  is not fractionnal"<<ii<<std::endl;
-      }
-      //     else
-      //      std::cout<<colsolToCut_[ii]<<"  is fractionnal"<<ii<<std::endl;
+      colsol_[nonBasics_[i]] = 0;   
     }
+    CoinCopyN(cached.colsol_, numrows_ + numcols_, colsolToCut_);
+#if LandP_DEBUG > 1
+    CoinCopyN(cached.colsol_, numrows_ + numcols_, debug_.trueInitialSol_);
+#endif
+    //Zero all non basics in colsol setup the reduced space
+    CoinFillN(colHasToComputeContrib_,numcols_+numrows_,true);
+    for(int i = 0 ; i < numcols_ ; i++)
+    {
+      colsolToCut_[nonBasics_[i]] = colsol_[nonBasics_[i]] = 0;
+    }
+    /** Mark the variables at zero in solution to cut so that we know that their contribution to reduced cost has to be computed*/
+    if(reducedSpace)
+    {
+      for(int ii = 0; ii < numcols_ ; ii++)
+      {
+        if(colsolToCut_[ii] - upBounds_[ii] > 1e-08 || colsolToCut_[ii] - loBounds_[ii] < 1e-08)
+        {
+          colHasToComputeContrib_[ii]=false;
+        }
+      }
+    }
+  }
+  else
+  {
+    basics_ = cached.basics_;
+    nonBasics_ = cached.nonBasics_;
   }
 #if LandP_DEBUG > 1
   si_->enableSimplexInterface(0);
@@ -278,6 +296,18 @@ void eraseLastCuts(OsiCuts & cuts, int k = 2)
   {
     cuts.eraseRowCut(ii);
   }
+}
+
+bool
+CglLandPSimplex::generateMig(int row, OsiRowCut & cut,const CglLandP::CachedData &cached,const CglLandP::Parameters & params) const{
+  row_k_.num = row;
+  pullTableauRow(row_k_);
+  row_k_.rhs = row_k_.rhs - floor(row_k_.rhs);
+  if(params.strengthen || params.modularize)
+    createMIG(row_k_, cut);
+  else
+    createIntersectionCut(row_k_, cut);  
+  return 1;//At this point nothing failed, always generate a cut
 }
 
 bool 
@@ -395,8 +425,6 @@ CglLandPSimplex::findBestCut
     }
 #endif
     
-    //  printTableau(std::cout); 
-    //    row_k_.print(std::cout, 9, nonBasics_, numrows_);
 #if LandP_DEBUG > 6
     if(handler_->logLevel()>=4)//Output current cut 
     {
@@ -501,9 +529,9 @@ CglLandPSimplex::findBestCut
         if(pivoted)
         {
           numPivots++;
-          double lastSigma = sigma_;
 #ifdef LandP_DEBUG
 #if LandP_DEBUG > 10
+           double lastSigma = sigma_;
           sigma_ = computeCglpObjective(row_k_);
           if(fabs(sigma_ - debug_.newSigma_) > RED_COST_CHECK)
           {
@@ -522,7 +550,8 @@ CglLandPSimplex::findBestCut
             perturbRow(row_k_,params.perturbationEpsilon,perturbed_);
 #endif
 
-          if(0 && sigma_-lastSigma>1e-3*(-sigma_))
+#ifdef LandP_DEBUG          
+          if(sigma_-lastSigma>1e-3*(-sigma_))
           {
             std::cerr<<"sigma has increased!!! : "<<sigma_-lastSigma<<", direction: "<<direction<<std::endl;
             changeBasis(incoming,leaving,savedStatus);
@@ -546,6 +575,7 @@ CglLandPSimplex::findBestCut
             break;
             return 0;          
           }
+#endif
           handler_->message(PivotLog,messages_)<<numPivots<<sigma_<<
             nonBasics_[incoming]<<basics_[leaving]<<direction<<gamma<<inDegenerateSequence_<<CoinMessageEol<<CoinMessageEol;
         }
@@ -642,13 +672,14 @@ CglLandPSimplex::findBestCut
       createIntersectionCut(row_k_, cut);
   }  
   
+
+  
+#ifdef LandP_DEBUG 
   double cosToObj = 0;
   //(cut.cosToVec(si_->getObjCoefficients(), si_->getNumCols()));
   extra.AngleToObj = acos(cosToObj);
   extra.numPivots = numPivots;
   extra.depth = - sigma_;
-  
-#ifdef LandP_DEBUG 
 #if LandP_DEBUG > 1
   if(handler_->logLevel()>=3)//Output optimal
   {
@@ -923,7 +954,6 @@ CglLandPSimplex::findCutImprovingPivotRow( int &direction, int &gammaSign, doubl
         
 	      gammaSign = -1;
 	      double redCost = computeCglpRedCost(direction, gammaSign);
-	      //	      std::cout<<"Uli : "<<redCost<<std::endl;
 	      if(redCost<tolerance)
         {
           if(bestRed)
@@ -937,7 +967,6 @@ CglLandPSimplex::findCutImprovingPivotRow( int &direction, int &gammaSign, doubl
         }
 	      gammaSign = 1;
 	      redCost = computeCglpRedCost(direction, gammaSign);
-	      //	      std::cout<<"Uli : "<<redCost<<std::endl;
 	      if(redCost<tolerance)
         {
           if(bestRed)
@@ -957,7 +986,6 @@ CglLandPSimplex::findCutImprovingPivotRow( int &direction, int &gammaSign, doubl
 	      // 	      adjustTableauRow(i_, row_i_, rhs_i_, direction);
 	      gammaSign = -1;	
 	      double redCost = computeCglpRedCost(direction, gammaSign);
-	      //	      std::cout<<"Uli : "<<redCost<<std::endl;
 	      if(redCost<tolerance)
         {
           if(bestRed)
@@ -971,7 +999,6 @@ CglLandPSimplex::findCutImprovingPivotRow( int &direction, int &gammaSign, doubl
         }
 	      gammaSign = 1;
 	      redCost = computeCglpRedCost(direction, gammaSign);
-	      //	      	      std::cout<<"Uli : "<<redCost<<std::endl;
 		      if(redCost<tolerance)
           {
             if(bestRed)
@@ -1639,8 +1666,6 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
       if(gammaSign > 0)
 	    {
 	      qTrue -= row_i_.row[nonBasics_[i]] * colsolToCut_[nonBasics_[i]];
-	      // 	  if(fabs(colsolToCut_[nonBasics_[i]])>0)
-	      // 	    std::cout<<"Happy ?"<<std::endl;
 	    }
       sTrue -= row_i_.row[nonBasics_[i]];
     }
@@ -1693,20 +1718,18 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
     //#endif
     throw -1;
   }
-  //  std::cout<<"sigma new : "<<p/r<<", old : "<<sigma_<<std::endl;
   
 #if LandP_DEBUG > 2
-  //       newRow_.row[basics_[row_k_.num]] = 1.;
-  //       newRow_.rhs = row_k_.rhs;
-  //   double sigma2 = computeCglpObjective(0, false);
-  //   if(!debug_.eq(p/r, sigma2))
-  //     {
-  //       std::cerr<<"Error in initial values"<<std::endl;
-  //       throw -1;
-  //     }
+         newRow_.row[basics_[row_k_.num]] = 1.;
+         newRow_.rhs = row_k_.rhs;
+     double sigma2 = computeCglpObjective(0, false);
+     if(!debug_.eq(p/r, sigma2))
+       {
+         std::cerr<<"Error in initial values"<<std::endl;
+         throw -1;
+       }
 #endif
 #endif
-  //  std::cout<<"sigma new : "<<p/r<<", old : "<<sigma_<<std::endl;
   
   int n = gammas_.getNumElements();
   gammas_.sortIncrElement();
@@ -1741,39 +1764,34 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
       newSigma = (p + gammaSign * elements[i] * q)/(r + gammaSign*elements[i] * s);
       if(newSigma > bestSigma + pivotTol)
       {
-        
-        //	  std::cout<<"Breaking on worsening sigma"<<i<<"        "<<newSigma-bestSigma<<std::endl;
         break;
       }
       else if(newSigma <= bestSigma && colCandidateToLeave_[inds[i]])
       {
-        //	   if(sigmaWorst) std::cout<<"Strange things happen"<<newSigma<<"   "<<bestSigma<<std::endl;
         bestColumn = inds[i];
         bestSigma = newSigma;
         lastValid = i;
       }
       else
       {
-        //	  std::cout<<"Continuins on slighlty worsening sigma"<<i<<"        "<<newSigma-bestSigma<<std::endl;
         sigmaWorst=true;
       }
 #if LandP_DEBUG > 2
       newRow_.row[basics_[row_k_.num]] = 1.;
       newRow_.rhs = row_k_.rhs + gammaSign * elements[i] * row_i_.rhs;
       debug_.newSigma_ = computeCglpObjective(gammaSign * elements[i], false);
-      //       if(!debug_.eq(debug_.newSigma_, newSigma) && !debug_.req(debug_.newSigma_, newSigma_))//Ok we really disagree
-      //       {
-      //         std::cout<<"Disagreement in leaving column computation : "<<std::endl
-      //         <<"Old method says new objective will be "<<debug_.newSigma_<<std::endl
-      //         <<"New method says new objective will be "<<newSigma<<std::endl
-      // 		 <<"Delta : "<<debug_.newSigma_-newSigma<<std::endl;
-      //         throw -1;
-      //        }
+             if(!debug_.eq(debug_.newSigma_, newSigma) && !debug_.req(debug_.newSigma_, newSigma_))//Ok we really disagree
+             {
+               std::cout<<"Disagreement in leaving column computation : "<<std::endl
+               <<"Old method says new objective will be "<<debug_.newSigma_<<std::endl
+               <<"New method says new objective will be "<<newSigma<<std::endl
+       		 <<"Delta : "<<debug_.newSigma_-newSigma<<std::endl;
+               throw -1;
+              }
 #endif
     }
     if(gammaSign*(q * r - p * s) >= 0)/* function is starting to increase stop here*/
     {
-      // std::cout<<"Breaking on positive pente"<<std::endl;
       break;
     }
     
@@ -1838,13 +1856,13 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
     newRow_.row[basics_[row_k_.num]] = 1.;
     newRow_.rhs = row_k_.rhs + gammaSign * elements[lastValid] * row_i_.rhs;
     debug_.newSigma_ = computeCglpObjective(gammaSign * elements[lastValid], false);
-    //       if(!debug_.eq(debug_.newSigma_ , bestSigma))//Ok we really disagree
-    // 	{
-    // 	  std::cout<<"Disagreement in leaving column computation : "<<std::endl
-    // 		   <<"Old method says new objective will be "<<debug_.newSigma_<<std::endl
-    // 		   <<"New method says new objective will be "<<bestSigma<<std::endl;
-    // 	  //	  	  throw -1;
-    // 	}
+          if(!debug_.eq(debug_.newSigma_ , bestSigma))//Ok we really disagree
+     	{
+     	  std::cout<<"Disagreement in leaving column computation : "<<std::endl
+     		   <<"Old method says new objective will be "<<debug_.newSigma_<<std::endl
+     		   <<"New method says new objective will be "<<bestSigma<<std::endl;
+     	  //	  	  throw -1;
+     	}
   }
   
   debug_.bestNewRhs_ = newRow_.rhs;
@@ -2225,9 +2243,7 @@ CglLandPSimplex::computeCglpObjective(TabRow &row)
   
   for(int j = 0 ; j < numcols_ ; j++)
   {
-//    if(colCandidateToLeave_[j] == false) continue;
     denominator += fabs(row.row[ nonBasics_[j]]);
-    //    std::cout<<denominator<<" ";
     numerator += (row.row[ nonBasics_[j]] > 0. ? 
                   row.row[ nonBasics_[j]] *(1- row.rhs):
                   - row.row[ nonBasics_[j]] * row.rhs)* colsolToCut_[nonBasics_[j]];
@@ -2268,42 +2284,6 @@ CglLandPSimplex::computeCglpObjective(double gamma, bool strengthen)
   return numerator/denominator;
 }
 
-
-/** return the coefficients of the intersection cut */
-double 
-CglLandPSimplex::intersectionCutCoef(double alpha_i, double beta)
-{
-  if(alpha_i>0) return alpha_i* (1 - beta);
-  else return -alpha_i * beta;// (1 - beta);
-}
-
-/** return the coefficients of the strengthened intersection cut */
-double 
-CglLandPSimplex::strengthenedIntersectionCutCoef(int i, double alpha_i, double beta)
-{
-  //  double ratio = beta/(1-beta);
-  if( (i >= numcols_ && !integerSlacks_ [i - numcols_])|| 
-      (i < numcols_ && si_->isContinuous(i)))
-    return intersectionCutCoef(alpha_i, beta);
-  else
-  {
-    double f_i = alpha_i - floor(alpha_i);
-    if(f_i < beta)
-      return f_i*(1- beta);
-    else
-      return (1 - f_i)*beta;//(1-beta);
-  }
-}
-
-/** return the coefficient of the new row (combining row_k + gamma row_i).
-*/
-double 
-CglLandPSimplex::newRowCoefficient(int j, double gamma)
-{
-  return row_k_.row[j] + gamma * row_i_.row[j];
-}
-
-
 /** Modularize row.*/
 void 
 CglLandPSimplex::modularizeRow(TabRow & row)
@@ -2315,17 +2295,6 @@ CglLandPSimplex::modularizeRow(TabRow & row)
     if(si_->isInteger(ni))
       row.row[ni] = modularizedCoef(row.row[ni],row.rhs);
   }
-}
-
-/** compute the modularized row coefficient for an integer variable*/
-double 
-CglLandPSimplex::modularizedCoef(double alpha, double beta)
-{
-  double f_i = alpha - floor(alpha);
-  if(f_i <= beta)
-    return f_i;
-  else
-    return f_i - 1;
 }
 
 
@@ -2353,7 +2322,6 @@ CglLandPSimplex::computeCglpRedCost(int direction, int gammaSign)
     }
   }
   double Tau = - sign * (tau_ + tau2) - tau1 * sigma_;
-  //    std::cout<<"Tau  "<<Tau<<"    ";
   value = - sigma_ + Tau
     + (1 - colsolToCut_[basics_[row_k_.num]]) * sign * (row_i_.rhs   
                                                         -  toBound)
@@ -2443,12 +2411,11 @@ CglLandPSimplex::updateM1_M2_M3(TabRow & row, double tolerance, bool reducedSpac
   if(nM1<numcols_) inM1_[nM1]=-1;
   if(nM2<numcols_) inM2_[nM2]=-1;
   if(nM3<numcols_) inM3_[nM3]=-1;
-  //  if(nM3) std::cout<<"---------------- M3 is not empty ------------------"<<std::endl;
 }
 
 /** Create the intersection cut of row k*/
 void 
-CglLandPSimplex::createIntersectionCut(const TabRow & row, OsiRowCut &cut)
+CglLandPSimplex::createIntersectionCut(const TabRow & row, OsiRowCut &cut) const
 {
   const double * colLower = si_->getColLower();
   const double * rowLower = si_->getRowLower();
@@ -2568,7 +2535,7 @@ CglLandPSimplex::createIntersectionCut(const TabRow & row, OsiRowCut &cut)
 
 /** Create MIG cut from row k*/
 void 
-CglLandPSimplex::createMIG( TabRow &row, OsiRowCut &cut)
+CglLandPSimplex::createMIG( TabRow &row, OsiRowCut &cut) const
 {
   const double * colLower = si_->getColLower();
   const double * rowLower = si_->getRowLower();
@@ -2677,13 +2644,15 @@ CglLandPSimplex::createMIG( TabRow &row, OsiRowCut &cut)
       const int * lengths = mat->getVectorLengths();
       const double * values = mat->getElements();
       const CoinBigIndex * indices = mat->getIndices();
+      const double * vecSlacks = vec + numcols_;
       for(int j = 0 ; j < numcols_ ; j++)
       {
-        const int& start = starts[j];
-        int end = start + lengths[j];
-        for(int k = start ; k < end ; k++)
+        const CoinBigIndex& start = starts[j];
+        CoinBigIndex end = start + lengths[j];
+        double & val = vec[j];
+        for(CoinBigIndex k = start ; k < end ; k++)
         {
-          vec[j] -= vec[numcols_ + indices[k]] * values[k];	      
+          val -= vecSlacks[indices[k]] * values[k];	      
         }
       }
     
@@ -2749,7 +2718,7 @@ CglLandPSimplex::scale(OsiRowCut &cut)
 
 /** Get the row i of the tableau */
 void 
-CglLandPSimplex::pullTableauRow(TabRow &row)
+CglLandPSimplex::pullTableauRow(TabRow &row) const
 {
   const double * rowLower = si_->getRowLower();
   const double * rowUpper = si_->getRowUpper();
@@ -2785,8 +2754,6 @@ CglLandPSimplex::pullTableauRow(TabRow &row)
   //Now adjust the row of the tableau to reflect non-basic variables activity
   for(int j = 0; j < numcols_ ; j++)
   {
-    //       if(fabs(row.row[nonBasics_[j]]) < 1e-30 && fabs(colsolToCut_[nonBasics_[j]]) > 1e-30)
-    //          std::cout<<"Row with zero element"<<std::endl;
     if(nonBasics_[j]<numcols_)
     {
       if(basis_.getStructStatus(nonBasics_[j])==CoinWarmStartBasis::atLowerBound)
@@ -2976,10 +2943,6 @@ CglLandPSimplex::DebugData::getCurrentTableau(OsiSolverInterface &si, CglLandPSi
     {
       if(fabs(row.row[lap.nonBasics_[i]])>1e-10)
       {
-        if(nnz>=maxNnz-1)
-        {
-          std::cout<<"What?"<<std::endl;
-        }
         values[nnz] = row.row[lap.nonBasics_[i]];
         indices[nnz++] = i;
         lengths[row.num]++;
