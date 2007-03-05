@@ -307,6 +307,20 @@ CglLandPSimplex::generateMig(int row, OsiRowCut & cut,const CglLandP::CachedData
     createMIG(row_k_, cut);
   else
     createIntersectionCut(row_k_, cut);  
+#ifdef LANDP_DEBUG
+  CglLandPSimplex debug(*si_,cached, params.reducedSpace, 1);
+  OsiSolverInterface * ncSi = si_->clone();
+  debug.setSi(ncSi);
+ // ncSi->disableSimplexInterface();
+  ncSi->setDblParam(OsiDualObjectiveLimit, DBL_MAX);
+  OsiRowCut cut2;
+  debug.findBestCut(row, cut2, cached, params);
+  if(cut!= cut2){
+  cut.print();
+  cut2.print();
+  }
+  debug.freeSi();
+#endif
   return 1;//At this point nothing failed, always generate a cut
 }
 
@@ -2671,6 +2685,7 @@ CglLandPSimplex::createMIG( TabRow &row, OsiRowCut &cut) const
     cut.setLb(cutRhs);
     cut.setRow(nelem, inds, vec, false);
     delete [] vec;
+    delete [] inds;
     
     }
   

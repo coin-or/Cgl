@@ -239,6 +239,7 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
     const int * lenghts = m->getVectorLengths();
     //    int numElems = m->getNumElements();
     int numCols = m->getNumCols();
+    assert(numCols == nNonBasics_);
     //   int numRows = m->getNumRows();
     CoinFillN(integers_ ,n, true);
     for(int i = 0 ;  i < numCols ; i++)
@@ -246,6 +247,7 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
       if(si.isContinuous(i))
         integers_[i] = false;
     }
+    bool * integerSlacks = integers_ + numCols;
     for(int i = 0 ;  i < numCols ; i++)
     {
       CoinBigIndex end = starts[i] + lenghts[i];
@@ -254,7 +256,7 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
         for(CoinBigIndex k=starts[i] ; k < end; k++)
 	      {
           if(integers_[inds[k]] && INT_INFEAS(elems[k])>1e-15 )
-            integers_[inds[k]] = false;
+            integerSlacks[inds[k]] = false;
 	      }
       }
       else
@@ -262,7 +264,7 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
         for(CoinBigIndex k=starts[i] ; k < end; k++)
 	      {
           if(integers_[inds[k]])
-            integers_[inds[k]] = false;
+            integerSlacks[inds[k]] = false;
 	      }
       }
     }
@@ -435,6 +437,7 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
     releaseLogStream();
     if(used) displayStats();
 #endif
+    delete handler_;
   }
   
   CglLandP::CglLandP(const CglLandP & source):
