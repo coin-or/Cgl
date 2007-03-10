@@ -360,6 +360,7 @@ static void checkBounds(const OsiRowCutDebugger * debugger,OsiColCut & cut)
   }
 }
 #endif
+#define CGL_REASONABLE_INTEGER_BOUND 1.23456789e10
 // This tightens column bounds (and can declare infeasibility)
 // It may also declare rows to be redundant
 int 
@@ -417,26 +418,26 @@ CglProbing::tighten(double *colLower, double * colUpper,
             double value=rowElements[k];
             j = column[k];
             if (value > 0.0) {
-              if (colUpper[j] >= 1e15) {
+              if (colUpper[j] >= 1.0e12) {
                 dmaxup = 1e31;
                 ++iflagu;
               } else {
                 dmaxup += colUpper[j] * value;
               }
-              if (colLower[j] <= -1e15) {
+              if (colLower[j] <= -1.0e12) {
                 dmaxdown = -1e31;
                 ++iflagl;
               } else {
                 dmaxdown += colLower[j] * value;
               }
             } else if (value<0.0) {
-              if (colUpper[j] >= 1e15) {
+              if (colUpper[j] >= 1.0e12) {
                 dmaxdown = -1e31;
                 ++iflagl;
               } else {
                 dmaxdown += colUpper[j] * value;
               }
-              if (colLower[j] <= -1e15) {
+              if (colLower[j] <= -1.0e12) {
                 dmaxup = 1e31;
                 ++iflagu;
               } else {
@@ -458,26 +459,26 @@ CglProbing::tighten(double *colLower, double * colUpper,
             bool oneFixes = (cliqueRow_[k+bias].oneFixes!=0);
             if (iClique>=numberColumns_||colUpper[j]==colLower[j]) {
               if (value > 0.0) {
-                if (colUpper[j] >= 1e15) {
+                if (colUpper[j] >= 1.0e12) {
                   dmaxup = 1e31;
                   ++iflagu;
                 } else {
                   dmaxup += colUpper[j] * value;
                 }
-                if (colLower[j] <= -1e15) {
+                if (colLower[j] <= -1.0e12) {
                   dmaxdown = -1e31;
                   ++iflagl;
                 } else {
                   dmaxdown += colLower[j] * value;
                 }
               } else if (value<0.0) {
-                if (colUpper[j] >= 1e15) {
+                if (colUpper[j] >= 1.0e12) {
                   dmaxdown = -1e31;
                   ++iflagl;
                 } else {
                   dmaxdown += colUpper[j] * value;
                 }
-                if (colLower[j] <= -1e15) {
+                if (colLower[j] <= -1.0e12) {
                   dmaxup = 1e31;
                   ++iflagu;
                 } else {
@@ -575,7 +576,7 @@ CglProbing::tighten(double *colLower, double * colUpper,
                 double value=rowElements[k];
                 j = column[k];
                 if (value > 0.0) {
-                  if (colUpper[j] < 1e15) {
+                  if (colUpper[j] < 1.0e12) {
                     dbound = colUpper[j] + (rowLower[i] - dmaxup) / value;
                     if (dbound > colLower[j] + 1.0e-8) {
                       /* we can tighten the lower bound */
@@ -607,7 +608,7 @@ CglProbing::tighten(double *colLower, double * colUpper,
                     }
                   }
                 } else {
-                  if (colLower[j] > -1e15) {
+                  if (colLower[j] > -1.0e12) {
                     dbound = colLower[j] + (rowLower[i] - dmaxup) / value;
                     if (dbound < colUpper[j] - 1.0e-8) {
                       colUpper[j] = dbound;
@@ -634,7 +635,7 @@ CglProbing::tighten(double *colLower, double * colUpper,
                 double value=rowElements[k];
                 j = column[k];
                 if (value < 0.0) {
-                  if (colUpper[j] < 1e15) {
+                  if (colUpper[j] < 1.0e12) {
                     dbound = colUpper[j] + (rowUpper[i] - dmaxdown) / value;
                     if (dbound > colLower[j] + 1.0e-8) {
                       colLower[j] = dbound;
@@ -650,7 +651,7 @@ CglProbing::tighten(double *colLower, double * colUpper,
                     }
                   } 
                 } else {
-                  if (colLower[j] > -1e15) {
+                  if (colLower[j] > -1.0e12) {
                     dbound = colLower[j] + (rowUpper[i] - dmaxdown) / value;
                     if (dbound < colUpper[j] - 1.0e-8) {
                       colUpper[j] = dbound;
@@ -679,7 +680,7 @@ CglProbing::tighten(double *colLower, double * colUpper,
                 //bool oneFixes = (cliqueRow_[k+bias].oneFixes!=0);
                 if (iClique>=numberColumns_) {
                   if (value > 0.0) {
-                    if (colUpper[j] < 1e15) {
+                    if (colUpper[j] < 1.0e12) {
                       dbound = colUpper[j] + (rowLower[i] - dmaxup) / value;
                       if (dbound > colLower[j] + 1.0e-8) {
                         /* we can tighten the lower bound */
@@ -725,7 +726,7 @@ CglProbing::tighten(double *colLower, double * colUpper,
                       }
                     }
                   } else {
-                    if (colLower[j] > -1e15) {
+                    if (colLower[j] > -1.0e12) {
                       dbound = colLower[j] + (rowLower[i] - dmaxup) / value;
                       if (dbound < colUpper[j] - 1.0e-8) {
                         colUpper[j] = dbound;
@@ -797,7 +798,7 @@ CglProbing::tighten(double *colLower, double * colUpper,
                 //bool oneFixes = (cliqueRow_[k+bias].oneFixes!=0);
                 if (iClique>=numberColumns_) {
                   if (value < 0.0) {
-                    if (colUpper[j] < 1e15) {
+                    if (colUpper[j] < 1.0e12) {
                       dbound = colUpper[j] + (rowUpper[i] - dmaxdown) / value;
                       if (dbound > colLower[j] + 1.0e-8) {
                         colLower[j] = dbound;
@@ -827,7 +828,7 @@ CglProbing::tighten(double *colLower, double * colUpper,
                       }
                     } 
                   } else {
-                    if (colLower[j] > -1e15) {
+                    if (colLower[j] > -1.0e12) {
                       dbound = colLower[j] + (rowUpper[i] - dmaxdown) / value;
                       if (dbound < colUpper[j] - 1.0e-8) {
                         colUpper[j] = dbound;
@@ -1440,9 +1441,9 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       } else {
 	// make sure reasonable bounds
 	if (colsol[i]<1.0e10&&colUpper[i]>1.0e12) 
-	  colUpper[i] = 1.23456789e11;
+	  colUpper[i] = CGL_REASONABLE_INTEGER_BOUND;
 	if (colsol[i]>-1.0e10&&colLower[i]<-1.0e12) 
-	  colLower[i] = -1.23456789e11;
+	  colLower[i] = -CGL_REASONABLE_INTEGER_BOUND;
       }
     } else {
       intVar[i]=0;
@@ -2390,9 +2391,9 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   const double * trueUpper = si.getColUpper();
   for (i=0;i<nCols;i++) {
     if (si.isInteger(i)&&!si.isBinary(i)) {
-      if (colUpper[i] == 1.23456789e11) 
+      if (colUpper[i] == CGL_REASONABLE_INTEGER_BOUND) 
 	colUpper[i] = trueUpper[i];
-      if (colLower[i] == -1.23456789e11) 
+      if (colLower[i] == -CGL_REASONABLE_INTEGER_BOUND) 
 	colLower[i] = trueLower[i];
     }
   }
@@ -3617,9 +3618,12 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       index[0]=j;
                       index[1]=icol;
                       element[0]=-(upperOriginal-lowerOriginal);
-                      element[1]=1.0;
-                      rc.setRow(2,index,element,false);
-                      cs.insert(rc);
+		      // If zero then - must have been fixed without noticing!
+		      if (fabs(element[0])>1.0e-8) {
+			element[1]=1.0;
+			rc.setRow(2,index,element,false);
+			cs.insert(rc);
+		      }
                     } else if (upperWhenUp<lowerOriginal+1.0e-12&&lowerWhenDown>upperOriginal-1.0e-12) {
                       OsiRowCut rc;
                       rc.setLb(upperOriginal);

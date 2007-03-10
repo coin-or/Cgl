@@ -766,7 +766,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      bounds[1] = bounds[1]+1.0e-6+1.0e-8*fabs(rhs); // weaken
 	    {
 	      OsiRowCut rc;
-	      rc.setRow(number,cutIndex,packed);
+	      rc.setRow(number,cutIndex,packed,false);
 	      rc.setLb(bounds[0]);
 	      rc.setUb(bounds[1]);   
 	      cs.insert(rc);
