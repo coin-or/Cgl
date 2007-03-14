@@ -133,7 +133,6 @@ public:
   int addCutIfNotDuplicate(OsiRowCut & cut,int whichRow=-1)
   {
     if (numberCuts_<size_) {
-      numberCuts_++;
       double newLb = cut.lb();
       double newUb = cut.ub();
       CoinPackedVector vector = cut.row();
@@ -141,6 +140,16 @@ public:
       int * newIndices = vector.getIndices();
       double * newElements = vector.getElements();
       CoinSort_2(newIndices,newIndices+numberElements,newElements);
+      int i;
+      bool bad=false;
+      for (i=0;i<numberElements;i++) {
+	double value = fabs(newElements[i]);
+	if (value<1.0e-12||value>1.0e12) 
+	  bad=true;
+      }
+      if (bad)
+	return 1;
+      numberCuts_++;
       OsiRowCut2 newCut(whichRow);
       newCut.setLb(newLb);
       newCut.setUb(newUb);
@@ -1795,7 +1804,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                     cutVector_[i].length++;
                     cutVector_[j].length++;
                   } else {
-                    abort();
+                    continue;
                   }
                 }
               }
@@ -1808,7 +1817,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                 cutVector_[i].length++;
                 cutVector_[j].length++;
               } else {
-                abort();
+                continue;
               }
             }
           }
@@ -1836,7 +1845,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                     cutVector_[i].length++;
                     cutVector_[j].length++;
                   } else {
-                    abort();
+                    continue;
                   }
                 }
               }
