@@ -1754,6 +1754,14 @@ CglPreProcess::modified(OsiSolverInterface * model,
         newModel->addRows(build);
         numberRows = newModel->getNumRows();
         delete [] del;
+/*
+  VIRTUOUS
+
+  A solver is not required to hold these pointers constant across complete
+  row deletion and rebuild.
+*/
+	columnLower = newModel->getColLower();
+	columnUpper = newModel->getColUpper();
       }
       if (!feasible)
         break;
