@@ -72,6 +72,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   int numberRows = originalModel_->getNumRows();
   int numberColumns = originalModel_->getNumCols();
   int minimumLength = tuning;
+  int numberModifiedPasses=10;
+  if (tuning>=10000) {
+    numberModifiedPasses=(tuning-10000)/10000;
+    tuning %= 10000;
+  }
   
   // We want to add columns
   int numberSlacks=0;
@@ -380,7 +385,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   }
   if (!numberSolvers_) {
     // just fix
-    OsiSolverInterface * newModel = modified(startModel_,false,numberChanges,0);
+    OsiSolverInterface * newModel = modified(startModel_,false,numberChanges,0,numberModifiedPasses);
     if (startModel_!=originalModel_)
       delete startModel_;
     startModel_=newModel;
@@ -583,7 +588,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
         returnModel=NULL;
         break;
       }
-      OsiSolverInterface * newModel = modified(presolvedModel,constraints,numberChanges,iPass);
+      OsiSolverInterface * newModel = modified(presolvedModel,constraints,numberChanges,iPass,numberModifiedPasses);
       returnModel=newModel;
       if (!newModel) {
         break;
@@ -1566,9 +1571,10 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 */
 OsiSolverInterface * 
 CglPreProcess::modified(OsiSolverInterface * model,
-                     bool constraints,
-                     int & numberChanges,
-                        int iBigPass)
+			bool constraints,
+			int & numberChanges,
+                        int iBigPass,
+			int numberPasses)
 {
   OsiSolverInterface * newModel = model->clone();
   OsiCuts twoCuts;
@@ -1591,7 +1597,6 @@ CglPreProcess::modified(OsiSolverInterface * model,
   bool feasible=true;
   int firstGenerator=0;
   int lastGenerator=numberCutGenerators_;
-  int numberPasses=10;
   for (int iPass=0;iPass<numberPasses;iPass++) {
     // Statistics
     int numberFixed=0;

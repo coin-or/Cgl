@@ -213,7 +213,7 @@ public:
   
   /// Assignment operator 
   CglPreProcess & operator=(const CglPreProcess& rhs);
-  
+
   /// Destructor 
   ~CglPreProcess ();
   
@@ -231,7 +231,8 @@ private:
   OsiSolverInterface * modified(OsiSolverInterface * model,
                                 bool constraints,
                                 int & numberChanges,
-                                int iBigPass);
+                                int iBigPass,
+				int numberPasses);
   /// create original columns and rows
   void createOriginalIndices() const;
   //@}
