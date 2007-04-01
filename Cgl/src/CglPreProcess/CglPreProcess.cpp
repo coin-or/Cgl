@@ -76,8 +76,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   if (tuning>=10000) {
     numberModifiedPasses=(tuning-10000)/10000;
     tuning %= 10000;
+    minimumLength = tuning;
   }
-  
   // We want to add columns
   int numberSlacks=0;
   int * rows = new int[numberRows];
