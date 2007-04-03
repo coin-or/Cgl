@@ -14,7 +14,7 @@
 
 #define RED_COST_CHECK 1e-6
 
-//#define OLD_COMPUTATION
+#define OLD_COMPUTATION
 #include <algorithm>
 //#define TEST_M3
 namespace LAP
@@ -165,8 +165,10 @@ debug_(si.getNumCols(),si.getNumRows())
     else
       upBounds_[i] = 0.;
   }
-
-  if(pivotLimit != 0){
+#ifndef DO_STAT
+  if(pivotLimit != 0)
+#endif
+  {
     own_ = true;
     rWk1_ = new double [numrows_];
     rWk2_ = new double [numrows_];
@@ -187,11 +189,13 @@ debug_(si.getNumCols(),si.getNumRows())
     colsolToCut_ = new double[numcols_ + numrows_];
     colsol_ = new double[numcols_ + numrows_];
   }
+#ifndef DO_STAT
   else{
     own_ = false;
     si_->enableSimplexInterface(0);
     basis_ = *cached.basis_;
   }
+#endif
   cacheUpdate(cached,reducedSpace);
 }
 
@@ -307,6 +311,11 @@ CglLandPSimplex::generateMig(int row, OsiRowCut & cut,const CglLandP::CachedData
     createMIG(row_k_, cut);
   else
     createIntersectionCut(row_k_, cut);  
+#ifdef DO_STAT
+    double sigma = computeCglpObjective(row_k_);
+    extra.depth = -sigma;
+#endif
+
 #ifdef LANDP_DEBUG
   CglLandPSimplex debug(*si_,cached, params.reducedSpace, 1);
   OsiSolverInterface * ncSi = si_->clone();
@@ -686,14 +695,13 @@ CglLandPSimplex::findBestCut
       createIntersectionCut(row_k_, cut);
   }  
   
-
+  extra.numPivots = numPivots;
+  extra.depth = - sigma_;
   
 #ifdef LandP_DEBUG 
   double cosToObj = 0;
   //(cut.cosToVec(si_->getObjCoefficients(), si_->getNumCols()));
   extra.AngleToObj = acos(cosToObj);
-  extra.numPivots = numPivots;
-  extra.depth = - sigma_;
 #if LandP_DEBUG > 1
   if(handler_->logLevel()>=3)//Output optimal
   {
@@ -2250,7 +2258,7 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
     
 }
 double 
-CglLandPSimplex::computeCglpObjective(TabRow &row)
+CglLandPSimplex::computeCglpObjective(TabRow &row) const
 {
   double numerator = -row.rhs * (1 - row.rhs);
   double denominator = 1;

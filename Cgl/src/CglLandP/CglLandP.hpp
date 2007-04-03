@@ -94,7 +94,7 @@ public:
     /** A variable have to be at least away from integrity to be generated */
     double away;
     /** Total time limit for cut generation.*/
-    double timeLimit;
+    mutable double timeLimit;
     /** Time limit for generating a single cut.*/
     double singleCutTimeLimit;
     ///@}

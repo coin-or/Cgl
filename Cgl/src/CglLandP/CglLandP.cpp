@@ -36,12 +36,12 @@ using namespace LAP;
   CglLandP::Parameters::Parameters():
     CglParam(),
     pivotLimit(20),
-    pivotLimitInTree(0),
+    pivotLimitInTree(10),
     maxCutPerRound(50),    
     failedPivotLimit(1),
     degeneratePivotLimit(0),
     pivotTol(1e-4),
-    away(5e-3),
+    away(5e-4),
     timeLimit(DBL_MAX),
     singleCutTimeLimit(DBL_MAX),
     useTableauRow(true),
@@ -493,9 +493,7 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
 #if DO_STAT
   used = true;
 #endif
-  double cur_time=CoinCpuTime();
-  Parameters params(params_);
-  //double timeLimit = params.timeLimit;
+  Parameters params = params_;
 #if DO_STAT
   if(info.pass == 0 && !info.inTree)//lookup miplib problem
   {
@@ -508,7 +506,9 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
   {
     params.pivotLimit = min(params.pivotLimit, params.pivotLimitInTree);
   }
-
+  if(params.timeLimit < 0){
+    params.pivotLimit = 0;
+  }
   if(!si.basisIsAvailable())
   {
     std::cerr<<"No basis!!!"<<std::endl;
@@ -547,19 +547,15 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
   const int * indices = xFrac.getIndices();
   int numrows = si.getNumRows();
   int i = 0;
-  
-  
+ 
+  params_.timeLimit += CoinCpuTime();
   
   for(; i < nFrac && nCut < params.maxCutPerRound && 
       nCut < cached_.nBasics_ ; i++)
   {
     
     //Check for time limit
-    params.timeLimit += cur_time;
-    params.timeLimit -= cur_time = CoinCpuTime();
-    if(params.timeLimit < 0.) break;
-    int iRow = 0;
-        
+    int iRow = 0;     
     for(; iRow < numrows ; iRow++)
     {
       if(cached_.basics_[iRow]== indices[i])
@@ -567,59 +563,60 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
     }
     assert(iRow < numrows);
     OsiRowCut cut;
-    int code=0;
+    int code=1;
     OsiSolverInterface * ncSi = NULL;
-    if(params.pivotLimit != 0){
+#ifndef DO_STAT
+    if(params.pivotLimit != 0)
+#endif
+   {
       ncSi = si.clone();
       landpSi.setSi(ncSi);
       ncSi->setDblParam(OsiDualObjectiveLimit, DBL_MAX);
       ncSi->messageHandler()->setLogLevel(0);
     }
     int generated = 0;
+#ifndef DO_STAT
     if(params.pivotLimit == 0)
     {
       generated = landpSi.generateMig(iRow, cut, cached_, params);
     }
     else
+#endif
     {
       generated = landpSi.findBestCut(iRow, cut, cached_, params);
     }
-    if(!generated)
+    if(generated)
+      code = validator_(cut, cached_.colsol_, si, params);
+    if(!generated || code) 
     {
 #ifdef DO_STAT
+      if(!code)
       stat.numberFailures++;
+      else stat.numberRejected++;
 #endif
       if(params.pivotLimit !=0){
-        std::cerr<<"Failed to generate a cut generate a Gomory cut instead"<<std::endl;
+        std::cout<<"Failed to generate a cut generate a Gomory cut instead"<<std::endl;
         
         landpSi.freeSi();
         OsiSolverInterface * ncSi = si.clone();
-        //       landpSi.cacheUpdate(cached_, params_.reducedSpace);
         landpSi.setSi(ncSi);
         params.pivotLimit = 0;
-        if(!landpSi.findBestCut(iRow, cut, cached_, params))
-          //Failing to generate anyything??!!!
+        if(landpSi.findBestCut(iRow, cut, cached_, params))
         {
-          throw -1;
+          code = validator_(cut, cached_.colsol_, si, params);
         }
         params.pivotLimit = params_.pivotLimit;
       }
-      else
-      {
-        throw -1;
-      }
     }
     
-    
-    if(params.pivotLimit != 0){    
+#ifndef DO_STAT 
+    if(params.pivotLimit != 0)
+#endif
+    {    
       landpSi.freeSi();
     }
-    //      assert(code!=-1);
-    
-    code = validator_(cut, cached_.colsol_, si, params);
-      
-      if(code)
-	    {
+    if(code)
+    {
 	      handler_->message(CUT_REJECTED, messages_)<<validator_.failureString(code)<<CoinMessageEol;
 #ifdef DO_STAT
 	      stat.numberRejected++;
@@ -627,7 +624,8 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
 	    }
       else
 	    {
-	      cs.insert(cut);
+              CoinRelFltEq eq(1e-04);
+	      cs.insertIfNotDuplicate(cut, eq);
 #ifdef DO_STAT
 #if LandP_DEBUG > 1
 	      stat.meanNnz += landpSi.extra.Nnz;
@@ -648,6 +646,7 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
 	      nCut++;
 	    }
   }
+  params_.timeLimit -= CoinCpuTime();
   
 #ifdef DO_STAT
   if(stat.meanNumPivots > 0.)
@@ -672,8 +671,10 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
     gapTester->resolve();
     stat.bound = gapTester->getObjValue();
     delete gapTester;
-    roundsStats_.addStatistic(stat); 
-    roundsStats_.displayRound(*logStream);
+    if(!info.inTree){ 
+      roundsStats_.addStatistic(stat); 
+      roundsStats_.displayRound(*logStream);
+    }
   }
 #endif
 

@@ -153,7 +153,7 @@ public:
     double bestRc;
     double maxRc;
   };
-  extraInfo extra;
+  mutable extraInfo extra;
 
 protected:
   /** Perform a change in the basis (direction is 1 if leaving variable is going to ub, 0 otherwise)*/
@@ -199,7 +199,7 @@ int plotCGLPobj(int direction, double gammaTolerance,
   double computeCglpObjective(double gamma, bool strengthen);
   /** Compute the objective value of the Cglp for given row and rhs (if strengthening shall be applied
     	row should have been modularized).*/
-  double computeCglpObjective(TabRow & row);
+  double computeCglpObjective(TabRow & row) const;
   /** return the coefficients of the intersection cut */
    inline double intersectionCutCoef(double alpha_i, double beta) const;
   /** return the coefficients of the strengthened intersection cut 
