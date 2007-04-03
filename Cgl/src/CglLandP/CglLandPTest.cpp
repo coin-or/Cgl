@@ -165,7 +165,7 @@ CglLandPUnitTest(
       siP->resolve();
       double lpRelaxAfter=siP->getObjValue(); 
     }
-    if(0)
+    if(1)
     {
       OsiCuts cuts;
       test.generateCuts(*siP,cuts);

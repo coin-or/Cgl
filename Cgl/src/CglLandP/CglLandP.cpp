@@ -231,6 +231,8 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
       integers_ = new bool[n];
     }
     
+    const double * rowLower = si.getRowLower();
+    const double * rowUpper = si.getRowUpper();
     //determine which slacks are integer
     const CoinPackedMatrix * m = si.getMatrixByCol();
     const double * elems = m->getElements();
@@ -248,6 +250,13 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
         integers_[i] = false;
     }
     bool * integerSlacks = integers_ + numCols;
+    for(int i = 0 ; i < nBasics ; i++)
+      {
+	if(rowLower[i] > -1e50 && INT_INFEAS(rowLower[i]) > 1e-15)
+	  integerSlacks[i] = false;
+	if(rowUpper[i] < 1e50 && INT_INFEAS(rowUpper[i]) > 1e-15)
+	  integerSlacks[i] = false;
+      }
     for(int i = 0 ;  i < numCols ; i++)
     {
       CoinBigIndex end = starts[i] + lenghts[i];
@@ -263,54 +272,12 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
       {
         for(CoinBigIndex k=starts[i] ; k < end; k++)
 	      {
-          if(integerSlacks[inds[k]])
-            integerSlacks[inds[k]] = false;
+		if(integerSlacks[inds[k]])
+		  integerSlacks[inds[k]] = false;
 	      }
       }
     }
     
-    //Check if bounds of integer slacks are integer (if not fix it but also give a big warning message this is not this procedure's job)
-    const double * rowLower = si.getRowLower();
-    const double * rowUpper = si.getRowUpper();
-    bool integerSlackExists = false;
-    OsiSolverInterface * ncSi = NULL;
-    for(int i = 0 ; i < nBasics_ ; i++)
-    {
-      if(integers_[i])
-      {
-        integerSlackExists = true;
-        if(rowLower[i] > -1e100 && INT_INFEAS(rowLower[i])>1e-5)
-	      {
-          //double value = ceil(rowLower[i]);
-          if(!ncSi)
-          {
-            ncSi = const_cast<OsiSolverInterface *>(&si);
-          }
-          integers_[i]=false;
-          //		ncSi->setRowLower(i,value);
-          //		rowLower = si.getRowLower();
-	      }
-        if(rowUpper[i] > -1e100 && INT_INFEAS(rowUpper[i])>1e-10)
-	      {
-          //double value = floor(rowUpper[i]);
-          if(!ncSi)
-          {
-            ncSi = const_cast<OsiSolverInterface *>(&si);
-          }
-          integers_[i]=false;
-          //		ncSi->setRowUpper(i,value);
-          //		rowUpper = si.getRowUpper();
-	      }  
-      }
-    }
-    
-    if(ncSi)
-    {
-//      std::cerr<<"Warning there are some integer slacks in the problems but bounds are not integer valued"<<std::endl
-//               <<"You should consider improving your formulation or using a presolve"<<std::endl;
-      //        throw -1;
-      //	ncSi->resolve();
-    }
     CoinCopyN(si.getColSolution(), si.getNumCols(), colsol_);
     CoinCopyN(si.getRowActivity(), si.getNumRows(), slacks_);
     for(int i = 0 ; i < si.getNumRows() ; i++)
