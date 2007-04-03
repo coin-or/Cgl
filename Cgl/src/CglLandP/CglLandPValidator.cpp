@@ -276,6 +276,7 @@ CglValidator::CglValidator(double maxFillIn,
 void 
 CglValidator::fillRejectionReasons()
 {
+  rejections_.reserve(DummyEnd) ;
   rejections_[NoneAccepted] = "Cut was accepted";
   rejections_[SmallViolation] = "Violation of the cut is too small ";
   rejections_[SmallCoefficient] = "There is a small coefficient we can not get rid off.";
