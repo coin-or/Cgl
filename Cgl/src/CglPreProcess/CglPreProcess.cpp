@@ -1797,7 +1797,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  int start = toZero[k];
 	  int end = toOne[k];
 	  // to zero
-	  for (int j=start;j<end;j++) {
+    int j;
+	  for (j=start;j<end;j++) {
 	    int goingToOne = entry[j].oneFixed;
 	    int v = entry[j].sequence;
 	    if (goingToOne) {
@@ -1861,7 +1862,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  start = toOne[k];
 	  end = toZero[k+1];
 	  // to one
-	  for (int j=start;j<end;j++) {
+	  for (j=start;j<end;j++) {
 	    int goingToOne = entry[j].oneFixed;
 	    int v = entry[j].sequence;
 	    if (goingToOne) {
