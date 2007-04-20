@@ -25,7 +25,6 @@ libCgl_la_SOURCES = \
 	CglCutGenerator.cpp CglCutGenerator.hpp\
 	CglMessage.cpp CglMessage.hpp \
 	CglStored.cpp CglStored.hpp \
-	CglData.cpp CglData.hpp \
 	CglParam.cpp CglParam.hpp \
 	CglTreeInfo.cpp CglTreeInfo.hpp
 
@@ -64,7 +63,6 @@ include_HEADERS = \
 	CglCutGenerator.hpp \
 	CglMessage.hpp \
 	CglStored.hpp \
-	CglData.hpp \
 	CglParam.hpp \
 	CglTreeInfo.hpp
 

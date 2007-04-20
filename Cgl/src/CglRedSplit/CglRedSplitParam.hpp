@@ -31,6 +31,8 @@
 		    lower or upper bound in absolute value larger than LUB.
                     Should logically be larger or equal to MAXDYN.
                     See method setMAXDYN_LUB().
+      - EPS_ELIM: Precision for deciding if a coefficient is zero when 
+                  eliminating slack variables. See method setEPS_ELIM().
       - EPS_COEFF_LUB: Precision for deciding if a coefficient of a 
                        generated cut is zero when the corresponding 
                        variable has a lower or upper bound larger than 
@@ -74,6 +76,13 @@ public:
   /** Get the value of LUB */
   inline double getLUB() const {return LUB;};
 
+  /** Set the value of EPS_ELIM, epsilon for values of coefficients when 
+      eliminating slack variables;
+      Default: 1e-12 */
+  void setEPS_ELIM(double value);
+  /** Get the value of EPS_ELIM */
+  double getEPS_ELIM() const {return EPS_ELIM;};
+  
   /** Set EPS_RELAX_ABS */
   virtual void setEPS_RELAX_ABS(const double eps_ra);
   /** Get value of EPS_RELAX_ABS */
@@ -147,6 +156,7 @@ public:
   //@{
   /// Default constructor 
   CglRedSplitParam(const double lub = 1000.0,
+		   const double eps_elim = 1e-12,
 		   const double eps_relax_abs = 1e-8,
 		   const double eps_relax_rel = 0.0,
 		   const double max_dyn = 1e8,
@@ -163,6 +173,7 @@ public:
    /// Constructor from CglParam
   CglRedSplitParam(const CglParam &source,
 		   const double lub = 1000.0,
+		   const double eps_elim = 1e-12,
 		   const double eps_relax_abs = 1e-8,
 		   const double eps_relax_rel = 0.0,
 		   const double max_dyn = 1e8,
@@ -194,9 +205,13 @@ protected:
   /**@name Parameters */
   //@{
 
-  /// Value considered large for the absolute value of lower or upper 
-  /// bound on a variable. Default: 1000.
+  /** Value considered large for the absolute value of lower or upper 
+      bound on a variable. Default: 1000. */
   double LUB;
+
+  /** Epsilon for value of coefficients when eliminating slack variables. 
+      Default: 1e-12. */
+   double EPS_ELIM;
 
   /** Value added to the right hand side of each generated cut to relax it.
       Default: 1e-8 */

@@ -50,6 +50,13 @@ void CglRedSplitParam::setLUB(const double value)
 } /* setLUB */
 
 /***********************************************************************/
+void CglRedSplitParam::setEPS_ELIM(const double eps_el)
+{
+  if(eps_el >= 0)
+    EPS_ELIM = eps_el;
+} /* setEPS_ELIM */
+
+/***********************************************************************/
 void CglRedSplitParam::setEPS_RELAX_ABS(const double eps_ra)
 {
   if(eps_ra >= 0)
@@ -149,6 +156,7 @@ void CglRedSplitParam::setMinReduc(const double value)
 
 /***********************************************************************/
 CglRedSplitParam::CglRedSplitParam(const double lub,
+				   const double eps_el,
 				   const double eps_relax_abs,
 				   const double eps_relax_rel,
 				   const double max_dyn,
@@ -163,6 +171,7 @@ CglRedSplitParam::CglRedSplitParam(const double lub,
 				   const double max_tab) :
   CglParam(),
   LUB(lub),
+  EPS_ELIM(eps_el),
   EPS_RELAX_ABS(eps_relax_abs),
   EPS_RELAX_REL(eps_relax_rel),
   MAXDYN(max_dyn),
@@ -180,6 +189,7 @@ CglRedSplitParam::CglRedSplitParam(const double lub,
 /***********************************************************************/
 CglRedSplitParam::CglRedSplitParam(const CglParam &source,
 				   const double lub,
+				   const double eps_el, 
 				   const double eps_ra, 
 				   const double eps_rr, 
 				   const double max_dyn,
@@ -195,6 +205,7 @@ CglRedSplitParam::CglRedSplitParam(const CglParam &source,
 
   CglParam(source), 
   LUB(lub),
+  EPS_ELIM(eps_el),
   EPS_RELAX_ABS(eps_ra),
   EPS_RELAX_REL(eps_rr),
   MAXDYN(max_dyn),
@@ -213,6 +224,7 @@ CglRedSplitParam::CglRedSplitParam(const CglParam &source,
 CglRedSplitParam::CglRedSplitParam(const CglRedSplitParam &source) :
   CglParam(source),
   LUB(source.LUB),
+  EPS_ELIM(source.EPS_ELIM),
   EPS_RELAX_ABS(source.EPS_RELAX_ABS),
   EPS_RELAX_REL(source.EPS_RELAX_REL),
   MAXDYN(source.MAXDYN),
@@ -240,6 +252,7 @@ CglRedSplitParam& CglRedSplitParam::operator=(const CglRedSplitParam &rhs)
     CglParam::operator=(rhs);
 
     LUB = rhs.LUB;
+    EPS_ELIM = rhs.EPS_ELIM;
     EPS_RELAX_ABS = rhs.EPS_RELAX_ABS;
     EPS_RELAX_REL = rhs.EPS_RELAX_REL;
     MAXDYN = rhs.MAXDYN;

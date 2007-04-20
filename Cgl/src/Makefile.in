@@ -65,7 +65,7 @@ libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 am__DEPENDENCIES_1 =
 am_libCgl_la_OBJECTS = CglCutGenerator.lo CglMessage.lo CglStored.lo \
-	CglData.lo CglParam.lo CglTreeInfo.lo
+	CglParam.lo CglTreeInfo.lo
 libCgl_la_OBJECTS = $(am_libCgl_la_OBJECTS)
 depcomp = $(SHELL) $(top_srcdir)/../depcomp
 am__depfiles_maybe = depfiles
@@ -311,7 +311,6 @@ libCgl_la_SOURCES = \
 	CglCutGenerator.cpp CglCutGenerator.hpp\
 	CglMessage.cpp CglMessage.hpp \
 	CglStored.cpp CglStored.hpp \
-	CglData.cpp CglData.hpp \
 	CglParam.cpp CglParam.hpp \
 	CglTreeInfo.cpp CglTreeInfo.hpp
 
@@ -352,7 +351,6 @@ include_HEADERS = \
 	CglCutGenerator.hpp \
 	CglMessage.hpp \
 	CglStored.hpp \
-	CglData.hpp \
 	CglParam.hpp \
 	CglTreeInfo.hpp
 
@@ -433,7 +431,6 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglCutGenerator.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglData.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglMessage.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglParam.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglStored.Plo@am__quote@

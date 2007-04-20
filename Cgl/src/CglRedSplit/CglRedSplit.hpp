@@ -1,4 +1,4 @@
-// Last edit: 11/27/06
+// Last edit: 4/20/07
 //
 // Name:     CglRedSplit.hpp
 // Author:   Francois Margot
@@ -13,7 +13,6 @@
 #define CglRedSplit_H
 
 #include "CglCutGenerator.hpp"
-#include "CglRedSplitData.hpp"
 #include "CglRedSplitParam.hpp"
 
 /** Gomory Reduce-and-Split Cut Generator Class; See method generateCuts().
@@ -61,12 +60,6 @@ public:
   virtual void generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 			    const CglTreeInfo info = CglTreeInfo()) const;
 
-  // Method getting all data from CglRedSplitData
-  void generateCuts(const CglRedSplitData rsData, OsiCuts & cs);
-
-  // Method getting all data from CglRedSplitData (const method).
-  void generateCuts(const CglRedSplitData rsData, OsiCuts & cs) const;
-
   /// Return true if needs optimal basis to do cuts (will return true)
   virtual bool needsOptimalBasis() const;
   //@}
@@ -99,9 +92,6 @@ public:
   /// Print the current simplex tableau  
   void printOptTab(OsiSolverInterface *solver) const;
   
-  // Check that info in rsData match info from rsData.solver; only for debug.
-  void check_data(const CglRedSplitData rsData);
-
   //@}
 
  /**@name Public Methods (soon to be obsolete)*/
@@ -288,6 +278,7 @@ private:
 
   /// Check that the generated cuts do not cut a given optimal solution.
   void check_optsol(const int calling_place,
+		    const double *xlp, const double *slack_val,
 		    const double *ck_row, const double ck_rhs, 
 		    const int cut_number, const int do_flip);
 

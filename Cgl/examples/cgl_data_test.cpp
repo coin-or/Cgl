@@ -59,9 +59,6 @@ int main(int argc, char **argv)
   // Create a cut generator with the given parameters
   CglRedSplit cutGen(rspar);
 
-  // Create an empty object to hold data for the CglRedSplit generator
-  CglRedSplitData rsdat;
-
   char *colType = new char[ncol];
   for(i=0; i<ncol; i++) {
     if(clp->isContinuous(i)) {
@@ -72,43 +69,9 @@ int main(int argc, char **argv)
     }
   }
 
-  // set data that will not change
-  rsdat.setNcol(clp->getNumCols()); 
-  rsdat.setColType(colType);
-
   int round, max_rounds = 10;
   for(round=0; round<max_rounds; round++) {
-
-    // Setup the data; only members used by the RedSplit cut generator
-    // see CglRedSplit::generateCuts(const CglRedSplitData rsData, OsiCuts &cs)
-
-    rsdat.setNrow(clp->getNumRows()); 
-    const double *curr_colLower = clp->getColLower();
-    const double *curr_colUpper = clp->getColUpper();
-    const double *curr_rowLower = clp->getRowLower();
-    const double *curr_rowUpper = clp->getRowUpper();
-    const double *curr_rowRhs = clp->getRightHandSide();
-    const double *xlp = clp->getColSolution();
-    const double *row_act = clp->getRowActivity();
-    const CoinPackedMatrix *byRow = clp->getMatrixByRow();
-
-    rsdat.setSolverPtr(clp);
-    rsdat.setOptimalBasisIsAvailable(clp->optimalBasisIsAvailable());
-    rsdat.setColLower(curr_colLower);
-    rsdat.setColUpper(curr_colUpper);
-    rsdat.setRowLower(curr_rowLower);
-    rsdat.setRowUpper(curr_rowUpper);
-    rsdat.setRowRhs(curr_rowRhs);
-    
-    rsdat.setSeparateThis(xlp);
-    rsdat.setRowActivity(row_act);
-    rsdat.setMatrixByRow(byRow);
-
-    // Use the following for calling the cut generator with the data
-    cutGen.generateCuts(rsdat, cuts);
-
-    // Use the following for standard way to call the cut generator
-     cutGen.generateCuts(*clp, cuts);
+    cutGen.generateCuts(*clp, cuts);
 
     int ncuts = cuts.sizeRowCuts();
 
