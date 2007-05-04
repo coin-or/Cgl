@@ -2052,9 +2052,9 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
     sumAtOne += atOne.getElements()[i];
   }
   unsatRhs=b-sumAtOne;
-  int firstFrac = fracCover.getIndices()[0];
 
 #ifdef PRINT_DEBUG
+  int firstFrac = fracCover.getIndices()[0];
   if (unsatRhs<=0.0&&fabs(xstar[firstFrac])>epsilon2_) {
     printf("At one %d\n",atOne.getNumElements());
     for (i=0; i<atOne.getNumElements(); i++){

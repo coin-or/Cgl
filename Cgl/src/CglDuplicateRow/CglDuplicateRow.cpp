@@ -316,8 +316,8 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     delete [] random;
     delete [] sort;
     delete [] which;
-    int numberCuts = storedCuts_ ? storedCuts_->sizeRowCuts() : 0;
 #ifdef COIN_DEVELOP
+    int numberCuts = storedCuts_ ? storedCuts_->sizeRowCuts() : 0;
     if (nFixed||numberCuts) 
       printf("** %d fixed and %d cuts from domination\n",nFixed,numberCuts);
 #endif

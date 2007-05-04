@@ -578,8 +578,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
         presolvedModel->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
       presolvedModel->initialSolve();
       // maybe we can fix some
-      int numberFixed = reducedCostFix(*presolvedModel);
 #ifdef COIN_DEVELOP
+      int numberFixed = reducedCostFix(*presolvedModel);
       if (numberFixed)
 	printf("%d variables fixed on reduced cost\n",numberFixed);
 #endif
