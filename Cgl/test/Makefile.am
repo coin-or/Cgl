@@ -33,6 +33,7 @@ AM_CPPFLAGS = \
         -I`$(CYGPATH_W) $(srcdir)/../src/CglLandP` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglOddHole` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglProbing` \
+	-I`$(CYGPATH_W) $(srcdir)/../src/CglResidualCapacity` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglSimpleRounding`
 
 # This line is necessary to allow VPATH compilation with MS compilers

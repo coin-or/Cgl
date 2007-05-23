@@ -113,6 +113,9 @@ cd $curr_dir
 #                   Finishing up by writing all the output                   #
 ##############################################################################
 
+# Install files for unitTest
+AC_COIN_VPATH_LINK(test/CglTestData/capPlan1.mps)
+
 # Here list all the files that configure should create (except for the
 # configuration header file)
 AC_CONFIG_FILES([Makefile

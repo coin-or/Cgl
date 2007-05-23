@@ -21787,6 +21787,23 @@ cd $curr_dir
 #                   Finishing up by writing all the output                   #
 ##############################################################################
 
+# Install files for unitTest
+echo "$as_me:$LINENO: checking whether this is a VPATH configuration" >&5
+echo $ECHO_N "checking whether this is a VPATH configuration... $ECHO_C" >&6
+if test `cd $srcdir; pwd` != `pwd`; then
+  coin_vpath_config=yes;
+else
+  coin_vpath_config=no;
+fi
+echo "$as_me:$LINENO: result: $coin_vpath_config" >&5
+echo "${ECHO_T}$coin_vpath_config" >&6
+
+
+if test $coin_vpath_config = yes; then
+  coin_vpath_link_files="$coin_vpath_link_files test/CglTestData/capPlan1.mps"
+fi
+
+
 # Here list all the files that configure should create (except for the
 # configuration header file)
                                                                                                                                                                                                                             ac_config_files="$ac_config_files Makefile examples/Makefile src/Makefile src/CglAllDifferent/Makefile src/CglClique/Makefile src/CglDuplicateRow/Makefile src/CglFlowCover/Makefile src/CglGomory/Makefile src/CglKnapsackCover/Makefile src/CglLandP/Makefile src/CglLiftAndProject/Makefile src/CglMixedIntegerRounding/Makefile src/CglMixedIntegerRounding2/Makefile src/CglOddHole/Makefile src/CglPreProcess/Makefile src/CglProbing/Makefile src/CglRedSplit/Makefile src/CglResidualCapacity/Makefile src/CglSimpleRounding/Makefile src/CglTwomir/Makefile test/Makefile cgl_addlibs.txt"
