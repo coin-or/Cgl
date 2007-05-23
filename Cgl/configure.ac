@@ -132,6 +132,7 @@ AC_CONFIG_FILES([Makefile
 		 src/CglPreProcess/Makefile
 		 src/CglProbing/Makefile
 		 src/CglRedSplit/Makefile
+		 src/CglResidualCapacity/Makefile
 		 src/CglSimpleRounding/Makefile
 		 src/CglTwomir/Makefile
                  test/Makefile
