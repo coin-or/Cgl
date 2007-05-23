@@ -16,6 +16,7 @@ Cgl/src/CglLandP/CglLandPValidator.cpp -text
 Cgl/src/CglLandP/CglLandPValidator.hpp -text
 Cgl/src/CglLandP/Makefile.am -text
 Cgl/src/CglLandP/Makefile.in -text
+Cgl/test/CglTestData/capPlan1.mps -text
 /LICENSE -text
 /README -text
 /config.guess -text
