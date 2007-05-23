@@ -60,9 +60,10 @@ CglResidualCapacityUnitTest(const OsiSolverInterface *baseSiP,
     CglResidualCapacity gct;
     OsiSolverInterface  *siP = baseSiP->clone();
     std::string fn = mpsDir+"capPlan1";
-    FILE *in_f = fopen(fn.c_str(), "r");
+    std::string fn2 = mpsDir+"capPlan1.mps";
+    FILE *in_f = fopen(fn2.c_str(), "r");
     if(in_f == NULL) {
-      printf("Can not open file %s.mps;\nSkip test of CglResidualCapacity::generateCuts()\n", fn.c_str());
+      printf("Can not open file %s;\nSkip test of CglResidualCapacity::generateCuts()\n", fn2.c_str());
     }
     else {
       siP->readMps(fn.c_str(),"mps");

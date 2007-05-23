@@ -41,7 +41,8 @@
 void testingMessage( const char * const msg );
 
 // Command line parameter is directory containing data files.
-// If not specified, then "../../Data/Sample/" is used.
+// If not specified, then "../../Data/Sample/" and
+// CglTestData/ are used
 
 int main (int argc, const char *argv[])
 {
@@ -54,7 +55,7 @@ int main (int argc, const char *argv[])
   }
   else {
     mpsDir ="../../Data/Sample/";
-    testDir = "./CglTestData/";
+    testDir = "/home/prov/coin-Cgl/trunk/Cgl/test/CglTestData/";
   }
 
 #ifdef COIN_HAS_OSL
