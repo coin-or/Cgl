@@ -60,27 +60,33 @@ CglResidualCapacityUnitTest(const OsiSolverInterface *baseSiP,
     CglResidualCapacity gct;
     OsiSolverInterface  *siP = baseSiP->clone();
     std::string fn = mpsDir+"capPlan1";
-    siP->readMps(fn.c_str(),"mps");
-
-    siP->initialSolve();
-    double lpRelax = siP->getObjValue();
-
-    OsiCuts cs;
-    gct.generateCuts(*siP, cs);
-    int nRowCuts = cs.sizeRowCuts();
-    std::cout<<"There are "<<nRowCuts<<" Residual Capacity cuts"<<std::endl;
-    assert(cs.sizeRowCuts() > 0);
-    OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cs);
-
-    siP->resolve();
-
-    double lpRelaxAfter= siP->getObjValue(); 
-
+    FILE *in_f = fopen(fn.c_str(), "r");
+    if(in_f == NULL) {
+      printf("Can not open file %s.mps;\nSkip test of CglResidualCapacity::generateCuts()\n", fn.c_str());
+    }
+    else {
+      siP->readMps(fn.c_str(),"mps");
+ 
+     siP->initialSolve();
+     double lpRelax = siP->getObjValue();
+ 
+     OsiCuts cs;
+     gct.generateCuts(*siP, cs);
+     int nRowCuts = cs.sizeRowCuts();
+     std::cout<<"There are "<<nRowCuts<<" Residual Capacity cuts"<<std::endl;
+     assert(cs.sizeRowCuts() > 0);
+     OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cs);
+     
+     siP->resolve();
+     
+     double lpRelaxAfter= siP->getObjValue(); 
+     
 #ifdef CGL_DEBUG
-    printf("Initial LP value: %f\n", lpRelax);
-    printf("LP value with cuts: %f\n", lpRelaxAfter);
+     printf("Initial LP value: %f\n", lpRelax);
+     printf("LP value with cuts: %f\n", lpRelaxAfter);
 #endif
-    assert( lpRelax < lpRelaxAfter );
+     assert( lpRelax < lpRelaxAfter );
+    }
     delete siP;
   }
 
