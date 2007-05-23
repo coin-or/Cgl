@@ -55,7 +55,7 @@ int main (int argc, const char *argv[])
   }
   else {
     mpsDir ="../../Data/Sample/";
-    testDir = "/home/prov/coin-Cgl/trunk/Cgl/test/CglTestData/";
+    testDir = "CglTestData/";
   }
 
 #ifdef COIN_HAS_OSL
