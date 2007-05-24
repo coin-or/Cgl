@@ -56,7 +56,8 @@ CONFIG_HEADER = $(top_builddir)/inc/config_cgl.h
 CONFIG_CLEAN_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libCglMixedIntegerRounding_la_LIBADD =
-am_libCglMixedIntegerRounding_la_OBJECTS = CglMixedIntegerRounding.lo
+am_libCglMixedIntegerRounding_la_OBJECTS = CglMixedIntegerRounding.lo \
+	CglMixedIntegerRoundingTest.lo
 libCglMixedIntegerRounding_la_OBJECTS =  \
 	$(am_libCglMixedIntegerRounding_la_OBJECTS)
 depcomp = $(SHELL) $(top_srcdir)/../depcomp
@@ -296,7 +297,8 @@ noinst_LTLIBRARIES = libCglMixedIntegerRounding.la
 
 # List all source files for this library, including headers
 libCglMixedIntegerRounding_la_SOURCES = \
-	CglMixedIntegerRounding.cpp  CglMixedIntegerRounding.hpp
+	CglMixedIntegerRounding.cpp  CglMixedIntegerRounding.hpp \
+	CglMixedIntegerRoundingTest.cpp
 
 
 # This is for libtool (on Windows)
@@ -378,6 +380,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglMixedIntegerRounding.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglMixedIntegerRoundingTest.Plo@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \

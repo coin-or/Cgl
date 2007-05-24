@@ -39,14 +39,26 @@ CglMixedIntegerRounding::generateCuts(const OsiSolverInterface& si,
   bool preReso = false;
   si.getHintParam(OsiDoPresolveInInitial, preInit);
   si.getHintParam(OsiDoPresolveInResolve, preReso);
-  if (preInit == false &&  preReso == false) { // Do once
+  if (preInit == false &&  preReso == false && doPreproc_ == -1 ) { // Do once
     if (doneInitPre_ == false) {   
       mixIntRoundPreprocess(si);
       doneInitPre_ = true;
     }
   }
-  else              // Do everytime       
-    mixIntRoundPreprocess(si);
+  else {
+    if(doPreproc_ == 1){ // Do everytime       
+      mixIntRoundPreprocess(si);
+      doneInitPre_ = true;
+    } 
+    else {
+      if(doPreproc_ == 0) {
+	if (doneInitPre_ == false) {   
+	  mixIntRoundPreprocess(si);
+	  doneInitPre_ = true;
+	}  
+      }
+    }
+  }
 
   const double* xlp        = si.getColSolution();  // LP solution
   const double* colUpperBound = si.getColUpper();  // vector of upper bounds
@@ -87,7 +99,7 @@ CglMixedIntegerRounding::CglMixedIntegerRounding ()
   :
   CglCutGenerator()
 { 
-  gutsOfConstruct(1,true,1);
+  gutsOfConstruct(1, true, 1, -1);
 }
 
 
@@ -96,11 +108,12 @@ CglMixedIntegerRounding::CglMixedIntegerRounding ()
 //-------------------------------------------------------------------
 CglMixedIntegerRounding::CglMixedIntegerRounding (const int maxaggr,
 						  const bool multiply,
-						  const int criterion )
+						  const int criterion,
+						  const int preproc)
   :
   CglCutGenerator()
 { 
-  gutsOfConstruct(maxaggr,multiply,criterion);
+  gutsOfConstruct(maxaggr, multiply, criterion, preproc);
 }
 
 
@@ -154,7 +167,8 @@ CglMixedIntegerRounding::~CglMixedIntegerRounding ()
 void
 CglMixedIntegerRounding::gutsOfConstruct (const int maxaggr,
 					  const bool multiply,
-					  const int criterion )
+					  const int criterion,
+					  const int preproc)
 {
   if (maxaggr > 0) {
     MAXAGGR_ = maxaggr;
@@ -169,6 +183,13 @@ CglMixedIntegerRounding::gutsOfConstruct (const int maxaggr,
   }
   else {
     throw CoinError("Unallowable value. criterion must be 1, 2 or 3",
+                      "gutsOfConstruct","CglMixedIntegerRounding");
+  }
+  if ((preproc >= -1) && (preproc <= 2)) {
+    doPreproc_ = preproc;
+  }
+  else {
+    throw CoinError("Unallowable value. preproc must be -1, 0 or 1",
                       "gutsOfConstruct","CglMixedIntegerRounding");
   }
   EPSILON_ = 1.0e-6;
@@ -223,6 +244,7 @@ CglMixedIntegerRounding::gutsOfCopy (const CglMixedIntegerRounding& rhs)
   EPSILON_ = rhs.EPSILON_;
   UNDEFINED_ = rhs.UNDEFINED_;
   TOLERANCE_ = rhs.TOLERANCE_;
+  doPreproc_ = rhs.doPreproc_;
   numRows_ = rhs.numRows_;
   numCols_ = rhs.numCols_;
   doneInitPre_ = rhs.doneInitPre_;
@@ -1667,9 +1689,26 @@ CglMixedIntegerRounding::generateCpp( FILE * fp)
     fprintf(fp,"4  mixedIntegerRounding.setMULTIPLY_(%d);\n",MULTIPLY_);
   if (CRITERION_!=other.CRITERION_)
   fprintf(fp,"3  mixedIntegerRounding.setCRITERION_(%d);\n",CRITERION_);
+  if (doPreproc_!=other.doPreproc_)
+    fprintf(fp,"3  mixedIntegerRounding.setDoPreproc_(%d);\n", doPreproc_);
   if (getAggressiveness()!=other.getAggressiveness())
     fprintf(fp,"3  mixedIntegerRounding.setAggressiveness(%d);\n",getAggressiveness());
   else
     fprintf(fp,"4  mixedIntegerRounding.setAggressiveness(%d);\n",getAggressiveness());
   return "mixedIntegerRounding";
+}
+void CglMixedIntegerRounding::setDoPreproc(int value)
+{
+  if (value != -1 && value != 0 && value != 1) {
+    throw CoinError("setDoPrepoc", "invalid value",
+		    "CglMixedIntegerRounding2");
+  }
+  else {
+    doPreproc_ = value;
+  }  
+}
+
+bool CglMixedIntegerRounding::getDoPreproc() const
+{
+  return doPreproc_;
 }
