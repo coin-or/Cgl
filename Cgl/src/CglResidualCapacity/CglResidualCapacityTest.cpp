@@ -66,6 +66,7 @@ CglResidualCapacityUnitTest(const OsiSolverInterface *baseSiP,
       printf("Can not open file %s;\nSkip test of CglResidualCapacity::generateCuts()\n", fn2.c_str());
     }
     else {
+      fclose(in_f);
       siP->readMps(fn.c_str(),"mps");
  
      siP->initialSolve();
