@@ -33,6 +33,8 @@ AM_CPPFLAGS = \
         -I`$(CYGPATH_W) $(srcdir)/../src/CglLandP` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglOddHole` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglProbing` \
+	-I`$(CYGPATH_W) $(srcdir)/../src/CglMixedIntegerRounding` \
+	-I`$(CYGPATH_W) $(srcdir)/../src/CglMixedIntegerRounding2` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglResidualCapacity` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglSimpleRounding`
 

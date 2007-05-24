@@ -37,6 +37,8 @@
 #include "CglProbing.hpp"
 #include "CglGomory.hpp"
 #include "CglLandP.hpp"
+#include "CglMixedIntegerRounding.hpp"
+#include "CglMixedIntegerRounding2.hpp"
 #include "CglResidualCapacity.hpp"
 //#include "CglFlowCover.hpp"
 
@@ -88,7 +90,17 @@ int main (int argc, const char *argv[])
     CglProbingUnitTest(&oslSi,mpsDir);
   }  
   {
-    OsiClpSolverInterface oslSi;
+    OsiOslSolverInterface oslSi;
+    testingMessage( "Testing CglMixedIntegerRounding with OsiOslSolverInterface\n" );
+    CglMixedIntegerRoundingUnitTest(&oslSi, testDir);
+  }  
+  {
+    OsiOslSolverInterface oslSi;
+    testingMessage( "Testing CglMixedIntegerRounding2 with OsiOslSolverInterface\n" );
+    CglMixedIntegerRounding2UnitTest(&oslSi, testDir);
+  }  
+  {
+    OsiOslSolverInterface oslSi;
     testingMessage( "Testing CglResidualCapacity with OsiOslSolverInterface\n" );
     CglResidualCapacityUnitTest(&oslSi, testDir);
   }  
@@ -105,6 +117,7 @@ int main (int argc, const char *argv[])
     testingMessage( "Testing CglSimpleRounding with OsiCpxSolverInterface\n" );
     CglSimpleRoundingUnitTest(&cpxSi,mpsDir);
   } 
+#ifdef AA
   {
     OsiCpxSolverInterface cpxSi;
     // Test does not work with Cplex
@@ -122,7 +135,17 @@ int main (int argc, const char *argv[])
     CglProbingUnitTest(&cpxSi,mpsDir);
   }  
   {
-    OsiClpSolverInterface cpxSi;
+    OsiCpxSolverInterface cpxSi;
+    testingMessage( "Testing CglMixedIntegerRounding with OsiCpxSolverInterface\n" );
+    CglMixedIntegerRoundingUnitTest(&cpxSi, testDir);
+  }  
+  {
+    OsiCpxSolverInterface cpxSi;
+    testingMessage( "Testing CglMixedIntegerRounding2 with OsiCpxSolverInterface\n" );
+    CglMixedIntegerRounding2UnitTest(&cpxSi, testDir);
+  }  
+  {
+    OsiCpxSolverInterface cpxSi;
     testingMessage( "Testing CglResidualCapacity with OsiCpxSolverInterface\n" );
     CglResidualCapacityUnitTest(&cpxSi, testDir);
   }  
@@ -133,7 +156,11 @@ int main (int argc, const char *argv[])
     //    CglFlowCoverUnitTest(&cpxSi,mpsDir);
   }
 
+#endif /* AA */
 #endif
+
+#ifdef AA
+
 #ifdef COIN_HAS_XPR
   {
     OsiXprSolverInterface xprSi;
@@ -141,7 +168,7 @@ int main (int argc, const char *argv[])
     CglSimpleRoundingUnitTest(&xprSi,mpsDir);
   } 
   {
-    OsiCpxSolverInterface xprSi;
+    OsiXprSolverInterface xprSi;
     //testingMessage( "Testing CglKnapsackCover with OsiXprSolverInterface\n" );
     //CglKnapsackCoverUnitTest(&xprSi,mpsDir);
   }  
@@ -157,7 +184,17 @@ int main (int argc, const char *argv[])
     //CglProbingUnitTest(&xprSi,mpsDir);
   }  
   {
-    OsiClpSolverInterface xprSi;
+    OsiXprSolverInterface xprSi;
+    testingMessage( "Testing CglMixedIntegerRounding with OsiXprSolverInterface\n" );
+    CglMixedIntegerRoundingUnitTest(&xprSi, testDir);
+  }  
+  {
+    OsiXprSolverInterface xprSi;
+    testingMessage( "Testing CglMixedIntegerRounding2 with OsiXprSolverInterface\n" );
+    CglMixedIntegerRounding2UnitTest(&xprSi, testDir);
+  }  
+  {
+    OsiXprSolverInterface xprSi;
     testingMessage( "Testing CglResidualCapacity with OsiXprSolverInterface\n" );
     CglResidualCapacityUnitTest(&xprSi, testDir);
   }  
@@ -201,6 +238,16 @@ int main (int argc, const char *argv[])
   }  
   {
     OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglMixedIntegerRounding with OsiClpSolverInterface\n" );
+    CglMixedIntegerRoundingUnitTest(&clpSi, testDir);
+  }  
+  {
+    OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglMixedIntegerRounding2 with OsiClpSolverInterface\n" );
+    CglMixedIntegerRounding2UnitTest(&clpSi, testDir);
+  }  
+  {
+    OsiClpSolverInterface clpSi;
     testingMessage( "Testing CglResidualCapacity with OsiClpSolverInterface\n" );
     CglResidualCapacityUnitTest(&clpSi, testDir);
   }  
@@ -238,7 +285,17 @@ int main (int argc, const char *argv[])
     CglProbingUnitTest(&dylpSi,mpsDir);
   }  
   {
-    OsiClpSolverInterface dylpSi;
+    OsiDylpSolverInterface dylpSi;
+    testingMessage( "Testing CglMixedIntegerRounding with OsiDylpSolverInterface\n" );
+    CglMixedIntegerRoundingUnitTest(&dylpSi, testDir);
+  }  
+  {
+    OsiDylpSolverInterface dylpSi;
+    testingMessage( "Testing CglMixedIntegerRounding2 with OsiDylpSolverInterface\n" );
+    CglMixedIntegerRounding2UnitTest(&dylpSi, testDir);
+  }  
+  {
+    OsiDylpSolverInterface dylpSi;
     testingMessage( "Testing CglResidualCapacity with OsiDylpSolverInterface\n" );
     CglResidualCapacityUnitTest(&dylpSi, testDir);
   }  
@@ -249,6 +306,9 @@ int main (int argc, const char *argv[])
   }
 
 #endif
+
+#endif /* AA */
+
   testingMessage( "All tests completed successfully\n" );
   return 0;
 }
