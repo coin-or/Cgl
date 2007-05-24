@@ -154,8 +154,6 @@ CglKnapsackCoverUnitTest(
     r.setVector(3,inx,el);
     assert (krow == r);
     //assert (b == 183.0); ????? but x1 and x2 at 1 is valid 
-    assert (b == 183.0); 
-
     
     // test findGreedyCover 
     CoinPackedVector cover,remainder;

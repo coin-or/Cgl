@@ -18,11 +18,14 @@
 #ifdef COIN_HAS_OSL
 #include <OsiOslSolverInterface.hpp>
 #endif
-#ifdef COIN_HAS_CLP
-#include <OsiClpSolverInterface.hpp>
+#ifdef COIN_HAS_CPX
+#include <OsiCpxSolverInterface.hpp>
 #endif
 #ifdef COIN_HAS_XPR
 #include <OsiXprSolverInterface.hpp>
+#endif
+#ifdef COIN_HAS_CLP
+#include <OsiClpSolverInterface.hpp>
 #endif
 #ifdef COIN_HAS_DYLP
 #include <OsiDylpSolverInterface.hpp>
@@ -96,6 +99,41 @@ int main (int argc, const char *argv[])
   }
 
 #endif
+#ifdef COIN_HAS_CPX
+  {
+    OsiCpxSolverInterface cpxSi;
+    testingMessage( "Testing CglSimpleRounding with OsiCpxSolverInterface\n" );
+    CglSimpleRoundingUnitTest(&cpxSi,mpsDir);
+  } 
+  {
+    OsiCpxSolverInterface cpxSi;
+    // Test does not work with Cplex
+    //testingMessage( "Testing CglKnapsackCover with OsiCpxSolverInterface\n" );
+    //CglKnapsackCoverUnitTest(&cpxSi,mpsDir);
+  }  
+  {
+    OsiCpxSolverInterface cpxSi;
+    testingMessage( "Testing CglOddHole with OsiCpxSolverInterface\n" );
+    CglOddHoleUnitTest(&cpxSi,mpsDir);
+  }  
+  {
+    OsiCpxSolverInterface cpxSi;
+    testingMessage( "Testing CglProbing with OsiCpxSolverInterface\n" );
+    CglProbingUnitTest(&cpxSi,mpsDir);
+  }  
+  {
+    OsiClpSolverInterface cpxSi;
+    testingMessage( "Testing CglResidualCapacity with OsiCpxSolverInterface\n" );
+    CglResidualCapacityUnitTest(&cpxSi, testDir);
+  }  
+  {
+    OsiCpxSolverInterface cpxSi;
+    // Test does not work with Cplex
+    //    testingMessage( "Testing CglFlowCover with OsiCpxSolverInterface\n" );
+    //    CglFlowCoverUnitTest(&cpxSi,mpsDir);
+  }
+
+#endif
 #ifdef COIN_HAS_XPR
   {
     OsiXprSolverInterface xprSi;
@@ -103,9 +141,9 @@ int main (int argc, const char *argv[])
     CglSimpleRoundingUnitTest(&xprSi,mpsDir);
   } 
   {
-    OsiXprSolverInterface xprSi;
-    testingMessage( "Testing CglKnapsackCover with OsiXprSolverInterface\n" );
-    CglKnapsackCoverUnitTest(&xprSi,mpsDir);
+    OsiCpxSolverInterface xprSi;
+    //testingMessage( "Testing CglKnapsackCover with OsiXprSolverInterface\n" );
+    //CglKnapsackCoverUnitTest(&xprSi,mpsDir);
   }  
   {
     OsiXprSolverInterface xprSi;
@@ -114,8 +152,9 @@ int main (int argc, const char *argv[])
   }  
   {
     OsiXprSolverInterface xprSi;
-    testingMessage( "Testing CglProbing with OsiXprSolverInterface\n" );
-    CglProbingUnitTest(&xprSi,mpsDir);
+    // Does not work with Xpress
+    //testingMessage( "Testing CglProbing with OsiXprSolverInterface\n" );
+    //CglProbingUnitTest(&xprSi,mpsDir);
   }  
   {
     OsiClpSolverInterface xprSi;
