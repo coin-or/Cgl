@@ -191,6 +191,7 @@ CglLandPUnitTest(
       siP->resolve();
       double lpRelaxAfter=siP->getObjValue(); 
     }
+    delete siP;
   }
   }
   
