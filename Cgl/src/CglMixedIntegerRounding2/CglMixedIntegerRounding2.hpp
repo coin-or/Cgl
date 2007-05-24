@@ -87,7 +87,7 @@ typedef CglMixIntRoundVUB2 CglMixIntRoundVLB2;
 class CglMixedIntegerRounding2 : public CglCutGenerator {
 
   friend void CglMixedIntegerRounding2UnitTest(const OsiSolverInterface * siP,
-				   const std::string mpdDir );
+					       const std::string mpdDir);
 
 
 private:
@@ -138,9 +138,10 @@ public:
   CglMixedIntegerRounding2 ();
 
   /// Alternate Constructor 
-  CglMixedIntegerRounding2 ( const int maxaggr,
+  CglMixedIntegerRounding2 (const int maxaggr,
 			    const bool multiply,
-			    const int criterion );
+			    const int criterion,
+			    const int preproc = -1);
 
   /// Copy constructor 
   CglMixedIntegerRounding2 (
@@ -199,6 +200,11 @@ public:
 
   /// Get CRITERION_
   inline int getCRITERION_ () const { return CRITERION_; };
+
+  /// Set doPreproc
+  void setDoPreproc(int value);
+  /// Get doPreproc
+  bool getDoPreproc() const;
   //@}
 
 private:
@@ -208,7 +214,8 @@ private:
   // Construct
   void gutsOfConstruct ( const int maxaggr,
 			 const bool multiply,
-			 const int criterion );
+			 const int criterion,
+			 const int preproc);
 
   // Delete
   void gutsOfDelete();
@@ -363,6 +370,14 @@ private:
   int UNDEFINED_;
   // If violation of a cut is greater that this number, the cut is accepted
   double TOLERANCE_;
+  /** Controls the preprocessing of the matrix to identify rows suitable for
+      cut generation.<UL>
+      <LI> -1: preprocess according to solver settings;
+      <LI> 0: Do preprocessing only if it has not yet been done;
+      <LI> 1: Do preprocessing.
+      </UL>
+      Default value: -1 **/
+  int doPreproc_;
   // The number of rows of the problem.
   mutable int numRows_;
   // The number columns of the problem.
@@ -411,6 +426,6 @@ private:
 // library should be compiled with optimization on, but this method should be
 // compiled with debugging.
 void CglMixedIntegerRounding2UnitTest(const OsiSolverInterface * siP,
-			  const std::string mpdDir );
+				      const std::string mpdDir);
   
 #endif

@@ -18,7 +18,8 @@ noinst_LTLIBRARIES = libCglMixedIntegerRounding2.la
 
 # List all source files for this library, including headers
 libCglMixedIntegerRounding2_la_SOURCES = \
-	CglMixedIntegerRounding2.cpp  CglMixedIntegerRounding2.hpp
+	CglMixedIntegerRounding2.cpp  CglMixedIntegerRounding2.hpp \
+	CglMixedIntegerRounding2Test.cpp
 
 # This is for libtool (on Windows)
 libCglMixedIntegerRounding2_la_LDFLAGS = $(LT_LDFLAGS)
