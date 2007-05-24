@@ -117,7 +117,6 @@ int main (int argc, const char *argv[])
     testingMessage( "Testing CglSimpleRounding with OsiCpxSolverInterface\n" );
     CglSimpleRoundingUnitTest(&cpxSi,mpsDir);
   } 
-#ifdef AA
   {
     OsiCpxSolverInterface cpxSi;
     // Test does not work with Cplex
@@ -156,10 +155,7 @@ int main (int argc, const char *argv[])
     //    CglFlowCoverUnitTest(&cpxSi,mpsDir);
   }
 
-#endif /* AA */
 #endif
-
-#ifdef AA
 
 #ifdef COIN_HAS_XPR
   {
@@ -306,8 +302,6 @@ int main (int argc, const char *argv[])
   }
 
 #endif
-
-#endif /* AA */
 
   testingMessage( "All tests completed successfully\n" );
   return 0;
