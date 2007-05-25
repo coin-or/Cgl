@@ -234,7 +234,7 @@ private:
     library should be compiled with optimization on, but this method should be
     compiled with debugging. */
 void CglResidualCapacityUnitTest(const OsiSolverInterface * siP,
-				 const std::string mpdDir );
+				 const std::string mpdDir);
 
   
 #endif

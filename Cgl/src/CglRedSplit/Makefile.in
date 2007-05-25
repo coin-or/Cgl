@@ -56,7 +56,8 @@ CONFIG_HEADER = $(top_builddir)/inc/config_cgl.h
 CONFIG_CLEAN_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libCglRedSplit_la_LIBADD =
-am_libCglRedSplit_la_OBJECTS = CglRedSplit.lo CglRedSplitParam.lo
+am_libCglRedSplit_la_OBJECTS = CglRedSplit.lo CglRedSplitTest.lo \
+	CglRedSplitParam.lo
 libCglRedSplit_la_OBJECTS = $(am_libCglRedSplit_la_OBJECTS)
 depcomp = $(SHELL) $(top_srcdir)/../depcomp
 am__depfiles_maybe = depfiles
@@ -296,6 +297,7 @@ noinst_LTLIBRARIES = libCglRedSplit.la
 # List all source files for this library, including headers
 libCglRedSplit_la_SOURCES = \
 	CglRedSplit.cpp  CglRedSplit.hpp \
+	CglRedSplitTest.cpp \
 	CglRedSplitParam.cpp  CglRedSplitParam.hpp
 
 
@@ -380,6 +382,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglRedSplit.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglRedSplitParam.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglRedSplitTest.Plo@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \

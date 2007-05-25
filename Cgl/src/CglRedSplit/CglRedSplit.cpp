@@ -994,6 +994,12 @@ void CglRedSplit::check_optsol(const int calling_place,
       }
     }
 
+    double ck_lhs = rs_dotProd(ck_row, given_optsol, ncol);
+    ck_lhs += rs_dotProd(&(ck_row[ncol]), ck_slack, nrow);
+    
+    double ck_rhs = adjust_rhs + rs_dotProd(ck_row, xlp, ncol);
+    ck_rhs += rs_dotProd(&(ck_row[ncol]), slack_val, nrow);
+    
 #ifdef RS_TRACEALL
     rs_printvecDBL("ck_row", ck_row, ncol);
     rs_printvecDBL("given_optsol", given_optsol, ncol);
@@ -1002,12 +1008,6 @@ void CglRedSplit::check_optsol(const int calling_place,
     printf("ck_rhs: %12.8f\n", ck_rhs); 
 #endif
 
-    double ck_lhs = rs_dotProd(ck_row, given_optsol, ncol);
-    ck_lhs += rs_dotProd(&(ck_row[ncol]), ck_slack, nrow);
-    
-    double ck_rhs = adjust_rhs + rs_dotProd(ck_row, xlp, ncol);
-    ck_rhs += rs_dotProd(&(ck_row[ncol]), slack_val, nrow);
-    
     if((ck_lhs < ck_rhs - param.getEPS()) || (ck_lhs > ck_rhs + param.getEPS())) {
       printf("### ERROR: CglRedSplit::check_optsol(): Cut %d cuts given_optsol\n", 
 	     irow);
@@ -1269,9 +1269,6 @@ void CglRedSplit::generateCuts(OsiCuts &cs)
             // It is assumed that bounds for integer variables have been
             // tightend so that non basic integer structural variables 
             // have integer values
-
-      card_intNonBasicVar = 0;
-      card_nonBasicAtUpper = 0;
 
       nonBasicAtUpper[card_nonBasicAtUpper] = i;
       card_nonBasicAtUpper++;

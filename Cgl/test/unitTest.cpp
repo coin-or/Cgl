@@ -40,6 +40,7 @@
 #include "CglMixedIntegerRounding.hpp"
 #include "CglMixedIntegerRounding2.hpp"
 #include "CglResidualCapacity.hpp"
+#include "CglRedSplit.hpp"
 //#include "CglFlowCover.hpp"
 
 // Function Prototypes. Function definitions is in this file.
@@ -150,6 +151,11 @@ int main (int argc, const char *argv[])
   }  
   {
     OsiCpxSolverInterface cpxSi;
+    testingMessage( "Testing CglRedSplit with OsiCpxSolverInterface\n" );
+    CglRedSplitUnitTest(&cpxSi, mpsDir);
+  }  
+  {
+    OsiCpxSolverInterface cpxSi;
     // Test does not work with Cplex
     //    testingMessage( "Testing CglFlowCover with OsiCpxSolverInterface\n" );
     //    CglFlowCoverUnitTest(&cpxSi,mpsDir);
@@ -246,6 +252,11 @@ int main (int argc, const char *argv[])
     OsiClpSolverInterface clpSi;
     testingMessage( "Testing CglResidualCapacity with OsiClpSolverInterface\n" );
     CglResidualCapacityUnitTest(&clpSi, testDir);
+  }  
+  {
+    OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglRedSplit with OsiClpSolverInterface\n" );
+    CglRedSplitUnitTest(&clpSi, mpsDir);
   }  
   {
     OsiClpSolverInterface clpSi;

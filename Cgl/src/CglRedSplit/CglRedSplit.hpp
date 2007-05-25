@@ -21,7 +21,9 @@
     Gomory Cuts", Management Science 51 (2005). */
 
 class CglRedSplit : public CglCutGenerator {
- 
+
+  friend void CglRedSplitUnitTest(const OsiSolverInterface * siP,
+				  const std::string mpdDir);
 public:
   /**@name generateCuts */
   //@{
@@ -433,5 +435,15 @@ private:
 
   //@}
 };
-  
+
+//#############################################################################
+/** A function that tests the methods in the CglRedSplit class. The
+    only reason for it not to be a member method is that this way it doesn't
+    have to be compiled into the library. And that's a gain, because the
+    library should be compiled with optimization on, but this method should be
+    compiled with debugging. */
+void CglRedSplitUnitTest(const OsiSolverInterface * siP,
+			 const std::string mpdDir );
+
+
 #endif

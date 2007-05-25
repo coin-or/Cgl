@@ -19,6 +19,7 @@ noinst_LTLIBRARIES = libCglRedSplit.la
 # List all source files for this library, including headers
 libCglRedSplit_la_SOURCES = \
 	CglRedSplit.cpp  CglRedSplit.hpp \
+	CglRedSplitTest.cpp \
 	CglRedSplitParam.cpp  CglRedSplitParam.hpp
 
 # This is for libtool (on Windows)
