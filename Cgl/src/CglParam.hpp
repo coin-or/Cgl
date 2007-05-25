@@ -45,8 +45,8 @@ public:
   /**@name Constructors and destructors */
   //@{
   /// Default constructor 
-  CglParam(const double inf = DBL_MAX, const double eps = 0, 
-	   const double eps_rr = 0, const int max_s = INT_MAX);
+  CglParam(const double inf = DBL_MAX, const double eps = 1e-6, 
+	   const double eps_c = 1e-5, const int max_s = INT_MAX);
  
   /// Copy constructor 
   CglParam(const CglParam&);
@@ -71,11 +71,11 @@ protected:
   // Value for infinity. Default: DBL_MAX. 
   double INFINIT;
 
-  // EPSILON for double comparisons. Default: 0.
+  // EPSILON for double comparisons. Default: 1e-6.
   double EPS;
 
   // Returned cuts do not have coefficients with absolute value smaller 
-  // than EPS_COEFF. Default: 0.
+  // than EPS_COEFF. Default: 1e-5.
   double EPS_COEFF;
 
   /** Maximum number of non zero coefficients in a generated cut;

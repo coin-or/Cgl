@@ -78,6 +78,7 @@ CglRedSplitUnitTest(const OsiSolverInterface *baseSiP,
       
       OsiCuts cs;
       gct.getParam().setMAX_SUPPORT(34);
+      gct.getParam().setUSE_CG2(1);
       //      gct.getParam().setUSE_CG2(1);
       gct.generateCuts(*siP, cs);
       int nRowCuts = cs.sizeRowCuts();
