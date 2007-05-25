@@ -1,0 +1,100 @@
+#if defined(_MSC_VER)
+// Turn off compiler warning about long names
+#  pragma warning(disable:4786)
+#endif
+
+#include <cstdio>
+
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
+#include <cassert>
+#include "CglRedSplit.hpp"
+
+
+void
+CglRedSplitUnitTest(const OsiSolverInterface *baseSiP,
+		    const std::string mpsDir)
+{
+  // Test default constructor
+  {
+    CglRedSplit aGenerator;
+  }
+  
+  // Test copy & assignment
+  {
+    CglRedSplit rhs;
+    {
+      CglRedSplit bGenerator;
+      CglRedSplit cGenerator(bGenerator);
+      rhs=bGenerator;
+    }
+  }
+
+  // Test get/set methods
+  {
+    CglRedSplit getset;
+    CglRedSplitParam gsparam = getset.getParam();
+    
+    double geps = 10 * gsparam.getEPS();
+    gsparam.setEPS(geps);
+    double geps2 = gsparam.getEPS();
+    assert(geps == geps2);
+
+    double gepse = 10 * gsparam.getEPS_ELIM();
+    gsparam.setEPS_ELIM(gepse);
+    double gepse2 = gsparam.getEPS_ELIM();
+    assert(gepse == gepse2);
+
+    double gmv = 10 * gsparam.getMINVIOL();
+    gsparam.setMINVIOL(gmv);
+    double gmv2 = gsparam.getMINVIOL();
+    assert(gmv == gmv2);
+
+    int gucg = gsparam.getUSE_CG2();
+    gucg = 1 - gucg;
+    gsparam.setUSE_CG2(gucg);
+    int gucg2 = gsparam.getUSE_CG2();
+    assert(gucg == gucg2);
+  }
+
+  // Test generateCuts
+  {
+    CglRedSplit gct;
+    OsiSolverInterface  *siP = baseSiP->clone();
+    std::string fn = mpsDir+"p0033";
+    std::string fn2 = mpsDir+"p0033.mps";
+    FILE *in_f = fopen(fn2.c_str(), "r");
+    if(in_f == NULL) {
+      printf("Can not open file %s;\nSkip test of CglRedSplit::generateCuts()\n", fn2.c_str());
+    }
+    else {
+      fclose(in_f);
+      siP->readMps(fn.c_str(),"mps");
+ 
+      siP->initialSolve();
+      double lpRelax = siP->getObjValue();
+      
+      OsiCuts cs;
+      gct.getParam().setMAX_SUPPORT(34);
+      //      gct.getParam().setUSE_CG2(1);
+      gct.generateCuts(*siP, cs);
+      int nRowCuts = cs.sizeRowCuts();
+      std::cout<<"There are "<<nRowCuts<<" Reduce-and-Split cuts"<<std::endl;
+      assert(cs.sizeRowCuts() > 0);
+      OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cs);
+      
+      siP->resolve();
+      
+      double lpRelaxAfter= siP->getObjValue(); 
+      
+      printf("Initial LP value: %f\n", lpRelax);
+      printf("LP value with cuts: %f\n", lpRelaxAfter);
+      assert( lpRelax < lpRelaxAfter );
+    }
+    delete siP;
+  }
+
+}
+
