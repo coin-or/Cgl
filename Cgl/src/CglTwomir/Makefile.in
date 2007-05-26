@@ -56,7 +56,7 @@ CONFIG_HEADER = $(top_builddir)/inc/config_cgl.h
 CONFIG_CLEAN_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libCglTwomir_la_LIBADD =
-am_libCglTwomir_la_OBJECTS = CglTwomir.lo
+am_libCglTwomir_la_OBJECTS = CglTwomir.lo CglTwomirTest.lo
 libCglTwomir_la_OBJECTS = $(am_libCglTwomir_la_OBJECTS)
 depcomp = $(SHELL) $(top_srcdir)/../depcomp
 am__depfiles_maybe = depfiles
@@ -295,7 +295,8 @@ noinst_LTLIBRARIES = libCglTwomir.la
 
 # List all source files for this library, including headers
 libCglTwomir_la_SOURCES = \
-	CglTwomir.cpp  CglTwomir.hpp # CglTwomirTest.cpp
+	CglTwomir.cpp  CglTwomir.hpp \
+	CglTwomirTest.cpp
 
 
 # This is for libtool (on Windows)
@@ -377,6 +378,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglTwomir.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglTwomirTest.Plo@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \

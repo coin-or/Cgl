@@ -1,72 +1,90 @@
-/* Compile it with (assuming COIN lives in $HOME/COIN):
-  g++ -g -o test2mir CglTwomirTest.cpp -I$HOME/COIN/include -L$HOME/COIN/lib -Wl,-rpath,$HOME/COIN/lib -lSbb -lCgl -lOsiClp -lClp -lOsi -lCoin -lm
+// Copyright (C) 2000, International Business Machines
+// Corporation and others.  All Rights Reserved.
+#if defined(_MSC_VER)
+// Turn off compiler warning about long names
+#  pragma warning(disable:4786)
+#endif
 
-  Run it with:
-  test2mir <mps_file_name>
-*/
+#include <cstdio>
 
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
+#include <cassert>
 #include "CglTwomir.hpp"
-#include "CglGomory.hpp"
-#include "CglKnapsackCover.hpp"
-#include "CglOddHole.hpp"
-#include "CglProbing.hpp"
-#include "OsiClpSolverInterface.hpp"
-#include "CoinPackedVector.hpp"
-#include "SbbModel.hpp"
-#include "SbbHeuristic.hpp"
-#include <iostream>
 
-int main(int argc, char *argv[])
+
+void
+CglTwomirUnitTest(const OsiSolverInterface *baseSiP,
+		  const std::string mpsDir)
 {
-  OsiClpSolverInterface *osip = new OsiClpSolverInterface ();
-  int numMpsReadErrors = osip->readMps(argv[1]);
-
-  double  value = 0.0;
-  SbbModel sbb(*osip);
-  sbb.initialSolve();
-  sbb.setMaximumNodes(100);
-
-  CglTwomir mir_tab;
-  mir_tab.setMirScale (1,1); mir_tab.setTwomirScale (1,5); mir_tab.setAMax (5);
-  mir_tab.setCutTypes (true, false, true, false);
-
-  CglTwomir mir_form;
-  mir_form.setMirScale (1,5); mir_form.setTwomirScale (1,5); mir_form.setAMax (5);
-  mir_form.setCutTypes (true, false, false, true);
-
-  CglTwomir twomir_tab;
-  twomir_tab.setMirScale (1,5); twomir_tab.setTwomirScale (1,5); twomir_tab.setAMax (5);
-  twomir_tab.setCutTypes (false, true, true, false);
-
-  CglTwomir twomir_form;
-  twomir_form.setMirScale (1,5); twomir_form.setTwomirScale (1,5); twomir_form.setAMax (5);
-  twomir_form.setCutTypes (false, true, false, true);
-  // void setCutTypes (bool mir, bool twomir, bool tab, bool form)
+  // Test default constructor
+  {
+    CglTwomir aGenerator;
+  }
   
-  sbb.addCutGenerator(&mir_tab,1,"Mir_tab");
-  sbb.addCutGenerator(&mir_form,1,"Mir_form");
-  sbb.addCutGenerator(&twomir_tab,1,"Twomir_tab");
-  sbb.addCutGenerator(&twomir_form,1,"Twomir_form");
+  // Test copy & assignment
+  {
+    CglTwomir rhs;
+    {
+      CglTwomir bGenerator;
+      CglTwomir cGenerator(bGenerator);
+      rhs=bGenerator;
+    }
+  }
 
-  sbb.branchAndBound();
-}  
+  // Test get/set methods
+  {
+    CglTwomir getset;
+    
+    int gtmin = getset.getTmin() + 1;
+    int gtmax = getset.getTmax() + 1;
+    getset.setMirScale(gtmin, gtmax);
+    double gtmin2 = getset.getTmin();
+    double gtmax2 = getset.getTmax();
+    assert(gtmin == gtmin2);
+    assert(gtmax == gtmax2);
 
+    int gamax = 2 * getset.getAmax() + 1;
+    getset.setAMax(gamax);
+    int gamax2 = getset.getAmax();
+    assert(gamax == gamax2);
+  }
 
-  /*
-  If you want to test interaction with other cut generators:
+  // Test generateCuts
+  {
+    CglTwomir gct;
+    OsiSolverInterface  *siP = baseSiP->clone();
+    std::string fn = mpsDir+"capPlan1";
+    std::string fn2 = mpsDir+"capPlan1.mps";
+    FILE *in_f = fopen(fn2.c_str(), "r");
+    if(in_f == NULL) {
+      printf("Can not open file %s;\nSkip test of CglTwomir::generateCuts()\n", fn2.c_str());
+    }
+    else {
+      fclose(in_f);
+      siP->readMps(fn.c_str(),"mps");
+ 
+     siP->initialSolve();
+     double lpRelax = siP->getObjValue();
+ 
+     OsiCuts cs;
+     gct.generateCuts(*siP, cs);
+     int nRowCuts = cs.sizeRowCuts();
+     std::cout<<"There are "<<nRowCuts<<" Twomir cuts"<<std::endl;
+     assert(cs.sizeRowCuts() > 0);
+     OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cs);
+     
+     siP->resolve();
+     
+     double lpRelaxAfter= siP->getObjValue(); 
+     printf("Initial LP value: %f\n", lpRelax);
+     printf("LP value with cuts: %f\n", lpRelaxAfter);
+     assert( lpRelax < lpRelaxAfter );
+    }
+    delete siP;
+  }
 
-  SbbRounding sbround(sbb);
-  int res = !sbround.solution (value, result);
-  CglProbing generator1;  generator1.setUsingObjective(true);  generator1.setMaxPass(3);  
-  generator1.setMaxProbe(100);    generator1.setMaxLook(50);  generator1.setRowCuts(3);
-  CglKnapsackCover generator3;  CglOddHole generator4;  generator4.setMinimumViolation(0.005);
-  generator4.setMinimumViolationPer(0.00002);  generator4.setMaximumEntries(200);
-  // Add in generators
-  sbb.addCutGenerator(&generator1,-1,"Probing");
-  sbb.addCutGenerator(&generator2,-99,"Gomory");
-  sbb.addCutGenerator(&generator3,-1,"Knapsack");
-  sbb.addCutGenerator(&generator4,-1,"OddHole");
-  // Allow rounding heuristic
-  SbbRounding heuristic1(sbb);
-  sbb.addHeuristic(&heuristic1);
-  */
+}
+

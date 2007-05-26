@@ -18,7 +18,8 @@ noinst_LTLIBRARIES = libCglTwomir.la
 
 # List all source files for this library, including headers
 libCglTwomir_la_SOURCES = \
-	CglTwomir.cpp  CglTwomir.hpp # CglTwomirTest.cpp
+	CglTwomir.cpp  CglTwomir.hpp \
+	CglTwomirTest.cpp
 
 # This is for libtool (on Windows)
 libCglTwomir_la_LDFLAGS = $(LT_LDFLAGS)

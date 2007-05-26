@@ -87,6 +87,10 @@ class CoinWarmStartBasis;
 /** Twostep MIR Cut Generator Class */
 class CglTwomir : public CglCutGenerator {
 
+  friend void CglTwomirUnitTest(const OsiSolverInterface * siP,
+					  const std::string mpdDir );
+
+
 public:
   char *probname_;
     
@@ -488,6 +492,16 @@ int DGG_isBaseTrivial(DGG_data_t *d, DGG_constraint_t* c);
 int DGG_is2stepValid(double alpha, double bht);
 
 int DGG_cutsOffPoint(double *x, DGG_constraint_t *cut);
+
+//#############################################################################
+/** A function that tests the methods in the CglTwomir class. The
+    only reason for it not to be a member method is that this way it doesn't
+    have to be compiled into the library. And that's a gain, because the
+    library should be compiled with optimization on, but this method should be
+    compiled with debugging. */
+void CglTwomirUnitTest(const OsiSolverInterface * siP,
+		       const std::string mpdDir);
+
 
 #endif
 
