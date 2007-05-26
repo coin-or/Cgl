@@ -114,7 +114,7 @@ cd $curr_dir
 ##############################################################################
 
 # Install files for unitTest
-AC_COIN_VPATH_LINK(test/CglTestData/capPlan1.mps)
+AC_COIN_VPATH_LINK([test/CglTestData/capPlan1.mps test/CglTestData/l152lav.mps])
 
 # Here list all the files that configure should create (except for the
 # configuration header file)

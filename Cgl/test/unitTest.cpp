@@ -41,6 +41,8 @@
 #include "CglMixedIntegerRounding2.hpp"
 #include "CglResidualCapacity.hpp"
 #include "CglRedSplit.hpp"
+#include "CglTwomir.hpp"
+#include "CglClique.hpp"
 //#include "CglFlowCover.hpp"
 
 // Function Prototypes. Function definitions is in this file.
@@ -115,6 +117,11 @@ int main (int argc, const char *argv[])
 #ifdef COIN_HAS_CPX
   {
     OsiCpxSolverInterface cpxSi;
+    testingMessage( "Testing CglGomory with OsiCpxSolverInterface\n" );
+    CglGomoryUnitTest(&cpxSi,mpsDir);
+  } 
+  {
+    OsiCpxSolverInterface cpxSi;
     testingMessage( "Testing CglSimpleRounding with OsiCpxSolverInterface\n" );
     CglSimpleRoundingUnitTest(&cpxSi,mpsDir);
   } 
@@ -156,6 +163,16 @@ int main (int argc, const char *argv[])
   }  
   {
     OsiCpxSolverInterface cpxSi;
+    testingMessage( "Testing CglTwomir with OsiCpxSolverInterface\n" );
+    CglTwomirUnitTest(&cpxSi, testDir);
+  }  
+  {
+    OsiCpxSolverInterface cpxSi;
+    testingMessage( "Testing CglClique with OsiCpxSolverInterface\n" );
+    CglCliqueUnitTest(&cpxSi, testDir);
+  }  
+  {
+    OsiCpxSolverInterface cpxSi;
     // Test does not work with Cplex
     //    testingMessage( "Testing CglFlowCover with OsiCpxSolverInterface\n" );
     //    CglFlowCoverUnitTest(&cpxSi,mpsDir);
@@ -164,6 +181,11 @@ int main (int argc, const char *argv[])
 #endif
 
 #ifdef COIN_HAS_XPR
+  {
+    OsiXprSolverInterface xprSi;
+    testingMessage( "Testing CglGomory with OsiXprSolverInterface\n" );
+    CglGomoryUnitTest(&xprSi,mpsDir);
+  } 
   {
     OsiXprSolverInterface xprSi;
     testingMessage( "Testing CglSimpleRounding with OsiXprSolverInterface\n" );
@@ -199,6 +221,16 @@ int main (int argc, const char *argv[])
     OsiXprSolverInterface xprSi;
     testingMessage( "Testing CglResidualCapacity with OsiXprSolverInterface\n" );
     CglResidualCapacityUnitTest(&xprSi, testDir);
+  }  
+  {
+    OsiXprSolverInterface xprSi;
+    testingMessage( "Testing CglTwomir with OsiXprSolverInterface\n" );
+    CglTwomirUnitTest(&xprSi, testDir);
+  }
+  {
+    OsiXprSolverInterface xprSi;
+    testingMessage( "Testing CglClique with OsiXprSolverInterface\n" );
+    CglCliqueUnitTest(&xprSi, testDir);
   }  
   {
     OsiXprSolverInterface xprSi;
@@ -260,6 +292,16 @@ int main (int argc, const char *argv[])
   }  
   {
     OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglTwomir with OsiClpSolverInterface\n" );
+    CglTwomirUnitTest(&clpSi, testDir);
+  }  
+  {
+    OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglClique with OsiClpSolverInterface\n" );
+    CglCliqueUnitTest(&clpSi, testDir);
+  }  
+  {
+    OsiClpSolverInterface clpSi;
     //    testingMessage( "Testing CglFlowCover with OsiClpSolverInterface\n" );
     //    CglFlowCoverUnitTest(&clpSi,mpsDir);
   }
@@ -305,6 +347,16 @@ int main (int argc, const char *argv[])
     OsiDylpSolverInterface dylpSi;
     testingMessage( "Testing CglResidualCapacity with OsiDylpSolverInterface\n" );
     CglResidualCapacityUnitTest(&dylpSi, testDir);
+  }  
+  {
+    OsiDylpSolverInterface dylpSi;
+    testingMessage( "Testing CglTwomir with OsiDylpSolverInterface\n" );
+    CglTwomirUnitTest(&dylpSi, testDir);
+  }  
+  {
+    OsiDylpSolverInterface dylpSi;
+    testingMessage( "Testing CglClique with OsiDylpSolverInterface\n" );
+    CglCliqueUnitTest(&dylpSi, testDir);
   }  
   {
     OsiDylpSolverInterface dylpSi;
