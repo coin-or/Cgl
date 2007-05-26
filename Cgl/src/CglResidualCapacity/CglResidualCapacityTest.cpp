@@ -82,11 +82,8 @@ CglResidualCapacityUnitTest(const OsiSolverInterface *baseSiP,
      siP->resolve();
      
      double lpRelaxAfter= siP->getObjValue(); 
-     
-#ifdef CGL_DEBUG
      printf("Initial LP value: %f\n", lpRelax);
      printf("LP value with cuts: %f\n", lpRelaxAfter);
-#endif
      assert( lpRelax < lpRelaxAfter );
     }
     delete siP;
