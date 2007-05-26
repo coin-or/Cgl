@@ -1418,30 +1418,27 @@ CglGomoryUnitTest(
 		       7.8875708048320448e-18, 0.5, 0, 
 		       0.85999999999999999, 1, 1, 0.57999999999999996,
 		       1, 0, 1, 0, 0.25, 0, 0.67500000000000004};
-    siP->setColSolution(mycs);
-#ifdef CGL_DEBUG
-    printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
-#endif
+    // Fails with OsiCpx, OsiXpr:
+    //siP->setColSolution(mycs);
     
     OsiCuts cuts;    
     
     // Test generateCuts method
     test.generateCuts(*siP,cuts);
+    int nRowCuts = cuts.sizeRowCuts();
+    std::cout<<"There are "<<nRowCuts<<" Gomory cuts"<<std::endl;
+    assert(cuts.sizeRowCuts() > 0);
     OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cuts);
     
     siP->resolve();
     double lpRelaxAfter=siP->getObjValue(); 
+    printf("Initial LP value: %f\n", lpRelaxBefore);
+    printf("LP value with cuts: %f\n", lpRelaxAfter);
     //assert( eq(lpRelaxAfter, 2592.1908295194507) );
     assert( lpRelaxAfter> 2550.0 );
-#ifdef CGL_DEBUG
-    printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
-    printf("\n\nFinal LP min=%f\n",lpRelaxAfter);
-#endif
     assert( lpRelaxBefore < lpRelaxAfter );
     
     delete siP;
   } 
-  //exit(0);
-    
 }
 
