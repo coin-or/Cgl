@@ -19,7 +19,7 @@ noinst_LTLIBRARIES = libCglClique.la
 # List all source files for this library, including headers
 libCglClique_la_SOURCES = \
 	CglClique.cpp  CglClique.hpp \
-	CglCliqueHelper.cpp  
+	CglCliqueHelper.cpp CglCliqueTest.cpp
 
 # This is for libtool (on Windows)
 libCglClique_la_LDFLAGS = $(LT_LDFLAGS)

@@ -75,7 +75,7 @@ CglClique::CglClique(const CglClique& rhs)
 
 void
 CglClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
-		const CglTreeInfo info) const
+			const CglTreeInfo info) const
 {
    int i;
    bool has_petol_set = petol >= 0;

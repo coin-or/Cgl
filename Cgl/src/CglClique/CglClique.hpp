@@ -3,13 +3,14 @@
 
 #include "CglCutGenerator.hpp"
 
-class OsiCuts;
-class OsiSolverInterface;
+//class OsiCuts;
+//class OsiSolverInterface;
 
 class CglClique : public CglCutGenerator {
+
     friend void CglCliqueUnitTest(const OsiSolverInterface * siP,
 				  const std::string mpdDir );
-private:
+public:
     /// Copy constructor
     CglClique(const CglClique& rhs);
     /// Clone
@@ -243,5 +244,14 @@ private:
     /**  */
     void recordClique(const int len, int* indices, OsiCuts& cs) const;
 };
+
+//#############################################################################
+/** A function that tests the methods in the CglClique class. The
+    only reason for it not to be a member method is that this way it doesn't
+    have to be compiled into the library. And that's a gain, because the
+    library should be compiled with optimization on, but this method should be
+    compiled with debugging. */
+void CglCliqueUnitTest(const OsiSolverInterface * siP,
+		       const std::string mpdDir);
 
 #endif

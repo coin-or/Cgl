@@ -56,7 +56,8 @@ CONFIG_HEADER = $(top_builddir)/inc/config_cgl.h
 CONFIG_CLEAN_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libCglClique_la_LIBADD =
-am_libCglClique_la_OBJECTS = CglClique.lo CglCliqueHelper.lo
+am_libCglClique_la_OBJECTS = CglClique.lo CglCliqueHelper.lo \
+	CglCliqueTest.lo
 libCglClique_la_OBJECTS = $(am_libCglClique_la_OBJECTS)
 depcomp = $(SHELL) $(top_srcdir)/../depcomp
 am__depfiles_maybe = depfiles
@@ -296,7 +297,7 @@ noinst_LTLIBRARIES = libCglClique.la
 # List all source files for this library, including headers
 libCglClique_la_SOURCES = \
 	CglClique.cpp  CglClique.hpp \
-	CglCliqueHelper.cpp  
+	CglCliqueHelper.cpp CglCliqueTest.cpp
 
 
 # This is for libtool (on Windows)
@@ -379,6 +380,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglClique.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglCliqueHelper.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglCliqueTest.Plo@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
