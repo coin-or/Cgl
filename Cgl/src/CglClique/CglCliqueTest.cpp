@@ -48,28 +48,28 @@ CglCliqueUnitTest(const OsiSolverInterface *baseSiP,
     std::string fn2 = mpsDir+"l152lav.mps";
     FILE *in_f = fopen(fn2.c_str(), "r");
     if(in_f == NULL) {
-      printf("Can not open file %s;\nSkip test of CglClique::generateCuts()\n", fn2.c_str());
+      std::cout<<"Can not open file "<<fn2<<std::endl<<"Skip test of CglClique::generateCuts()"<<std::endl;
     }
     else {
       fclose(in_f);
       siP->readMps(fn.c_str(),"mps");
  
-     siP->initialSolve();
-     double lpRelax = siP->getObjValue();
- 
-     OsiCuts cs;
-     gct.generateCuts(*siP, cs);
-     int nRowCuts = cs.sizeRowCuts();
-     std::cout<<"There are "<<nRowCuts<<" Clique cuts"<<std::endl;
-     assert(cs.sizeRowCuts() > 0);
-     OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cs);
-     
-     siP->resolve();
-     
-     double lpRelaxAfter= siP->getObjValue(); 
-     printf("Initial LP value: %f\n", lpRelax);
-     printf("LP value with cuts: %f\n", lpRelaxAfter);
-     assert( lpRelax < lpRelaxAfter );
+      siP->initialSolve();
+      double lpRelax = siP->getObjValue();
+      
+      OsiCuts cs;
+      gct.generateCuts(*siP, cs);
+      int nRowCuts = cs.sizeRowCuts();
+      std::cout<<"There are "<<nRowCuts<<" Clique cuts"<<std::endl;
+      assert(cs.sizeRowCuts() > 0);
+      OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cs);
+      
+      siP->resolve();
+      
+      double lpRelaxAfter= siP->getObjValue(); 
+      std::cout<<"Initial LP value: "<<lpRelax<<std::endl;
+      std::cout<<"LP value with cuts: "<<lpRelaxAfter<<std::endl;
+      assert( lpRelax < lpRelaxAfter );
     }
     delete siP;
   }
