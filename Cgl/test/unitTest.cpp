@@ -43,7 +43,7 @@
 #include "CglRedSplit.hpp"
 #include "CglTwomir.hpp"
 #include "CglClique.hpp"
-//#include "CglFlowCover.hpp"
+#include "CglFlowCover.hpp"
 
 // Function Prototypes. Function definitions is in this file.
 void testingMessage( const char * const msg );
@@ -109,8 +109,8 @@ int main (int argc, const char *argv[])
   }  
   {
     OsiOslSolverInterface oslSi;
-    //    testingMessage( "Testing CglFlowCover with OsiOslSolverInterface\n" );
-    //    CglFlowCoverUnitTest(&oslSi,mpsDir);
+    testingMessage( "Testing CglFlowCover with OsiOslSolverInterface\n" );
+    CglFlowCoverUnitTest(&oslSi,testDir);
   }
 
 #endif
@@ -174,8 +174,8 @@ int main (int argc, const char *argv[])
   {
     OsiCpxSolverInterface cpxSi;
     // Test does not work with Cplex
-    //    testingMessage( "Testing CglFlowCover with OsiCpxSolverInterface\n" );
-    //    CglFlowCoverUnitTest(&cpxSi,mpsDir);
+    testingMessage( "Testing CglFlowCover with OsiCpxSolverInterface\n" );
+    CglFlowCoverUnitTest(&cpxSi, testDir);
   }
 
 #endif
@@ -234,8 +234,8 @@ int main (int argc, const char *argv[])
   }  
   {
     OsiXprSolverInterface xprSi;
-    //    testingMessage( "Testing CglFlowCover with OsiXprSolverInterface\n" );
-    //    CglFlowCoverUnitTest(&xprSi,mpsDir);
+    testingMessage( "Testing CglFlowCover with OsiXprSolverInterface\n" );
+    CglFlowCoverUnitTest(&xprSi, testDir);
   }
 
 #endif
@@ -302,8 +302,8 @@ int main (int argc, const char *argv[])
   }  
   {
     OsiClpSolverInterface clpSi;
-    //    testingMessage( "Testing CglFlowCover with OsiClpSolverInterface\n" );
-    //    CglFlowCoverUnitTest(&clpSi,mpsDir);
+    testingMessage( "Testing CglFlowCover with OsiClpSolverInterface\n" );
+    CglFlowCoverUnitTest(&clpSi, testDir);
   }
 
 #endif
@@ -360,8 +360,8 @@ int main (int argc, const char *argv[])
   }  
   {
     OsiDylpSolverInterface dylpSi;
-    //    testingMessage( "Testing CglFlowCover with OsiDylpSolverInterface\n" );
-    //    CglFlowCoverUnitTest(&dylpSi,mpsDir);
+    testingMessage( "Testing CglFlowCover with OsiDylpSolverInterface\n" );
+    CglFlowCoverUnitTest(&dylpSi, testDir);
   }
 
 #endif
