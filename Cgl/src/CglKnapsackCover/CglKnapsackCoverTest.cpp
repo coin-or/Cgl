@@ -131,6 +131,8 @@ CglKnapsackCoverUnitTest(
     // solve LP relaxation
     // a "must" before calling initialization
     siP->initialSolve();
+    double lpRelaxBefore=siP->getObjValue();
+    std::cout<<"Initial LP value: "<<lpRelaxBefore<<std::endl;
     assert( eq(siP->getObjValue(), 97.185) );
     double mycs[] = {.627, .667558333333, .038};
     siP->setColSolution(mycs);

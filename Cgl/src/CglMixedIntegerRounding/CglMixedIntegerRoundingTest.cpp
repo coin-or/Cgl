@@ -79,6 +79,7 @@ CglMixedIntegerRoundingUnitTest(const OsiSolverInterface *baseSiP,
       double lpRelax = siP->getObjValue();
       
       OsiCuts cs;
+      gct.setDoPreproc(1); // Needed for DyLP
       gct.generateCuts(*siP, cs);
       int nRowCuts = cs.sizeRowCuts();
       std::cout<<"There are "<<nRowCuts<<" MIR cuts"<<std::endl;
@@ -91,6 +92,7 @@ CglMixedIntegerRoundingUnitTest(const OsiSolverInterface *baseSiP,
       std::cout<<"Initial LP value: "<<lpRelax<<std::endl;
       std::cout<<"LP value with cuts: "<<lpRelaxAfter<<std::endl;
       assert( lpRelax < lpRelaxAfter );
+      assert(lpRelaxAfter < 964);
     }
     delete siP;
   }

@@ -119,12 +119,15 @@ CglGomoryUnitTest(
       double* elements = rpv.getElements();
       double sum2=0.0;
       int k=0;
-      double lb=rcut.lb();
-      double ub=rcut.ub();
       for (k=0; k<n; k++){
 	int column=indices[k];
 	sum2 += colsol[column]*elements[k];
       }
+
+      double ub=rcut.ub();
+
+#ifdef CGL_DEBUG
+      double lb=rcut.lb();
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
 	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
@@ -134,6 +137,8 @@ CglGomoryUnitTest(
 	}
 	std::cout <<std::endl;
       }
+#endif
+
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
 	assert(n==2);
@@ -195,12 +200,15 @@ CglGomoryUnitTest(
       double* elements = rpv.getElements();
       double sum2=0.0;
       int k=0;
-      double lb=rcut.lb();
-      double ub=rcut.ub();
       for (k=0; k<n; k++){
 	int column=indices[k];
 	sum2 += colsol[column]*elements[k];
       }
+
+      double ub=rcut.ub();
+
+#ifdef CGL_DEBUG
+      double lb=rcut.lb();
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
 	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
@@ -210,6 +218,8 @@ CglGomoryUnitTest(
 	}
 	std::cout <<std::endl;
       }
+#endif
+
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
 	assert(n==1);
@@ -327,12 +337,15 @@ CglGomoryUnitTest(
       double* elements = rpv.getElements();
       double sum2=0.0;
       int k=0;
-      double lb=rcut.lb();
-      double ub=rcut.ub();
       for (k=0; k<n; k++){
 	int column=indices[k];
 	sum2 += colsol[column]*elements[k];
       }
+
+      double ub=rcut.ub();
+
+#ifdef CGL_DEBUG
+      double lb=rcut.lb();
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
 	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
@@ -342,6 +355,8 @@ CglGomoryUnitTest(
 	}
 	std::cout <<std::endl;
       }
+#endif
+
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
 	assert(n==2);
@@ -403,12 +418,15 @@ CglGomoryUnitTest(
       double* elements = rpv.getElements();
       double sum2=0.0;
       int k=0;
-      double lb=rcut.lb();
-      double ub=rcut.ub();
       for (k=0; k<n; k++){
 	int column=indices[k];
 	sum2 += colsol[column]*elements[k];
       }
+
+      double ub=rcut.ub();
+
+#ifdef CGL_DEBUG
+      double lb=rcut.lb();
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
 	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
@@ -418,6 +436,8 @@ CglGomoryUnitTest(
 	}
 	std::cout <<std::endl;
       }
+#endif
+
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
 	assert(n==1);
@@ -535,12 +555,15 @@ CglGomoryUnitTest(
       double* elements = rpv.getElements();
       double sum2=0.0;
       int k=0;
-      double lb=rcut.lb();
-      double ub=rcut.ub();
       for (k=0; k<n; k++){
 	int column=indices[k];
 	sum2 += colsol[column]*elements[k];
       }
+
+      double ub=rcut.ub();
+
+#ifdef CGL_DEBUG
+      double lb=rcut.lb();
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
 	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
@@ -550,6 +573,8 @@ CglGomoryUnitTest(
 	}
 	std::cout <<std::endl;
       }
+#endif
+
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
 	assert(n==1);
@@ -608,12 +633,15 @@ CglGomoryUnitTest(
       double* elements = rpv.getElements();
       double sum2=0.0;
       int k=0;
-      double lb=rcut.lb();
-      double ub=rcut.ub();
       for (k=0; k<n; k++){
 	int column=indices[k];
 	sum2 += colsol[column]*elements[k];
       }
+
+      double ub=rcut.ub();
+
+#ifdef CGL_DEBUG
+      double lb=rcut.lb();
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
 	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
@@ -623,6 +651,8 @@ CglGomoryUnitTest(
 	}
 	std::cout <<std::endl;
       }
+#endif
+
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
 	assert(n==2);
@@ -737,12 +767,15 @@ CglGomoryUnitTest(
       double* elements = rpv.getElements();
       double sum2=0.0;
       int k=0;
-      double lb=rcut.lb();
-      double ub=rcut.ub();
       for (k=0; k<n; k++){
 	int column=indices[k];
 	sum2 += colsol[column]*elements[k];
       }
+
+      double ub=rcut.ub();
+
+#ifdef CGL_DEBUG
+      double lb=rcut.lb();
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
 	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
@@ -752,6 +785,8 @@ CglGomoryUnitTest(
 	}
 	std::cout <<std::endl;
       }
+#endif
+
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
 	assert(n==1);
@@ -810,12 +845,15 @@ CglGomoryUnitTest(
       double* elements = rpv.getElements();
       double sum2=0.0;
       int k=0;
-      double lb=rcut.lb();
-      double ub=rcut.ub();
       for (k=0; k<n; k++){
 	int column=indices[k];
 	sum2 += colsol[column]*elements[k];
       }
+
+      double ub=rcut.ub();
+
+#ifdef CGL_DEBUG
+      double lb=rcut.lb();
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
 	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
@@ -825,6 +863,8 @@ CglGomoryUnitTest(
 	}
 	std::cout <<std::endl;
       }
+#endif
+
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
 	assert(n==2);
@@ -944,12 +984,15 @@ CglGomoryUnitTest(
       double* elements = rpv.getElements();
       double sum2=0.0;
       int k=0;
-      double lb=rcut.lb();
-      double ub=rcut.ub();
       for (k=0; k<n; k++){
 	int column=indices[k];
 	sum2 += colsol[column]*elements[k];
       }
+
+      double ub=rcut.ub();
+
+#ifdef CGL_DEBUG
+      double lb=rcut.lb();
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
 	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
@@ -959,6 +1002,8 @@ CglGomoryUnitTest(
 	}
 	std::cout <<std::endl;
       }
+#endif
+
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
 	assert(n==2);
@@ -1076,12 +1121,15 @@ CglGomoryUnitTest(
       double* elements = rpv.getElements();
       double sum2=0.0;
       int k=0;
-      double lb=rcut.lb();
-      double ub=rcut.ub();
       for (k=0; k<n; k++){
 	int column=indices[k];
 	sum2 += colsol[column]*elements[k];
       }
+
+      double ub=rcut.ub();
+
+#ifdef CGL_DEBUG
+      double lb=rcut.lb();
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
 	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
@@ -1091,6 +1139,8 @@ CglGomoryUnitTest(
 	}
 	std::cout <<std::endl;
       }
+#endif
+
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
 	assert(n==2);
@@ -1208,12 +1258,15 @@ CglGomoryUnitTest(
       double* elements = rpv.getElements();
       double sum2=0.0;
       int k=0;
-      double lb=rcut.lb();
-      double ub=rcut.ub();
       for (k=0; k<n; k++){
 	int column=indices[k];
 	sum2 += colsol[column]*elements[k];
       }
+
+      double ub=rcut.ub();
+
+#ifdef CGL_DEBUG
+      double lb=rcut.lb();
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
 	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
@@ -1223,6 +1276,8 @@ CglGomoryUnitTest(
 	}
 	std::cout <<std::endl;
       }
+#endif
+
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
 	assert(n==1);
@@ -1337,12 +1392,15 @@ CglGomoryUnitTest(
       double* elements = rpv.getElements();
       double sum2=0.0;
       int k=0;
-      double lb=rcut.lb();
-      double ub=rcut.ub();
       for (k=0; k<n; k++){
 	int column=indices[k];
 	sum2 += colsol[column]*elements[k];
       }
+
+      double ub=rcut.ub();
+
+#ifdef CGL_DEBUG
+      double lb=rcut.lb();
       if (sum2 >ub + 1.0e-7 ||sum2 < lb - 1.0e-7) {
 	std::cout<<"Cut "<<i<<" lb "<<lb<<" solution "<<sum2<<" ub "<<ub<<std::endl;
 	for (k=0; k<n; k++){
@@ -1352,6 +1410,8 @@ CglGomoryUnitTest(
 	}
 	std::cout <<std::endl;
       }
+#endif
+
       if (i-nOldCuts==testCut) {
 	assert( eq(rhs,ub));
 	assert(n==1);
@@ -1410,7 +1470,11 @@ CglGomoryUnitTest(
     // print out ofv for sake of comparison 
     siP->initialSolve();
     double lpRelaxBefore=siP->getObjValue();
+    std::cout<<"Initial LP value: "<<lpRelaxBefore<<std::endl;
     assert( eq(lpRelaxBefore, 2520.5717391304347) );
+
+    // Fails with OsiCpx, OsiXpr:
+    /**********
     double mycs[] = {0, 1, 0, 0, -2.0837010502455788e-19, 1, 0, 0, 1,
 		       0.021739130434782594, 0.35652173913043478, 
 		       -6.7220534694101275e-18, 5.3125906451789717e-18, 
@@ -1418,9 +1482,9 @@ CglGomoryUnitTest(
 		       7.8875708048320448e-18, 0.5, 0, 
 		       0.85999999999999999, 1, 1, 0.57999999999999996,
 		       1, 0, 1, 0, 0.25, 0, 0.67500000000000004};
-    // Fails with OsiCpx, OsiXpr:
-    //siP->setColSolution(mycs);
-    
+    siP->setColSolution(mycs);
+    ****/
+
     OsiCuts cuts;    
     
     // Test generateCuts method
@@ -1432,11 +1496,11 @@ CglGomoryUnitTest(
     
     siP->resolve();
     double lpRelaxAfter=siP->getObjValue(); 
-    std::cout<<"Initial LP value: "<<lpRelaxBefore<<std::endl;
     std::cout<<"LP value with cuts: "<<lpRelaxAfter<<std::endl;
     //assert( eq(lpRelaxAfter, 2592.1908295194507) );
     assert( lpRelaxAfter> 2550.0 );
     assert( lpRelaxBefore < lpRelaxAfter );
+    assert(lpRelaxAfter < 3089.1);
     
     delete siP;
   } 

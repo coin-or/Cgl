@@ -44,7 +44,6 @@ CglProbingUnitTest(
     OsiCuts osicuts;
     CglProbing test1;
     OsiSolverInterface  * siP = baseSiP->clone();
-    int i;
     int nColCuts;
     int nRowCuts;
     
@@ -58,6 +57,9 @@ CglProbingUnitTest(
     std::cout<<"There are "<<nRowCuts<<" probing cuts"<<std::endl;
     {
       std::cout<<"there are "<<nColCuts<<" probing column cuts"<<std::endl;
+
+#ifdef CGL_DEBUG
+      int i;
       const double * lo = siP->getColLower();
       const double * up = siP->getColUpper();
       for (i=0; i<nColCuts; i++){
@@ -79,6 +81,7 @@ CglProbingUnitTest(
 	n = cpv.getNumElements();
 	indices = cpv.getIndices();
 	elements = cpv.getElements();
+
 	for (j=0;j<n;j++) {
 	  int icol=indices[j];
 	  if (elements[j]<up[icol])
@@ -86,7 +89,13 @@ CglProbingUnitTest(
 	      " to "<<elements[j]<<std::endl;
 	}
       }
+
+#endif
+
     }
+
+#ifdef CGL_DEBUG
+    int i;
     for (i=0; i<nRowCuts; i++){
       OsiRowCut rcut;
       CoinPackedVector rpv;
@@ -114,6 +123,8 @@ CglProbingUnitTest(
 	std::cout <<std::endl;
       }
     }
+#endif
+
     if (nRowCuts==1) {
       CoinPackedVector check;
       int index[] = {6,32};
@@ -136,6 +147,9 @@ CglProbingUnitTest(
     std::cout<<"There are "<<nRowCuts<<" probing cuts"<<std::endl;
     {
       std::cout<<"there are "<<nColCuts<<" probing column cuts"<<std::endl;
+
+#ifdef CGL_DEBUG
+      int i;
       const double * lo = siP->getColLower();
       const double * up = siP->getColUpper();
       for (i=0; i<nColCuts; i++){
@@ -164,7 +178,12 @@ CglProbingUnitTest(
 	      " to "<<elements[j]<<std::endl;
 	}
       }
+#endif
+
     }
+
+#ifdef CGL_DEBUG
+    int i;
     for (i=0; i<nRowCuts; i++){
       OsiRowCut rcut;
       CoinPackedVector rpv;
@@ -192,6 +211,8 @@ CglProbingUnitTest(
 	std::cout <<std::endl;
       }
     }
+#endif
+
     assert (osicuts.sizeRowCuts()>=4);
     delete siP;
   }

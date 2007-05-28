@@ -82,6 +82,7 @@ CglTwomirUnitTest(const OsiSolverInterface *baseSiP,
       std::cout<<"Initial LP value: "<<lpRelax<<std::endl;
       std::cout<<"LP value with cuts: "<<lpRelaxAfter<<std::endl;
       assert( lpRelax < lpRelaxAfter );
+      assert(lpRelaxAfter < 964);
     }
     delete siP;
   }

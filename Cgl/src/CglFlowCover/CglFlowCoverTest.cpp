@@ -155,6 +155,7 @@ CglFlowCoverUnitTest(
       std::cout<<"Initial LP value: "<<lpRelax<<std::endl;
       std::cout<<"LP value with cuts: "<<lpRelaxAfter<<std::endl;
       assert( lpRelax < lpRelaxAfter );
+      assert(lpRelaxAfter < 569);
     }
     delete siP;
   }
