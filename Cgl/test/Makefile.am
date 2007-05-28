@@ -113,12 +113,12 @@ if COIN_HAS_SPX
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiSpx/libOsiSpx.la
 endif
 
-if COIN_HAS_SYM
-  AM_CPPFLAGS += -I`$(CYGPATH_W) $(SYMSRCDIR)/src` \
+if COIN_HAS_SYMPHONY
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(SYMPHONYSRCDIR)/src` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiSym`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiSym/libOsiSym.la \
-	$(SYMOBJDIR)/src/libSym.la
-  LIBS += `cat $(SYMOBJDIR)/sym_addlibs.txt`
+	$(SYMPHONYOBJDIR)/src/libSym.la
+  LIBS += `cat $(SYMPHONYOBJDIR)/sym_addlibs.txt`
 endif
 
 if COIN_HAS_VOL
