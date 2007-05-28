@@ -62,7 +62,7 @@ AC_COIN_HAS_PROJECT(Clp)
 AC_COIN_HAS_PROJECT(CoinUtils)
 AC_COIN_HAS_PROJECT(DyLP)
 AC_COIN_HAS_PROJECT(Osi)
-AC_COIN_HAS_PROJECT(Sym)
+AC_COIN_HAS_PROJECT(SYMPHONY)
 AC_COIN_HAS_PROJECT(Vol)
 
 #############################################################################
@@ -77,7 +77,7 @@ AC_COIN_HAS_PROJECT(Vol)
 
 # Check which third party solvers are available ToDo!
 AC_COIN_HAS_USER_LIBRARY([Cplex],[CPX],[cplex.h],[CPXgetstat])
-AC_COIN_HAS_USER_LIBRARY([Glpk],[GLPK],[glpk.h],[glp_lpx_simplex])
+AC_COIN_HAS_USER_LIBRARY([Glpk],[GLPK],[glpk.h],[glp_lpx_simplex _glp_lpx_simplex])
 AC_COIN_HAS_USER_LIBRARY([FortMP],[FMP])  #ToDo! is Fortran?
 AC_COIN_HAS_USER_LIBRARY([Mosek],[MSK],[mosekdl.h],[MSK_openmosek])
 AC_COIN_HAS_USER_LIBRARY([Osl],[OSL],[ekk_c_api.h],[ekk_simplex])
