@@ -47,7 +47,7 @@ CglResidualCapacity::generateCuts(const OsiSolverInterface& si,
     }
   }
   else  
-      if ( doPreproc_ == 1 ){ // Do everytime       
+      if ( doPreproc_ != 0 ){ // Do everytime       
 	  resCapPreprocess(si);
 	  doneInitPre_ = true;
       } else
