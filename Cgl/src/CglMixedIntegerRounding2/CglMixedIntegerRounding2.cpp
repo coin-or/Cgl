@@ -46,17 +46,15 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
     }
   }
   else {
-    if(doPreproc_ != 0){ // Do everytime       
+    if(doPreproc_ == 1){ // Do everytime       
       mixIntRoundPreprocess(si);
       doneInitPre_ = true;
     } 
     else {
-      if(doPreproc_ == 0) {
-	if (doneInitPre_ == false) {   
-	  mixIntRoundPreprocess(si);
-	  doneInitPre_ = true;
-	}  
-      }
+      if (doneInitPre_ == false) {   
+	mixIntRoundPreprocess(si);
+	doneInitPre_ = true;
+      }  
     }
   }
 
