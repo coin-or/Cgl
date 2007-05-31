@@ -667,8 +667,12 @@ CglMixedIntegerRounding::generateMirCuts(
 {
 
 #if CGL_DEBUG
-  // OPEN FILE
-  std::ofstream fout("stats.dat");
+  // Open debug data file; incorporate solver name so we get separate files
+  // when running unit test.
+  std::string dbgFname ;
+  si.getStrParam(OsiSolverName,dbgFname) ;
+  dbgFname = "mir_"+dbgFname+"_stats.dat" ;
+  std::ofstream fout(dbgFname.c_str()) ;
 #endif
 
   // Define upper limit for the loop where the cMIRs are constructed
