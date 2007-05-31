@@ -34,10 +34,14 @@ class CoinWarmStartBasis;
 #define  a_max  data->cparams.a_max
 #define  max_elements  data->cparams.max_elements
 
-#define talk false // true
+#ifdef CGL_DEBUG
+// Declarations and defines for debug build.
 
+#define talk true
 
-const OsiSolverInterface * six;
+namespace {
+  const OsiSolverInterface *six ;
+}
 
 void write_cut( DGG_constraint_t *cut){ //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        printf("2mir_test: cut: !!!!!!!!!!!!!!!!!!!!!!!***********************************\n");
@@ -65,6 +69,12 @@ void testus( DGG_constraint_t *cut){ //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     }
 }
 
+#else	// CGL_DEBUG
+
+#define talk false
+
+#endif	// CGL_DEBUG
+
 
 //-------------------------------------------------------------------
 // Generate  cuts
@@ -72,9 +82,11 @@ void testus( DGG_constraint_t *cut){ //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs, 
 			     const CglTreeInfo info ) const
 {
-
+# ifdef CGL_DEBUG
   //!!!!!!!!!!!!!!!!!!
   six = &si;
+# endif
+
   // Temp - check if free variables
   {
     const double *colUpper = si.getColUpper();
@@ -91,6 +103,8 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       return;
     }
   }
+
+  si.getStrParam(OsiProbName,probname_) ;
   
   DGG_list_t cut_list;
   DGG_list_init (&cut_list);
@@ -116,7 +130,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 				 info.formulation_rows );
   
 #ifdef CGL_DEBUG
-  const OsiRowCutDebugger debugg(si, probname_);// = si.getRowCutDebugger();
+  const OsiRowCutDebugger debugg(si,probname_.c_str()) ;
   const OsiRowCutDebugger *debugger = &debugg;
   if (debugger&&!debugger->onOptimalPath(si))
     debugger = NULL;
@@ -158,7 +172,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 //-------------------------------------------------------------------
 CglTwomir::CglTwomir () :
   CglCutGenerator(),
-  probname_(NULL),
+  probname_(),
   do_mir_(true), do_2mir_(true), do_tab_(true), do_form_(true),
   t_min_(1), t_max_(1), q_min_(1), q_max_(1), a_max_(2),max_elements_(50000),
   form_nrows_(0) {}
@@ -180,10 +194,7 @@ CglTwomir::CglTwomir (const CglTwomir & source) :
   max_elements_(source.max_elements_),
   form_nrows_(source.form_nrows_)
 {
-  if (source.probname_)
-    probname_ = strdup(source.probname_);
-  else
-    probname_=NULL;
+  probname_ = source.probname_ ;
 }
 
 //-------------------------------------------------------------------

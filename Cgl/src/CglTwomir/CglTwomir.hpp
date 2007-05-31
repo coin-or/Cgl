@@ -92,7 +92,9 @@ class CglTwomir : public CglCutGenerator {
 
 
 public:
-  char *probname_;
+
+  /// Problem name
+  mutable std::string probname_;
     
   /**@name Generate Cuts */
   //@{
