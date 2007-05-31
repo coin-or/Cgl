@@ -165,7 +165,17 @@ CglClique::createSetPackingSubMatrix(const OsiSolverInterface& si) const
 	       sp_row_start + (sp_numrows+1));
    const int nzcnt = sp_col_start[sp_numcols];
    assert(nzcnt == sp_row_start[sp_numrows]);
-
+/*
+  Now create the vectors with row indices for each column (sp_col_ind) and
+  column indices for each row (sp_row_ind). It turns out that
+  CoinIsOrthogonal assumes that the row indices for a given column are listed
+  in ascending order. This is *not* a solver-independent assumption! At best,
+  one can hope that the underlying solver will produce an index vector that's
+  either ascending or descending. Under that assumption, compare the first
+  and last entries and proceed accordingly. Eventually some solver will come
+  along that hands back an index vector in random order, and CoinIsOrthogonal
+  will break.  Until then, try and avoid the cost of a sort.
+*/
    sp_col_ind = new int[nzcnt];
    sp_row_ind = new int[nzcnt];
 
@@ -173,12 +183,23 @@ CglClique::createSetPackingSubMatrix(const OsiSolverInterface& si) const
       const CoinShallowPackedVector& vec = mcol.getVector(sp_orig_col_ind[j]);
       const int len = vec.getNumElements();
       const int* ind = vec.getIndices();
-      for (i = 0; i < len; ++i) {
-	 const int sp_row = clique[ind[i]];
-	 if (sp_row >= 0) {
-	    sp_col_ind[sp_col_start[j]++] = sp_row;
-	    sp_row_ind[sp_row_start[sp_row]++] = j;
-	 }
+      if (ind[0] < ind[len-1]) {
+	for (i = 0; i < len; ++i) {
+	   const int sp_row = clique[ind[i]];
+	   if (sp_row >= 0) {
+	      sp_col_ind[sp_col_start[j]++] = sp_row;
+	      sp_row_ind[sp_row_start[sp_row]++] = j;
+	   }
+	}
+      }
+      else {
+	for (i = len-1; i >= 0; --i) {
+	   const int sp_row = clique[ind[i]];
+	   if (sp_row >= 0) {
+	      sp_col_ind[sp_col_start[j]++] = sp_row;
+	      sp_row_ind[sp_row_start[sp_row]++] = j;
+	   }
+	}
       }
    }
    std::rotate(sp_col_start, sp_col_start+sp_numcols,
