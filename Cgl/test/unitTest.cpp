@@ -56,7 +56,7 @@ void testingMessage( const char * const msg );
 
 // Command line parameter is directory containing data files.
 // If not specified, then "../../Data/Sample/" and
-// CglTestData/ are used
+// "CglTestData/" are used
 
 int main (int argc, const char *argv[])
 {
@@ -68,7 +68,7 @@ int main (int argc, const char *argv[])
     testDir = argv[1];
   }
   else {
-    mpsDir ="../../Data/Sample/";
+    mpsDir = "../../Data/Sample/";
     testDir = "CglTestData/";
   }
 
@@ -131,11 +131,11 @@ int main (int argc, const char *argv[])
     testingMessage( "Testing CglSimpleRounding with OsiCpxSolverInterface\n" );
     CglSimpleRoundingUnitTest(&cpxSi,mpsDir);
   }
+  if(0) // Test does not work with Cplex
   {
     OsiCpxSolverInterface cpxSi;
-    // Test does not work with Cplex
-    //testingMessage( "Testing CglKnapsackCover with OsiCpxSolverInterface\n" );
-    //CglKnapsackCoverUnitTest(&cpxSi,mpsDir);
+    testingMessage( "Testing CglKnapsackCover with OsiCpxSolverInterface\n" );
+    CglKnapsackCoverUnitTest(&cpxSi,mpsDir);
   }
   {
     OsiCpxSolverInterface cpxSi;
@@ -179,7 +179,6 @@ int main (int argc, const char *argv[])
   }
   {
     OsiCpxSolverInterface cpxSi;
-    // Test does not work with Cplex
     testingMessage( "Testing CglFlowCover with OsiCpxSolverInterface\n" );
     CglFlowCoverUnitTest(&cpxSi, testDir);
   }
@@ -197,21 +196,22 @@ int main (int argc, const char *argv[])
     testingMessage( "Testing CglSimpleRounding with OsiXprSolverInterface\n" );
     CglSimpleRoundingUnitTest(&xprSi,mpsDir);
   }
+  if(0) 
   {
     OsiXprSolverInterface xprSi;
-    //testingMessage( "Testing CglKnapsackCover with OsiXprSolverInterface\n" );
-    //CglKnapsackCoverUnitTest(&xprSi,mpsDir);
+    testingMessage( "Testing CglKnapsackCover with OsiXprSolverInterface\n" );
+    CglKnapsackCoverUnitTest(&xprSi,mpsDir);
   }
   {
     OsiXprSolverInterface xprSi;
     testingMessage( "Testing CglOddHole with OsiXprSolverInterface\n" );
     CglOddHoleUnitTest(&xprSi,mpsDir);
   }
+  if(0)     // Does not work with Xpress
   {
     OsiXprSolverInterface xprSi;
-    // Does not work with Xpress
-    //testingMessage( "Testing CglProbing with OsiXprSolverInterface\n" );
-    //CglProbingUnitTest(&xprSi,mpsDir);
+    testingMessage( "Testing CglProbing with OsiXprSolverInterface\n" );
+    CglProbingUnitTest(&xprSi,mpsDir);
   }
   {
     OsiXprSolverInterface xprSi;
