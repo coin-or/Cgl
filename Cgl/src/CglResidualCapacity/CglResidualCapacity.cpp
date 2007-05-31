@@ -333,7 +333,6 @@ resCapPreprocess(const OsiSolverInterface& si) const
 #if CGL_DEBUG
     std::cout << "The num of rows = "  << numRows_        << std::endl;
     std::cout << "Summary of Row Type" << std::endl;
-    std::cout << "numUNDEFINED     = " << numUNDEFINED   << std::endl;
     std::cout << "numL          = " << numL        << std::endl;
     std::cout << "numG          = " << numG        << std::endl;
 #endif
