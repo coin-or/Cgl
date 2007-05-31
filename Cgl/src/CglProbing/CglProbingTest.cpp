@@ -23,6 +23,9 @@ CglProbingUnitTest(
   const OsiSolverInterface * baseSiP,
   const std::string mpsDir )
 {
+# ifdef CGL_DEBUG
+  int i ;	// define just once
+# endif
   CoinRelFltEq eq(0.000001);
 
   // Test default constructor
@@ -59,7 +62,6 @@ CglProbingUnitTest(
       std::cout<<"there are "<<nColCuts<<" probing column cuts"<<std::endl;
 
 #ifdef CGL_DEBUG
-      int i;
       const double * lo = siP->getColLower();
       const double * up = siP->getColUpper();
       for (i=0; i<nColCuts; i++){
@@ -95,7 +97,6 @@ CglProbingUnitTest(
     }
 
 #ifdef CGL_DEBUG
-    int i;
     for (i=0; i<nRowCuts; i++){
       OsiRowCut rcut;
       CoinPackedVector rpv;
@@ -149,7 +150,6 @@ CglProbingUnitTest(
       std::cout<<"there are "<<nColCuts<<" probing column cuts"<<std::endl;
 
 #ifdef CGL_DEBUG
-      int i;
       const double * lo = siP->getColLower();
       const double * up = siP->getColUpper();
       for (i=0; i<nColCuts; i++){
@@ -183,7 +183,6 @@ CglProbingUnitTest(
     }
 
 #ifdef CGL_DEBUG
-    int i;
     for (i=0; i<nRowCuts; i++){
       OsiRowCut rcut;
       CoinPackedVector rpv;
