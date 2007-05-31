@@ -101,8 +101,14 @@ CglSimpleRoundingUnitTest(
     // Note: testing two OsiRowCuts are equal invokes testing two
     // CoinPackedVectors are equal which invokes testing two doubles
     // are equal.  Usually not a good idea to test that two doubles are equal, 
-    // but in this cut the "doubles" represent integer values.
-    assert(srRowCut2 == solRowCut);
+    // but in this cut the "doubles" represent integer values. Also allow that
+    // different solvers have different orderings in packed vectors, which may
+    // not match the ordering defined for solRowCut.
+
+    assert(srRowCut2.OsiCut::operator==(solRowCut)) ;
+    assert(srRowCut2.row().isEquivalent(solRowCut.row())) ;
+    assert(srRowCut2.lb() == solRowCut.lb()) ;
+    assert(srRowCut2.ub() == solRowCut.ub()) ;
 
     delete siP;
   }
