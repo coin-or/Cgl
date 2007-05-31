@@ -19,6 +19,12 @@
 #include "CoinFinite.hpp"
 #include "OsiRowCutDebugger.hpp"
 #include "CglAllDifferent.hpp"
+
+#ifdef CGL_DEBUG
+// A declaration is required somewhere, eh? I'm assuming static so the value
+// carries over between calls to generateCuts.
+namespace { int nPath = 0 ; }
+#endif
 //-------------------------------------------------------------------
 // Generate cuts
 //------------------------------------------------------------------- 
