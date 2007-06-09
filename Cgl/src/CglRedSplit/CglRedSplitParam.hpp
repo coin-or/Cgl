@@ -79,7 +79,7 @@ public:
   /** Set the value of EPS_ELIM, epsilon for values of coefficients when 
       eliminating slack variables;
       Default: 1e-12 */
-  void setEPS_ELIM(double value);
+  void setEPS_ELIM(const double value);
   /** Get the value of EPS_ELIM */
   double getEPS_ELIM() const {return EPS_ELIM;};
   
