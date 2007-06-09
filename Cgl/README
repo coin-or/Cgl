@@ -38,12 +38,8 @@ https://projects.coin-or.org/Cgl
 INSTALLATION
 ============
 
-If you have downloaded the package 
-
-   https://projects.coin-or.org/svn/Cgl/trunk
-
-in the local directory coin-Cgl, please see the INSTALL file in 
-coin-Cgl for a guide to install this package. 
+If you have downloaded the Cgl package in the local directory coin-Cgl, 
+please see the INSTALL file in coin-Cgl for a guide to install this package. 
 
 If you have obtained Cgl by downloading another package, Cgl should be 
 installed as part of the installation of that package. See the INSTALL 
