@@ -20,6 +20,7 @@
 #include "CoinSort.hpp"
 #include "CoinBuild.hpp"
 #include "CoinHelperFunctions.hpp"
+#include "CoinWarmStart.hpp"
 
 #include "CglProbing.hpp"
 #include "CglDuplicateRow.hpp"
@@ -579,7 +580,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       presolvedModel->initialSolve();
       // maybe we can fix some
 #ifdef COIN_DEVELOP
-      int numberFixed = reducedCostFix(*presolvedModel);
+      int numberFixed = 
+#endif
+      reducedCostFix(*presolvedModel);
+#ifdef COIN_DEVELOP
       if (numberFixed)
 	printf("%d variables fixed on reduced cost\n",numberFixed);
 #endif
@@ -1404,7 +1408,9 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 	const double * upper = model->getColUpper();
 	const double * rowLower = model->getRowLower();
 	const double * rowUpper = model->getRowUpper();
+#ifndef NDEBUG
 	double primalTolerance=1.0e-8;
+#endif
 	// Column copy
 	const CoinPackedMatrix * matrix = model->getMatrixByCol();
 	const double * element = matrix->getElements();
@@ -1464,7 +1470,9 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
       const double * columnUpper2 = modelM2->getColUpper();
       const double * columnLower = modelM->getColLower(); 
       const double * columnUpper = modelM->getColUpper();
+#ifdef COIN_DEVELOP
       const double * solutionM2 = modelM2->getColSolution();
+#endif
       for (iColumn=0;iColumn<numberColumns;iColumn++) {
 	int jColumn = originalColumns[iColumn];
 	if (!modelM2->isInteger(jColumn)) {
@@ -1512,6 +1520,7 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
     const double * columnUpper2 = model->getColUpper();
     const double * columnLower = modelM->getColLower(); 
     const double * columnUpper = modelM->getColUpper();
+    int numberBadValues = 0;
     for (iColumn=0;iColumn<numberColumns;iColumn++) {
       if (modelM->isInteger(iColumn)) {
 	double value = solutionM[iColumn];
@@ -1526,12 +1535,118 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 		 numberSolvers_,iColumn,model->getColLower()[iColumn],
 		 value,model->getColUpper()[iColumn]);
 #endif
+	  numberBadValues++;
 	}
       } else if (columnUpper[iColumn]==columnLower[iColumn]) {
 	if (columnUpper2[iColumn]>columnLower2[iColumn]&&!model->isInteger(iColumn)) {
 	  model->setColUpper(iColumn,columnLower[iColumn]);
 	}
       }
+    }
+    if(numberBadValues) {
+      const CoinPackedMatrix * columnCopy = model->getMatrixByCol();
+      const int * row = columnCopy->getIndices();
+      const CoinBigIndex * columnStart = columnCopy->getVectorStarts();
+      const int * columnLength = columnCopy->getVectorLengths(); 
+      const double * element = columnCopy->getElements();
+      int numberRows = model->getNumRows();
+      double * rowActivity = new double[numberRows];
+      memset(rowActivity,0,numberRows*sizeof(double));
+      double * solution = CoinCopyOfArray(solutionM,numberColumns);
+      for ( iColumn=0;iColumn<numberColumns;iColumn++) {
+	double value = solutionM[iColumn];
+	if (modelM->isInteger(iColumn)) {
+	  double value2 = floor(value+0.5);
+	  // if test fails then empty integer
+	  if (fabs(value-value2)<1.0e-3) 
+	    value = value2;
+	}
+	solution[iColumn] = value;
+	for (CoinBigIndex j=columnStart[iColumn];
+	     j<columnStart[iColumn]+columnLength[iColumn];j++) {
+	  int iRow=row[j];
+	  rowActivity[iRow] += value*element[j];
+	}
+      }
+      const double * rowLower = model->getRowLower();
+      const double * rowUpper = model->getRowUpper();
+      //const double * columnLower = model->getColLower(); 
+      //const double * columnUpper = model->getColUpper();
+      const double * objective = model->getObjCoefficients();
+      double direction = model->getObjSense();
+      int numberCheck=0;
+      double tolerance;
+      model->getDblParam(OsiPrimalTolerance,tolerance);
+      tolerance *= 10.0;
+      for ( iColumn=0;iColumn<numberColumns;iColumn++) {
+	double value = solution[iColumn];
+	if (model->isInteger(iColumn)) {
+	  double value2 = floor(value);
+	  // See if empty integer
+	  if (value!=value2) {
+	    numberCheck++;
+	    int allowed=0;
+	    // can we go up
+	    double movement = value2+1.0-value;
+	    CoinBigIndex j;
+	    bool good=true;
+	    for (j=columnStart[iColumn];
+		 j<columnStart[iColumn]+columnLength[iColumn];j++) {
+	      int iRow=row[j];
+#ifdef COIN_DEVELOP
+	      if (rowLower[iRow]>-1.0e20&&rowUpper[iRow]<1.0e20)
+		printf("odd row with both bounds %d %g %g - element %g\n",
+		       iRow,rowLower[iRow],rowUpper[iRow],element[j]);
+#endif
+	      double newActivity = rowActivity[iRow] + movement*element[j];
+	      if (newActivity>rowUpper[iRow]+tolerance||
+		  newActivity<rowLower[iRow]-tolerance)
+		good=false;
+	    }
+	    if (good)
+	      allowed=1;
+	    // can we go down
+	    movement = value2-value;
+	    good=true;
+	    for (j=columnStart[iColumn];
+		 j<columnStart[iColumn]+columnLength[iColumn];j++) {
+	      int iRow=row[j];
+	      double newActivity = rowActivity[iRow] + movement*element[j];
+	      if (newActivity>rowUpper[iRow]+tolerance||
+		  newActivity<rowLower[iRow]-tolerance)
+		good=false;
+	    }
+	    if (good)
+	      allowed |= 2;
+	    if (allowed) {
+	      if (allowed==3) {
+		if (direction*objective[iColumn]>0.0)
+		  allowed=2;
+		else
+		  allowed=1;
+	      }
+	      if(allowed==1) value2++;
+	      movement =  value2-value;
+	      solution[iColumn]=value2;
+	      model->setColLower(iColumn,value2);
+	      model->setColUpper(iColumn,value2);
+	      for (j=columnStart[iColumn];
+		   j<columnStart[iColumn]+columnLength[iColumn];j++) {
+		int iRow=row[j];
+		rowActivity[iRow] += movement*element[j];
+	      }
+	    } else {
+#ifdef COIN_DEVELOP
+	      printf("Unable to move %d\n",iColumn);
+#endif
+	    }
+	  }
+	}
+      }
+      assert (numberCheck==numberBadValues);
+      model->setColSolution(solution);
+      delete [] rowActivity;
+      delete [] solution;
     }
   } else {
     // infeasible 
@@ -1554,8 +1669,13 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 	model->setColUpper(iColumn,columnLower[iColumn]);
     }
   } 
-  //originalModel_->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
+  originalModel_->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
   originalModel_->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
+  //printf("dumping ss.mps.gz in postprocess\n");
+  //originalModel_->writeMps("ss");
+  CoinWarmStart * empty = originalModel_->getEmptyWarmStart();
+  originalModel_->setWarmStart(empty);
+  delete empty;
   originalModel_->initialSolve();
   if (!originalModel_->isProvenOptimal()) {
 #ifdef COIN_DEVELOP
