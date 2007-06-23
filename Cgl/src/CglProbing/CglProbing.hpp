@@ -86,6 +86,9 @@ public:
 			     const CglTreeInfo info = CglTreeInfo()) const;
   int generateCutsAndModify( const OsiSolverInterface & si, OsiCuts & cs, 
 			     const CglTreeInfo info = CglTreeInfo());
+  int generateCutsAndModify(const OsiSolverInterface & si, 
+			    OsiCuts & cs,
+			    CglTreeInfo * info2); 
   //@}
 
   /**@name snapshot etc */
