@@ -1072,7 +1072,7 @@ int CglProbing::generateCutsAndModify(const OsiSolverInterface & si,
 				      CglTreeInfo * info2) 
 {
   CglTreeInfo info = *info2;
-  generateCutsAndModify(si,cs,info);
+  return generateCutsAndModify(si,cs,info);
 }
 int CglProbing::generateCutsAndModify(const OsiSolverInterface & si, 
 				      OsiCuts & cs,
