@@ -7212,7 +7212,10 @@ CglProbing::CglProbing (  const CglProbing & rhs)
     cutVector_=NULL;
   }
   numberThisTime_=rhs.numberThisTime_;
-  lookedAt_=CoinCopyOfArray(rhs.lookedAt_,numberColumns_);
+  if (numberColumns_)
+    lookedAt_=CoinCopyOfArray(rhs.lookedAt_,numberColumns_);
+  else
+    lookedAt_ = NULL;
   if (numberCliques_) {
     cliqueType_ = new cliqueType [numberCliques_];
     memcpy(cliqueType_,rhs.cliqueType_,numberCliques_*sizeof(cliqueType));
@@ -7383,7 +7386,10 @@ CglProbing::operator=(
       cutVector_=NULL;
     }
     numberThisTime_=rhs.numberThisTime_;
-    lookedAt_=CoinCopyOfArray(rhs.lookedAt_,numberColumns_);
+    if (numberColumns_)
+      lookedAt_=CoinCopyOfArray(rhs.lookedAt_,numberColumns_);
+    else
+      lookedAt_ = NULL;
     if (numberCliques_) {
       cliqueType_ = new cliqueType [numberCliques_];
       memcpy(cliqueType_,rhs.cliqueType_,numberCliques_*sizeof(cliqueType));

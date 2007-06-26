@@ -27,6 +27,7 @@ class CoinWarmStartBasis;
 
 //#define DGG_DEBUG_DGG 1
 //#define CGL_DEBUG
+//#define CGL_DEBUG_ZERO
 #define  q_max  data->cparams.q_max
 #define  q_min  data->cparams.q_min
 #define  t_max  data->cparams.t_max
@@ -143,10 +144,31 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     DGG_constraint_t *cut = cut_list.c[i];
     OsiRowCut rowcut;
     if (cut->nz<max_elements) {
-      rowcut.setRow(cut->nz, cut->index, cut->coeff);
-      rowcut.setUb(DBL_MAX);
-      rowcut.setLb(cut->rhs);
-      cs.insert(rowcut);
+      // See if any zero coefficients!!!!!!!
+      int nZero=0;
+      for( int i=0; i < cut->nz; i++) {
+	if (!cut->coeff[i])
+	  nZero++;
+      }
+#ifdef CGL_DEBUG_ZERO
+      if (nZero) {
+	printf("Cut ");
+	for( int i=0; i < cut->nz; i++) {
+	  printf("%d %g ",cut->index[i],cut->coeff[i]);
+	}
+	printf("\n");
+      }
+#endif
+      if (nZero) {
+#ifdef CGL_DEBUG_ZERO
+	printf("TwoMir cut had %d zero coefficients!\n",nZero);
+#endif
+      } else {
+	rowcut.setRow(cut->nz, cut->index, cut->coeff);
+	rowcut.setUb(DBL_MAX);
+	rowcut.setLb(cut->rhs);
+	cs.insert(rowcut);
+      }
     
 #ifdef CGL_DEBUG
       if (debugger) {
@@ -1161,7 +1183,6 @@ int DGG_generateFormulationCutsFromBase( DGG_constraint_t *base,
   static long unsigned int rand_seed = 1983747;
   int tot_int = 0;
   double prob_choose = 0.0;
-    
   rval = DGG_transformConstraint(data, &xout, &rcout, &isint, base);
   DGG_CHECKRVAL1(rval, rval);
 
@@ -1649,7 +1670,6 @@ int DGG_isCutDesirable(DGG_constraint_t *c, DGG_data_t *d)
   if (c->sense == 'E')
     if ( fabs(lhs - rhs) < DGG_NULL_SLACK )
       return 0;
-
   return 1;
 }
 
