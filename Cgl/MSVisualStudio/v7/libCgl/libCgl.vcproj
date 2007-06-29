@@ -22,7 +22,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="..\..\..\..\Cgl\src\CglDuplicateRow,..\..\..\..\Cgl\src\CglMixedIntegerRounding,..\..\..\..\Cgl\src\CglMixedIntegerRounding2,..\..\..\..\Cgl\src\CglFlowCover,..\..\..\..\Cgl\src\CglClique,..\..\..\..\Cgl\src\CglOddHole,..\..\..\..\Cgl\src\CglKnapsackCover,..\..\..\..\Cgl\src\CglGomory,..\..\..\..\Cgl\src\CglPreProcess,..\..\..\..\Cgl\src\CglProbing,..\..\..\..\Cgl\src,..\..\..\..\Osi\src,..\..\..\..\CoinUtils\src,..\..\..\..\BuildTools\headers"
+				AdditionalIncludeDirectories="..\..\..\..\Cgl\src\CglDuplicateRow;..\..\..\..\Cgl\src\CglMixedIntegerRounding;..\..\..\..\Cgl\src\CglMixedIntegerRounding2;..\..\..\..\Cgl\src\CglFlowCover;..\..\..\..\Cgl\src\CglClique;..\..\..\..\Cgl\src\CglOddHole;..\..\..\..\Cgl\src\CglKnapsackCover;..\..\..\..\Cgl\src\CglGomory;..\..\..\..\Cgl\src\CglPreProcess;..\..\..\..\Cgl\src\CglProbing;..\..\..\..\Cgl\src;..\..\..\..\Osi\src;..\..\..\..\Osi\src\OsiClp;..\..\..\..\Clp\src;..\..\..\..\CoinUtils\src;..\..\..\..\BuildTools\headers"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB"
 				StringPooling="TRUE"
 				RuntimeLibrary="4"
@@ -74,7 +74,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\..\..\Cgl\src\CglDuplicateRow,..\..\..\..\Cgl\src\CglMixedIntegerRounding,..\..\..\..\Cgl\src\CglMixedIntegerRounding2,..\..\..\..\Cgl\src\CglFlowCover,..\..\..\..\Cgl\src\CglClique,..\..\..\..\Cgl\src\CglOddHole,..\..\..\..\Cgl\src\CglKnapsackCover,..\..\..\..\Cgl\src\CglGomory,..\..\..\..\Cgl\src\CglPreProcess,..\..\..\..\Cgl\src\CglProbing,..\..\..\..\Cgl\src,..\..\..\..\Osi\src,..\..\..\..\CoinUtils\src,..\..\..\..\BuildTools\headers"
+				AdditionalIncludeDirectories="..\..\..\..\Cgl\src\CglDuplicateRow;..\..\..\..\Cgl\src\CglMixedIntegerRounding;..\..\..\..\Cgl\src\CglMixedIntegerRounding2;..\..\..\..\Cgl\src\CglFlowCover;..\..\..\..\Cgl\src\CglClique;..\..\..\..\Cgl\src\CglOddHole;..\..\..\..\Cgl\src\CglKnapsackCover;..\..\..\..\Cgl\src\CglGomory;..\..\..\..\Cgl\src\CglPreProcess;..\..\..\..\Cgl\src\CglProbing;..\..\..\..\Cgl\src;..\..\..\..\Osi\src;..\..\..\..\Osi\src\OsiClp;..\..\..\..\Clp\src;..\..\..\..\CoinUtils\src;..\..\..\..\BuildTools\headers"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="5"
@@ -283,6 +283,15 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\..\..\src\CglLandP\CglLandP.cpp">
+			</File>
+			<File
+				RelativePath="..\..\..\src\CglLandP\CglLandPSimplex.cpp">
+			</File>
+			<File
+				RelativePath="..\..\..\src\CglLandP\CglLandPValidator.cpp">
+			</File>
+			<File
 				RelativePath="..\..\..\..\Cgl\src\CglLiftAndProject\CglLiftAndProject.cpp">
 				<FileConfiguration
 					Name="Release|Win32">
@@ -383,6 +392,9 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\..\..\src\CglParam.cpp">
+			</File>
+			<File
 				RelativePath="..\..\..\..\Cgl\src\CglPreProcess\CglPreProcess.cpp">
 				<FileConfiguration
 					Name="Release|Win32">
@@ -443,6 +455,12 @@
 				</FileConfiguration>
 			</File>
 			<File
+				RelativePath="..\..\..\src\CglRedSplit\CglRedSplitParam.cpp">
+			</File>
+			<File
+				RelativePath="..\..\..\src\CglRedSplit\CglRedSplitTest.cpp">
+			</File>
+			<File
 				RelativePath="..\..\..\..\Cgl\src\CglSimpleRounding\CglSimpleRounding.cpp">
 				<FileConfiguration
 					Name="Release|Win32">
@@ -481,6 +499,9 @@
 						PreprocessorDefinitions=""
 						BasicRuntimeChecks="3"/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\..\..\src\CglTreeInfo.cpp">
 			</File>
 			<File
 				RelativePath="..\..\..\..\Cgl\src\CglTwomir\CglTwomir.cpp">
@@ -531,6 +552,15 @@
 				RelativePath="..\..\..\..\Cgl\src\CglKnapsackCover\CglKnapsackCover.hpp">
 			</File>
 			<File
+				RelativePath="..\..\..\src\CglLandP\CglLandP.hpp">
+			</File>
+			<File
+				RelativePath="..\..\..\src\CglLandP\CglLandPSimplex.hpp">
+			</File>
+			<File
+				RelativePath="..\..\..\src\CglLandP\CglLandPValidator.hpp">
+			</File>
+			<File
 				RelativePath="..\..\..\..\Cgl\src\CglLiftAndProject\CglLiftAndProject.hpp">
 			</File>
 			<File
@@ -546,6 +576,9 @@
 				RelativePath="..\..\..\..\Cgl\src\CglOddHole\CglOddHole.hpp">
 			</File>
 			<File
+				RelativePath="..\..\..\src\CglParam.hpp">
+			</File>
+			<File
 				RelativePath="..\..\..\..\Cgl\src\CglPreProcess\CglPreProcess.hpp">
 			</File>
 			<File
@@ -555,10 +588,16 @@
 				RelativePath="..\..\..\..\Cgl\src\CglRedSplit\CglRedSplit.hpp">
 			</File>
 			<File
+				RelativePath="..\..\..\src\CglRedSplit\CglRedSplitParam.hpp">
+			</File>
+			<File
 				RelativePath="..\..\..\..\Cgl\src\CglSimpleRounding\CglSimpleRounding.hpp">
 			</File>
 			<File
 				RelativePath="..\..\..\..\Cgl\src\CglStored.hpp">
+			</File>
+			<File
+				RelativePath="..\..\..\src\CglTreeInfo.hpp">
 			</File>
 			<File
 				RelativePath="..\..\..\..\Cgl\src\CglTwomir\CglTwomir.hpp">
