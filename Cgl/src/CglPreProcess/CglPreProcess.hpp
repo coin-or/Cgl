@@ -114,13 +114,13 @@ public:
   { return startModel_;};
   /// Copies of solver at various stages after presolve
   inline OsiSolverInterface * modelAtPass(int iPass) const
-  { if (iPass>=0&&iPass<numberSolvers_) return model_[iPass];};
+  { if (iPass>=0&&iPass<numberSolvers_) return model_[iPass]; else return NULL;};
   /// Copies of solver at various stages after presolve after modifications
   inline OsiSolverInterface * modifiedModel(int iPass) const
-  { if (iPass>=0&&iPass<numberSolvers_) return modifiedModel_[iPass];};
+  { if (iPass>=0&&iPass<numberSolvers_) return modifiedModel_[iPass]; else return NULL;};
   /// Matching presolve information
   inline OsiPresolve * presolve(int iPass) const
-  { if (iPass>=0&&iPass<numberSolvers_) return presolve_[iPass];};
+  { if (iPass>=0&&iPass<numberSolvers_) return presolve_[iPass]; else return NULL;};
   /** Return a pointer to the original columns (with possible  clique slacks)
       MUST be called before postProcess otherwise you just get 0,1,2.. */
   const int * originalColumns() const;
