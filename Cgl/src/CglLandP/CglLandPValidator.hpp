@@ -21,7 +21,7 @@ class CglValidator
 public:
     /** Reasons for rejecting a cut */
   enum RejectionsReasons{
-    NoneAccepted /**Cut was accepted*/,
+    NoneAccepted=0 /**Cut was accepted*/,
     SmallViolation /** Violation of the cut is too small */,
     SmallCoefficient /** There is a small coefficient we can not get rid off.*/,
     BigDynamic /** Dynamic of coefficinet is too important. */,

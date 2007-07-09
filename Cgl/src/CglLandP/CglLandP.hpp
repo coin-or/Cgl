@@ -21,6 +21,7 @@
 #include "CglLandPStats.hpp"
 #endif
 #include <iostream>
+#include <fstream>
 class CoinWarmStartBasis;
 /** Performs one round of Lift & Project using CglLandPSimplex
     to build cuts
@@ -33,7 +34,9 @@ enum LapMessagesTypes
   END_ROUND,
   DURING_SEP,
   CUT_REJECTED,
-  CUT_FAILED
+  CUT_FAILED,
+  LAP_CUT_FAILED_DO_MIG,
+  LAP_MESSAGES_DUMMY_END
 };
 /** Output messages for Cgl */
 class LapMessages : public CoinMessages
@@ -73,6 +76,9 @@ public:
     /** Max number of pivots before we generate the cut 
       \default 20 */
     int pivotLimit;
+    /** Max number of pivots at regular nodes. Put a value if you want it lower than the global pivot limit.
+     \default 100.*/
+    int pivotLimitInTree;
     /** Maximum number of cuts generated at a given round*/
     int maxCutPerRound;
     /** Maximum number of failed pivots before aborting */
@@ -88,7 +94,7 @@ public:
     /** A variable have to be at least away from integrity to be generated */
     double away;
     /** Total time limit for cut generation.*/
-    double timeLimit;
+    mutable double timeLimit;
     /** Time limit for generating a single cut.*/
     double singleCutTimeLimit;
     ///@}
@@ -159,8 +165,31 @@ virtual bool needsOptimalBasis() const
 #ifdef DO_STAT
   void setLogStream(std::ostream & os)
   {
-     logStream = &os;
-  } 
+    releaseLogStream();
+    logStream = &os;
+  }
+
+void openLogStream(std::string name){
+  releaseLogStream();
+  logStream = new std::ofstream(name.c_str(),std::ios::app);
+  logAssignCount = new int;
+  (*logAssignCount) = 1;
+}
+
+inline void releaseLogStream(){
+  if(logAssignCount && *logAssignCount){
+    (*logAssignCount)--;
+    if(*logAssignCount == 0){
+      delete logStream;
+      delete logAssignCount;
+      logAssignCount=NULL;
+    }
+    else logAssignCount = NULL;
+}
+}
+
+void lookupProblem(const std::string &s);
+
 #endif
   class NoBasisError : public CoinError
   {
@@ -202,7 +231,7 @@ private:
     /** Stores the values of the slacks */
     double * slacks_;
     /** Stores wheter slacks are integer constrained */
-    bool * integerSlacks_;
+    bool * integers_;
   };
   mutable CachedData cached_;
   /** message handler */
@@ -211,11 +240,15 @@ private:
   CoinMessages messages_;
   /** cut validator */
   CglValidator validator_;
-#ifdef DO_STATS
+#ifdef DO_STAT
   /** store statistics on separation */
   mutable roundsStatistics roundsStats_;
   /** log file output */
-  mutable std::ostream* logStream;
+  mutable std::ostream * logStream;
+  /**counter of number time logStream used.*/
+  mutable int * logAssignCount;
+  /** set to 1 if generator is used (and print statistics).*/
+  mutable bool used;
 #endif
 };
 void CglLandPUnitTest(OsiSolverInterface *si, const std::string & mpsDir);

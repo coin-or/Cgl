@@ -8,7 +8,7 @@
 #include "CoinPackedMatrix.hpp"
 #include "OsiRowCut.hpp"
 
-std::vector<std::string> CglValidator::rejections_ = std::vector<std::string>(DummyEnd);
+std::vector<std::string> CglValidator::rejections_;
 
 /** Clean an OsiCut 
 \return 1 if min violation is too small
@@ -139,7 +139,7 @@ CglValidator::cleanCut2(OsiRowCut & aCut, const double * solCut, const OsiSolver
   assert (aCut.ub()> 1e50);
   
   CoinPackedVector *vec = const_cast<CoinPackedVector *>(&aCut.row());
-  vec->sortIncrIndex();
+//  vec->sortIncrIndex();
 
   int * indices = vec->getIndices();
   double * elems = vec->getElements();
@@ -184,14 +184,15 @@ CglValidator::cleanCut2(OsiRowCut & aCut, const double * solCut, const OsiSolver
   //rescale the cut so that biggest is 1e1.
   double toBeBiggest = 1.;
   rhs *= (toBeBiggest / biggest);
+  toBeBiggest /= biggest;
   for(int i = 0 ; i < n ; i++)
   {
-    elems[i] *= (toBeBiggest/biggest);
+    elems[i] *= toBeBiggest;
   }
   if(biggest > maxRatio_ * smallest)//we have to remove some small coefficients
   {
-    double myTiny = biggest * toBeBiggest / biggest / maxRatio_;
-    veryTiny *= (toBeBiggest / biggest);
+    double myTiny = biggest * toBeBiggest / maxRatio_;
+    veryTiny *= toBeBiggest ;
     for(int i = 0 ; i < n ; i++)
     {
       double val = fabs(elems[i]);
@@ -277,11 +278,14 @@ CglValidator::CglValidator(double maxFillIn,
 void 
 CglValidator::fillRejectionReasons()
 {
-  rejections_[NoneAccepted] = "Cut was accepted";
-  rejections_[SmallViolation] = "Violation of the cut is too small ";
-  rejections_[SmallCoefficient] = "There is a small coefficient we can not get rid off.";
-  rejections_[BigDynamic] = "Dynamic of coefficinet is too important. ";
-  rejections_[DenseCut] = "Cut is too dense.";
-  rejections_[EmptyCut] = "Cleaned cut is empty";
+  if (rejections_.size() == 0){
+    rejections_.resize(DummyEnd) ;
+    rejections_[NoneAccepted] = "Cut was accepted";
+    rejections_[SmallViolation] = "Violation of the cut is too small ";
+    rejections_[SmallCoefficient] = "There is a small coefficient we can not get rid off.";
+    rejections_[BigDynamic] = "Dynamic of coefficinet is too important. ";
+    rejections_[DenseCut] = "Cut is too dense.";
+    rejections_[EmptyCut] = "Cleaned cut is empty";
+  }
 }
 

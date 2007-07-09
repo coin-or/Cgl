@@ -35,7 +35,7 @@ CglLandPUnitTest(
     assert(aGenerator.parameter().failedPivotLimit==1);
     assert(aGenerator.parameter().degeneratePivotLimit==0);
     assert(eq(aGenerator.parameter().pivotTol, 1e-04));
-    assert(eq(aGenerator.parameter().away, 5e-03));
+    assert(eq(aGenerator.parameter().away, 5e-04));
     assert(eq(aGenerator.parameter().timeLimit, DBL_MAX));
     assert(eq(aGenerator.parameter().singleCutTimeLimit, DBL_MAX));
     assert(aGenerator.parameter().useTableauRow==true);
@@ -165,6 +165,7 @@ CglLandPUnitTest(
       siP->resolve();
       double lpRelaxAfter=siP->getObjValue(); 
     }
+    if(1)
     {
       OsiCuts cuts;
       test.generateCuts(*siP,cuts);
@@ -190,6 +191,7 @@ CglLandPUnitTest(
       siP->resolve();
       double lpRelaxAfter=siP->getObjValue(); 
     }
+    delete siP;
   }
   }
   

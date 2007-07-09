@@ -9,7 +9,7 @@
 AUTOMAKE_OPTIONS = foreign
 
 ########################################################################
-#                           libCglGomory                               #
+#                           libCglLandP                                #
 ########################################################################
 
 # Name of the library compiled in this directory.  We don't want it to be

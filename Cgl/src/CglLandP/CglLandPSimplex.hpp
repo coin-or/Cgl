@@ -99,7 +99,7 @@ public:
   /** Usefull onstructor */
   CglLandPSimplex(const OsiSolverInterface &si, 
 		  const CglLandP::CachedData &cached,
-                  bool reducedSpace = 0);
+                  bool reducedSpace, int numPivots);
   /** Destructor */
   ~CglLandPSimplex();
   /**Update cached information in case of basis change in a round*/
@@ -107,8 +107,10 @@ public:
   /** reset the solver to optimal basis */
   bool resetSolver(const CoinWarmStartBasis * basis);
   /** Perfom pivots to find the best cuts */
-  bool findBestCut(int var, OsiCuts & cuts, const CglLandP::CachedData &cached, const CglLandP::Parameters & params);
-
+  bool findBestCut(int var, OsiRowCut & cut, const CglLandP::CachedData &cached, const CglLandP::Parameters & params);
+  /** Find Gomory cut (i.e. don't do extra setup required for pivots).*/
+  bool generateMig(int row, OsiRowCut &cut, const CglLandP::CachedData &cached, const CglLandP::Parameters & params) const;
+  
   /// No default constructor
   CglLandPSimplex()
 #ifdef LandP_DEBUG
@@ -151,7 +153,7 @@ public:
     double bestRc;
     double maxRc;
   };
-  extraInfo extra;
+  mutable extraInfo extra;
 
 protected:
   /** Perform a change in the basis (direction is 1 if leaving variable is going to ub, 0 otherwise)*/
@@ -197,29 +199,29 @@ int plotCGLPobj(int direction, double gammaTolerance,
   double computeCglpObjective(double gamma, bool strengthen);
   /** Compute the objective value of the Cglp for given row and rhs (if strengthening shall be applied
     	row should have been modularized).*/
-  double computeCglpObjective(TabRow & row);
+  double computeCglpObjective(TabRow & row) const;
   /** return the coefficients of the intersection cut */
-   double intersectionCutCoef(double alpha_i, double beta);
+   inline double intersectionCutCoef(double alpha_i, double beta) const;
   /** return the coefficients of the strengthened intersection cut 
    * takes one extra argument seens needs to consider variable type.
    */
-  double strengthenedIntersectionCutCoef(int i, double alpha_i, double beta);
+  inline double strengthenedIntersectionCutCoef(int i, double alpha_i, double beta) const;
   /** return the coefficient of the new row (combining row_k + gamma row_i).
    */
-  double newRowCoefficient(int j, double gamma);
+  inline double newRowCoefficient(int j, double gamma) const;
   /** compute the modularized row coefficient for an integer variable (does not check integrity
    \bug not the same as in Ionut's pseudo code, it is not the same*/
-  double modularizedCoef(double alpha, double beta);
+  inline double modularizedCoef(double alpha, double beta) const;
   /** Compute the reduced cost of Cglp */
   double computeCglpRedCost(int direction, int gammaSign);
   /** Compute the value of sigma and thau (which are constants for a row i as defined in Mike Perregaard thesis */
   void computeRedCostConstantsInRow();
   /** Create the intersection cut of row k*/
-  void createIntersectionCut(const TabRow & row, OsiRowCut &cut);
+  void createIntersectionCut(const TabRow & row, OsiRowCut &cut) const;
   /** Create strenghtened row */
 	//  void createIntersectionCut(double * row);
   /** Create MIG cut from row k*/
-  void createMIG( TabRow & row, OsiRowCut &cut);
+  void createMIG( TabRow & row, OsiRowCut &cut) const;
   /** Compute normalization coefficient corresponding to sum of multipliers
       for cuts derived from row */
   double normCoef(TabRow &row);
@@ -230,7 +232,7 @@ int plotCGLPobj(int direction, double gammaTolerance,
   /** Modularize row.*/
   void modularizeRow(TabRow & row);
   /** Get the row i of the tableau */
-  void pullTableauRow(TabRow & row);
+  void pullTableauRow(TabRow & row) const;
   /** Adjust the row of the tableau to reflect leaving variable direction */
   void adjustTableauRow(int var, TabRow & row, int direction);
   /** reset the tableau row after a call to adjustTableauRow */
@@ -250,7 +252,7 @@ private:
   /// @name Work infos
   /// @{
   /** Source row for cut */
-  CglLandPSimplex::TabRow row_k_;
+  mutable CglLandPSimplex::TabRow row_k_;
   /** Perturbed source row */
   CglLandPSimplex::TabRow perturbed_row_k_;
   /** Row of leaving candidate*/
@@ -307,14 +309,16 @@ private:
   bool inDegenerateSequence_;
   /// Value for the reduced cost chosen for pivoting
   double chosenReducedCostVal_;
-  /// pointer to array of integer info for slacks
-  const bool * integerSlacks_;
+  /// pointer to array of integer info for both structural and slacks
+  const bool * integers_;
   /// @}
   /// @name Interfaces to the solver
   /// @{
   /** Pointer to the solver interface */
   OsiSolverInterface * si_;
   ///@}
+  /// Own the data or not?
+  bool own_;
 
 
   /// number of negative reduced costs in current iteration
@@ -397,5 +401,53 @@ void put_in_non_basic_init_space( OsiRowCut &cut);
   /** Messages. */
   CoinMessages messages_;
 };
+
+/** return the coefficients of the intersection cut */
+double 
+CglLandPSimplex::intersectionCutCoef(double alpha_i, double beta) const
+{
+  if(alpha_i>0) return alpha_i* (1 - beta);
+  else return -alpha_i * beta;// (1 - beta);
+}
+
+/** return the coefficients of the strengthened intersection cut */
+double 
+CglLandPSimplex::strengthenedIntersectionCutCoef(int i, double alpha_i, double beta) const
+{
+  //  double ratio = beta/(1-beta);
+  if( (!integers_[i]))
+    return intersectionCutCoef(alpha_i, beta);
+  else
+  {
+    double f_i = alpha_i - floor(alpha_i);
+    if(f_i < beta)
+      return f_i*(1- beta);
+    else
+      return (1 - f_i)*beta;//(1-beta);
+  }
+}
+
+/** return the coefficient of the new row (combining row_k + gamma row_i).
+*/
+double 
+CglLandPSimplex::newRowCoefficient(int j, double gamma) const
+{
+  return row_k_.row[j] + gamma * row_i_.row[j];
+}
+
+/** compute the modularized row coefficient for an integer variable*/
+double 
+CglLandPSimplex::modularizedCoef(double alpha, double beta) const
+{
+  double f_i = alpha - floor(alpha);
+  if(f_i <= beta)
+    return f_i;
+  else
+    return f_i - 1;
+}
+
+
+
+
 }
 #endif
