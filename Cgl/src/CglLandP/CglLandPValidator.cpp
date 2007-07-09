@@ -8,7 +8,7 @@
 #include "CoinPackedMatrix.hpp"
 #include "OsiRowCut.hpp"
 
-std::vector<std::string> CglValidator::rejections_ = std::vector<std::string>(DummyEnd);
+std::vector<std::string> CglValidator::rejections_;
 
 /** Clean an OsiCut 
 \return 1 if min violation is too small
@@ -276,12 +276,14 @@ CglValidator::CglValidator(double maxFillIn,
 void 
 CglValidator::fillRejectionReasons()
 {
-  rejections_.reserve(DummyEnd) ;
-  rejections_[NoneAccepted] = "Cut was accepted";
-  rejections_[SmallViolation] = "Violation of the cut is too small ";
-  rejections_[SmallCoefficient] = "There is a small coefficient we can not get rid off.";
-  rejections_[BigDynamic] = "Dynamic of coefficinet is too important. ";
-  rejections_[DenseCut] = "Cut is too dense.";
-  rejections_[EmptyCut] = "Cleaned cut is empty";
+  if (rejections_.size() == 0){
+    rejections_.resize(DummyEnd) ;
+    rejections_[NoneAccepted] = "Cut was accepted";
+    rejections_[SmallViolation] = "Violation of the cut is too small ";
+    rejections_[SmallCoefficient] = "There is a small coefficient we can not get rid off.";
+    rejections_[BigDynamic] = "Dynamic of coefficinet is too important. ";
+    rejections_[DenseCut] = "Cut is too dense.";
+    rejections_[EmptyCut] = "Cleaned cut is empty";
+  }
 }
 

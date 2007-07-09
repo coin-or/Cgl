@@ -36,7 +36,9 @@ enum LapMessagesTypes
   END_ROUND,
   DURING_SEP,
   CUT_REJECTED,
-  CUT_FAILED
+  CUT_FAILED,
+  LAP_CUT_FAILED_DO_MIG,
+  LAP_MESSAGES_DUMMY_END
 };
 /** Output messages for Cgl */
 class LapMessages : public CoinMessages

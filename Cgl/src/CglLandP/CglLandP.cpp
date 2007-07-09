@@ -22,7 +22,7 @@ namespace LAP
 {
   //Setup output messages
   LapMessages::LapMessages( )
-    :CoinMessages(5)
+    :CoinMessages(LAP_MESSAGES_DUMMY_END)
   {
     strcpy(source_,"Lap");
     addMessage(BEGIN_ROUND,CoinOneMessage( 1, 2,"Starting %s round %d variable considered for separation."));
@@ -30,6 +30,7 @@ namespace LAP
     addMessage(DURING_SEP,CoinOneMessage(3,1,"After %g seconds, separated %d cuts."));
     addMessage(CUT_REJECTED, CoinOneMessage(4,1,"Cut rejected for %s."));
     addMessage(CUT_FAILED,CoinOneMessage(5,1,"Generation failed."));
+    addMessage(LAP_CUT_FAILED_DO_MIG, CoinOneMessage(3006,2,"Failed to generate a cut generate a Gomory cut instead"));
   }
 }
 using namespace LAP;
@@ -312,20 +313,24 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
       {
         nBasics++;
         //Basically do nothing
+#ifdef LANDP_DEBUG
         if(nBasics>nBasics_)
 	      {
           std::cerr<<"Error in number of basic variables"<<std::endl;
           throw CoinError("Unexpected number of basic variables (what is going on)","CglLandP::CachedData","GetData");
 	      }
+#endif
       }
       else
       {
         nonBasics_[nNonBasics++] = i;
+#ifdef LANDP_DEBUG
         if(nNonBasics>nNonBasics_)
 	      {
           std::cerr<<"Error in number of non-basic variables"<<std::endl;
           throw CoinError("Unexpected number of non-basic variables (what is going on)","CglLandP::CachedData","GetData");
 	      }
+#endif
       }
     }
     
@@ -336,22 +341,27 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
         //Just check number of basics
         nBasics++;
         
+#ifdef LANDP_DEBUG
         if(nBasics>nBasics_)
 	      {
           std::cerr<<"Error in number of basic variables"<<std::endl;
           throw CoinError("Unexpected number of basic variables (what is going on)","CglLandP::CachedData","GetData");
 	      }
+#endif
       }
       else
       {
         nonBasics_[nNonBasics++] = i + basis_->getNumStructural();
+#ifdef LANDP_DEBUG
         if(nNonBasics>nNonBasics_)
 	      {
           std::cerr<<"Error in number of non-basic variables"<<std::endl;
           throw CoinError("Unexpected number of non-basic variables (what is going on)","CglLandP::CachedData","GetData");
 	      }
+#endif
       }
     }
+#ifdef LANDP_DEBUG
     //Check that the expected number of basics and non-basics is found
     if(nBasics!=nBasics_)
     {
@@ -365,6 +375,7 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source){
       while(nNonBasics<nNonBasics_)
         nonBasics_[nNonBasics++] = -1;
     }
+#endif
 }
   
   CglLandP::CachedData::~CachedData()
@@ -476,17 +487,14 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
   if(params.timeLimit < 0){
     params.pivotLimit = 0;
   }
+#ifdef LANDP_DEBUG
   if(!si.basisIsAvailable())
   {
     std::cerr<<"No basis!!!"<<std::endl;
     throw -1;
   }
-  if(0 && params.pivotLimit == 0){
-    CglGomory gom;
-    gom.generateCuts(si, cs, info);
-    return;
-  }
-  
+#endif
+ 
   cached_.getData(si);
   CglLandPSimplex landpSi(si,cached_, params.reducedSpace, params.pivotLimit);
   landpSi.setLogLevel(handler_->logLevel());
@@ -562,7 +570,7 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
       else stat.numberRejected++;
 #endif
       if(params.pivotLimit !=0){
-        std::cout<<"Failed to generate a cut generate a Gomory cut instead"<<std::endl;
+        handler_->message(CUT_REJECTED, messages_)<<CoinMessageEol;
         
         landpSi.freeSi();
         OsiSolverInterface * ncSi = si.clone();
@@ -584,7 +592,7 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
     }
     if(code)
     {
-	      handler_->message(CUT_REJECTED, messages_)<<validator_.failureString(code)<<CoinMessageEol;
+	      handler_->message(LAP_CUT_FAILED_DO_MIG, messages_)<<validator_.failureString(code)<<CoinMessageEol;
 #ifdef DO_STAT
 	      stat.numberRejected++;
 #endif	      
