@@ -565,7 +565,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       model_[iPass]=presolvedModel;
       presolve_[iPass]=pinfo;
       if (!presolvedModel->getNumRows()) {
-        returnModel=oldModel;
+        // was returnModel=oldModel;
+        returnModel=presolvedModel;
         numberSolvers_=iPass+1;
         break; // model totally solved
       }
