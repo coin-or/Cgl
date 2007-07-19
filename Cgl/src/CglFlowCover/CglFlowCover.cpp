@@ -659,6 +659,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
   
     while (tempSum < knapRHS + EPSILON_) {
 	tempMin = INFTY_;
+	xID=-1;
 	for (i = 0; i < rowLen; i++) {   // Search the col with  minimum ratio
 	    if (candidate[i] == CGLFLOW_COL_PRIME && label[i] == 0 && 
 		ratio[i] < tempMin) {
@@ -666,8 +667,22 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 		xID = i; 
 	    }
 	}
-	label[xID] = CGLFLOW_COL_INCUT;
-	tempSum += up[xID];
+	if (xID>=0) {
+	  label[xID] = CGLFLOW_COL_INCUT;
+	  tempSum += up[xID];
+	} else {
+#if CGLFLOW_DEBUG
+	  std::cout << "knapsack RHS too large B. RETURN." << std::endl; 
+#endif
+	  delete [] sign;                              
+	  delete [] up; 
+	  delete [] x;   
+	  delete [] y;  
+	  delete [] candidate;
+	  delete [] label;
+	  delete [] ratio;
+	  return generated;
+	}
     }
   
     // Reduce to a minimal cover
