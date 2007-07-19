@@ -605,6 +605,19 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     double diff, tempD, lambda;
     int xID = -1;
 
+    if (knapRHS >1.0e10) {
+#if CGLFLOW_DEBUG
+      std::cout << "knapsack RHS too large. RETURN." << std::endl; 
+#endif
+      delete [] sign;                              
+      delete [] up; 
+      delete [] x;   
+      delete [] y;  
+      delete [] candidate;
+      delete [] label;
+      delete [] ratio;
+      return generated;
+    }
     while (tempSum < knapRHS + EPSILON_) { // Not a cover yet
 	diff = INFTY_;
 	for (i = 0; i < rowLen; ++i) {
