@@ -3,6 +3,7 @@
 
 #include "CoinPragma.hpp"
 #include "CglMessage.hpp"
+#include <cstring>
 /// Structure for use by CglMessage.cpp
 typedef struct {
   CGL_Message internalNumber;

@@ -558,7 +558,7 @@ CglDuplicateRow::CglDuplicateRow ()
   storedCuts_(NULL),
   maximumDominated_(1000),
   maximumRhs_(1),
-  sizeDynamic_(INT_MAX),
+  sizeDynamic_(COIN_INT_MAX),
   mode_(3),
   logLevel_(0)
 {
@@ -572,7 +572,7 @@ CglDuplicateRow::CglDuplicateRow(OsiSolverInterface * solver)
     storedCuts_(NULL),
     maximumDominated_(1000),
     maximumRhs_(1),
-    sizeDynamic_(INT_MAX),
+    sizeDynamic_(COIN_INT_MAX),
     mode_(3),
     logLevel_(0)
 {

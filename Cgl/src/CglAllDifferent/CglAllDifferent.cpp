@@ -75,8 +75,8 @@ void CglAllDifferent::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   // could do some of above by separate first pass
   // once a variable fixed - can take out of list
   // so need to redo complete stuff (including temp which_) every big pass
-  int offset = INT_MAX;
-  int maxValue = -INT_MAX;
+  int offset = COIN_INT_MAX;
+  int maxValue = -COIN_INT_MAX;
   int numberLook=0;
   // copies
   //int * which = new int [numberTotal];

@@ -3933,7 +3933,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
           }
         }
         if (kInt>=0) {
-          double upperBound = CoinMin(colUpper[kInt],(double) INT_MAX);
+          double upperBound = CoinMin(colUpper[kInt],(double) COIN_INT_MAX);
           for (k = krs; k < kre; ++k) {
             double value=rowElements[k];
             j = column[k];

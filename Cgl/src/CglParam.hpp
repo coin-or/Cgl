@@ -9,7 +9,7 @@
 
 #ifndef CglParam_H
 #define CglParam_H
-
+#include "CoinFinite.hpp"
 /** Class collecting parameters for all cut generators. Each generator
     may have a derived class to add parameters. Each generator might
     also set different default values for the parameters in CglParam.  */
@@ -46,7 +46,7 @@ public:
   //@{
   /// Default constructor 
   CglParam(const double inf = DBL_MAX, const double eps = 1e-6, 
-	   const double eps_c = 1e-5, const int max_s = INT_MAX);
+	   const double eps_c = 1e-5, const int max_s = COIN_INT_MAX);
  
   /// Copy constructor 
   CglParam(const CglParam&);
@@ -79,7 +79,7 @@ protected:
   double EPS_COEFF;
 
   /** Maximum number of non zero coefficients in a generated cut;
-      Default: INT_MAX */ 
+      Default: COIN_INT_MAX */ 
   int MAX_SUPPORT; 
   //@}
 
