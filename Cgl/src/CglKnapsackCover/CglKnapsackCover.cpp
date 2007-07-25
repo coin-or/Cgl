@@ -186,13 +186,12 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
     }
     if (possible&&numberBinary&&numberBinary+numberContinuous<=maxInKnapsack_) {
       // binding with binary
-      if(numberContinuous==1&&iCont>=0) {
+      if(numberContinuous==1&&iCont>=0&&numberBinary==1) {
 	// vub
-	if (numberBinary==1)
 #ifdef PRINT_DEBUG
-	  printf("vub/vlb (by row %d) %g <= 0-1 %g * %d + %g * %d <= %g\n",
-		 rowIndex,effectiveLower[rowIndex],valueBinary,iBinary,
-		 valueContinuous,iCont,effectiveUpper[rowIndex]);
+	printf("vub/vlb (by row %d) %g <= 0-1 %g * %d + %g * %d <= %g\n",
+	       rowIndex,effectiveLower[rowIndex],valueBinary,iBinary,
+	       valueContinuous,iCont,effectiveUpper[rowIndex]);
 #endif
         if (multiplier*valueContinuous>0.0) {
           vubValue[rowIndex] = valueContinuous;
@@ -212,7 +211,7 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
       }
     } else {
       if (!possible||numberBinary+numberContinuous>maxInKnapsack_)
-        vub[rowIndex]=-2;      // no point looking at this row
+	vub[rowIndex]=-2;      // no point looking at this row
     }
   }
   // Main loop

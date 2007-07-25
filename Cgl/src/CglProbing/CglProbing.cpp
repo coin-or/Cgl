@@ -2254,12 +2254,13 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                     cs.insert(rc);
                   }
                 } else {
-                  if (action<22)
+                  if (action<22) {
                     if (logLevel_>1)
                       printf("XX Could fix a 0-1 variable %d\n",i);
-                  else
+                  } else {
                     if (logLevel_>1)
                       printf("XX Could fix a 0-1 variable %d\n",affected);
+		  }
                 }
                 //printf("%d when %d forces %d to %d , %d when %d forces %d to %d\n",
                 //     i,whenAtUB,affected,affectedToUB, 
