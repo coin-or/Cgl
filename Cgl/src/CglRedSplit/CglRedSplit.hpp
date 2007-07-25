@@ -73,7 +73,7 @@ public:
   // Set the parameters to the values of the given CglRedSplitParam object.
   void setParam(const CglRedSplitParam &source); 
   // Return the CglRedSplitParam object of the generator. 
-  inline CglRedSplitParam getParam() const {return param;};
+  inline CglRedSplitParam getParam() const {return param;}
 
   // Compute entries of low_is_lub and up_is_lub.
   void compute_is_lub();

@@ -67,37 +67,37 @@ public:
       Default: 0.05 */
   virtual void setAway(const double value);
   /// Get value of away
-  inline double getAway() const {return away_;};
+  inline double getAway() const {return away_;}
 
  /** Set the value of LUB, value considered large for the absolute value of
       a lower or upper bound on a variable;
       Default: 1000 */
   virtual void setLUB(const double value);
   /** Get the value of LUB */
-  inline double getLUB() const {return LUB;};
+  inline double getLUB() const {return LUB;}
 
   /** Set the value of EPS_ELIM, epsilon for values of coefficients when 
       eliminating slack variables;
       Default: 1e-12 */
   void setEPS_ELIM(const double value);
   /** Get the value of EPS_ELIM */
-  double getEPS_ELIM() const {return EPS_ELIM;};
+  double getEPS_ELIM() const {return EPS_ELIM;}
   
   /** Set EPS_RELAX_ABS */
   virtual void setEPS_RELAX_ABS(const double eps_ra);
   /** Get value of EPS_RELAX_ABS */
-  inline double getEPS_RELAX_ABS() const {return EPS_RELAX_ABS;};
+  inline double getEPS_RELAX_ABS() const {return EPS_RELAX_ABS;}
 
   /** Set EPS_RELAX_REL */
   virtual void setEPS_RELAX_REL(const double eps_rr);
   /** Get value of EPS_RELAX_REL */
-  inline double getEPS_RELAX_REL() const {return EPS_RELAX_REL;};
+  inline double getEPS_RELAX_REL() const {return EPS_RELAX_REL;}
 
   // Set the maximum ratio between largest and smallest non zero 
   // coefficients in a cut. Default: 1e8.
   virtual void setMAXDYN(double value);
   /** Get the value of MAXDYN */
-  inline double getMAXDYN() const {return MAXDYN_LUB;};
+  inline double getMAXDYN() const {return MAXDYN_LUB;}
 
   // Set the maximum ratio between largest and smallest non zero 
   // coefficient in a cut involving structural variables with
@@ -105,42 +105,42 @@ public:
   // Should logically be larger or equal to MAXDYN. Default: 1e13.
   virtual void setMAXDYN_LUB(double value);
   /** Get the value of MAXDYN_LUB */
-  inline double getMAXDYN_LUB() const {return MAXDYN_LUB;};
+  inline double getMAXDYN_LUB() const {return MAXDYN_LUB;}
 
   /** Set the value of EPS_COEFF_LUB, epsilon for values of coefficients for 
       variables with absolute value of lower or upper bound larger than LUB;
       Default: 1e-13 */
   virtual void setEPS_COEFF_LUB(const double value);
   /** Get the value of EPS_COEFF_LUB */
-  inline double getEPS_COEFF_LUB() const {return EPS_COEFF_LUB;};
+  inline double getEPS_COEFF_LUB() const {return EPS_COEFF_LUB;}
 
   /** Set the value of MINVIOL, the minimum violation for the current 
       basic solution in a generated cut. Default: 1e-7 */
   virtual void setMINVIOL(double value);
   /** Get the value of MINVIOL */
-  inline double getMINVIOL() const {return MINVIOL;};
+  inline double getMINVIOL() const {return MINVIOL;}
 
   /** Set the value of USE_INTSLACKS. Default: 0 */
   virtual void setUSE_INTSLACKS(int value);
   /** Get the value of USE_INTSLACKS */
-  inline int getUSE_INTSLACKS() const {return USE_INTSLACKS;};
+  inline int getUSE_INTSLACKS() const {return USE_INTSLACKS;}
 
   /** Set the value of USE_CG2. Default: 0 */
   virtual void setUSE_CG2(int value);
   /** Get the value of USE_CG2 */
-  inline int getUSE_CG2() const {return USE_CG2;};
+  inline int getUSE_CG2() const {return USE_CG2;}
 
   /** Set the value of normIsZero, the threshold for considering a norm to be 
       0; Default: 1e-5 */
   virtual void setNormIsZero(const double value);
   /** Get the value of normIsZero */
-  inline double getNormIsZero() const {return normIsZero;};
+  inline double getNormIsZero() const {return normIsZero;}
 
   /** Set the value of minReduc, threshold for relative norm improvement for
    performing  a reduction; Default: 0.05 */
   virtual void setMinReduc(const double value);
   /// Get the value of minReduc
-  inline double getMinReduc() const {return minReduc;};
+  inline double getMinReduc() const {return minReduc;}
 
   /** Set the maximum allowed value for (mTab * mTab * max(mTab, nTab)) where 
       mTab is the number of rows used in the combinations and nTab is the 
@@ -149,7 +149,7 @@ public:
       maxTab makes the generator faster, but weaker. Default: 1e7. */
   virtual void setMaxTab(const double value);
   /// Get the value of maxTab
-  inline double getMaxTab() const {return maxTab_;};
+  inline double getMaxTab() const {return maxTab_;}
   //@}
 
   /**@name Constructors and destructors */

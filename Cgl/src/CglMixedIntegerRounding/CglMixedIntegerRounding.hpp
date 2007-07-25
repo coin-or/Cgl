@@ -175,16 +175,16 @@ public:
       throw CoinError("Unallowable value. maxaggr must be > 0",
                       "gutsOfConstruct","CglMixedIntegerRounding");
     }
-  };
+  }
 
   /// Get MAXAGGR_
-  inline int getMAXAGGR_ () const { return MAXAGGR_; };
+  inline int getMAXAGGR_ () const { return MAXAGGR_; }
 
   /// Set MULTIPLY_
-  inline void setMULTIPLY_ (bool multiply) { MULTIPLY_ = multiply; };
+  inline void setMULTIPLY_ (bool multiply) { MULTIPLY_ = multiply; }
 
   /// Get MULTIPLY_
-  inline bool getMULTIPLY_ () const { return MULTIPLY_; };
+  inline bool getMULTIPLY_ () const { return MULTIPLY_; }
 
   /// Set CRITERION_
   inline void setCRITERION_ (int criterion) {
@@ -195,10 +195,10 @@ public:
       throw CoinError("Unallowable value. criterion must be 1, 2 or 3",
                       "gutsOfConstruct","CglMixedIntegerRounding");
     }
-  };
+  }
 
   /// Get CRITERION_
-  inline int getCRITERION_ () const { return CRITERION_; };
+  inline int getCRITERION_ () const { return CRITERION_; }
 
 
   /// Set doPreproc

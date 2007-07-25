@@ -54,16 +54,16 @@ public:
   //@{
   /// Set limit on number in knapsack
   inline void setMaxInKnapsack(int value)
-           { if (value>0) maxInKnapsack_ = value;};
+           { if (value>0) maxInKnapsack_ = value;}
   /// get limit on number in knapsack
   inline int getMaxInKnapsack() const
-           {return maxInKnapsack_;};
+           {return maxInKnapsack_;}
   /// Switch off expensive cuts
   inline void switchOffExpensive()
-  { expensiveCuts_=false;};
+  { expensiveCuts_=false;}
   /// Switch on expensive cuts
   inline void switchOnExpensive()
-  { expensiveCuts_=true;};
+  { expensiveCuts_=true;}
 private:
   
  // Private member methods

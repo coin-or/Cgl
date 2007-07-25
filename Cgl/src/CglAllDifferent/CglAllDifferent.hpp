@@ -65,22 +65,22 @@ public:
      Default is true
   */
   virtual bool mayGenerateRowCutsInTree() const
-  { return false;};
+  { return false;}
   //@}
   /**@name Sets and Gets */
   //@{
   /// Set log level
   inline void setLogLevel(int value)
-  { logLevel_=value;};
+  { logLevel_=value;}
   /// Get log level
   inline int getLogLevel() const
-  { return logLevel_;};
+  { return logLevel_;}
   /// Set Maximum number of sets to look at at once
   inline void setMaxLook(int value)
-  { maxLook_=value;};
+  { maxLook_=value;}
   /// Get Maximum number of sets to look at at once
   inline int getMaxLook() const
-  { return maxLook_;};
+  { return maxLook_;}
   //@}
       
 private:

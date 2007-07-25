@@ -49,9 +49,9 @@ public:
   virtual
     ~CglTreeInfo ();
   /// Take action if cut generator can fix a variable (toValue -1 for down, +1 for up)
-  virtual void fixes(int variable, int toValue, int fixedVariable,double fixedToValue) {};
+  virtual void fixes(int variable, int toValue, int fixedVariable,double fixedToValue) {}
   /// Initalizes fixing arrays etc - returns true if we want to save info
-  virtual bool initializeFixing() {return false;};
+  virtual bool initializeFixing() {return false;}
   
 };
 
@@ -88,25 +88,25 @@ public:
   virtual bool initializeFixing() ;
   /// Entries for fixing variables
   inline fixEntry * fixEntries() const
-  { return fixEntry_;};
+  { return fixEntry_;}
   /// Starts of integer variable going to zero
   inline int * toZero() const
-  { return toZero_;};
+  { return toZero_;}
   /// Starts of integer variable going to one
   inline int * toOne() const
-  { return toOne_;};
+  { return toOne_;}
   /// List of 0-1 integer variables
   inline int * integerVariable() const
-  { return integerVariable_;};
+  { return integerVariable_;}
   /// Backward look up
   inline int * backward() const
-  { return backward_;};
+  { return backward_;}
   /// Number of variables
   inline int numberVariables() const
-  { return numberVariables_;};
+  { return numberVariables_;}
   /// Number of 0-1 variables
   inline int numberIntegers() const
-  { return numberIntegers_;};
+  { return numberIntegers_;}
 protected:
   /// Entries for fixing variables
   fixEntry * fixEntry_;

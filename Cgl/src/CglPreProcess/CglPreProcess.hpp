@@ -108,19 +108,19 @@ public:
   double getCutoff() const;
   /// The original solver associated with this model.
   inline OsiSolverInterface * originalModel() const
-  { return originalModel_;};
+  { return originalModel_;}
   /// Solver after making clique equalities (may == original)
   inline OsiSolverInterface * startModel() const
-  { return startModel_;};
+  { return startModel_;}
   /// Copies of solver at various stages after presolve
   inline OsiSolverInterface * modelAtPass(int iPass) const
-  { if (iPass>=0&&iPass<numberSolvers_) return model_[iPass]; else return NULL;};
+  { if (iPass>=0&&iPass<numberSolvers_) return model_[iPass]; else return NULL;}
   /// Copies of solver at various stages after presolve after modifications
   inline OsiSolverInterface * modifiedModel(int iPass) const
-  { if (iPass>=0&&iPass<numberSolvers_) return modifiedModel_[iPass]; else return NULL;};
+  { if (iPass>=0&&iPass<numberSolvers_) return modifiedModel_[iPass]; else return NULL;}
   /// Matching presolve information
   inline OsiPresolve * presolve(int iPass) const
-  { if (iPass>=0&&iPass<numberSolvers_) return presolve_[iPass]; else return NULL;};
+  { if (iPass>=0&&iPass<numberSolvers_) return presolve_[iPass]; else return NULL;}
   /** Return a pointer to the original columns (with possible  clique slacks)
       MUST be called before postProcess otherwise you just get 0,1,2.. */
   const int * originalColumns() const;
@@ -129,37 +129,37 @@ public:
   const int * originalRows() const;
   /// Number of SOS if found
   inline int numberSOS() const
-  { return numberSOS_;};
+  { return numberSOS_;}
   /// Type of each SOS
   inline const int * typeSOS() const
-  { return typeSOS_;};
+  { return typeSOS_;}
   /// Start of each SOS
   inline const int * startSOS() const
-  { return startSOS_;};
+  { return startSOS_;}
   /// Columns in SOS
   inline const int * whichSOS() const
-  { return whichSOS_;};
+  { return whichSOS_;}
   /// Weights for each SOS column
   inline const double * weightSOS() const
-  { return weightSOS_;};
+  { return weightSOS_;}
   /// Pass in prohibited columns 
   void passInProhibited(const char * prohibited,int numberColumns);
   /// Updated prohibited columns
   inline const char * prohibited()
-  { return prohibited_;};
+  { return prohibited_;}
   //@}
 
   ///@name Cut generator methods 
   //@{
   /// Get the number of cut generators
   inline int numberCutGenerators() const
-  { return numberCutGenerators_;};
+  { return numberCutGenerators_;}
   /// Get the list of cut generators
   inline CglCutGenerator ** cutGenerators() const
-  { return generator_;};
+  { return generator_;}
   ///Get the specified cut generator
   inline CglCutGenerator * cutGenerator(int i) const
-  { return generator_[i];};
+  { return generator_[i];}
   /** Add one generator - up to user to delete generators.
   */
   void addCutGenerator(CglCutGenerator * generator);
@@ -189,16 +189,16 @@ public:
   /// Set language
   void newLanguage(CoinMessages::Language language);
   inline void setLanguage(CoinMessages::Language language)
-  {newLanguage(language);};
+  {newLanguage(language);}
   /// Return handler
   inline CoinMessageHandler * messageHandler() const
-  {return handler_;};
+  {return handler_;}
   /// Return messages
   inline CoinMessages messages() 
-  {return messages_;};
+  {return messages_;}
   /// Return pointer to messages
   inline CoinMessages * messagesPointer() 
-  {return &messages_;};
+  {return &messages_;}
   //@}
   //---------------------------------------------------------------------------
 

@@ -63,22 +63,22 @@ public:
   //@{
   /// Get duplicate row list, -1 means still in, -2 means out (all fixed), k>= means same as row k 
   inline const int * duplicate() const
-  { return duplicate_;};
+  { return duplicate_;}
   /// Size of dynamic program
   inline int sizeDynamic() const
-  { return sizeDynamic_;};
+  { return sizeDynamic_;}
   /// Number of rows in original problem
   inline int numberOriginalRows() const
-  { return matrix_.getNumRows();};
+  { return matrix_.getNumRows();}
   //@}
 
   /**@name Get information on size of problem */
   //@{
   /// logLevel
   inline int logLevel() const
-  { return logLevel_;};
+  { return logLevel_;}
   inline void setLogLevel(int value)
-  { logLevel_ = value;};
+  { logLevel_ = value;}
   //@}
 
 
@@ -86,29 +86,29 @@ public:
   //@{
   /// Get
   inline int maximumRhs() const
-  { return maximumRhs_;};
+  { return maximumRhs_;}
   /// Set
   inline void setMaximumRhs(int value)
-  { maximumRhs_=value;};
+  { maximumRhs_=value;}
   //@}
 
   /**@name We only check for dominated amongst groups of columns whose size <= this */
   //@{
   /// Get
   inline int maximumDominated() const
-  { return maximumDominated_;};
+  { return maximumDominated_;}
   /// Set
   inline void setMaximumDominated(int value)
-  { maximumDominated_=value;};
+  { maximumDominated_=value;}
   //@}
   /**@name gets and sets */
   //@{
   /// Get mode
   inline int mode() const
-  { return mode_;};
+  { return mode_;}
   /// Set mode
   inline void setMode(int value)
-  { mode_=value;};
+  { mode_=value;}
   //@}
 
   /**@name Constructors and destructors */

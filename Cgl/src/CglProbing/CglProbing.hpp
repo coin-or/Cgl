@@ -122,7 +122,7 @@ public:
   const double * tightUpper() const;
   /// Array which says tighten continuous
   const char * tightenBounds() const
-  { return tightenBounds_;};
+  { return tightenBounds_;}
   //@}
 
   /**@name Get possible freed up row bounds - only valid after mode==3 */
@@ -193,10 +193,10 @@ public:
   //@{
   /// Number looked at this time
   inline int numberThisTime() const
-  { return numberThisTime_;};
+  { return numberThisTime_;}
   /// Which ones looked at this time
   inline const int * lookedAt() const
-  { return lookedAt_;};
+  { return lookedAt_;}
   //@}
 
   /**@name Stop or restart row cuts (otherwise just fixing from probing) */

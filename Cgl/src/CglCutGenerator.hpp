@@ -60,10 +60,10 @@ public:
       Keys 1, 2, 5, 6, 7, 8 are defined, but not applicable to 
       cut generators.
   */
-  virtual std::string generateCpp( FILE * fp) {return "";};
+  virtual std::string generateCpp( FILE * fp) {return "";}
 
   /// This can be used to refresh any inforamtion
-  virtual void refreshSolver(OsiSolverInterface * solver) {};
+  virtual void refreshSolver(OsiSolverInterface * solver) {}
   //@}
   
   /**@name Gets and Sets */
@@ -73,14 +73,14 @@ public:
      Really just a hint to cut generator
   */
   inline int getAggressiveness() const
-  { return aggressive_;};
+  { return aggressive_;}
 
   /**
      Set Aggressiveness - 0 = neutral, 100 is normal root node.
      Really just a hint to cut generator
   */
   inline void setAggressiveness(int value)
-  { aggressive_=value;};
+  { aggressive_=value;}
 
   /**
      Returns true if may generate Row cuts in tree (rather than root node).

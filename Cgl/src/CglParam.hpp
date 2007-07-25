@@ -24,22 +24,22 @@ public:
   /** Set INFINIT */
   virtual void setINFINIT(const double inf);
   /** Get value of INFINIT */
-  inline double getINFINIT() const {return INFINIT;};
+  inline double getINFINIT() const {return INFINIT;}
 
   /** Set EPS */
   virtual void setEPS(const double eps);
   /** Get value of EPS */
-  inline double getEPS() const {return EPS;};
+  inline double getEPS() const {return EPS;}
 
   /** Set EPS_COEFF */
   virtual void setEPS_COEFF(const double eps_c);
   /** Get value of EPS_COEFF */
-  inline double getEPS_COEFF() const {return EPS_COEFF;};
+  inline double getEPS_COEFF() const {return EPS_COEFF;}
 
   /** Set MAX_SUPPORT */
   virtual void setMAX_SUPPORT(const int max_s);
   /** Get value of MAX_SUPPORT */
-  inline int getMAX_SUPPORT() const {return MAX_SUPPORT;};
+  inline int getMAX_SUPPORT() const {return MAX_SUPPORT;}
   //@}
 
   /**@name Constructors and destructors */

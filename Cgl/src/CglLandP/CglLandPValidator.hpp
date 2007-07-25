@@ -12,7 +12,7 @@
 #include <vector>
 
 /** constants describing rejection codes*/
-//[5] = {"Accepted", "violation too small", "small coefficient too small", "big dynamic","too dense"};
+//[5] = {"Accepted", "violation too small", "small coefficient too small", "big dynamic","too dense"}
 
 
 

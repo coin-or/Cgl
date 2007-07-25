@@ -34,7 +34,7 @@ public:
   //@{
   /// Set
   inline void setRequiredViolation(double value)
-  { requiredViolation_=value;};
+  { requiredViolation_=value;}
   /// Get
   inline double getRequiredViolation() const
   { return requiredViolation_;}
@@ -51,9 +51,9 @@ public:
   /// Add a row cut from elements
   void addCut(double lb, double ub, int size, const int * colIndices, const double * elements);
   inline int sizeRowCuts() const
-  { return cuts_.sizeRowCuts();};
+  { return cuts_.sizeRowCuts();}
   const OsiRowCut * rowCutPointer(int index) const
-  { return cuts_.rowCutPtr(index);};
+  { return cuts_.rowCutPtr(index);}
   //@}
 
   /**@name Constructors and destructors */

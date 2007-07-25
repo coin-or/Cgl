@@ -113,7 +113,7 @@ public:
     numberCuts_=0;
     int maxRowCuts = 2*nRows + 200;
     size_=maxRowCuts;
-  };
+  }
   ~row_cut()
   {
     //hash_set<OsiRowCut2  , row_cut_hash, row_cut_compare>::const_iterator i;
@@ -123,9 +123,9 @@ public:
     rowCut_.clear();
   }
   int numberCuts() const
-  { return numberCuts_;};
+  { return numberCuts_;}
   inline bool outOfSpace() const
-  { return size_==numberCuts_;};
+  { return size_==numberCuts_;}
   hash_set<OsiRowCut2  , row_cut_hash, row_cut_compare> rowCut_;
   int size_;
   int numberCuts_;
