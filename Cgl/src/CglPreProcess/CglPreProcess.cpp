@@ -530,11 +530,16 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   unless we want it to transform the current solution to match the presolved
   model.
 */
+      int saveLogLevel = oldModel->messageHandler()->logLevel();
+      if (saveLogLevel==1)
+	oldModel->messageHandler()->setLogLevel(0);
       presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-8,true,5,prohibited_,false);
+      oldModel->messageHandler()->setLogLevel(saveLogLevel);
       if (!presolvedModel) {
         returnModel=NULL;
         break;
       }
+      presolvedModel->messageHandler()->setLogLevel(saveLogLevel);
       if (prohibited_) {
         const int * original = pinfo->originalColumns();
         int numberColumns = presolvedModel->getNumCols();
