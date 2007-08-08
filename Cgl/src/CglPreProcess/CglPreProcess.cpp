@@ -375,7 +375,16 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   }
   OsiSolverInterface * returnModel=NULL;
   int numberChanges;
-  startModel_->initialSolve();
+  {
+    // Give a hint to do dual
+    bool saveTakeHint;
+    OsiHintStrength saveStrength;
+    startModel_->getHintParam(OsiDoDualInInitial,
+			      saveTakeHint,saveStrength);
+    startModel_->setHintParam(OsiDoDualInInitial,true,OsiHintTry);
+    startModel_->initialSolve();
+    startModel_->setHintParam(OsiDoDualInInitial,saveTakeHint,saveStrength);
+  }
   if (!startModel_->isProvenOptimal()) {
     if (!startModel_->isProvenDualInfeasible()) {
       handler_->message(CGL_INFEASIBLE,messages_)<< CoinMessageEol ;
@@ -533,7 +542,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       int saveLogLevel = oldModel->messageHandler()->logLevel();
       if (saveLogLevel==1)
 	oldModel->messageHandler()->setLogLevel(0);
-      presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-8,true,5,prohibited_,false);
+      std::string solverName;
+      oldModel->getStrParam(OsiSolverName,solverName);
+      // Extend if you want other solvers to keep solution
+      bool keepSolution=solverName=="clp";
+      presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-8,true,5,prohibited_,keepSolution);
       oldModel->messageHandler()->setLogLevel(saveLogLevel);
       if (!presolvedModel) {
         returnModel=NULL;
@@ -581,8 +594,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       OsiHintStrength saveStrength;
       presolvedModel->getHintParam(OsiDoDualInInitial,
                                    saveTakeHint,saveStrength);
-      if (iPass)
-        presolvedModel->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
+      //if (iPass)
+      presolvedModel->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
       presolvedModel->initialSolve();
       // maybe we can fix some
 #ifdef COIN_DEVELOP

@@ -32,7 +32,7 @@ public:
   }
 };
 #if defined(_MSC_VER) || defined(__MINGW32__) || defined(__CYGWIN32__)|| (__GNUC__ <3)
-// Seems to bug in cygwin
+// Seems to be bug in cygwin (that of course was years ago as of 8/2007)
 #define GNU_OLDWAY
 #endif
 #ifndef GNU_OLDWAY
@@ -225,7 +225,7 @@ public:
     size_=maxRowCuts;
     rowCut_ = new  OsiRowCut2 * [size_];
     numberCuts_=0;
-  };
+  }
   ~row_cut()
   {
     for (int i=0;i<numberCuts_;i++)
@@ -233,11 +233,11 @@ public:
     delete [] rowCut_;
   }
   OsiRowCut2 * cut(int i) const
-  { return rowCut_[i];};
+  { return rowCut_[i];}
   int numberCuts() const
-  { return numberCuts_;};
+  { return numberCuts_;}
   inline bool outOfSpace() const
-  { return size_==numberCuts_;};
+  { return size_==numberCuts_;}
   OsiRowCut2 ** rowCut_;
   int size_;
   int numberCuts_;
@@ -313,7 +313,9 @@ public:
         effectiveness[iCut++]=-rowCut_[i]->effectiveness();
       }
       std::sort(effectiveness,effectiveness+numberCuts_);
-      double threshold = effectiveness[nRows];
+      double threshold = -1.0e20;
+      if (iCut>nRows)
+        threshold = effectiveness[nRows];
       for ( i=0;i<numberCuts_;i++) {
         if (rowCut_[i]->effectiveness()>threshold) {
           cs.insert(*rowCut_[i]);
