@@ -1084,7 +1084,14 @@ void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 }
 int CglProbing::generateCutsAndModify(const OsiSolverInterface & si, 
 				      OsiCuts & cs,
-				      CglTreeInfo * info) 
+				      CglTreeInfo * info2) 
+{
+  CglTreeInfo info = *info2;
+  generateCutsAndModify(si,cs,info);
+}
+int CglProbing::generateCutsAndModify(const OsiSolverInterface & si, 
+				      OsiCuts & cs,
+				      const CglTreeInfo info) 
 {
 #ifdef CGL_DEBUG
   const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
