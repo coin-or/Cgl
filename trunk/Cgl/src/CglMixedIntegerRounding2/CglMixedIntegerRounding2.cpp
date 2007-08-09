@@ -1723,5 +1723,5 @@ void CglMixedIntegerRounding2::setDoPreproc(int value)
 
 bool CglMixedIntegerRounding2::getDoPreproc() const
 {
-  return doPreproc_;
+  return (doPreproc_!=0);
 }

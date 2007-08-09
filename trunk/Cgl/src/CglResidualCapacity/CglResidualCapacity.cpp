@@ -687,5 +687,5 @@ void CglResidualCapacity::setDoPreproc(int value)
 }
 bool CglResidualCapacity::getDoPreproc() const
 {
-    return doPreproc_;
+    return (doPreproc_ != 0);
 }

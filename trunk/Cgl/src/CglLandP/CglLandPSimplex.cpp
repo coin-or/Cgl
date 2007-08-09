@@ -405,7 +405,7 @@ CglLandPSimplex::findBestCut
     return 0;
   }
   
-  updateM1_M2_M3(row_k_, 0./*params.pivotTol*/, params.reducedSpace, params.perturb);
+  updateM1_M2_M3(row_k_, 0./*params.pivotTol*/, (params.reducedSpace!=0), params.perturb);
   sigma_ = computeCglpObjective(row_k_);
   
   handler_->message(Separating,messages_)<<basics_[row_k_.num]<<sigma_<<CoinMessageEol<<CoinMessageEol;
@@ -478,7 +478,7 @@ CglLandPSimplex::findBestCut
 #endif
     
     
-    updateM1_M2_M3(row_k_, params.pivotTol, params.reducedSpace, params.perturb);
+    updateM1_M2_M3(row_k_, params.pivotTol, (params.reducedSpace!=0), params.perturb);
     sigma_ = computeCglpObjective(row_k_);
     int direction = 0;
     int gammaSign = 0;
@@ -494,7 +494,7 @@ CglLandPSimplex::findBestCut
       {
           incoming = fastFindBestPivotColumn(direction, gammaSign, 
                                              params.pivotTol, params.away, 
-                                             params.reducedSpace,
+                                             (params.reducedSpace!=0),
                                              allowDegeneratePivot,
                                              bestSigma
                                              );
@@ -513,7 +513,7 @@ CglLandPSimplex::findBestCut
               incoming = fastFindBestPivotColumn(direction, gammaSign, 
                                                  params.pivotTol, 
                                                  params.away,
-                                                 params.reducedSpace,
+                                                 (params.reducedSpace!=0),
                                                  allowDegeneratePivot,
                                                  bestSigma
                                                  );
@@ -2183,7 +2183,7 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
           fastFindBestPivotColumn
           (rc[l].direction, rc[l].gammaSign, 
            params.pivotTol, params.away, 
-           params.reducedSpace, 
+           (params.reducedSpace!=0), 
            0, 
            sigma);
         if(incoming!=-1 && bestSigma > sigma)
@@ -2208,7 +2208,7 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
             int incoming = fastFindBestPivotColumn
               (rc[l].direction, rc[l].gammaSign2, 
                params.pivotTol, params.away, 
-               params.reducedSpace, 
+               (params.reducedSpace!=0), 
                0,
                sigma);
             if(incoming!=-1 && bestSigma > sigma)
