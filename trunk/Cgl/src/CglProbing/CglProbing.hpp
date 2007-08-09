@@ -85,10 +85,7 @@ public:
   virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
 			     const CglTreeInfo info = CglTreeInfo()) const;
   int generateCutsAndModify( const OsiSolverInterface & si, OsiCuts & cs, 
-			     CglTreeInfo * info);
-  int generateCutsAndModify(const OsiSolverInterface & si, 
-			    OsiCuts & cs,
-			    CglTreeInfo * info2); 
+			     const CglTreeInfo * info = CglTreeInfo());
   //@}
 
   /**@name snapshot etc */
