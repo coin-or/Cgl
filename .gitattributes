@@ -1,4 +1,23 @@
 * text=auto !eol
+stable/0.5/AUTHORS -text
+stable/0.5/Cgl/LICENSE -text
+stable/0.5/Cgl/README -text
+stable/0.5/Cgl/cgl_addlibs.txt.in -text
+stable/0.5/Cgl/configure -text
+stable/0.5/Cgl/configure.ac -text
+stable/0.5/Cgl/examples/Makefile.in -text
+stable/0.5/Cgl/examples/cgl1.cpp -text
+stable/0.5/Cgl/inc/config_cgl.h.in -text
+stable/0.5/LICENSE -text
+stable/0.5/README -text
+stable/0.5/config.guess -text
+stable/0.5/config.sub -text
+stable/0.5/configure -text
+stable/0.5/configure.ac -text
+stable/0.5/depcomp -text
+stable/0.5/doxydoc/doxygen.conf -text
+stable/0.5/install-sh -text
+stable/0.5/missing -text
 trunk/AUTHORS -text
 trunk/Cgl/LICENSE -text
 trunk/Cgl/MSVisualStudio/v6/libCgl/libCgl.dsp -text
