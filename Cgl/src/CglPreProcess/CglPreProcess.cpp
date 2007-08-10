@@ -74,6 +74,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   int numberColumns = originalModel_->getNumCols();
   int minimumLength = tuning;
   int numberModifiedPasses=10;
+  if (numberPasses==1)
+    numberModifiedPasses=1; // lightweight preprocessing
   if (tuning>=10000) {
     numberModifiedPasses=(tuning-10000)/10000;
     tuning %= 10000;
