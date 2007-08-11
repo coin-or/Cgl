@@ -678,7 +678,6 @@ uninstall-am: uninstall-info-am
 
 
 test: unitTest$(EXEEXT)
-	cd ../../Data/Netlib; $(MAKE) uncompress
 	./unitTest$(EXEEXT)
 
 .PHONY: test
