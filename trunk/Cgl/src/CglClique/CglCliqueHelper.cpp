@@ -15,15 +15,15 @@ void
 CglClique::selectFractionalBinaries(const OsiSolverInterface& si) const
 {
    // extract the primal tolerance from the solver
-   double petol = 0.0;
-   si.getDblParam(OsiPrimalTolerance, petol);
+   double lclPetol = 0.0;
+   si.getDblParam(OsiPrimalTolerance, lclPetol);
 
    const int numcols = si.getNumCols();
    const double* x = si.getColSolution();
    std::vector<int> fracind;
    int i;
    for (i = 0; i < numcols; ++i) {
-      if (si.isBinary(i) && x[i] > petol && x[i] < 1-petol)
+      if (si.isBinary(i) && x[i] > lclPetol && x[i] < 1-petol)
 	 fracind.push_back(i);
    }
    sp_numcols = fracind.size();
@@ -46,15 +46,15 @@ void
 CglClique::selectFractionals(const OsiSolverInterface& si) const
 {
    // extract the primal tolerance from the solver
-   double petol = 0.0;
-   si.getDblParam(OsiPrimalTolerance, petol);
+   double lclPetol = 0.0;
+   si.getDblParam(OsiPrimalTolerance, lclPetol);
 
    const int numcols = si.getNumCols();
    const double* x = si.getColSolution();
    std::vector<int> fracind;
    int i;
    for (i = 0; i < numcols; ++i) {
-      if (x[i] > petol && x[i] < 1-petol)
+      if (x[i] > lclPetol && x[i] < 1-lclPetol)
 	 fracind.push_back(i);
    }
    sp_numcols = fracind.size();
