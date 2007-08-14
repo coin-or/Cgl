@@ -74,8 +74,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   int numberColumns = originalModel_->getNumCols();
   int minimumLength = tuning;
   int numberModifiedPasses=10;
-  if (numberPasses==1)
+  if (numberPasses<=1)
     numberModifiedPasses=1; // lightweight preprocessing
+  else if (numberPasses<=2)
+    numberModifiedPasses=2; // fairly lightweight preprocessing
   if (tuning>=10000) {
     numberModifiedPasses=(tuning-10000)/10000;
     tuning %= 10000;
@@ -395,6 +397,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     }
     return NULL;
   }
+  reducedCostFix(*startModel_);
   if (!numberSolvers_) {
     // just fix
     OsiSolverInterface * newModel = modified(startModel_,false,numberChanges,0,numberModifiedPasses);
