@@ -808,6 +808,16 @@ CglKnapsackCover::deriveAKnapsack(
        const int * index,
        const double * element) const
 {
+
+  // Fix to https://projects.coin-or.org/Cbc/ticket/30
+  {
+#ifndef COIN_DEVELOP
+    if (numberElements==0) return 0;
+#else
+    assert (numberElements>0);
+#endif
+  }
+
   int i;
 
   krow.clear();
