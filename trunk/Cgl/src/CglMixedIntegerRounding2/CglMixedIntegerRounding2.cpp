@@ -883,7 +883,8 @@ CglMixedIntegerRounding2::copyRowSelected(
 {
 
   // copy the row selected to a vector of type CoinIndexedVector
-  rowToAggregate = matrixByRow.getVector(rowSelected);
+  const CoinShallowPackedVector reqdBySunCC = matrixByRow.getVector(rowSelected) ;
+  rowToAggregate = reqdBySunCC ;
   rhsToAggregate = rhs;
 
   // update list of indices of rows selected
