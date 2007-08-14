@@ -870,7 +870,8 @@ CglMixedIntegerRounding::copyRowSelected(
 {
 
   // copy the row selected to a vector of type CoinPackedVector
-  rowToAggregate = matrixByRow.getVector(rowSelected);
+  CoinShallowPackedVector reqdBySunCC = matrixByRow.getVector(rowSelected);
+  rowToAggregate = reqdBySunCC ;
   rhsToAggregate = rhs;
 
   // update list of indices of rows selected
@@ -1409,7 +1410,8 @@ CglMixedIntegerRounding::cMirSeparation(
       // in this case the LB = 0 and the UB = infinity
       // copy the row selected to a vector of type CoinPackedVector
       const int iRow = listRowsAggregated[indCol - numCols_];
-      CoinPackedVector row = matrixByRow.getVector(iRow);
+      const CoinShallowPackedVector reqdBySunCC = matrixByRow.getVector(iRow);
+      CoinPackedVector row = reqdBySunCC ;
       double rhs     = RHS[iRow];
 
       if (sense[iRow] == 'L') {
