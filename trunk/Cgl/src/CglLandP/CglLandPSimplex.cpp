@@ -343,7 +343,7 @@ CglLandPSimplex::findBestCut
   double timeLimit = CoinMin(params.timeLimit, params.singleCutTimeLimit);
   timeLimit += CoinCpuTime();
   // double timeBegin = CoinCpuTime();
-  OsiClpSolverInterface * clp = 
+  OsiClpSolverInterface * lclClp = 
     dynamic_cast<OsiClpSolverInterface *>(si_);
   /** Copy the cached information */
   CoinCopyN(cached.basics_, numrows_, basics_);
@@ -666,15 +666,15 @@ CglLandPSimplex::findBestCut
   //Create the cut
   
   //Retake the row from the factorization
-  if(0 && clp)//Refactorize check that everything is ok
+  if(0 && lclClp)//Refactorize check that everything is ok
   {
-    int status = clp->getModelPtr()->factorize(); //statusOfProblem(0);
+    int status = lclClp->getModelPtr()->factorize(); //statusOfProblem(0);
     if(status)
 	  {
 	    std::cerr<<"Problem refactorizing "<<status<<std::endl;
 	    throw -1;
 	  }
-    status = clp->getModelPtr()->getSolution();
+    status = lclClp->getModelPtr()->getSolution();
     if(status)
 	  {
 	    std::cerr<<"Problem refactorizing "<<status<<std::endl;
