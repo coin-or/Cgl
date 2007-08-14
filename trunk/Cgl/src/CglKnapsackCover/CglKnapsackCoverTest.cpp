@@ -145,7 +145,8 @@ CglKnapsackCoverUnitTest(
     
     // test deriveAKnapsack
     int rind = ( siP->getRowSense()[0] == 'N' ) ? 1 : 0;
-    int deriveaknap = kccg.deriveAKnapsack(*siP, cs, krow,b,complement,xstar,rind,siP->getMatrixByRow()->getVector(rind));
+    const CoinShallowPackedVector reqdBySunCC = siP->getMatrixByRow()->getVector(rind) ;
+    int deriveaknap = kccg.deriveAKnapsack(*siP, cs, krow,b,complement,xstar,rind,reqdBySunCC);
     assert(deriveaknap ==1);
     assert(complement[0]==0);
     assert(complement[1]==1);
@@ -246,15 +247,17 @@ CglKnapsackCoverUnitTest(
     }
 
     rind++;
-    deriveaknap = kccg.deriveAKnapsack(*siP,cuts,krow,b,complement,xstar,rind,siP->getMatrixByRow()->getVector(rind));
+    const CoinShallowPackedVector reqdBySunCC2 = siP->getMatrixByRow()->getVector(rind) ;
+    deriveaknap = kccg.deriveAKnapsack(*siP,cuts,krow,b,complement,xstar,rind,reqdBySunCC2);
     assert(deriveaknap==0);
     
     // Reset complement & test next row
     for (i=0; i<nCols; i++){
       complement[i]=0;
     }
+    const CoinShallowPackedVector reqdBySunCC3 = siP->getMatrixByRow()->getVector(2) ;
     deriveaknap = kccg.deriveAKnapsack(*siP,cuts,krow,b,complement,xstar,2,
-				       siP->getMatrixByRow()->getVector(2));
+				       reqdBySunCC3);
     assert(deriveaknap == 0);
     
     // Clean up
@@ -404,7 +407,8 @@ CglKnapsackCoverUnitTest(
       }
       int row = ( siP->getRowSense()[0] == 'N' ) ? 1 : 0;
       // transform row into canonical knapsack form
-      if (kccg.deriveAKnapsack(*siP, cuts, krow, b, complement, xstar, row,siP->getMatrixByRow()->getVector(row))){
+      const CoinShallowPackedVector reqdBySunCC = siP->getMatrixByRow()->getVector(row) ;
+      if (kccg.deriveAKnapsack(*siP, cuts, krow, b, complement, xstar, row,reqdBySunCC)){
         CoinPackedVector cover, remainder;  
         // apply greedy logic to detect violated minimal cover inequalities
         if (kccg.findGreedyCover(row, krow, b, xstar, cover, remainder) == 1){
