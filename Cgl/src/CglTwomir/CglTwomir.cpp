@@ -1144,7 +1144,9 @@ int DGG_generateFormulationCuts( DGG_list_t *cut_list,
 					       cut_list, data, solver_ptr);
     DGG_CHECKRVAL1(rval, rval);
     if (base->nz == 0){
+#ifdef COIN_DEVELOP
       printf ("why does constraint not exist ?\n");
+#endif
       continue;
     }
   }

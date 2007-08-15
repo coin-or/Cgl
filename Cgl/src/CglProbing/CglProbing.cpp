@@ -1523,6 +1523,10 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   // Get objective offset
   double offset;
   si.getDblParam(OsiObjOffset,offset);
+#ifdef COIN_DEVELOP
+  if (offset&&!info->inTree&&!info->pass) 
+    printf("CglProbing obj offset %g\n",offset);
+#endif
   // see if using cached copy or not
   if (!rowCopy_) {
     // create from current

@@ -123,6 +123,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	feasible=false;
     }
   }
+  // Initialize random seed
+  CoinSeedRandom(987654321);
   if (makeEquality==2||makeEquality==3) {
     int iRow, iColumn;
     int numberIntegers = 0;
