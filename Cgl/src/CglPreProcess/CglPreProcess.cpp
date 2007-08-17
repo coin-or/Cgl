@@ -1916,7 +1916,6 @@ CglPreProcess::modified(OsiSolverInterface * model,
       }
       if (!feasible)
         break;
-      
       // now see if we have any x=y x+y=1
       if (constraints) {
         int numberRowCuts = cs.sizeRowCuts() ;
@@ -1938,12 +1937,17 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	const int * toZero = info.toZero();
 	const int * toOne = info.toOne();
 	const int * which = info.integerVariable();
+	int numberBounds=0;
+	char * markLB = new char [number01];
+	memset(markLB,0,number01);
+	char * markUB = new char [number01];
+	memset(markUB,0,number01);
 	CoinRelFltEq equality;
 	for (int k=0;k<number01;k++) {
 	  int start = toZero[k];
 	  int end = toOne[k];
 	  // to zero
-    int j;
+	  int j;
 	  for (j=start;j<end;j++) {
 	    int goingToOne = entry[j].oneFixed;
 	    int v = entry[j].sequence;
@@ -1958,20 +1962,20 @@ CglPreProcess::modified(OsiSolverInterface * model,
 		  if (!goingToOneV) {
 		    lo=1.0;
 		    up=1.0;
+		    OsiRowCut thisCut;
+		    thisCut.setLb(lo);
+		    thisCut.setUb(up);
+		    double values[]={1.0,1.0};
+		    int columns[2];
+		    columns[0]=which[k];
+		    columns[1]=which[v];
+		    thisCut.setRow(2,columns,values,false);
+		    twoCuts.insertIfNotDuplicate(thisCut,equality);
 		  } else {
-		    // means infeasible
-		    lo=-2.0;
-		    up=-2.0;
+		    // means infeasible for k to go to 0
+		    markLB[k]=1;
+		    numberBounds++;
 		  }
-		  OsiRowCut thisCut;
-		  thisCut.setLb(lo);
-		  thisCut.setUb(up);
-		  double values[]={1.0,1.0};
-		  int columns[2];
-		  columns[0]=which[k];
-		  columns[1]=which[v];
-		  thisCut.setRow(2,columns,values,false);
-		  twoCuts.insertIfNotDuplicate(thisCut,equality);
 		  break;
 		}
 	      }
@@ -1986,20 +1990,20 @@ CglPreProcess::modified(OsiSolverInterface * model,
 		  if (!goingToOneV) {
 		    lo=0.0;
 		    up=0.0;
+		    OsiRowCut thisCut;
+		    thisCut.setLb(lo);
+		    thisCut.setUb(up);
+		    double values[]={1.0,-1.0};
+		    int columns[2];
+		    columns[0]=which[k];
+		    columns[1]=which[v];
+		    thisCut.setRow(2,columns,values,false);
+		    twoCuts.insertIfNotDuplicate(thisCut,equality);
 		  } else {
-		    // means infeasible
-		    lo=-2.0;
-		    up=-2.0;
+		    // means infeasible for k to go to 0
+		    markLB[k]=1;
+		    numberBounds++;
 		  }
-		  OsiRowCut thisCut;
-		  thisCut.setLb(lo);
-		  thisCut.setUb(up);
-		  double values[]={1.0,-1.0};
-		  int columns[2];
-		  columns[0]=which[k];
-		  columns[1]=which[v];
-		  thisCut.setRow(2,columns,values,false);
-		  twoCuts.insertIfNotDuplicate(thisCut,equality);
 		  break;
 		}
 	      }
@@ -2022,20 +2026,20 @@ CglPreProcess::modified(OsiSolverInterface * model,
 		  if (goingToOneV) {
 		    lo=0.0;
 		    up=0.0;
+		    OsiRowCut thisCut;
+		    thisCut.setLb(lo);
+		    thisCut.setUb(up);
+		    double values[]={1.0,-1.0};
+		    int columns[2];
+		    columns[0]=which[k];
+		    columns[1]=which[v];
+		    thisCut.setRow(2,columns,values,false);
+		    twoCuts.insertIfNotDuplicate(thisCut,equality);
 		  } else {
-		    // means infeasible
-		    lo=-2.0;
-		    up=-2.0;
+		    // means infeasible for k to go to 1
+		    markUB[k]=1;
+		    numberBounds++;
 		  }
-		  OsiRowCut thisCut;
-		  thisCut.setLb(lo);
-		  thisCut.setUb(up);
-		  double values[]={1.0,-1.0};
-		  int columns[2];
-		  columns[0]=which[k];
-		  columns[1]=which[v];
-		  thisCut.setRow(2,columns,values,false);
-		  twoCuts.insertIfNotDuplicate(thisCut,equality);
 		  break;
 		}
 	      }
@@ -2050,26 +2054,48 @@ CglPreProcess::modified(OsiSolverInterface * model,
 		  if (goingToOneV) {
 		    lo=1.0;
 		    up=1.0;
+		    OsiRowCut thisCut;
+		    thisCut.setLb(lo);
+		    thisCut.setUb(up);
+		    double values[]={1.0,1.0};
+		    int columns[2];
+		    columns[0]=which[k];
+		    columns[1]=which[v];
+		    thisCut.setRow(2,columns,values,false);
+		    twoCuts.insertIfNotDuplicate(thisCut,equality);
 		  } else {
-		    // means infeasible
-		    lo=-2.0;
-		    up=-2.0;
+		    // means infeasible for k to go to 1
+		    markUB[k]=1;
+		    numberBounds++;
 		  }
-		  OsiRowCut thisCut;
-		  thisCut.setLb(lo);
-		  thisCut.setUb(up);
-		  double values[]={1.0,1.0};
-		  int columns[2];
-		  columns[0]=which[k];
-		  columns[1]=which[v];
-		  thisCut.setRow(2,columns,values,false);
-		  twoCuts.insertIfNotDuplicate(thisCut,equality);
 		  break;
 		}
 	      }
 	    }
 	  }
 	}
+	if (numberBounds) {
+	  CoinPackedVector lbs;
+	  CoinPackedVector ubs;
+	  for (int k=0;k<number01;k++) {
+	    if (markLB[k]&&markUB[k]) {
+	      // infeasible
+	      feasible=false;
+	      break;
+	    } else if (markLB[k]) {
+	      lbs.insert(which[k],1.0);
+	    } else if (markUB[k]) {
+	      ubs.insert(which[k],0.0);
+	    }
+	  }
+	  OsiColCut cc;
+	  cc.setUbs(ubs);
+	  cc.setLbs(lbs);
+	  cc.setEffectiveness(1.0e-5);
+	  cs.insert(cc);
+	}
+	delete [] markLB;
+	delete [] markUB;
       }
       // see if we have any column cuts
       int numberColumnCuts = cs.sizeColCuts() ;
