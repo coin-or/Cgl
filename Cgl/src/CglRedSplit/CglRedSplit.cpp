@@ -677,7 +677,7 @@ double CglRedSplit::row_scale_factor(double *row) {
 } /* row_scale_factor */
 
 /************************************************************************/
-int CglRedSplit::generate_packed_row(const double *xlp,
+int CglRedSplit::generate_packed_row(const double *lclXlp,
 				     double *row,
 				     int *rowind, double *rowelem, 
 				     int *card_row, double & rhs) {
@@ -733,7 +733,7 @@ int CglRedSplit::generate_packed_row(const double *xlp,
   }
   value = 0;
   for(i=0; i<(*card_row); i++) {
-    value += xlp[rowind[i]] * rowelem[i];
+    value += lclXlp[rowind[i]] * rowelem[i];
   }
 
   if(value > rhs) {
@@ -928,7 +928,7 @@ void CglRedSplit::set_given_optsol(const double *given_sol, int card_sol) {
 
 /************************************************************************/
 void CglRedSplit::check_optsol(const int calling_place,
-			       const double *xlp, const double *slack_val,
+			       const double *lclXlp, const double *slack_val,
 			       const int do_flip) {
 
   if(card_given_optsol != ncol) {
@@ -997,7 +997,7 @@ void CglRedSplit::check_optsol(const int calling_place,
     double ck_lhs = rs_dotProd(ck_row, given_optsol, ncol);
     ck_lhs += rs_dotProd(&(ck_row[ncol]), ck_slack, nrow);
     
-    double ck_rhs = adjust_rhs + rs_dotProd(ck_row, xlp, ncol);
+    double ck_rhs = adjust_rhs + rs_dotProd(ck_row, lclXlp, ncol);
     ck_rhs += rs_dotProd(&(ck_row[ncol]), slack_val, nrow);
     
 #ifdef RS_TRACEALL
@@ -1023,7 +1023,7 @@ void CglRedSplit::check_optsol(const int calling_place,
 
 /************************************************************************/
 void CglRedSplit::check_optsol(const int calling_place,
-			       const double *xlp, const double *slack_val,
+			       const double *lclXlp, const double *slack_val,
 			       const double *ck_row, const double ck_rhs,
 			       const int cut_number, const int do_flip) {
 
@@ -1693,19 +1693,19 @@ void CglRedSplit::print() const
 } /* print */
 
 /***********************************************************************/
-void CglRedSplit::printOptTab(OsiSolverInterface *solver) const
+void CglRedSplit::printOptTab(OsiSolverInterface *lclSolver) const
 {
   int i;
   int *cstat = new int[ncol];
   int *rstat = new int[nrow];
 
-  solver->getBasisStatus(cstat, rstat);   // 0: free  1: basic  
+  lclSolver->getBasisStatus(cstat, rstat);   // 0: free  1: basic  
                                           // 2: upper 3: lower
 
   int *basis_index = new int[nrow]; // basis_index[i] = 
                                     //        index of pivot var in row i
                                     //        (slack if number >= ncol) 
-  solver->getBasics(basis_index);
+  lclSolver->getBasics(basis_index);
 
   double *z = new double[ncol];  // workspace to get row of the tableau
   double *slack = new double[nrow];  // workspace to get row of the tableau
@@ -1715,9 +1715,9 @@ void CglRedSplit::printOptTab(OsiSolverInterface *solver) const
     slack_val[i] = rowRhs[i] - rowActivity[i];
   }
 
-  const double *rc = solver->getReducedCost();
-  const double *dual = solver->getRowPrice();
-  const double *solution = solver->getColSolution();
+  const double *rc = lclSolver->getReducedCost();
+  const double *dual = lclSolver->getRowPrice();
+  const double *solution = lclSolver->getColSolution();
 
   rs_printvecINT("cstat", cstat, ncol);
   rs_printvecINT("rstat", rstat, nrow);
@@ -1731,7 +1731,7 @@ void CglRedSplit::printOptTab(OsiSolverInterface *solver) const
   printf("Optimal Tableau:\n");
 
   for(i=0; i<nrow; i++) {
-    solver->getBInvARow(i, z, slack);
+    lclSolver->getBInvARow(i, z, slack);
     int ii;
     for(ii=0; ii<ncol; ii++) {
       printf("%5.2f ", z[ii]);
@@ -1763,7 +1763,7 @@ void CglRedSplit::printOptTab(OsiSolverInterface *solver) const
     printf("%5.2f ", -dual[ii]);
   }
   printf(" | ");
-  printf("%5.2f\n", -solver->getObjValue());
+  printf("%5.2f\n", -lclSolver->getObjValue());
 
   delete[] cstat;
   delete[] rstat;

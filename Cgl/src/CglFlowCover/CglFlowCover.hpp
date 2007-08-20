@@ -267,7 +267,7 @@ private:
     //@{
     inline const CglFlowRowType* getRowTypes() const 
 	{ return rowTypes_; }
-    inline const CglFlowRowType getRowType(const int i) const 
+    inline CglFlowRowType getRowType(const int i) const 
 	{ return rowTypes_[i]; }
     /** Set rowtypes, take over the ownership. */
     inline void setRowTypes(CglFlowRowType* rt) 

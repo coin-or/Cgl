@@ -163,7 +163,7 @@ CglLandPUnitTest(
       OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cuts);
       
       siP->resolve();
-      double lpRelaxAfter=siP->getObjValue(); 
+//      double lpRelaxAfter=siP->getObjValue(); 
     }
     if(1)
     {
@@ -189,7 +189,7 @@ CglLandPUnitTest(
       OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cuts);
       
       siP->resolve();
-      double lpRelaxAfter=siP->getObjValue(); 
+//      double lpRelaxAfter=siP->getObjValue(); 
     }
     delete siP;
   }

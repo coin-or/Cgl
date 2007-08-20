@@ -496,7 +496,7 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
 #endif
  
   cached_.getData(si);
-  CglLandPSimplex landpSi(si,cached_, params.reducedSpace, params.pivotLimit);
+  CglLandPSimplex landpSi(si,cached_, (params.reducedSpace!=0), params.pivotLimit);
   landpSi.setLogLevel(handler_->logLevel());
   int nCut = 0;
   
