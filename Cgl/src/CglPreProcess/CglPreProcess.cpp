@@ -20,7 +20,7 @@
 #include "CoinSort.hpp"
 #include "CoinBuild.hpp"
 #include "CoinHelperFunctions.hpp"
-#include "CoinWarmStart.hpp"
+#include "CoinWarmStartBasis.hpp"
 
 #include "CglProbing.hpp"
 #include "CglDuplicateRow.hpp"
@@ -1366,6 +1366,12 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
     for (int iPass=numberSolvers_-1;iPass>=0;iPass--) {
       OsiSolverInterface * model = model_[iPass];
       if (model->getNumCols()) {
+	CoinWarmStartBasis* basis =
+	  dynamic_cast <CoinWarmStartBasis*>(modelM->getWarmStart()) ;
+	if (basis) {
+	  model->setWarmStart(basis);
+	  delete basis;
+	}
 	int numberColumns = modelM->getNumCols();
 	const double * solutionM = modelM->getColSolution();
 	const double * columnLower2 = model->getColLower(); 
@@ -1475,6 +1481,20 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 	  }
 	}
       }
+      {
+	int numberFixed=0;
+	int numberColumns = model->getNumCols();
+	const double * columnLower = model->getColLower(); 
+	const double * columnUpper = model->getColUpper();
+	int iColumn;
+	for (iColumn=0;iColumn<numberColumns;iColumn++) {
+	  if (columnLower[iColumn]==columnUpper[iColumn])
+	    numberFixed++;
+	}
+	if (numberColumns>2000&&numberFixed<numberColumns) {
+	  model->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
+	}
+      }
       model->initialSolve();
       if (!model->isProvenOptimal()) {
 #ifdef COIN_DEVELOP
@@ -1547,6 +1567,12 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
     const double * columnLower = modelM->getColLower(); 
     const double * columnUpper = modelM->getColUpper();
     int numberBadValues = 0;
+    CoinWarmStartBasis* basis =
+      dynamic_cast <CoinWarmStartBasis*>(modelM->getWarmStart()) ;
+    if (basis) {
+      model->setWarmStart(basis);
+      delete basis;
+    }
     for (iColumn=0;iColumn<numberColumns;iColumn++) {
       if (modelM->isInteger(iColumn)) {
 	double value = solutionM[iColumn];
@@ -1699,10 +1725,29 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
   originalModel_->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
   //printf("dumping ss.mps.gz in postprocess\n");
   //originalModel_->writeMps("ss");
-  CoinWarmStart * empty = originalModel_->getEmptyWarmStart();
-  originalModel_->setWarmStart(empty);
-  delete empty;
+  {
+    int numberFixed=0;
+    int numberColumns = originalModel_->getNumCols();
+    const double * columnLower = originalModel_->getColLower(); 
+    const double * columnUpper = originalModel_->getColUpper();
+    int iColumn;
+    for (iColumn=0;iColumn<numberColumns;iColumn++) {
+      if (columnLower[iColumn]==columnUpper[iColumn])
+	numberFixed++;
+    }
+    //printf("XX %d columns, %d fixed\n",numberColumns,numberFixed);
+    //double time1 = CoinCpuTime();
+    //originalModel_->initialSolve();
+    //printf("Time with basis %g seconds, %d iterations\n",CoinCpuTime()-time1,originalModel_->getIterationCount());
+    if (numberColumns<10000||numberFixed==numberColumns) {
+      CoinWarmStart * empty = originalModel_->getEmptyWarmStart();
+      originalModel_->setWarmStart(empty);
+      delete empty;
+    }
+  }
+  //double time1 = CoinCpuTime();
   originalModel_->initialSolve();
+  //printf("Time without basis %g seconds, %d iterations\n",CoinCpuTime()-time1,originalModel_->getIterationCount());
   if (!originalModel_->isProvenOptimal()) {
 #ifdef COIN_DEVELOP
     printf("bad end unwind in postprocess\n");
@@ -1836,7 +1881,10 @@ CglPreProcess::modified(OsiSolverInterface * model,
         const double * rowLower = newModel->getRowLower();
         const double * rowUpper = newModel->getRowUpper();
         CoinBuild build;
+	// For basis
+	char * keepRow = new char [numberRows];
         for (iRow=0;iRow<numberRows;iRow++) {
+	  keepRow[iRow]=0;
           OsiRowCut * thisCut = whichCut[iRow];
           whichCut[iRow]=NULL;
           if (rowLower[iRow]>-1.0e20||rowUpper[iRow]<1.0e20) {
@@ -1845,6 +1893,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
               int start=rowStart[iRow];
               build.addRow(rowLength[iRow],column+start,rowElements+start,
                            rowLower[iRow],rowUpper[iRow]);
+	      keepRow[iRow]=1;
             } else {
               // strengthens this row (should we check?)
               // may be worth going round again
@@ -1880,10 +1929,12 @@ CglPreProcess::modified(OsiSolverInterface * model,
                   int start=rowStart[iRow];
                   build.addRow(rowLength[iRow],column+start,rowElements+start,
                                rowLower[iRow],rowUpper[iRow]);
+		  keepRow[iRow]=1;
                 }
               }
               if (n>0) {
                 build.addRow(n,columnCut,elementCut,lower,upper);
+		keepRow[iRow]=1;
               } else if (!n) {
                 // Either infeasible or redundant
                 if (lower<=0.0&&upper>=0.0) {
@@ -1899,11 +1950,29 @@ CglPreProcess::modified(OsiSolverInterface * model,
         }
         // recreate
         int * del = new int[numberRows];
+	// save and modify basis
+	CoinWarmStartBasis* basis =
+	  dynamic_cast <CoinWarmStartBasis*>(newModel->getWarmStart()) ;
+	if (basis) {
+	  int n=0;
+	  for (iRow=0;iRow<numberRows;iRow++) {
+	    if (!keepRow[iRow]) {
+	      del[n++]=iRow;
+	    }
+	  }
+	  basis->deleteRows(n,del);
+	}
         for (iRow=0;iRow<numberRows;iRow++) 
           del[iRow]=iRow;
         newModel->deleteRows(numberRows,del);
         newModel->addRows(build);
         numberRows = newModel->getNumRows();
+	if (basis) {
+	  assert (numberRows=basis->getNumArtificial());
+	  newModel->setWarmStart(basis);
+	  delete basis;
+	}
+	delete [] keepRow;
         delete [] del;
 /*
   VIRTUOUS
