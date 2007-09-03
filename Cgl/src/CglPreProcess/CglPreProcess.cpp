@@ -639,6 +639,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       int infeas = tightenPrimalBounds(*returnModel);
       if (infeas) {
         delete returnModel;
+	for (int iPass=0;iPass<numberSolvers_;iPass++) {
+	  if (returnModel==modifiedModel_[iPass])
+	    modifiedModel_[iPass]=NULL;
+	}
         if (returnModel==startModel_&&startModel_!=originalModel_)
           startModel_=NULL;
         returnModel=NULL;
