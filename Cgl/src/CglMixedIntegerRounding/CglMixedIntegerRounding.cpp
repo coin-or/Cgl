@@ -542,6 +542,9 @@ CglMixedIntegerRounding::determineRowType(const OsiSolverInterface& si,
   if (rowLen == 0) 
     return ROW_UNDEFINED;
 
+  if (sense == 'N' || rhs == si.getInfinity() || rhs == -si.getInfinity())
+    return ROW_OTHER;
+
   RowType rowType = ROW_UNDEFINED;
 
   int  numPosInt = 0;      // num of positive integer variables
