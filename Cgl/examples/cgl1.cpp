@@ -27,6 +27,8 @@
 #include "OsiCuts.hpp"
 #include "OsiClpSolverInterface.hpp"
 //#include "OsiOslSolverInterface.hpp"
+#include "CoinWarmStartBasis.hpp"
+#include <cassert>
 
 #include "CglKnapsackCover.hpp"
 #include "CglSimpleRounding.hpp"
@@ -85,6 +87,9 @@ int main(int argc, const char *argv[])
     
     // Solve continuous problem
     si.initialSolve();
+
+    // Original number of rows (so we can take off inactive cuts)
+    int numberRows = si.getNumRows();
     
     // Save the orig lp relaxation value for 
     // comparisons later
@@ -141,6 +146,28 @@ int main(int argc, const char *argv[])
       cout <<endl;
       cout <<"After applying cuts, objective value changed from "
         <<obj <<" to " <<si.getObjValue() <<endl <<endl;
+
+      // Take off slack cuts
+      int numberRowsNow = si.getNumRows();
+      int * del = new int [numberRowsNow-numberRows];
+      const CoinWarmStartBasis* basis = dynamic_cast<const CoinWarmStartBasis*>(si.getWarmStart()) ;
+      assert (basis);
+      int nDelete=0;
+      for (int i=numberRows;i<numberRowsNow;i++) {
+	CoinWarmStartBasis::Status status = basis->getArtifStatus(i);
+	if (status == CoinWarmStartBasis::basic)
+	  del[nDelete++] = i;
+      }
+      delete basis;
+      if (nDelete) {
+	si.deleteRows(nDelete,del);
+	// should take zero iterations
+	si.resolve();
+	cout << nDelete << " rows deleted as basic - resolve took " 
+	     << si.getIterationCount() <<" iterations"
+	     <<endl;
+      }
+      delete [] del;
       
       // -----------------------------------------------
       // Set Boolean flag to true if new objective is 
