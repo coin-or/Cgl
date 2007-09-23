@@ -1970,7 +1970,10 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                 cutVector_[j].index[iput].zeroOne = 1;
                 cutVector_[j].length++;
               } else {
+#ifdef COIN_DEVELOP
                 abort();
+#endif
+		continue;
               }
             }
           }
