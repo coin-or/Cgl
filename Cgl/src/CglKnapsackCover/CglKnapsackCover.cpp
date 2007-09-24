@@ -1912,7 +1912,7 @@ CglKnapsackCover::findJohnAndEllisCover(
   }
 
   // If no minimal cover was found, pack it in   
-  if (!gotCover || cover.getNumElements() < 2) {
+  if (!gotCover || fracCover.getNumElements() < 2) {
     return -1;
   }
   
