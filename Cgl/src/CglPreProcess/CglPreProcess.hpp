@@ -235,6 +235,8 @@ private:
 				int numberPasses);
   /// create original columns and rows
   void createOriginalIndices() const;
+  /// Make continuous variables integer
+  void makeInteger();
   //@}
 
 //---------------------------------------------------------------------------

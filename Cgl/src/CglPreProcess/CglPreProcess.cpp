@@ -125,7 +125,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   }
   // Initialize random seed
   CoinSeedRandom(987654321);
-  if (makeEquality==2||makeEquality==3) {
+  if (makeEquality==2||makeEquality==3||makeEquality==4) {
     int iRow, iColumn;
     int numberIntegers = 0;
     for (iColumn=0;iColumn<numberColumns;iColumn++) {
@@ -138,11 +138,15 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     CoinFillN(mark,numberColumns,-1);
     int numberOverlap=0;
     int numberInSOS=0;
+    // See if worthwhile creating accumulation variables
+    int firstOther=numberRows;
+    int * whichRow = new int[numberRows];
     for (iRow=0;iRow<numberRows;iRow++) {
       if (rowUpper[iRow]==1.0) {
         if (rowLength[iRow]<5)
           continue;
         bool goodRow=true;
+	bool overlap=false;
         for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
           int iColumn = column[j];
           if (elementByRow[j]!=1.0||!originalModel_->isInteger(iColumn)||lower[iColumn]) {
@@ -150,21 +154,303 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
             break;
           }
           if (mark[iColumn]>=0) {
-            goodRow=false;
+            overlap=true;
             numberOverlap++;
           }
         }
         if (goodRow) {
-          // mark all
-          for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
-            int iColumn = column[j];
-            mark[iColumn]=numberSOS;
-          }
-          numberSOS++;
-          numberInSOS += rowLength[iRow];
+	  if (!overlap) {
+	    // mark all
+	    for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+	      int iColumn = column[j];
+	      mark[iColumn]=numberSOS;
+	    }
+	    numberSOS++;
+	    numberInSOS += rowLength[iRow];
+	  }
+	  // May still be interesting even if overlap
+	  if (rowLength[iRow]>=5) {
+	    firstOther--;
+	    whichRow[firstOther]=iRow;
+	  }
         }
       }
     }
+    if (firstOther<numberRows&&makeEquality==4) {
+      // make clone
+      startModel_ = originalModel_->clone();
+      CoinPackedMatrix * matrixByColumn = const_cast<CoinPackedMatrix *>(startModel_->getMatrixByCol());
+      // Column copy
+      const int * row = matrixByColumn->getIndices();
+      const CoinBigIndex * columnStart = matrixByColumn->getVectorStarts();
+      const int * columnLength = matrixByColumn->getVectorLengths(); 
+      double * columnElements = matrixByColumn->getMutableElements();
+      int * rowCount = new int[numberRows];
+      memset(rowCount,0,numberRows*sizeof(int));
+      double * rowValue = new double [numberRows];
+      int numberY=0;
+      int numberElements=0;
+      int numberSOS=0;
+      for (int kRow=firstOther;kRow<numberRows;kRow++) {
+	int iRow=whichRow[kRow];
+	int n=0;
+	int j;
+	for (j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+	  int iColumn = column[j];
+	  for (int k=columnStart[iColumn];k<columnStart[iColumn]+columnLength[iColumn];
+	       k++) {
+	    int jRow = row[k];
+	    double value = columnElements[k];
+	    if (jRow!=iRow) {
+	      if (rowCount[jRow]>0) {
+		if (value!=rowValue[jRow])
+		  rowCount[jRow]=-1; // no good
+		else
+		  rowCount[jRow]++;
+	      } else if (!rowCount[jRow]) {
+		whichRow[n++]=jRow;
+		rowCount[jRow]=1;
+		rowValue[jRow]=value;
+	      }
+	    }
+	  }
+	}
+	int bestRow=-1;
+	int bestCount=4;
+	for (j=0;j<n;j++) {
+	  int jRow = whichRow[j];
+	  int count=rowCount[jRow];
+	  rowCount[jRow]=0;
+	  if (count>=5) {
+	    numberY++;
+	    numberElements+=count;
+	  }
+	  if (count>bestCount) {
+	    // possible
+	    bestRow=jRow;
+	    bestCount=count;
+	  }
+	}
+	if (bestRow>=0) {
+	  numberSOS++;
+	  numberY++;
+	  numberElements+=bestCount;
+	}
+      }
+      if (numberY) {
+	// Some may be duplicates
+	// make sure ordered
+	matrixByRow.orderMatrix();
+	elementByRow = matrixByRow.getElements();
+	column = matrixByRow.getIndices();
+	rowStart = matrixByRow.getVectorStarts();
+	rowLength = matrixByRow.getVectorLengths();
+	CoinBigIndex * newStart = new CoinBigIndex[numberY+1];
+	int * newColumn = new int [numberElements];
+	double * newValue = new double [numberElements];
+	double * hash = new double [numberY];
+	double * hashColumn = new double [numberColumns];
+	int i;
+	for (i=0;i<numberColumns;i++)
+	  hashColumn[i]=CoinDrand48();
+	double * valueY = new double [3*numberY];
+	int * rowY = new int [3*numberY];
+	int * columnY = new int[3*numberY];
+	// For new solution
+	double * newSolution = new double [numberColumns+numberY];
+	memcpy(newSolution,startModel_->getColSolution(),numberColumns*sizeof(double));
+	memset(rowCount,0,numberRows*sizeof(int));
+	// List of SOS entries to zero out
+	CoinBigIndex * where = new CoinBigIndex[numberColumns];
+	numberY=0;
+	numberElements=0;
+	int numberElementsY=0;
+	newStart[0]=0;
+	for (int kRow=firstOther;kRow<numberRows;kRow++) {
+	  int iRow=whichRow[kRow];
+	  int n=0;
+	  int j;
+	  int saveNumberY=numberY;
+	  for (j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+	    int iColumn = column[j];
+	    for (int k=columnStart[iColumn];k<columnStart[iColumn]+columnLength[iColumn];
+		 k++) {
+	      int jRow = row[k];
+	      double value = columnElements[k];
+	      if (jRow!=iRow) {
+		if (rowCount[jRow]>0) {
+		  if (value!=rowValue[jRow])
+		    rowCount[jRow]=-1; // no good
+		  else
+		    rowCount[jRow]++;
+		} else if (!rowCount[jRow]) {
+		  whichRow[n++]=jRow;
+		  rowCount[jRow]=1;
+		  rowValue[jRow]=value;
+		  assert (value);
+		}
+	      }
+	    }
+	  }
+	  for (i=0;i<n;i++) {
+	    // Sort so fewest first
+	    std::sort(whichRow,whichRow+n);
+	    int jRow = whichRow[i];
+	    int count=rowCount[jRow];
+	    rowCount[jRow]=0;
+	    if (count>=5) {
+	      //assert (count<rowLength[jRow]); // not error - just need to think
+	      // mark so not looked at again
+	      rowCount[jRow]=-count;
+	      // form new row
+	      double value=0.0;
+	      double hashValue=0.0;
+	      int nInSOS=0;
+	      double valueOfY=0.0;
+	      for (j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+		int iColumn = column[j];
+		for (int k=columnStart[iColumn];k<columnStart[iColumn]+columnLength[iColumn];
+		     k++) {
+		  if (row[k]==jRow) {
+		    value = columnElements[k];
+		    newColumn[numberElements]=iColumn;
+		    newValue[numberElements++]=1.0;
+		    hashValue += hashColumn[iColumn];
+		    columnElements[k]=0.0;
+		    valueOfY += newSolution[iColumn];
+		  } else if (row[k]==iRow) {
+		    if (columnElements[k])
+		      where[nInSOS++]=k;
+		  }
+		}
+	      }
+	      // See if already exists
+	      int n=numberElements-newStart[numberY];
+	      for (j=0;j<numberY;j++) {
+		if (hashValue==hash[j]) {
+		  // Double check
+		  int offset=newStart[numberY]-newStart[j];
+		  if (n==newStart[j+1]-newStart[j]) {
+		    int k;
+		    for (k=newStart[j];k<newStart[j]+n;k++) {
+		      if (newColumn[k]!=newColumn[k+offset])
+			break;
+		    }
+		    if (k==newStart[j+1])
+		      break;
+		  }
+		}
+	      }
+	      if (j==numberY) {
+		// not duplicate
+		newSolution[numberY+numberColumns]=valueOfY;
+		numberY++;
+		newStart[numberY]=numberElements;
+		hash[j]=hashValue;
+		// Now do -1
+		rowY[numberElementsY]=j+numberRows;
+		columnY[numberElementsY]=j;
+		valueY[numberElementsY++]=-1;
+		if (n==nInSOS) {
+		  // SOS entry
+		  rowY[numberElementsY]=iRow;
+		  columnY[numberElementsY]=j;
+		  valueY[numberElementsY++]=1;
+		  for (int i=0;i<n;i++) {
+		    int iEl = where[i];
+		    columnElements[iEl]=0.0;
+		  }
+		}
+	      } else {
+		// duplicate
+		numberElements=newStart[numberY];
+	      }
+	      // Now do 
+	      rowY[numberElementsY]=jRow;
+	      columnY[numberElementsY]=j;
+	      valueY[numberElementsY++]=value;
+	    }
+	  }
+	  if (numberY>saveNumberY)
+	    rowCount[iRow]=-1000;
+	}
+	delete [] hash;
+	delete [] hashColumn;
+	matrixByColumn->cleanMatrix();
+	// Now add rows
+	double * rhs = new double[numberY];
+	memset(rhs,0,numberY*sizeof(double));
+	startModel_->addRows(numberY,newStart,newColumn,newValue,rhs,rhs);
+	delete [] rhs;
+	delete [] newStart;
+	delete [] newColumn;
+	delete [] newValue;
+	delete [] where;
+	// Redo matrix
+	CoinPackedMatrix add(true,rowY,columnY,valueY,numberElementsY);
+	delete [] valueY;
+	delete [] rowY;
+	delete [] columnY;
+	const int * row = add.getIndices();
+	const CoinBigIndex * columnStart = add.getVectorStarts();
+	//const int * columnLength = add.getVectorLengths(); 
+	double * columnElements = add.getMutableElements();
+	double * lo = new double [numberY];
+	double * up = new double [numberY];
+	for (i=0;i<numberY;i++) {
+	  lo[i]=0.0;
+	  up[i]=1.0;
+	}
+	startModel_->addCols(numberY,columnStart,row,columnElements,lo,up,NULL);
+	delete [] lo;
+	delete [] up;
+	for (i=0;i<numberY;i++) 
+	  startModel_->setInteger(i+numberColumns);
+	CoinWarmStartBasis* basis =
+	  dynamic_cast <CoinWarmStartBasis*>(startModel_->getWarmStart()) ;
+	if (basis) {
+	  for (i=0;i<numberY;i++) {
+	    basis->setArtifStatus(i+numberRows,CoinWarmStartBasis::atLowerBound);
+	    basis->setStructStatus(i+numberColumns,CoinWarmStartBasis::basic);
+	  }
+	  startModel_->setWarmStart(basis);
+	  delete basis;
+	}
+	startModel_->setColSolution(newSolution);
+	delete [] newSolution;
+	if (numberElements<10*CoinMin(numberColumns,100*numberY)) {
+	  handler_->message(CGL_ADDED_INTEGERS,messages_)
+	    <<numberY<<numberSOS<<numberElements
+	    <<CoinMessageEol;
+	  //startModel_->writeMps("new");
+	  numberColumns += numberY;
+	  bool saveTakeHint;
+	  OsiHintStrength saveStrength;
+	  startModel_->getHintParam(OsiDoDualInResolve,
+			      saveTakeHint,saveStrength);
+	  startModel_->setHintParam(OsiDoDualInResolve,false,OsiHintTry);
+	  startModel_->resolve();
+	  startModel_->setHintParam(OsiDoDualInResolve,saveTakeHint,saveStrength);
+	} else {
+	  // not such a good idea?
+	  delete startModel_;
+	  startModel_=NULL;
+	}
+      }
+      delete [] rowValue;
+      delete [] rowCount;
+    }
+    if (makeEquality==4) {
+      makeEquality=0;
+#if 0
+      // Try and make continuous variables integer
+      // make clone
+      if (!startModel_)
+	startModel_ = originalModel_->clone();
+      makeInteger();
+#endif
+    }
+    delete [] whichRow;
     delete [] mark;
     if (numberSOS) {
       if (makeEquality==2) {
@@ -357,7 +643,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       else
 	startModel_->setRowUpper(iRow,rowLower[iRow]);
     }
-  } else {
+  } else if (!startModel_) {
     // make clone anyway so can tighten bounds
     startModel_ = originalModel_->clone();
   }
@@ -2756,4 +3042,269 @@ CglPreProcess::passInProhibited(const char * prohibited,int numberColumns)
   delete [] prohibited_;
   prohibited_ = CoinCopyOfArray(prohibited,numberColumns);
   numberProhibited_ = numberColumns;
+}
+// Make continuous variables integer
+void 
+CglPreProcess::makeInteger()
+{
+  // First check if we need to
+  int numberInteger=0;
+  {
+    const double *lower = startModel_->getColLower() ;
+    const double *upper = startModel_->getColUpper() ;
+    int numberColumns = startModel_->getNumCols() ;
+    int iColumn;
+    int numberContinuous=0;
+    for (iColumn=0;iColumn<numberColumns;iColumn++) {
+      if (upper[iColumn] > lower[iColumn]+1.0e-8) {
+	if(startModel_->isInteger(iColumn)) 
+	  numberInteger++;
+	else
+	  numberContinuous++;
+      }
+    }
+    if (!numberContinuous)
+      return;
+  }
+  OsiSolverInterface * solver = startModel_->clone();
+  const double *objective = solver->getObjCoefficients() ;
+  const double *lower = solver->getColLower() ;
+  const double *upper = solver->getColUpper() ;
+  int numberColumns = solver->getNumCols() ;
+  int numberRows = solver->getNumRows();
+  double direction = solver->getObjSense();
+  int iRow,iColumn;
+
+  // Row copy
+  CoinPackedMatrix matrixByRow(*solver->getMatrixByRow());
+  const double * elementByRow = matrixByRow.getElements();
+  const int * column = matrixByRow.getIndices();
+  const CoinBigIndex * rowStart = matrixByRow.getVectorStarts();
+  const int * rowLength = matrixByRow.getVectorLengths();
+
+  // Column copy
+  CoinPackedMatrix  matrixByCol(*solver->getMatrixByCol());
+  const double * element = matrixByCol.getElements();
+  const int * row = matrixByCol.getIndices();
+  const CoinBigIndex * columnStart = matrixByCol.getVectorStarts();
+  const int * columnLength = matrixByCol.getVectorLengths();
+
+  const double * rowLower = solver->getRowLower();
+  const double * rowUpper = solver->getRowUpper();
+
+  char * ignore = new char [numberRows];
+  int * changed = new int[numberColumns];
+  int * which = new int[numberRows];
+  double * changeRhs = new double[numberRows];
+  memset(changeRhs,0,numberRows*sizeof(double));
+  memset(ignore,0,numberRows);
+  int numberChanged=0;
+  bool finished=false;
+  while (!finished) {
+    int saveNumberChanged = numberChanged;
+    for (iRow=0;iRow<numberRows;iRow++) {
+      int numberContinuous=0;
+      double value1=0.0,value2=0.0;
+      bool allIntegerCoeff=true;
+      double sumFixed=0.0;
+      int jColumn1=-1,jColumn2=-1;
+      for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+        int jColumn = column[j];
+        double value = elementByRow[j];
+        if (upper[jColumn] > lower[jColumn]+1.0e-8) {
+          if (!solver->isInteger(jColumn)) {
+            if (numberContinuous==0) {
+              jColumn1=jColumn;
+              value1=value;
+            } else {
+              jColumn2=jColumn;
+              value2=value;
+            }
+            numberContinuous++;
+          } else {
+            if (fabs(value-floor(value+0.5))>1.0e-12)
+              allIntegerCoeff=false;
+          }
+        } else {
+          sumFixed += lower[jColumn]*value;
+        }
+      }
+      double low = rowLower[iRow];
+      if (low>-1.0e20) {
+        low -= sumFixed;
+        if (fabs(low-floor(low+0.5))>1.0e-12)
+          allIntegerCoeff=false;
+      }
+      double up = rowUpper[iRow];
+      if (up<1.0e20) {
+        up -= sumFixed;
+        if (fabs(up-floor(up+0.5))>1.0e-12)
+          allIntegerCoeff=false;
+      }
+      if (!allIntegerCoeff)
+        continue; // can't do
+      if (numberContinuous==1) {
+        // see if really integer
+        // This does not allow for complicated cases
+        if (low==up) {
+          if (fabs(value1)>1.0e-3) {
+            value1 = 1.0/value1;
+            if (fabs(value1-floor(value1+0.5))<1.0e-12) {
+              // integer
+              changed[numberChanged++]=jColumn1;
+              solver->setInteger(jColumn1);
+              if (upper[jColumn1]>1.0e20)
+                solver->setColUpper(jColumn1,1.0e20);
+              if (lower[jColumn1]<-1.0e20)
+                solver->setColLower(jColumn1,-1.0e20);
+            }
+          }
+        } else {
+          if (fabs(value1)>1.0e-3) {
+            value1 = 1.0/value1;
+            if (fabs(value1-floor(value1+0.5))<1.0e-12) {
+              // This constraint will not stop it being integer
+              ignore[iRow]=1;
+            }
+          }
+        }
+      } else if (numberContinuous==2) {
+        if (low==up) {
+          /* need general theory - for now just look at 2 cases -
+             1 - +- 1 one in column and just costs i.e. matching objective
+             2 - +- 1 two in column but feeds into G/L row which will try and minimize
+          */
+          if (fabs(value1)==1.0&&value1*value2==-1.0&&!lower[jColumn1]
+              &&!lower[jColumn2]) {
+            int n=0;
+            int i;
+            double objChange=direction*(objective[jColumn1]+objective[jColumn2]);
+            double bound = CoinMin(upper[jColumn1],upper[jColumn2]);
+            bound = CoinMin(bound,1.0e20);
+            for ( i=columnStart[jColumn1];i<columnStart[jColumn1]+columnLength[jColumn1];i++) {
+              int jRow = row[i];
+              double value = element[i];
+              if (jRow!=iRow) {
+                which[n++]=jRow;
+                changeRhs[jRow]=value;
+              }
+            }
+            for ( i=columnStart[jColumn1];i<columnStart[jColumn1]+columnLength[jColumn1];i++) {
+              int jRow = row[i];
+              double value = element[i];
+              if (jRow!=iRow) {
+                if (!changeRhs[jRow]) {
+                  which[n++]=jRow;
+                  changeRhs[jRow]=value;
+                } else {
+                  changeRhs[jRow]+=value;
+                }
+              }
+            }
+            if (objChange>=0.0) {
+              // see if all rows OK
+              bool good=true;
+              for (i=0;i<n;i++) {
+                int jRow = which[i];
+                double value = changeRhs[jRow];
+                if (value) {
+                  value *= bound;
+                  if (rowLength[jRow]==1) {
+                    if (value>0.0) {
+                      double rhs = rowLower[jRow];
+                      if (rhs>0.0) {
+                        double ratio =rhs/value;
+                        if (fabs(ratio-floor(ratio+0.5))>1.0e-12)
+                          good=false;
+                      }
+                    } else {
+                      double rhs = rowUpper[jRow];
+                      if (rhs<0.0) {
+                        double ratio =rhs/value;
+                        if (fabs(ratio-floor(ratio+0.5))>1.0e-12)
+                          good=false;
+                      }
+                    }
+                  } else if (rowLength[jRow]==2) {
+                    if (value>0.0) {
+                      if (rowLower[jRow]>-1.0e20)
+                        good=false;
+                    } else {
+                      if (rowUpper[jRow]<1.0e20)
+                        good=false;
+                    }
+                  } else {
+                    good=false;
+                  }
+                }
+              }
+              if (good) {
+                // both can be integer
+                changed[numberChanged++]=jColumn1;
+                solver->setInteger(jColumn1);
+                if (upper[jColumn1]>1.0e20)
+                  solver->setColUpper(jColumn1,1.0e20);
+                if (lower[jColumn1]<-1.0e20)
+                  solver->setColLower(jColumn1,-1.0e20);
+                changed[numberChanged++]=jColumn2;
+                solver->setInteger(jColumn2);
+                if (upper[jColumn2]>1.0e20)
+                  solver->setColUpper(jColumn2,1.0e20);
+                if (lower[jColumn2]<-1.0e20)
+                  solver->setColLower(jColumn2,-1.0e20);
+              }
+            }
+            // clear
+            for (i=0;i<n;i++) {
+              changeRhs[which[i]]=0.0;
+            }
+          }
+        }
+      }
+    }
+    for (iColumn=0;iColumn<numberColumns;iColumn++) {
+      if (upper[iColumn] > lower[iColumn]+1.0e-8&&!solver->isInteger(iColumn)) {
+        double value;
+        value = upper[iColumn];
+        if (value<1.0e20&&fabs(value-floor(value+0.5))>1.0e-12) 
+          continue;
+        value = lower[iColumn];
+        if (value>-1.0e20&&fabs(value-floor(value+0.5))>1.0e-12) 
+          continue;
+        bool integer=true;
+        for (CoinBigIndex j=columnStart[iColumn];j<columnStart[iColumn]+columnLength[iColumn];j++) {
+          int iRow = row[j];
+          if (!ignore[iRow]) {
+            integer=false;
+            break;
+          }
+        }
+        if (integer) {
+          // integer
+          changed[numberChanged++]=iColumn;
+          solver->setInteger(iColumn);
+          if (upper[iColumn]>1.0e20)
+            solver->setColUpper(iColumn,1.0e20);
+          if (lower[iColumn]<-1.0e20)
+            solver->setColLower(iColumn,-1.0e20);
+        }
+      }
+    }
+    finished = numberChanged==saveNumberChanged;
+  }
+  delete [] which;
+  delete [] changeRhs;
+  delete [] ignore;
+  //increment=0.0;
+  if (numberChanged) {
+    handler_->message(CGL_MADE_INTEGER,messages_)
+      <<numberChanged
+      <<CoinMessageEol;
+    for (iColumn=0;iColumn<numberColumns;iColumn++) {
+      if (solver->isInteger(iColumn))
+	startModel_->setInteger(iColumn);
+    }
+  }
+  delete solver;
+  delete [] changed;
 }
