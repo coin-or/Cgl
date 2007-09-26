@@ -675,11 +675,21 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 			      saveTakeHint,saveStrength);
     startModel_->setHintParam(OsiDoDualInInitial,true,OsiHintTry);
     startModel_->initialSolve();
+    // double check
+    if (!startModel_->isProvenOptimal()) {
+      if (!startModel_->isProvenDualInfeasible()) {
+	startModel_->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
+	startModel_->initialSolve();
+      }
+    }
     startModel_->setHintParam(OsiDoDualInInitial,saveTakeHint,saveStrength);
   }
   if (!startModel_->isProvenOptimal()) {
     if (!startModel_->isProvenDualInfeasible()) {
       handler_->message(CGL_INFEASIBLE,messages_)<< CoinMessageEol ;
+#ifdef COIN_DEVELOP
+      startModel_->writeMps("infeas");
+#endif
     } else {
       handler_->message(CGL_UNBOUNDED,messages_)<< CoinMessageEol ;
     }
