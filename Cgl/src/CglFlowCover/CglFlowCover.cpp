@@ -478,9 +478,10 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     CglFlowVUB VUB;
 
     for (i = 0; i < rowLen; ++i) {
-	if ( xlp[i] - floor(xlp[i]) > EPSILON_ && ceil(xlp[i]) - xlp[i] > EPSILON_ )
+	if ( xlp[ind[i]] - floor(xlp[ind[i]]) > EPSILON_ && ceil(xlp[ind[i]]) - xlp[ind[i]] > EPSILON_ )
 	    break;
     }
+
     if (i == rowLen)  {
 	delete [] sign;
 	delete [] up; 
@@ -560,7 +561,6 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 
     //-------------------------------------------------------------------------
     // Find a initial cover (C+, C-) in (N+, N-)
-
     double  knapRHS   = rhs;
     double  tempSum   = 0.0;
     double  tempMin   = INFTY_;
