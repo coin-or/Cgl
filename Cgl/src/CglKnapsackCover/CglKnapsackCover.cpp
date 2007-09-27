@@ -974,8 +974,10 @@ CglKnapsackCover::deriveAKnapsack(
     OsiColCut cc;
     int index = krow.getIndices()[0]; 
     const double fakeLb = colupper[index] + 1.0;;  // yes, colupper.
+#ifdef CGL_DEBUG
     const double fakeUb = collower[index];
     assert( fakeUb < fakeLb );
+#endif
     cc.setLbs( 1, &index, &fakeLb);
     cc.setUbs( 1, &index, &fakeLb);
     cc.setEffectiveness(DBL_MAX);
@@ -1618,11 +1620,13 @@ CglKnapsackCover::findPseudoJohnAndEllisCover(
         coverElementSum+=cover.getElements()[k];
         coverXstarSum+=xstar[cover.getIndices()[k]];
       }
-      
+ 
+#ifdef CGL_DEBUG     
       // Sanity check
       int size = cover.getNumElements() + remainder.getNumElements(); 
       int krowsize = krow.getNumElements();
       assert( size == krowsize );
+#endif
       
       // Sort cover in terms of knapsack row coefficients   
       cover.sortDecrElement();
@@ -1853,11 +1857,13 @@ CglKnapsackCover::findJohnAndEllisCover(
       fracCover = unsat;
       // cover.append(atOne);
 
+#ifdef CGL_DEBUG
       // Sanity check
       int size = (fracCover.getNumElements() + remainder.getNumElements() +
 		  atOne.getNumElements());
       int krowsize =  krow.getNumElements();
       assert( size == krowsize );
+#endif
       
       // Sort cover in terms of knapsack row coefficients   
       fracCover.sortDecrElement();
@@ -1970,12 +1976,14 @@ CglKnapsackCover::findGreedyCover(
       remainder.insert(krow.getIndices()[i],krow.getElements()[i]);
     }
   }
-  
+
+#ifdef CGL_DEBUG
   // sanity check
   int size =  remainder.getNumElements()+cover.getNumElements();
   int krowsize = krow.getNumElements();
   assert( size==krowsize );
-  
+#endif  
+
   // if no violated minimal cover was found, pack it in 
   if ( (greedyXstarSum<=(cover.getNumElements()-1)+epsilon2_) ||
        (!gotCover) ||
@@ -2110,9 +2118,12 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
 
     double * ratio= new double[nCols];
     memset(ratio, 0, (nCols*sizeof(double)));
+
+#ifdef CGL_DEBUG
     double alphasize = alpha.getNumElements();
     double asize = a.getNumElements();
     assert( alphasize == asize );
+#endif
     
     for (i=0; i<a.getNumElements(); i++){
       if (fabs(a.getElements()[i])> epsilon_ ){
@@ -2354,9 +2365,12 @@ CglKnapsackCover::seqLiftAndUncomplementAndAdd(
     
     double * ratio= new double[nCols];
     memset(ratio, 0, (nCols*sizeof(double)));
+
+#ifdef CGL_DEBUG
     int alphasize =  alpha.getNumElements();
     int asize = a.getNumElements();
     assert( alphasize == asize );
+#endif
     
     for (i=0; i<a.getNumElements(); i++){
       if (fabs(a.getElements()[i])> epsilon_ ){
@@ -2554,8 +2568,10 @@ CglKnapsackCover::liftCoverCut(
         i=2;
         while (!found && i<(cover.getNumElements()+1)){
           if (remainder.getElements()[h] <= muMinusLambda[i]+epsilon_){
+#ifdef CGL_DEBUG
 	    bool e = cut.isExistingIndex(remainder.getIndices()[h]);
             assert( !e );
+#endif
             cut.insert( remainder.getIndices()[h], i-1.0 );
             found=1;
           }
@@ -2588,15 +2604,19 @@ CglKnapsackCover::liftCoverCut(
       i=0;
       while(!found && i<cover.getNumElements()){
         if (remainder.getElements()[h] <= muMinusLambda[i+1]+epsilon_){
+#ifdef CGL_DEBUG
 	  bool notE = !cut.isExistingIndex(remainder.getIndices()[h]);
           assert( notE );
+#endif
 	  if (i)
 	    cut.insert( remainder.getIndices()[h], (double)i );
           found=1;
         }
         else if (remainder.getElements()[h] < muMinusLambda[i+1]+rho[i+1]){
+#ifdef CGL_DEBUG
 	  bool notE = !cut.isExistingIndex(remainder.getIndices()[h]); 
           assert( notE );
+#endif
           double cutCoef = i+1 
               - (muMinusLambda[i+1]+rho[i+1]-remainder.getElements()[h])/rho[1];    
 	  if (fabs(cutCoef)>epsilon_)
