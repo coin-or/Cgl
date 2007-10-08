@@ -72,6 +72,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   CoinPackedMatrix matrixByRow(*originalModel_->getMatrixByRow());
   int numberRows = originalModel_->getNumRows();
   int numberColumns = originalModel_->getNumCols();
+  //int originalNumberColumns=numberColumns;
   int minimumLength = tuning;
   int numberModifiedPasses=10;
   if (numberPasses<=1)
@@ -442,7 +443,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     }
     if (makeEquality==4) {
       makeEquality=0;
-#if 0
+#if 1
       // Try and make continuous variables integer
       // make clone
       if (!startModel_)
@@ -465,6 +466,12 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       // no sos
       makeEquality=0;
     }
+  }
+  if (startModel_) {
+    lower = originalModel_->getColLower();
+    upper = originalModel_->getColUpper();
+    rowLower = originalModel_->getRowLower();
+    rowUpper = originalModel_->getRowUpper();
   }
   // See if all + 1
   bool allPlusOnes=true;
@@ -617,12 +624,15 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
         <<CoinMessageEol;
   }
   if (numberSlacks&&makeEquality) {
-      handler_->message(CGL_SLACKS,messages_)
-        <<numberSlacks
-        <<CoinMessageEol;
+    handler_->message(CGL_SLACKS,messages_)
+      <<numberSlacks
+      <<CoinMessageEol;
     // add variables to make equality rows
     // Get new model
-    startModel_ = originalModel_->clone();
+    if (!startModel_) {
+      assert (!startModel_);
+      startModel_ = originalModel_->clone();
+    }
     for (int i=0;i<numberSlacks;i++) {
       int iRow = rows[i];
       double value = element[i];
@@ -647,6 +657,154 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     // make clone anyway so can tighten bounds
     startModel_ = originalModel_->clone();
   }
+  // move objective to integers or to aggregated
+  lower = startModel_->getColLower();
+  upper = startModel_->getColUpper();
+  rowLower = startModel_->getRowLower();
+  rowUpper = startModel_->getRowUpper();
+  matrixByRow = CoinPackedMatrix(*startModel_->getMatrixByRow());
+  elementByRow = matrixByRow.getElements();
+  column = matrixByRow.getIndices();
+  rowStart = matrixByRow.getVectorStarts();
+  rowLength = matrixByRow.getVectorLengths();
+  char * marked = new char [numberColumns];
+  memset(marked,0,numberColumns);
+  numberRows=startModel_->getNumRows();
+  numberColumns=startModel_->getNumCols();
+  //CoinPackedMatrix * matrixByColumn = const_cast<CoinPackedMatrix *>(startModel_->getMatrixByCol());
+  // Column copy
+  //const int * row = matrixByColumn->getIndices();
+  //const CoinBigIndex * columnStart = matrixByColumn->getVectorStarts();
+  //const int * columnLength = startModel_->getMatrixByCol()->getVectorLengths(); 
+  //const double * columnElements = matrixByColumn->getElements();
+  double * obj = CoinCopyOfArray(startModel_->getObjCoefficients(),numberColumns);
+  double offset;
+  int numberMoved=0;
+  startModel_->getDblParam(OsiObjOffset,offset);
+  for (iRow=0;iRow<numberRows;iRow++) {
+    //int slack = -1;
+    int nPlus=0;
+    int nMinus=0;
+    int iPlus=-1;
+    int iMinus=-1;
+    double valuePlus=0;
+    double valueMinus=0;
+    //bool allInteger=true;
+    double rhs = rowLower[iRow];
+    if (rhs!=rowUpper[iRow])
+      continue;
+    //int multiple=0;
+    //int iSlack=-1;
+    int numberContinuous=0;
+    for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+      int iColumn = column[j];
+      double value = elementByRow[j];
+      if (upper[iColumn]>lower[iColumn]) {
+	if (startModel_->isInteger(iColumn)) {
+#if 0
+	  if (columnLength[iColumn]==1) {
+	    if (value==1.0) {
+	    }
+	  }
+	  if (value!=floor(value+0.5))
+	    allInteger=false;
+	  if (allInteger&&fabs(value)<1.0e8) {
+	    if (!multiple)
+	      multiple = (int) fabs(value);
+	    else if (multiple>0)
+	      multiple = gcd(multiple,(int) fabs(value));
+	  } else {
+	    allInteger=false;
+	  }
+#endif
+	} else {
+	  numberContinuous++;
+	}
+	if (value>0.0) {
+	  if (nPlus>0&&value!=valuePlus) {
+	    nPlus = - numberColumns;
+	  } else if (!nPlus) {
+	    nPlus=1;
+	    iPlus=iColumn;
+	    valuePlus=value;
+	  }
+	} else {
+	  if (nMinus>0&&value!=valueMinus) {
+	    nMinus = - numberColumns;
+	  } else if (!nMinus) {
+	    nMinus=1;
+	    iMinus=iColumn;
+	    valueMinus=value;
+	  }
+	}
+      } else {
+	rhs -= lower[iColumn]*value;
+      }
+    }
+    if (((nPlus==1&&startModel_->isInteger(iPlus)&&nMinus>0)||
+	 (nMinus==1&&startModel_->isInteger(iMinus)&&nPlus>0))&&numberContinuous) {
+      int jColumn;
+      double multiplier;
+      if (nPlus==1) {
+	jColumn = iPlus;
+	multiplier = fabs(valuePlus/valueMinus);
+	rhs /= valueMinus;
+      } else {
+	jColumn = iMinus;
+	multiplier = fabs(valueMinus/valuePlus);
+	rhs /= valuePlus;
+      }
+      double smallestPos=COIN_DBL_MAX;
+      double smallestNeg=-COIN_DBL_MAX;
+      for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+	int iColumn = column[j];
+	if (iColumn!=jColumn) {
+	  double objValue = obj[iColumn];
+	  if (upper[iColumn]>lower[iColumn]) {
+	    if (objValue>=0.0)
+	      smallestPos=CoinMin(smallestPos,objValue);
+	    else
+	      smallestNeg=CoinMax(smallestNeg,objValue);
+	  }
+	}
+      }
+      if (smallestPos>0.0) {
+	double move=0.0;
+	if(smallestNeg==-COIN_DBL_MAX)
+	  move=smallestPos;
+	else if (smallestPos==COIN_DBL_MAX)
+	  move=smallestNeg;
+	if (move) {
+	  // can move objective
+	  numberMoved++;
+#ifdef COIN_DEVELOP
+	  if (rhs)
+	    printf("ZZZ on col %d move %g offset %g\n",
+		   jColumn,move,move*rhs);
+#endif
+	  offset += move*rhs;
+	  for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+	    int iColumn = column[j];
+	    if (iColumn!=jColumn) {
+	      if (upper[iColumn]>lower[iColumn]) {
+		obj[iColumn] -= move;
+	      }
+	    } else {
+	      obj[jColumn] += move*multiplier;
+	    }
+	  }
+	}
+      }
+    }
+  }
+#ifdef COIN_DEVELOP
+  if (numberMoved)
+    printf("ZZZ %d costs moved\n",numberMoved);
+#endif
+  startModel_->setDblParam(OsiObjOffset,offset);
+  startModel_->setObjective(obj);
+  delete [] obj;
+  delete [] marked;
   delete [] rows;
   delete [] element;
    
@@ -2132,7 +2290,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
         CglProbing generator1;
         probingCut=&generator1;
         generator1.setUsingObjective(false);
-        generator1.setMaxPass(3);
+        generator1.setMaxPass(1);
+        generator1.setMaxPassRoot(1);
         generator1.setMaxProbe(100);
         generator1.setMaxLook(100);
         generator1.setRowCuts(3);
@@ -3311,7 +3470,7 @@ CglPreProcess::makeInteger()
       <<numberChanged
       <<CoinMessageEol;
     for (iColumn=0;iColumn<numberColumns;iColumn++) {
-      if (solver->isInteger(iColumn))
+      if (solver->isInteger(iColumn)&&objective[iColumn])
 	startModel_->setInteger(iColumn);
     }
   }

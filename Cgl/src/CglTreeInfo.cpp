@@ -184,7 +184,7 @@ CglTreeProbingInfo::fixes(int variable, int toValue, int fixedVariable,double fi
   //printf("%d going to %d fixes %d at %g\n",variable,toValue,fixedVariable,fixedToValue);
   // should be more sophisticated
   int intVariable = backward_[variable];
-  if (intVariable<0)
+  if (intVariable<0||true) // off as no longer in order FIX
     return; // not 0-1 (well wasn't when constructor was called)
   int intFix = backward_[fixedVariable];
   if (intFix<0)

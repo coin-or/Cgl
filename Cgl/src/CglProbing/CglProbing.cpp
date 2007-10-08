@@ -95,9 +95,9 @@ public:
     // should be compile time but too lazy for now
     if (sizeof(value)>sizeof(hashValue)) {
       assert (sizeof(value)==2*sizeof(hashValue));
-      unsigned int * xx = (unsigned int *) (&value);
-      xx[0] += xx[1];
-      hashValue = (size_t) xx[0];
+      union { double d; int i[2]; } xx;
+      xx.d = value;
+      hashValue = (size_t) (xx.i[0] + xx.i[1]);
     } else {
       assert (sizeof(value)==sizeof(hashValue));
       hashValue = (size_t) value;
@@ -105,13 +105,15 @@ public:
     return hashValue;
   }
 };
+#define SIZE_ROW_MULT 4
+#define SIZE_ROW_ADD 1000
 class row_cut {
 public:
 
   row_cut(int nRows )
   {
     numberCuts_=0;
-    int maxRowCuts = 2*nRows + 200;
+    int maxRowCuts = SIZE_ROW_MULT*nRows + SIZE_ROW_ADD;
     size_=maxRowCuts;
   }
   ~row_cut()
@@ -173,7 +175,7 @@ public:
       return;
     hash_set<OsiRowCut2  , row_cut_hash, row_cut_compare>::const_iterator i;
     int numberCuts=cs.sizeRowCuts();
-    int nRows = (size_-200)/2;
+    int nRows = (size_-SIZE_ROW_ADD)/SIZE_ROW_MULT;
     if (numberCuts_<nRows) {
       for (i=rowCut_.begin();i!=rowCut_.end();i++) {
         cs.insert (*i);
@@ -221,7 +223,7 @@ public:
   row_cut(int nRows )
   {
     numberCuts_=0;
-    int maxRowCuts = 2*nRows + 200;
+    int maxRowCuts = SIZE_ROW_MULT*nRows + SIZE_ROW_ADD;
     size_=maxRowCuts;
     rowCut_ = new  OsiRowCut2 * [size_];
     numberCuts_=0;
@@ -293,7 +295,7 @@ public:
   void addCuts(OsiCuts & cs, OsiRowCut ** whichRow)
   {
     int numberCuts=cs.sizeRowCuts();
-    int nRows = (size_-200)/2;
+    int nRows = (size_-SIZE_ROW_ADD)/SIZE_ROW_MULT;
     int i ;
     if (numberCuts_<nRows) {
       for (i=0;i<numberCuts_;i++) {
@@ -1691,7 +1693,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
             markR[i]=-2;
         }
 	// sort to be clean
-	std::sort(lookedAt_,lookedAt_+numberThisTime_);
+	//std::sort(lookedAt_,lookedAt_+numberThisTime_);
         if (!numberCliques_) {
           ninfeas= probe(si, debugger, cs, colLower, colUpper, rowCopy,
                          rowLower, rowUpper,
@@ -1730,7 +1732,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       lookedAt_[i]=array[i].sequence;
     }
     // sort to be clean
-    std::sort(lookedAt_,lookedAt_+numberThisTime_);
+    //std::sort(lookedAt_,lookedAt_+numberThisTime_);
     delete [] array;
     // get min max etc for rows
     tighten2(colLower, colUpper, column, rowElements,
