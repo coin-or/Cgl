@@ -23,6 +23,8 @@
 //#define PROBING_EXTRA_STUFF true
 #define PROBING_EXTRA_STUFF false
 #define FIXED_ALLOWANCE 10
+#define SIZE_ROW_MULT 4
+#define SIZE_ROW_ADD 1000
 typedef struct {double infeasibility;int sequence;} double_int_pair;
 class double_int_pair_compare {
 public:
@@ -105,8 +107,6 @@ public:
     return hashValue;
   }
 };
-#define SIZE_ROW_MULT 4
-#define SIZE_ROW_ADD 1000
 class row_cut {
 public:
 
