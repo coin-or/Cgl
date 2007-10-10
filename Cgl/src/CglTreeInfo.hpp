@@ -88,13 +88,13 @@ public:
   virtual bool initializeFixing() ;
   /// Entries for fixing variables
   inline fixEntry * fixEntries() const
-  { return fixEntry_;}
+  { convert(); return fixEntry_;}
   /// Starts of integer variable going to zero
   inline int * toZero() const
-  { return toZero_;}
+  { convert(); return toZero_;}
   /// Starts of integer variable going to one
   inline int * toOne() const
-  { return toOne_;}
+  { convert(); return toOne_;}
   /// List of 0-1 integer variables
   inline int * integerVariable() const
   { return integerVariable_;}
@@ -107,25 +107,30 @@ public:
   /// Number of 0-1 variables
   inline int numberIntegers() const
   { return numberIntegers_;}
+private:
+  /// Converts to ordered
+  void convert() const;
 protected:
   /// Entries for fixing variables
-  fixEntry * fixEntry_;
+  mutable fixEntry * fixEntry_;
   /// Starts of integer variable going to zero
-  int * toZero_;
+  mutable int * toZero_;
   /// Starts of integer variable going to one
-  int * toOne_;
+  mutable int * toOne_;
   /// List of 0-1 integer variables
   int * integerVariable_;
   /// Backward look up
   int * backward_;
+  /// Entries for fixing variable when collecting
+  mutable int * fixingEntry_;
   /// Number of variables
   int numberVariables_;
   /// Number of 0-1 variables
   int numberIntegers_;
   /// Maximum number in fixEntry_
   int maximumEntries_;
-  /// Last integer done in pass
-  int lastInteger_;
+  /// Number entries in fixingEntry_ (and fixEntry_) or -1 if correct style
+  mutable int numberEntries_;
 };
 
 #endif

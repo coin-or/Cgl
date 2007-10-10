@@ -2586,11 +2586,11 @@ int CglProbing::probe( const OsiSolverInterface & si,
     if (nCut)
       printf("%d possible cuts\n",nCut);
   }
+  bool saveFixingInfo =  info->inTree ? false : info->initializeFixing();
   while (ipass<maxPass&&nfixed) {
     int iLook;
     ipass++;
     nfixed=0;
-    bool saveFixingInfo = info->initializeFixing();
     for (iLook=0;iLook<numberThisTime_;iLook++) {
       double solval;
       double down;

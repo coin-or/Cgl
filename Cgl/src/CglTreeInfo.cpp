@@ -63,10 +63,11 @@ CglTreeProbingInfo::CglTreeProbingInfo ()
     toOne_(NULL),
     integerVariable_(NULL),
     backward_(NULL),
+    fixingEntry_(NULL),
     numberVariables_(0),
     numberIntegers_(0),
     maximumEntries_(0),
-    lastInteger_(-1)
+    numberEntries_(-1)
 {
 }
 // Constructor from model
@@ -77,10 +78,11 @@ CglTreeProbingInfo::CglTreeProbingInfo (const OsiSolverInterface * model)
     toOne_(NULL),
     integerVariable_(NULL),
     backward_(NULL),
+    fixingEntry_(NULL),
     numberVariables_(0),
     numberIntegers_(0),
     maximumEntries_(0),
-    lastInteger_(-1)
+    numberEntries_(-1)
 {
   numberVariables_=model->getNumCols(); 
   // Too many ... but
@@ -114,16 +116,23 @@ CglTreeProbingInfo::CglTreeProbingInfo (const CglTreeProbingInfo & rhs)
     toOne_(NULL),
     integerVariable_(NULL),
     backward_(NULL),
+    fixingEntry_(NULL),
     numberVariables_(rhs.numberVariables_),
     numberIntegers_(rhs.numberIntegers_),
     maximumEntries_(rhs.maximumEntries_),
-    lastInteger_(rhs.lastInteger_)
+    numberEntries_(rhs.numberEntries_)
 {
   if (numberVariables_) {
     fixEntry_ = new fixEntry [maximumEntries_];
     memcpy(fixEntry_,rhs.fixEntry_,maximumEntries_*sizeof(fixEntry));
-    toZero_ = CoinCopyOfArray(rhs.toZero_,numberIntegers_+1);
-    toOne_ = CoinCopyOfArray(rhs.toOne_,numberIntegers_);
+    if (numberEntries_<0) {
+      // in order
+      toZero_ = CoinCopyOfArray(rhs.toZero_,numberIntegers_+1);
+      toOne_ = CoinCopyOfArray(rhs.toOne_,numberIntegers_);
+    } else {
+      // not in order
+      fixingEntry_ = CoinCopyOfArray(rhs.fixingEntry_,maximumEntries_);
+    }
     integerVariable_ = CoinCopyOfArray(rhs.integerVariable_,numberIntegers_);
     backward_ = CoinCopyOfArray(rhs.backward_,numberVariables_);
   }
@@ -146,13 +155,25 @@ CglTreeProbingInfo::operator=(const CglTreeProbingInfo& rhs)
     delete [] toOne_;
     delete [] integerVariable_;
     delete [] backward_;
+    delete [] fixingEntry_;
     numberVariables_ = rhs.numberVariables_;
     numberIntegers_ = rhs.numberIntegers_;
     maximumEntries_ = rhs.maximumEntries_;
-    lastInteger_ = rhs.lastInteger_;
+    numberEntries_ = rhs.numberEntries_;
     if (numberVariables_) {
       fixEntry_ = new fixEntry [maximumEntries_];
       memcpy(fixEntry_,rhs.fixEntry_,maximumEntries_*sizeof(fixEntry));
+      if (numberEntries_<0) {
+	// in order
+	toZero_ = CoinCopyOfArray(rhs.toZero_,numberIntegers_+1);
+	toOne_ = CoinCopyOfArray(rhs.toOne_,numberIntegers_);
+	fixingEntry_ = NULL;
+      } else {
+	// not in order
+	fixingEntry_ = CoinCopyOfArray(rhs.fixingEntry_,maximumEntries_);
+	toZero_ = NULL;
+	toOne_ = NULL;
+      }
       toZero_ = CoinCopyOfArray(rhs.toZero_,numberIntegers_+1);
       toOne_ = CoinCopyOfArray(rhs.toOne_,numberIntegers_);
       integerVariable_ = CoinCopyOfArray(rhs.integerVariable_,numberIntegers_);
@@ -163,6 +184,7 @@ CglTreeProbingInfo::operator=(const CglTreeProbingInfo& rhs)
       toOne_ = NULL;
       integerVariable_ = NULL;
       backward_ = NULL;
+      fixingEntry_ = NULL;
     }
   }
   return *this;
@@ -176,60 +198,115 @@ CglTreeProbingInfo::~CglTreeProbingInfo ()
   delete [] toOne_;
   delete [] integerVariable_;
   delete [] backward_;
+  delete [] fixingEntry_;
 }
 // Take action if cut generator can fix a variable (toValue -1 for down, +1 for up)
 void 
 CglTreeProbingInfo::fixes(int variable, int toValue, int fixedVariable,double fixedToValue)
 {
   //printf("%d going to %d fixes %d at %g\n",variable,toValue,fixedVariable,fixedToValue);
-  // should be more sophisticated
   int intVariable = backward_[variable];
-  if (intVariable<0||true) // off as no longer in order FIX
+  if (intVariable<0) // off as no longer in order FIX
     return; // not 0-1 (well wasn't when constructor was called)
   int intFix = backward_[fixedVariable];
   if (intFix<0)
     return; // not 0-1
   int fixedTo = (int) fixedToValue;
-  assert (intVariable>=lastInteger_);
-  int n = toZero_[lastInteger_+1];
-  while (intVariable>lastInteger_) {
-    lastInteger_++;
-    toOne_[lastInteger_]=n;
-    toZero_[lastInteger_+1]=n;
-  }
-  if (n==maximumEntries_) {
+  if (numberEntries_==maximumEntries_) {
     maximumEntries_ += 100 +maximumEntries_/2;
-    fixEntry * temp = new fixEntry [maximumEntries_];
-    memcpy(temp,fixEntry_,n*sizeof(fixEntry));
+    fixEntry * temp1 = new fixEntry [maximumEntries_];
+    memcpy(temp1,fixEntry_,numberEntries_*sizeof(fixEntry));
     delete [] fixEntry_;
-    fixEntry_ = temp;
+    fixEntry_ = temp1;
+    int * temp2 = new int [maximumEntries_];
+    memcpy(temp2,fixingEntry_,numberEntries_*sizeof(int));
+    delete [] fixingEntry_;
+    fixingEntry_ = temp2;
   }
-  fixEntry entry;
-  entry.oneFixed=fixedTo;
-  entry.sequence=intFix;
-  if (toValue==-1) {
-    // to 0
-    int k = toOne_[intVariable];
-    if (toOne_[intVariable]<n) {
-      fixEntry entry2=fixEntry_[k];
-      fixEntry_[k]=entry;
-      entry=entry2;
-    }
-    toOne_[intVariable]++;
-  } else {
-    assert (toValue==1);
-    // to 1
-  }
-  fixEntry_[n++]=entry;
-  toZero_[intVariable+1]=n;
+  fixEntry entry1;
+  entry1.oneFixed=fixedTo;
+  entry1.sequence=intFix;
+  fixEntry_[numberEntries_] = entry1;
+  assert (toValue==-1||toValue==1);
+  assert (fixedTo==0||fixedTo==1);
+  if (toValue<0)
+    fixingEntry_[numberEntries_++] = intVariable << 1;
+  else
+    fixingEntry_[numberEntries_++] = (intVariable << 1) | 1;
 }
 // Initalizes fixing arrays etc - returns true if we want to save info
 bool 
 CglTreeProbingInfo::initializeFixing() 
 {
-  // zero out
-  CoinZeroN(toOne_,numberIntegers_);
-  CoinZeroN(toZero_,numberIntegers_+1);
-  lastInteger_=0;
+  delete [] toZero_;
+  delete [] toOne_;
+  delete [] fixingEntry_;
+  toZero_ = NULL;
+  toOne_ = NULL;
+  fixingEntry_ = new int[maximumEntries_];
+  numberEntries_ = 0;
   return true;
+}
+// Converts to ordered and takes out duplicates
+void 
+CglTreeProbingInfo::convert() const
+{
+  if (numberEntries_>=0) {
+    CoinSort_2( fixingEntry_, fixingEntry_+numberEntries_, fixEntry_);
+    assert (!toZero_);
+    toZero_ = new int [numberIntegers_+1];
+    toOne_ = new int [numberIntegers_];
+    toZero_[0]=0;
+    int n=0;
+    int put=0;
+    for (int intVariable = 0;intVariable<numberIntegers_;intVariable++) {
+      int last = n;
+      for (;n<numberEntries_;n++) {
+	int value = fixingEntry_[n];
+	int iVar = value>>1;
+	int way = value &1;
+	if (intVariable!=iVar||way)
+	  break;
+      }
+      if (n>last) {
+	// sort
+	assert (sizeof(int)==4);
+	std::sort((unsigned int *) fixEntry_+last,(unsigned int *) fixEntry_+n);
+	fixEntry temp2;
+	temp2.sequence=numberVariables_+1;
+	for (int i=last;i<n;i++) {
+	  if (temp2.sequence!=fixEntry_[i].sequence||temp2.oneFixed||fixEntry_[i].oneFixed) {
+	    temp2 = fixEntry_[i];
+	    fixEntry_[put++]=temp2;
+	  }
+	}
+      }
+      toOne_[intVariable]=put;
+      last = n;
+      for (;n<numberEntries_;n++) {
+	int value = fixingEntry_[n];
+	int iVar = value>>1;
+	if (intVariable!=iVar)
+	  break;
+      }
+      if (n>last) {
+	// sort
+	assert (sizeof(int)==4);
+	std::sort((unsigned int *) fixEntry_+last,(unsigned int *) fixEntry_+n);
+	fixEntry temp2;
+	temp2.sequence=numberVariables_+1;
+	for (int i=last;i<n;i++) {
+	  if (temp2.sequence!=fixEntry_[i].sequence||temp2.oneFixed||fixEntry_[i].oneFixed) {
+	    temp2 = fixEntry_[i];
+	    fixEntry_[put++]=temp2;
+	  }
+	}
+	last=n;
+      }
+      toZero_[intVariable+1]=put;
+    }
+    delete [] fixingEntry_;
+    fixingEntry_ = NULL;
+    numberEntries_ = -1;
+  }
 }
