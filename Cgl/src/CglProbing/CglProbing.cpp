@@ -102,7 +102,9 @@ public:
       hashValue = (size_t) (xx.i[0] + xx.i[1]);
     } else {
       assert (sizeof(value)==sizeof(hashValue));
-      hashValue = (size_t) value;
+      union { double d; int i[2]; } xx;
+      xx.d = value;
+      hashValue = (size_t) xx.i[0];
     }
     return hashValue;
   }
@@ -151,7 +153,6 @@ public:
       }
       if (bad)
 	return 1;
-      numberCuts_++;
       OsiRowCut2 newCut(whichRow);
       newCut.setLb(newLb);
       newCut.setUb(newUb);
@@ -160,6 +161,7 @@ public:
         row_cut_compare>::iterator find;
       find =  rowCut_.find(newCut);
       if (find == rowCut_.end()) {
+	numberCuts_++;
         rowCut_.insert(newCut);
         return 0;
       } else {
@@ -217,6 +219,71 @@ public:
   }
 };
 #else
+// for hashing
+typedef struct {
+  int index, next;
+} CoinHashLink;
+static double multiplier[] = {1.23456789e2,-9.87654321};
+static int hashCut (const OsiRowCut2 & x, int size) 
+{
+  int xN =x.row().getNumElements();
+  double xLb = x.lb();
+  double xUb = x.ub();
+  const int * xIndices = x.row().getIndices();
+  const double * xElements = x.row().getElements();
+  unsigned int hashValue;
+  double value=1.0;
+  if (xLb>-1.0e10)
+    value += xLb*multiplier[0];
+  if (xUb<1.0e10)
+    value += xUb*multiplier[1];
+  for( int j=0;j<xN;j++) {
+    int xColumn = xIndices[j];
+    double xValue = xElements[j];
+    int k=(j&1);
+    value += (j+1)*multiplier[k]*(xColumn+1)*xValue;
+  }
+  // should be compile time but too lazy for now
+  if (sizeof(value)>sizeof(hashValue)) {
+    assert (sizeof(value)==2*sizeof(hashValue));
+    union { double d; int i[2]; } xx;
+    xx.d = value;
+    hashValue = (xx.i[0] + xx.i[1]);
+  } else {
+    assert (sizeof(value)==sizeof(hashValue));
+    union { double d; unsigned int i[2]; } xx;
+    xx.d = value;
+    hashValue = xx.i[0];
+  }
+  return hashValue%(4*size);
+}
+static bool same (const OsiRowCut2 & x, const OsiRowCut2 & y) 
+{
+  int xN =x.row().getNumElements();
+  int yN =y.row().getNumElements();
+  bool identical=false;
+  if (xN==yN) {
+    double xLb = x.lb();
+    double xUb = x.ub();
+    double yLb = y.lb();
+    double yUb = y.ub();
+    if (fabs(xLb-yLb)<1.0e-8&&fabs(xUb-yUb)<1.0e-8) {
+      const int * xIndices = x.row().getIndices();
+      const double * xElements = x.row().getElements();
+      const int * yIndices = y.row().getIndices();
+      const double * yElements = y.row().getElements();
+      int j;
+      for( j=0;j<xN;j++) {
+	if (xIndices[j]!=yIndices[j])
+	  break;
+	if (fabs(xElements[j]-yElements[j])>1.0e-12)
+	  break;
+      }
+      identical =  (j==xN);
+    }
+  }
+  return identical;
+}
 class row_cut {
 public:
 
@@ -226,13 +293,20 @@ public:
     int maxRowCuts = SIZE_ROW_MULT*nRows + SIZE_ROW_ADD;
     size_=maxRowCuts;
     rowCut_ = new  OsiRowCut2 * [size_];
+    hash_ = new CoinHashLink[4*size_];
+    for (int i=0;i<4*size_;i++) {
+      hash_[i].index=-1;
+      hash_[i].next=-1;
+    }
     numberCuts_=0;
+    lastHash_=-1;
   }
   ~row_cut()
   {
     for (int i=0;i<numberCuts_;i++)
       delete rowCut_[i];
     delete [] rowCut_;
+    delete [] hash_;
   }
   OsiRowCut2 * cut(int i) const
   { return rowCut_[i];}
@@ -241,8 +315,11 @@ public:
   inline bool outOfSpace() const
   { return size_==numberCuts_;}
   OsiRowCut2 ** rowCut_;
+  /// Hash table
+  CoinHashLink *hash_;
   int size_;
   int numberCuts_;
+  int lastHash_;
   // Return 0 if added, 1 if not, -1 if not added because of space
   int addCutIfNotDuplicate(OsiRowCut & cut,int whichRow=-1)
   {
@@ -254,31 +331,56 @@ public:
       int * newIndices = vector.getIndices();
       double * newElements = vector.getElements();
       CoinSort_2(newIndices,newIndices+numberElements,newElements);
-      bool notDuplicate=true;
-      for ( int i =0; i<numberCuts_;i++) {
-        const OsiRowCut2 * cutPtr = rowCut_[i];
-        if (cutPtr->row().getNumElements()!=numberElements)
-          continue;
-        if (fabs(cutPtr->lb()-newLb)>1.0e-12)
-          continue;
-        if (fabs(cutPtr->ub()-newUb)>1.0e-12)
-          continue;
-        const CoinPackedVector * thisVector = &(cutPtr->row());
-        const int * indices = thisVector->getIndices();
-        const double * elements = thisVector->getElements();
-        int j;
-        for(j=0;j<numberElements;j++) {
-          if (indices[j]!=newIndices[j])
-            break;
-          if (fabs(elements[j]-newElements[j])>1.0e-12)
-            break;
-        }
-        if (j==numberElements) {
-          notDuplicate=false;
-          break;
-        }
+      int i;
+      bool bad=false;
+      for (i=0;i<numberElements;i++) {
+	double value = fabs(newElements[i]);
+	if (value<1.0e-12||value>1.0e12) 
+	  bad=true;
       }
-      if (notDuplicate) {
+      if (bad)
+	return 1;
+      OsiRowCut2 newCut(whichRow);
+      newCut.setLb(newLb);
+      newCut.setUb(newUb);
+      newCut.setRow(vector);
+      int ipos = hashCut(newCut,size_);
+      int found = -1;
+      int jpos=ipos;
+      while ( true ) {
+	int j1 = hash_[ipos].index;
+	
+	if ( j1 >= 0 ) {
+	  if ( !same(newCut,*rowCut_[j1]) ) {
+	    int k = hash_[ipos].next;
+	    if ( k != -1 )
+	      ipos = k;
+	    else
+	      break;
+	  } else {
+	    found = j1;
+	    break;
+	  }
+	} else {
+	  break;
+	}
+      }
+      if (found<0) {
+	assert (hash_[ipos].next==-1);
+	if (ipos==jpos) {
+	  // first
+	  hash_[ipos].index=numberCuts_;
+	} else {
+	  // find next space 
+	  while ( true ) {
+	    ++lastHash_;
+	    assert (lastHash_<4*size_);
+	    if ( hash_[lastHash_].index == -1 ) 
+	      break;
+	  }
+	  hash_[ipos].next = lastHash_;
+	  hash_[lastHash_].index = numberCuts_;
+	}
         OsiRowCut2 * newCutPtr = new OsiRowCut2(whichRow);
         newCutPtr->setLb(newLb);
         newCutPtr->setUb(newUb);
@@ -1669,7 +1771,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
             if (intVar[i]&&colUpper[i]-colLower[i]>1.0e-8) {
               double away = fabs(0.5-(colsol[i]-floor(colsol[i])));
               if (away<0.49999||!info->inTree) {
-                array[numberThisTime_].infeasibility=away;
+                array[numberThisTime_].infeasibility=-away;
                 array[numberThisTime_++].sequence=i;
               }
             }
