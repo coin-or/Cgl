@@ -1,4 +1,4 @@
-BuildTools    https://projects.coin-or.org/svn/BuildTools/trunk
+BuildTools    https://projects.coin-or.org/svn/BuildTools/stable/0.5
 Data/Sample   https://projects.coin-or.org/svn/Data/stable/1.0/Sample
 CoinUtils     https://projects.coin-or.org/svn/CoinUtils/stable/2.1/CoinUtils
 Clp           https://projects.coin-or.org/svn/Clp/stable/1.6/Clp
