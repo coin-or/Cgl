@@ -771,3 +771,64 @@ CglClique::generateCpp( FILE * fp)
     fprintf(fp,"4  clique.setAggressiveness(%d);\n",getAggressiveness());
   return "clique";
 }
+/*****************************************************************************/
+
+CglFakeClique::CglFakeClique(OsiSolverInterface * solver, bool setPacking) :
+  CglClique(setPacking,true)
+{
+  if (solver)
+    fakeSolver_ = solver->clone();
+  else
+    fakeSolver_ = NULL;
+}
+// Copy constructor
+CglFakeClique::CglFakeClique(const CglFakeClique& rhs)
+  : CglClique(rhs)
+{
+  if (rhs.fakeSolver_)
+    fakeSolver_ = rhs.fakeSolver_->clone();
+  else
+    fakeSolver_ = NULL;
+}
+
+//-------------------------------------------------------------------
+// Clone
+//-------------------------------------------------------------------
+CglCutGenerator *
+CglFakeClique::clone() const
+{
+  return new CglFakeClique(*this);
+}
+
+// Destructor
+CglFakeClique::~CglFakeClique()
+{
+  delete fakeSolver_;
+}
+// Assign solver (generator takes over ownership)
+void 
+CglFakeClique::assignSolver(OsiSolverInterface * fakeSolver)
+{
+  delete fakeSolver_;
+  fakeSolver_ = fakeSolver;
+  if (fakeSolver_) {
+    delete [] sp_orig_row_ind;
+    sp_orig_row_ind=NULL;
+  }
+}
+// Generate cuts
+void
+CglFakeClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
+			const CglTreeInfo info) const
+{
+  if (fakeSolver_) {
+    assert (si.getNumCols()==fakeSolver_->getNumCols());
+    fakeSolver_->setColLower(si.getColLower());
+    fakeSolver_->setColSolution(si.getColSolution());
+    fakeSolver_->setColUpper(si.getColUpper());
+    CglClique::generateCuts(*fakeSolver_,cs,info);
+  } else {
+    // just use real solver
+    CglClique::generateCuts(si,cs,info);
+  }
+}

@@ -146,13 +146,18 @@ public:
       CoinSort_2(newIndices,newIndices+numberElements,newElements);
       int i;
       bool bad=false;
+      //printf("%g <= ",newLb);
       for (i=0;i<numberElements;i++) {
+	//printf("%g (%d) ",newElements[i],newIndices[i]);
 	double value = fabs(newElements[i]);
 	if (value<1.0e-12||value>1.0e12) 
 	  bad=true;
       }
-      if (bad)
+      //printf("<= %g",newUb);
+      if (bad) {
+	//printf("** bad\n");
 	return 1;
+      }
       OsiRowCut2 newCut(whichRow);
       newCut.setLb(newLb);
       newCut.setUb(newUb);
@@ -163,11 +168,14 @@ public:
       if (find == rowCut_.end()) {
 	numberCuts_++;
         rowCut_.insert(newCut);
+	//printf(" added\n");
         return 0;
       } else {
+	//printf(" duplicate\n");
         return 1;
       }
     } else {
+      //printf("  too many\n");
       return -1;
     }
   }
@@ -1521,6 +1529,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                                    double * colLower, double * colUpper,
                                    CglTreeInfo * info) const
 {
+  //printf("PASS\n");
   // Get basic problem information
   int nRows;
   
@@ -1767,6 +1776,8 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 #	  ifdef ZEROFAULT
 	  std::memset(array,0,sizeof(double_int_pair)*nCols) ;
 #	  endif
+	  //if (!info->inTree)
+	  //printf("not in tree - ncols %d\n",nCols);
           for (i=0;i<nCols;i++) {
             if (intVar[i]&&colUpper[i]-colLower[i]>1.0e-8) {
               double away = fabs(0.5-(colsol[i]-floor(colsol[i])));
@@ -1776,6 +1787,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
               }
             }
           }
+	  //printf("maxP %d num %d\n",maxProbe,numberThisTime_);
           std::sort(array,array+numberThisTime_,double_int_pair_compare());
           numberThisTime_=CoinMin(numberThisTime_,maxProbe);
           for (i=0;i<numberThisTime_;i++) {
@@ -2688,10 +2700,11 @@ int CglProbing::probe( const OsiSolverInterface & si,
     if (nCut)
       printf("%d possible cuts\n",nCut);
   }
-  bool saveFixingInfo =  info->inTree ? false : info->initializeFixing();
+  bool saveFixingInfo =  info->inTree ? false : info->initializeFixing(&si);
   while (ipass<maxPass&&nfixed) {
     int iLook;
     ipass++;
+    //printf("pass %d\n",ipass);
     nfixed=0;
     for (iLook=0;iLook<numberThisTime_;iLook++) {
       double solval;
@@ -2701,6 +2714,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
         break;
       int awayFromBound=1;
       j=lookedAt_[iLook];
+      //printf("looking at %d (%d out of %d)\n",j,iLook,numberThisTime_); 
       solval=colsol[j];
       down = floor(solval+tolerance);
       up = ceil(solval-tolerance);
@@ -3168,8 +3182,12 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	    int toValue = (way[iway]==1) ? -1 : +1;
 	    for (istackC=1;istackC<nstackC;istackC++) {
 	      int icol=stackC[istackC];
-	      if (colUpper[icol]-colLower[icol]<1.0e-12)
-		info->fixes(j,toValue,icol,colLower[icol]);
+	      // for now back to just 0-1
+	      if (colUpper[icol]-colLower[icol]<1.0e-12&&!saveL[istackC]&&saveU[istackC]==1.0) {
+		assert(saveL[istackC]==colLower[icol]||
+		       saveU[istackC]==colUpper[icol]);
+		info->fixes(j,toValue,icol,colLower[icol]==saveL[istackC]);
+	      }
 	    }
 	  }
         } else if (iway==1&&feasible==0) {
@@ -7747,8 +7765,12 @@ CglProbing::createCliques( OsiSolverInterface & si,
       endFixStart_[i]=-1;
     }
     int iClique;
-    for (iClique=0;iClique<numberCliques_;iClique++) {
+    // Possible some have been fixed
+    int numberCliques=numberCliques_;
+    numberCliques_=0;
+    for (iClique=0;iClique<numberCliques;iClique++) {
       int iRow=whichRow[iClique];
+      whichRow[numberCliques_]=iRow;
       int numberP1=0, numberM1=0;
       int j;
       double upperValue=rowUpper[iRow];
@@ -7778,11 +7800,12 @@ CglProbing::createCliques( OsiSolverInterface & si,
       if (!state&&lowerValue>-1.0e6) {
 	state=-1;
       }
-      assert (abs(state)==1);
+      if (abs(state)!=1)
+	continue; // must have been fixed
       if (iLower==iUpper) {
-	cliqueType_[iClique].equality=1;
+	cliqueType_[numberCliques_].equality=1;
       } else {
-	cliqueType_[iClique].equality=0;
+	cliqueType_[numberCliques_].equality=0;
       }
       if (state>0) {
 	for (i=0;i<numberP1;i++) {
@@ -7827,7 +7850,8 @@ CglProbing::createCliques( OsiSolverInterface & si,
 	  zeroFixStart_[iColumn]=0;
 	}
       }
-      cliqueStart_[iClique+1]=numberEntries;
+      numberCliques_++;
+      cliqueStart_[numberCliques_]=numberEntries;
     }
     // Now do column lists
     // First do counts

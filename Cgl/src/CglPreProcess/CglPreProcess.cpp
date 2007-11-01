@@ -48,6 +48,869 @@ CglPreProcess::preProcess(OsiSolverInterface & model,
     newSolver->setHintParam(OsiDoInBranchAndCut,false,OsiHintDo) ;
   return newSolver;
 }
+static void outSingletons(int & nCol, int & nRow,
+			  int * startCol, int * row, double * element,
+			  int * startRow, int *column)
+{
+  int iRow,iCol;
+  bool singletons=false;
+  int * countRow = new int [nRow];
+  int * countCol = new int [nCol];
+  int * temp = new int[nRow];
+  // make row copy
+  memset(countRow,0,nRow*sizeof(int));
+  memset(countCol,0,nCol*sizeof(int));
+  for (iCol=0;iCol<nCol;iCol++) {
+    for (int j=startCol[iCol];j<startCol[iCol+1];j++) {
+      int iRow = row[j];
+      countRow[iRow]++;
+      countCol[iCol]++;
+    }
+  }
+  startRow[0]=0;
+  for (iRow=0;iRow<nRow;iRow++) {
+    int k = countRow[iRow]+startRow[iRow];
+    temp[iRow]=startRow[iRow];
+    startRow[iRow+1]=k;
+  }
+  for (iCol=0;iCol<nCol;iCol++) {
+    for (int j=startCol[iCol];j<startCol[iCol+1];j++) {
+      int iRow = row[j];
+      int k=temp[iRow];
+      temp[iRow]++;
+      column[k]=iCol;
+    }
+  }
+  for (iRow=0;iRow<nRow;iRow++) {
+    if (countRow[iRow]<=1)
+      singletons=true;
+  }
+  for (iCol=0;iCol<nCol;iCol++) {
+    if (countCol[iCol]<=1)
+      singletons=true;
+  }
+  if (singletons) {
+    while (singletons) {
+      singletons=false;
+      for (iCol=0;iCol<nCol;iCol++) {
+	if (countCol[iCol]==1) {
+	  singletons=true;
+	  countCol[iCol]=0;
+	  int iRow = row[startCol[iCol]];
+	  int start = startRow[iRow];
+	  int end = start+countRow[iRow];
+	  countRow[iRow]--;
+	  int j;
+	  for ( j=start;j<end;j++) {
+	    if (column[j]==iCol) {
+	      column[j]=column[end-1];
+	      break;
+	    }
+	  }
+	  assert (j<end);
+	}
+      }
+      for (iRow=0;iRow<nRow;iRow++) {
+	if (countRow[iRow]==1) {
+	  singletons=true;
+	  countRow[iRow]=0;
+	  int iCol = column[startRow[iRow]];
+	  int start = startCol[iCol];
+	  int end = start+countCol[iCol];
+	  countCol[iCol]--;
+	  int j;
+	  for ( j=start;j<end;j++) {
+	    if (row[j]==iRow) {
+	      row[j]=row[end-1];
+	      if (element)
+		element[j]=element[end-1];
+	      break;
+	    }
+	  }
+	  assert (j<end);
+	}
+      }
+    }  
+    // Pack down
+    int newNrow=0;
+    for (iRow=0;iRow<nRow;iRow++) {
+      if (countRow[iRow]==0) {
+	temp[iRow]=-1;
+      } else {
+	assert (countRow[iRow]>1);
+	temp[iRow]=newNrow;
+	newNrow++;
+      }
+    }
+    int newNcol=0;
+    int nEl=0;
+    int iNext=0;
+    for (iCol=0;iCol<nCol;iCol++) {
+      int start = iNext;
+      iNext=startCol[iCol+1];
+      if (countCol[iCol]==0) {
+	countCol[iCol]=-1;
+      } else {
+	assert (countCol[iCol]>1);
+	int end = start+countCol[iCol];
+	countCol[iCol]=newNcol;
+	int j;
+	for ( j=start;j<end;j++) {
+	  int iRow=row[j];
+	  iRow = temp[iRow];
+	  assert (iRow>=0);
+	  row[nEl]=iRow;
+	  if (element)
+	    element[nEl]=element[j];
+	  nEl++;
+	}
+	newNcol++;
+	startCol[newNcol]=nEl;
+      }
+    }
+    newNrow=0;
+    nEl=0;
+    iNext=0;
+    for (iRow=0;iRow<nRow;iRow++) {
+      int start = iNext;
+      iNext = startRow[iRow+1];
+      if (countRow[iRow]>1) {
+	int end = start+countRow[iRow];
+	int j;
+	for ( j=start;j<end;j++) {
+	  int iCol = column[j];
+	  iCol = countCol[iCol];
+	  assert (iCol>=0);
+	  column[nEl++]=iCol;
+	}
+	newNrow++;
+	startRow[newNrow]=nEl;
+      }
+    }
+    nRow=newNrow;
+    nCol=newNcol;
+  }
+  delete [] countCol;
+  delete [] countRow;
+  delete [] temp;
+}
+static int makeIntegers2(OsiSolverInterface * model,int mode)
+{
+  // See whether we should make variables integer
+  const double *objective = model->getObjCoefficients() ;
+  const double *lower = model->getColLower() ;
+  const double *upper = model->getColUpper() ;
+  const double *rowLower = model->getRowLower() ;
+  const double *rowUpper = model->getRowUpper() ;
+  int numberRows = model->getNumRows() ;
+  double * rhs = new double [numberRows];
+  int * count = new int [numberRows];
+  int iColumn;
+  bool makeAll = (mode>1);
+  int numberColumns = model->getNumCols() ;
+  // Column copy of matrix
+  const double * element = model->getMatrixByCol()->getElements();
+  const int * row = model->getMatrixByCol()->getIndices();
+  const CoinBigIndex * columnStart = model->getMatrixByCol()->getVectorStarts();
+  const int * columnLength = model->getMatrixByCol()->getVectorLengths();
+  int numberIntegers=1;
+  int totalNumberIntegers=0;
+  while (numberIntegers) {
+    memset(rhs,0,numberRows*sizeof(double));
+    memset(count,0,numberRows*sizeof(int));
+    int currentNumber=0;
+    for (iColumn=0;iColumn<numberColumns;iColumn++) {
+      CoinBigIndex start = columnStart[iColumn];
+      CoinBigIndex end = start + columnLength[iColumn];
+      if (upper[iColumn]==lower[iColumn]) {
+	for (CoinBigIndex j=start;j<end;j++) {
+	  int iRow = row[j];
+	  rhs[iRow] += lower[iColumn]*element[j];
+	}
+      } else if (model->isInteger(iColumn)) {
+	currentNumber++;
+	for (CoinBigIndex j=start;j<end;j++) {
+	  int iRow = row[j];
+	  if (fabs(element[j]-floor(element[j]+0.5))>1.0e-10) 
+	    rhs[iRow]  = COIN_DBL_MAX;
+	}
+      } else {
+	for (CoinBigIndex j=start;j<end;j++) {
+	  int iRow = row[j];
+	  count[iRow]++;
+	  if (fabs(element[j])!=1.0)
+	    rhs[iRow]  = COIN_DBL_MAX;
+	}
+      }
+    }
+    printf("Current number of integers is %d\n",currentNumber);
+    // now look at continuous
+    bool allGood=true;
+    double direction = model->getObjSense() ;
+    int numberObj=0;
+    int numberEq=0;
+    int numberEqI=0;
+    int numberZero=0;
+    int numberNonZero=0;
+    if (false) {
+      for (iColumn=0;iColumn<numberColumns;iColumn++) {
+	if (upper[iColumn]>lower[iColumn]) {
+	  if (!model->isInteger(iColumn)) {
+	    CoinBigIndex start = columnStart[iColumn];
+	    CoinBigIndex end = start + columnLength[iColumn];
+	    int nC=0;
+	    for (CoinBigIndex j=start;j<end;j++) {
+	      int iRow = row[j];
+	      if (count[iRow]>1) {
+		nC++;
+	      }
+	    }
+	    if (nC>2) {
+	      for (CoinBigIndex j=start;j<end;j++) {
+		int iRow = row[j];
+		if (count[iRow]>1) 
+		  count[iRow]=999999;
+	      }
+	    }
+	  }
+	}
+      }
+    }
+    for (iColumn=0;iColumn<numberColumns;iColumn++) {
+      if (upper[iColumn]>lower[iColumn]) {
+	double objValue = objective[iColumn]*direction;
+	bool thisGood=true;
+	if ((objValue||makeAll)&&!model->isInteger(iColumn)) {
+	  if (objValue)
+	    numberObj++;
+	  CoinBigIndex start = columnStart[iColumn];
+	  CoinBigIndex end = start + columnLength[iColumn];
+	  if (objValue>=0.0) {
+	    // wants to be as low as possible
+	    if (lower[iColumn]<-1.0e10||fabs(lower[iColumn]-floor(lower[iColumn]+0.5))>1.0e-10) {
+	      thisGood=false;
+	    } else if (upper[iColumn]<1.0e10&&fabs(upper[iColumn]-floor(upper[iColumn]+0.5))>1.0e-10) {
+	      thisGood=false;
+	    }
+	    bool singletonRow=true;
+	    bool equality=false;
+	    int nC=0;
+	    int xxxx=0;
+	    bool badCount=false;
+	    for (CoinBigIndex j=start;j<end;j++) {
+	      int iRow = row[j];
+	      if (count[iRow]>1) {
+		singletonRow=false;
+		//printf("col %d row%d element %g - row count %d\n",iColumn,iRow,element[j],count[iRow]);
+		if (count[iRow]==999999)
+		  badCount=true;
+		if (element[j]==1.0) {
+		  if ((xxxx&1)==0)
+		    xxxx |= 1;
+		  else
+		    xxxx = 15;
+		} else {
+		  if ((xxxx&2)==0)
+		    xxxx |= 2;
+		  else
+		    xxxx = 15;
+		}
+		nC++;
+	      }
+	      else if (rowLower[iRow]==rowUpper[iRow])
+		equality=true;
+	      if (fabs(rhs[iRow])>1.0e20||fabs(rhs[iRow]-floor(rhs[iRow]+0.5))>1.0e-10
+		  ||fabs(element[j])!=1.0) {
+		// no good
+		thisGood=false;
+		break;
+	      }
+	      if (element[j]>0.0) {
+		if (rowLower[iRow]>-1.0e20&&fabs(rowLower[iRow]-floor(rowLower[iRow]+0.5))>1.0e-10) {
+		  // no good
+		  thisGood=false;
+		  break;
+		}
+	      } else {
+		if (rowUpper[iRow]<1.0e20&&fabs(rowUpper[iRow]-floor(rowUpper[iRow]+0.5))>1.0e-10) {
+		  // no good
+		  thisGood=false;
+		  break;
+		}
+	      }
+	    }
+	    if (!model->isInteger(iColumn)&&false)
+	      printf("%d has %d rows with >1 - state network %s interaction %s\n",iColumn,nC,xxxx>3 ? "bad" : "good",
+		     badCount ? "too much" : "ok");
+	    // If not good here then mark rows
+	    if (!thisGood) {
+	      for (CoinBigIndex j=start;j<end;j++) {
+		int iRow = row[j];
+		count[iRow]=999999;
+	      }
+	    }
+	    if (!singletonRow&&end>start+1&&!equality)
+	      thisGood=false;
+	    // Can we make equality
+	    if (end==start+1&&!equality&&false) {
+	      numberEq++;
+	      int iRow = row[start];
+	      if (element[start]>0.0)
+		model->setRowUpper(iRow,rowLower[iRow]);
+	      else
+		model->setRowLower(iRow,rowUpper[iRow]);
+	    }
+	  } else {
+	    // wants to be as high as possible
+	    if (upper[iColumn]>1.0e10||fabs(upper[iColumn]-floor(upper[iColumn]+0.5))>1.0e-10) {
+	      thisGood=false;
+	    } else if (lower[iColumn]>-1.0e10&&fabs(lower[iColumn]-floor(lower[iColumn]+0.5))>1.0e-10) {
+	      thisGood=false;
+	    }
+	    bool singletonRow=true;
+	    bool equality=false;
+	    for (CoinBigIndex j=start;j<end;j++) {
+	      int iRow = row[j];
+	      if (count[iRow]>1)
+		singletonRow=false;
+	      else if (rowLower[iRow]==rowUpper[iRow])
+		equality=true;
+	      if (fabs(rhs[iRow])>1.0e20||fabs(rhs[iRow]-floor(rhs[iRow]+0.5))>1.0e-10
+		  ||fabs(element[j])!=1.0) {
+		// no good
+		thisGood=false;
+		break;
+	      }
+	      if (element[j]<0.0) {
+		if (rowLower[iRow]>-1.0e20&&fabs(rowLower[iRow]-floor(rowLower[iRow]+0.5))>1.0e-10) {
+		  // no good
+		  thisGood=false;
+		  break;
+		}
+	      } else {
+		if (rowUpper[iRow]<1.0e20&&fabs(rowUpper[iRow]-floor(rowUpper[iRow]+0.5))>1.0e-10) {
+		  // no good
+		  thisGood=false;
+		  break;
+		}
+	      }
+	    }
+	    if (!singletonRow&&end>start+1&&!equality)
+	      thisGood=false;
+	    // If not good here then mark rows
+	    if (!thisGood) {
+	      for (CoinBigIndex j=start;j<end;j++) {
+		int iRow = row[j];
+		count[iRow]=999999;
+	      }
+	    }
+	    // Can we make equality
+	    if (end==start+1&&!equality&&false) {
+	      numberEq++;
+	      int iRow = row[start];
+	      if (element[start]<0.0)
+		model->setRowUpper(iRow,rowLower[iRow]);
+	      else
+		model->setRowLower(iRow,rowUpper[iRow]);
+	    }
+	  }
+	} else if (objValue) {
+	  CoinBigIndex start = columnStart[iColumn];
+	  CoinBigIndex end = start + columnLength[iColumn];
+	  if (end==start+1) {
+	    int iRow = row[start];
+	    if (rowUpper[iRow]>rowLower[iRow]&&!count[iRow]) {
+	      if (fabs(rhs[iRow])>1.0e20||fabs(rhs[iRow]-floor(rhs[iRow]+0.5))>1.0e-10
+		  ||fabs(element[start])!=1.0) {
+		// no good
+	      } else if (false) {
+		numberEqI++;
+		if (element[start]*objValue>0.0)
+		  model->setRowUpper(iRow,rowLower[iRow]);
+		else
+		  model->setRowLower(iRow,rowUpper[iRow]);
+	      }
+	    }
+	  }
+	}
+	if (!thisGood) {
+	  if (objValue)
+	    allGood=false;
+	} else if (makeAll&&!model->isInteger(iColumn)) {
+	  if (objValue)
+	    numberNonZero++;
+	  else
+	    numberZero++; 
+	  model->setInteger(iColumn);
+	}
+      }
+    }
+    // Can we look at remainder and make any integer
+    if (makeAll) {
+      int nLook=0;
+      int nEl=0;
+      for (iColumn=0;iColumn<numberColumns;iColumn++) {
+	if (upper[iColumn]>lower[iColumn]&&!model->isInteger(iColumn)) {
+	  CoinBigIndex start = columnStart[iColumn];
+	  CoinBigIndex end = start + columnLength[iColumn];
+	  bool possible=true;
+	  int n=0;
+	  for (CoinBigIndex j=start;j<end;j++) {
+	    int iRow = row[j];
+	    if (count[iRow]>1) {
+	      if (count[iRow]==999999) {
+		possible=false;
+		break;
+	      } else {
+		n++;
+	      }
+	    }
+	  }
+	  if (possible) {
+	    nLook++;
+	    nEl+=n;
+	  }
+	}
+      }
+      if (nLook) {
+	int * startC = new int [nLook+1];
+	int * back = new int [nLook];
+	int * row2 = new int[nEl];
+	double * element2 = new double [nEl];
+	int * backRow = new int [numberRows];
+	int jRow;
+	for (jRow=0;jRow<numberRows;jRow++) {
+	  backRow[jRow]=-1;
+	}
+	int nCol=nLook;
+	nLook=0;
+	nEl=0;
+	startC[0]=0;
+	int nRow=0;
+	for (iColumn=0;iColumn<numberColumns;iColumn++) {
+	  if (upper[iColumn]>lower[iColumn]&&!model->isInteger(iColumn)) {
+	    CoinBigIndex start = columnStart[iColumn];
+	    CoinBigIndex end = start + columnLength[iColumn];
+	    bool possible=true;
+	    int n=0;
+	    for (CoinBigIndex j=start;j<end;j++) {
+	      int iRow = row[j];
+	      if (count[iRow]>1) {
+		if (count[iRow]==999999) {
+		  possible=false;
+		  break;
+		} else {
+		  n++;
+		}
+	      }
+	    }
+	    if (!n)
+	      possible=false; // may be done later
+	    if (possible) {
+	      back[nLook]=iColumn;
+	      for (CoinBigIndex j=start;j<end;j++) {
+		int iRow = row[j];
+		if (count[iRow]>1) {
+		  int jRow=backRow[iRow];
+		  if (jRow<0) {
+		    // new row
+		    backRow[iRow]=nRow;
+		    jRow=nRow;
+		    nRow++;
+		  }
+		  element2[nEl]=element[j];
+		  row2[nEl++]=jRow;
+		}
+	      }
+	      nLook++;
+	      startC[nLook]=nEl;
+	    }
+	  }
+	}
+	// Redo nCol
+	nCol=nLook;
+	delete [] backRow;
+	int * startRow = new int [nRow+1];
+	int * column2 = new int [nEl];
+	// take out singletons and do row copy
+	outSingletons(nCol, nRow,
+		      startC, row2, element2,
+		      startRow, column2);
+	// Decompose
+	int * rowBlock = new int[nRow];
+	int * stack = new int [nRow];
+	for (int iRow=0;iRow<nRow;iRow++)
+	  rowBlock[iRow]=-2;
+	int numberBlocks = 0;
+	// to say if column looked at
+	int * columnBlock = new int[nCol];
+	int iColumn;
+	for (iColumn=0;iColumn<nCol;iColumn++)
+	  columnBlock[iColumn]=-2;
+	for (iColumn=0;iColumn<nCol;iColumn++) {
+	  int kstart = startC[iColumn];
+	  int kend = startC[iColumn+1];
+	  if (columnBlock[iColumn]==-2) {
+	    // column not allocated
+	    int j;
+	    int nstack=0;
+	    for (j=kstart;j<kend;j++) {
+	      int iRow= row2[j];
+	      if (rowBlock[iRow]!=-1) {
+		assert(rowBlock[iRow]==-2);
+		rowBlock[iRow]=numberBlocks; // mark
+		stack[nstack++] = iRow;
+	      }
+	    }
+	    if (nstack) {
+	      // new block - put all connected in
+	      numberBlocks++;
+	      columnBlock[iColumn]=numberBlocks-1;
+	      while (nstack) {
+		int iRow = stack[--nstack];
+		int k;
+		for (k=startRow[iRow];k<startRow[iRow+1];k++) {
+		  int iColumn = column2[k];
+		  int kkstart = startC[iColumn];
+		  int kkend = startC[iColumn+1];
+		  if (columnBlock[iColumn]==-2) {
+		    columnBlock[iColumn]=numberBlocks-1; // mark
+		    // column not allocated
+		    int jj;
+		    for (jj=kkstart;jj<kkend;jj++) {
+		      int jRow= row2[jj];
+		      if (rowBlock[jRow]==-2) {
+			rowBlock[jRow]=numberBlocks-1;
+			stack[nstack++]=jRow;
+		      }
+		    }
+		  } else {
+		    assert (columnBlock[iColumn]==numberBlocks-1);
+		  }
+		}
+	      }
+	    } else {
+	      // Only in master
+	      columnBlock[iColumn]=-1;
+	      // empty - should already be integer
+	      abort();
+	    }
+	  }
+	}
+	// See if each block OK 
+	for (int iBlock=0;iBlock<numberBlocks;iBlock++) {
+	  // Get block
+	  int * startCB = new int [nCol+1];
+	  int * row2B = new int[nEl];
+	  int * startCC = new int [nCol+1];
+	  int * row2C = new int[nEl];
+	  int * startRowC = new int [nRow+1];
+	  int * column2C = new int [nEl];
+	  int * whichRow = new int [nRow];
+	  int * whichCol = new int [nCol];
+	  int i;
+	  int nRowB=0;
+	  int nColB=0;
+	  int nElB=0;
+	  for (i=0;i<nRow;i++) {
+	    if (rowBlock[i]==iBlock) {
+	      whichRow[i]=nRowB;
+	      nRowB++;
+	    } else {
+	      whichRow[i]=-1;
+	    }
+	  }
+	  bool network=true;
+	  // even if not network - take out network columns NO
+	  startCB[0]=0;
+	  for (i=0;i<nCol;i++) {
+	    if (columnBlock[i]==iBlock) {
+	      int type=0;
+	      whichCol[i]=nColB;
+	      for (int j=startC[i];j<startC[i+1];j++) {
+		int iRow = row2[j];
+		iRow = whichRow[iRow];
+		if (iRow>=0) { 
+		  if (element2[j]==1.0) {
+		    if ((type&1)==0)
+		      type |=1;
+		    else 
+		      type=7;
+		  } else {
+		    assert (element2[j]==-1.0);
+		    if ((type&2)==0)
+		      type |=2;
+		    else 
+		      type=7;
+		  }
+		  row2B[nElB++]=iRow;
+		}
+	      }
+	      if (type!=3) 
+		network=false;
+	      nColB++;
+	      startCB[nColB]=nElB;
+	      assert (startCB[nColB]>startCB[nColB-1]+1);
+	    } else {
+	      whichCol[i]=-1;
+	    }
+	  }
+	  // See if network
+	  bool goodInteger=false;
+	  if (!network) {
+	    // take out singletons
+	    outSingletons(nColB, nRowB,
+			  startCB, row2B, NULL,
+			  startRowC, column2C);
+	    // See if totally balanced;
+	    int * split = new int [nRowB];
+	    int * best = new int[nRowB];
+	    int * current = new int [nRowB];
+	    int * size = new int [nRowB];
+	    {
+	      memset(size,0,nRowB*sizeof(int));
+	      for (i=0;i<nColB;i++) {
+		int j;
+		for (j=startCB[i];j<startCB[i+1];j++) {
+		  int iRow = row2B[j];
+		  size[iRow]++;
+		}
+	      }
+	      for (i=0;i<nRowB;i++)
+		if (size[i]<2)
+		  printf("%d entries in row %d\n",size[i],i);
+	    }
+	    for (i=0;i<nColB;i++)
+	      whichCol[i]=i;
+	    for (i=0;i<nRowB;i++)
+	      whichRow[i]=0;
+	    int nLeft=nColB;
+	    int nSet=1;
+	    size[0]=nRowB;
+	    while (nLeft) {
+	      // find best column
+	      int iBest=-1;
+	      memset(best,0,nSet*sizeof(int));
+	      memset(current,0,nSet*sizeof(int));
+	      for (i=0;i<nColB;i++) {
+		if (whichCol[i]<nLeft) {
+		  int j;
+		  for (j=startCB[i];j<startCB[i+1];j++) {
+		    int iRow = row2B[j];
+		    int iSet=whichRow[iRow];
+		    current[iSet]++;
+		  }
+		  // See if better - could this be done faster
+		  bool better=false;
+		  for (j=nSet-1;j>=0;j--) {
+		    if (current[j]>best[j]) {
+		      better=true;
+		      break;
+		    } else if (current[j]<best[j]) {
+		      break;
+		    }
+		  }
+		  if (better) {
+		    iBest=i;
+		    memcpy(best,current,nSet*sizeof(int));
+		  }
+		  for (j=startCB[i];j<startCB[i+1];j++) {
+		    int iRow = row2B[j];
+		    int iSet=whichRow[iRow];
+		    current[iSet]=0;
+		  }
+		}
+	      }
+	      assert (iBest>=0);
+	      // swap
+	      for (i=0;i<nColB;i++) {
+		if (whichCol[i]==nLeft-1) {
+		  whichCol[i]=whichCol[iBest];
+		  whichCol[iBest]=nLeft-1;
+		  break;
+		}
+	      }
+	      // See which ones will have to split
+	      int nMore=0;
+	      for (i=0;i<nSet;i++) {
+		current[i]=i+nMore;
+		if (best[i]>0&&best[i]<size[i]) {
+		  split[i]=i+nMore;
+		  nMore++;
+		} else {
+		  split[i]=-1;
+		}
+	      }
+	      if (nMore) {
+		int j;
+		for (j=startCB[iBest];j<startCB[iBest+1];j++) {
+		  int iRow = row2B[j];
+		  int iSet=whichRow[iRow];
+		  int newSet = split[iSet];
+		  if (newSet>=0) {
+		    whichRow[iRow]=newSet+1+nRowB;
+		  }
+		}
+		nSet += nMore;
+		memset(size,0,nSet*sizeof(int));
+		for (i=0;i<nRowB;i++) {
+		  int iSet = whichRow[i];
+		  if (iSet>=nRowB) {
+		    // has 1 - correct it
+		    iSet -= nRowB;
+		  } else {
+		    // 0 part of split set or not split
+		    iSet=current[iSet];
+		  }
+		  whichRow[i]=iSet;
+		  size[iSet]++;
+		}
+	      }
+	      nLeft--;
+	    }
+	    if (nSet<nRowB) {
+	      // ties - need to spread out whichRow
+	      memset(split,0,nRowB*sizeof(int));
+	      for (i=0;i<nRowB;i++) {
+		int iSet = whichRow[i];
+		split[iSet]++;
+	      }
+	      current[0]=0;
+	      for (i=0;i<nSet;i++) {
+		current[i+1]=current[i]+split[i];
+		split[i]=current[i];
+	      }
+	      for (i=0;i<nRowB;i++) {
+		int iSet = whichRow[i];
+		int k = split[iSet];
+		split[iSet]=k;
+		whichRow[i]=k;
+	      }
+	    }
+	    // Get inverse of whichCol
+	    for (i=0;i<nColB;i++) {
+	      int iColumn = whichCol[i];
+	      startCC[iColumn]=i;
+	    }
+	    memcpy(whichCol,startCC,nColB*sizeof(int));
+	    // Permute matrix
+	    startCC[0]=0;
+	    int nelB=0;
+	    memset(split,0,nRowB*sizeof(int));
+	    for (i=0;i<nColB;i++) {
+	      int iColumn = whichCol[i];
+	      int j;
+	      for (j=startCB[iColumn];j<startCB[iColumn+1];j++) {
+		int iRow = row2B[j];
+		int iSet=whichRow[iRow];
+		row2C[nelB++]=iSet;
+		split[iSet]++;
+	      }
+	      startCC[i+1]=nelB;
+	    }
+	    startRowC[0]=0;
+	    for (i=0;i<nRowB;i++) {
+	      startRowC[i+1]=startRowC[i]+split[i];
+	      split[i]=0;
+	    }
+	    for (i=0;i<nColB;i++) {
+	      int j;
+	      for (j=startCC[i];j<startCC[i+1];j++) {
+		int iRow = row2C[j];
+		int k=split[iRow]+startRowC[iRow];
+		split[iRow]++;
+		column2C[k]=i;
+	      }
+	    }
+	    for (i=0;i<nRowB;i++)
+	      split[i]=0;
+	    goodInteger=true;
+	    for (i=nColB-1;i>0;i--) {
+	      int j;
+	      for (j=startCC[i];j<startCC[i+1];j++) {
+		int iRow = row2C[j];
+		split[iRow]=1;
+	      }
+	      for (j=startCC[i];j<startCC[i+1];j++) {
+		int iRow = row2C[j];
+		for (int k=startRowC[iRow];k<startRowC[iRow+1];k++) {
+		  int iColumn = column2C[k];
+		  if (iColumn<i) {
+		    for (int jj=startCC[iColumn];jj<startCC[iColumn+1];jj++) {
+		      int jRow = row2C[jj];
+		      if (jRow>iRow&&!split[jRow]) {
+			// bad
+			goodInteger=false;
+			break;
+		      }
+		    }
+		  }
+		}
+	      }
+	      if (!goodInteger)
+		break;
+	      for (j=startCC[i];j<startCC[i+1];j++) {
+		int iRow = row2C[j];
+		split[iRow]=0;
+	      }
+	    }
+	    delete [] split;
+	    delete [] best;
+	    delete [] current;
+	    delete [] size;
+	  } else {
+	    // was network
+	    goodInteger=true;
+	  }
+	  if (goodInteger) {
+	    printf("Block %d can be integer\n",iBlock);
+	    for (i=0;i<nCol;i++) {
+	      if (columnBlock[i]==iBlock) {
+		int iBack = back[i];
+		model->setInteger(iBack);
+	      }
+	    }
+	  }
+	  delete [] startRowC;
+	  delete [] column2C;
+	  delete [] startCB;
+	  delete [] row2B;
+	  delete [] startCC;
+	  delete [] row2C;
+	  delete [] whichRow;
+	  delete [] whichCol;
+	}
+	delete [] startRow;
+	delete [] column2;
+	delete [] element2;
+	delete [] startC;
+	delete [] row2;
+	delete [] back;
+      }
+    }
+    numberIntegers=numberNonZero;
+    if (allGood&&numberObj) {
+      for (iColumn=0;iColumn<numberColumns;iColumn++) {
+	if (upper[iColumn]>lower[iColumn]&&objective[iColumn]&&!model->isInteger(iColumn)) {
+	  model->setInteger(iColumn);
+	  numberIntegers++;
+	}
+      }
+      printf("ZZZZYY CglPreProcess analysis says all (%d) continuous with costs were made integer\n",numberIntegers);
+    }
+    if (numberZero)
+      printf("ZZZZYY %d continuous with zero cost were made integer\n",numberZero);
+    numberIntegers += numberZero;
+    if (numberEq||numberEqI)
+      printf("ZZZZYY %d rows made equality from continuous, %d from integer\n",numberEq,numberEqI);
+    totalNumberIntegers += numberIntegers;
+    if (!makeAll)
+      numberIntegers=0;
+  }
+  delete [] rhs;
+  delete [] count;
+  return (totalNumberIntegers);
+}
 OsiSolverInterface *
 CglPreProcess::preProcessNonDefault(OsiSolverInterface & model, 
 				    int makeEquality, int numberPasses,
@@ -63,6 +926,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     modifiedModel_[i]=NULL;
     presolve_[i]=NULL;
   }
+  // Put presolve option on
+  int i1=tuning&15;
+  int i2=tuning-i1;
+  i1 |= 8;
+  tuning=i1+i2;;
   // clear original
   delete [] originalColumn_;
   delete [] originalRow_;
@@ -73,7 +941,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   int numberRows = originalModel_->getNumRows();
   int numberColumns = originalModel_->getNumCols();
   //int originalNumberColumns=numberColumns;
-  int minimumLength = tuning;
+  int minimumLength = 5;
   int numberModifiedPasses=10;
   if (numberPasses<=1)
     numberModifiedPasses=1; // lightweight preprocessing
@@ -82,8 +950,14 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   if (tuning>=10000) {
     numberModifiedPasses=(tuning-10000)/10000;
     tuning %= 10000;
-    minimumLength = tuning;
+    //minimumLength = tuning;
   }
+  //bool heavyProbing = (tuning&1)!=0;
+  int makeIntegers = (tuning&6)>>1;
+  // See if we want to do initial presolve
+  int doInitialPresolve = (tuning&8)>>3;
+  if (numberSolvers_<2)
+    doInitialPresolve=0;
   // We want to add columns
   int numberSlacks=0;
   int * rows = new int[numberRows];
@@ -742,13 +1616,13 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       }
     }
     if (((nPlus==1&&startModel_->isInteger(iPlus)&&nMinus>0)||
-	 (nMinus==1&&startModel_->isInteger(iMinus)&&nPlus>0))&&numberContinuous) {
+	 (nMinus==1&&startModel_->isInteger(iMinus)&&nPlus>0))&&numberContinuous&&true) {
       int jColumn;
       double multiplier;
       if (nPlus==1) {
 	jColumn = iPlus;
 	multiplier = fabs(valuePlus/valueMinus);
-	rhs /= valueMinus;
+	rhs /= -valueMinus;
       } else {
 	jColumn = iMinus;
 	multiplier = fabs(valueMinus/valuePlus);
@@ -807,7 +1681,81 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   delete [] marked;
   delete [] rows;
   delete [] element;
-   
+  if (makeIntegers) {
+    makeIntegers2(startModel_,makeIntegers);
+  }
+  int infeas=0;
+  // Do we want initial presolve
+  if (doInitialPresolve) {
+    assert (doInitialPresolve==1);
+    OsiSolverInterface * presolvedModel;
+    OsiSolverInterface * oldModel = startModel_;
+    OsiPresolve * pinfo = new OsiPresolve();
+    int presolveActions=0;
+    // Allow dual stuff on integers
+    presolveActions=1;
+    // Do not allow all +1 to be tampered with
+    //if (allPlusOnes)
+    //presolveActions |= 2;
+    // allow transfer of costs
+    // presolveActions |= 4;
+    // If trying for SOS don't allow some transfers
+    if (makeEquality==2||makeEquality==3)
+      presolveActions |= 8;
+    pinfo->setPresolveActions(presolveActions);
+    if (prohibited_)
+      assert (numberProhibited_==oldModel->getNumCols());
+    int saveLogLevel = oldModel->messageHandler()->logLevel();
+    if (saveLogLevel==1)
+      oldModel->messageHandler()->setLogLevel(0);
+    std::string solverName;
+    oldModel->getStrParam(OsiSolverName,solverName);
+    // Extend if you want other solvers to keep solution
+    bool keepSolution=solverName=="clp";
+    presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-8,true,5,prohibited_,keepSolution);
+    oldModel->messageHandler()->setLogLevel(saveLogLevel);
+    if (presolvedModel) {
+      presolvedModel->messageHandler()->setLogLevel(saveLogLevel);
+      if (prohibited_) {
+	const int * original = pinfo->originalColumns();
+	int numberColumns = presolvedModel->getNumCols();
+	// number prohibited must stay constant
+	int n=0;
+	int i;
+	for (i=0;i<numberProhibited_;i++) {
+	  if(prohibited_[i])
+	    n++;
+	}
+	int last=-1;
+	int n2=0;
+	for (i=0;i<numberColumns;i++) {
+	  int iColumn = original[i];
+	  assert (iColumn>last);
+	  last=iColumn;
+	  char p = prohibited_[iColumn];
+	  if (p)
+	    n2++;
+	  prohibited_[i]=p;
+	}
+	assert (n==n2);
+	numberProhibited_=numberColumns;
+      }
+      if (!presolvedModel->getNumRows()) {
+	doInitialPresolve=0;
+	delete presolvedModel;
+	delete pinfo;
+      } else {
+	model_[0]=presolvedModel;
+	presolve_[0]=pinfo;
+	modifiedModel_[0]=presolvedModel->clone();
+      }
+    } else {
+      infeas=1;
+      doInitialPresolve=0;
+      delete presolvedModel;
+      delete pinfo;
+    }
+  }
   // tighten bounds
 /*
 
@@ -817,7 +1765,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   constraint system. Safe as long as tightenPrimalBounds doesn't ask for
   the current solution.
 */
-  int infeas = tightenPrimalBounds(*startModel_);
+  if (!infeas)
+    infeas = tightenPrimalBounds(*startModel_);
   if (infeas) {
     handler_->message(CGL_INFEASIBLE,messages_)
       <<CoinMessageEol;
@@ -836,8 +1785,20 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     // double check
     if (!startModel_->isProvenOptimal()) {
       if (!startModel_->isProvenDualInfeasible()) {
+	// Do presolves
+	bool saveHint;
+	OsiHintStrength saveStrength;
+	startModel_->getHintParam(OsiDoPresolveInInitial,saveHint,saveStrength);
+	startModel_->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
 	startModel_->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
 	startModel_->initialSolve();
+	if (!startModel_->isProvenDualInfeasible()) {
+	  CoinWarmStart * empty = startModel_->getEmptyWarmStart();
+	  startModel_->setWarmStart(empty);
+	  startModel_->setHintParam(OsiDoDualInInitial,true,OsiHintTry);
+	  startModel_->initialSolve();
+	}
+	startModel_->setHintParam(OsiDoPresolveInInitial,saveHint,saveStrength);
       }
     }
     startModel_->setHintParam(OsiDoDualInInitial,saveTakeHint,saveStrength);
@@ -864,12 +1825,14 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   } else {
     OsiSolverInterface * presolvedModel;
     OsiSolverInterface * oldModel = startModel_;
-    CglDuplicateRow dupCuts(startModel_);
+    if (doInitialPresolve)
+      oldModel = modifiedModel_[0];
+    CglDuplicateRow dupCuts(oldModel);
     //dupCuts.setLogLevel(1);
     // If +1 try duplicate rows
     if (allPlusOnes) 
       addCutGenerator(&dupCuts);
-    for (int iPass=0;iPass<numberSolvers_;iPass++) {
+    for (int iPass=doInitialPresolve;iPass<numberSolvers_;iPass++) {
       // Look at Vubs
       {
         const double * columnLower = oldModel->getColLower();
@@ -1072,7 +2035,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
         returnModel=NULL;
         break;
       }
-      OsiSolverInterface * newModel = modified(presolvedModel,constraints,numberChanges,iPass,numberModifiedPasses);
+      OsiSolverInterface * newModel = modified(presolvedModel,constraints,numberChanges,iPass-doInitialPresolve,numberModifiedPasses);
       returnModel=newModel;
       if (!newModel) {
         break;
@@ -1310,11 +2273,14 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     delete [] mark;
     delete [] sosRow;
   }
-  if (returnModel)
+  if (returnModel) {
+    if (makeIntegers) 
+      makeIntegers2(returnModel,makeIntegers);
     handler_->message(CGL_PROCESS_STATS2,messages_)
       <<returnModel->getNumRows()<<returnModel->getNumCols()
       <<numberIntegers<<returnModel->getNumElements()
       <<CoinMessageEol;
+  }
   return returnModel;
 }
 
@@ -2243,6 +3209,15 @@ CglPreProcess::modified(OsiSolverInterface * model,
   info.formulation_rows = numberRows;
   info.inTree = false;
   info.strengthenRow= whichCut;
+  // See if user asked for heavy probing
+  bool heavyProbing=false;
+  for (int iGenerator=0;iGenerator<numberCutGenerators_;iGenerator++) {
+    CglProbing * probingCut = dynamic_cast<CglProbing *> (generator_[iGenerator]);
+    if (probingCut&&probingCut->getMaxPassRoot()>1) {
+      heavyProbing=true;
+      break;
+    }
+  }
   bool feasible=true;
   int firstGenerator=0;
   int lastGenerator=numberCutGenerators_;
@@ -2280,6 +3255,12 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  generator_[iGenerator]->generateCuts(*newModel,cs,info);
 	else
 	  probingCut->generateCutsAndModify(*newModel,cs,&info);
+#ifdef CLIQUE_ANALYSIS
+	if (probingCut) {
+	  printf("ordinary probing\n");
+	  info.analyze(*newModel);
+	} 
+#endif
         // If CglDuplicate may give us useless rows
         if (dupRow) {
           numberFromCglDuplicate = dupRow->numberOriginalRows();
@@ -2292,9 +3273,13 @@ CglPreProcess::modified(OsiSolverInterface * model,
         generator1.setUsingObjective(false);
         generator1.setMaxPass(1);
         generator1.setMaxPassRoot(1);
-        generator1.setMaxProbe(100);
+        generator1.setMaxProbeRoot(100);
         generator1.setMaxLook(100);
         generator1.setRowCuts(3);
+	if (heavyProbing) {
+	  generator1.setMaxElements(300);
+	  generator1.setMaxProbeRoot(model->getNumCols());
+	}
         if(!generator1.snapshot(*newModel,NULL,false)) {
           generator1.createCliques(*newModel,2,1000,true);
           generator1.setMode(0);
@@ -2302,6 +3287,10 @@ CglPreProcess::modified(OsiSolverInterface * model,
           info.pass=4;
           CoinZeroN(whichCut,numberRows);
           generator1.generateCutsAndModify(*newModel,cs,&info);
+#ifdef CLIQUE_ANALYSIS
+	  printf("special probing\n");
+	  info.analyze(*newModel);
+#endif
         } else {
           feasible=false;
         }
@@ -2479,6 +3468,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  for (j=start;j<end;j++) {
 	    int goingToOne = entry[j].oneFixed;
 	    int v = entry[j].sequence;
+	    if (v>=number01)
+	      continue;
 	    if (goingToOne) {
 	      // If v -> 1 means k -> 0 we have k+v==1 
 	      int startV = toOne[v];
@@ -2543,6 +3534,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  for (j=start;j<end;j++) {
 	    int goingToOne = entry[j].oneFixed;
 	    int v = entry[j].sequence;
+	    if (v>=number01)
+	      continue;
 	    if (goingToOne) {
 	      // If v -> 1 means k -> 1 we have k==v 
 	      int startV = toOne[v];

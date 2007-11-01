@@ -260,7 +260,7 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 			if (iColumn!=jColumn&&iColumn!=kColumn) {
 			  double elValue = elementByRow[j];
 			  double lo = columnLower[iColumn];
-			  double up = columnUpper[iColumn];
+			  double up = colUpper2[iColumn];
 			  if (elValue>0.0) {
 			    minSum += lo*elValue;
 			    maxSum += up*elValue;
@@ -342,7 +342,7 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     }
   }
   for ( i=0;i<numberColumns;i++) {
-    if (columnLower[i]!=columnUpper[i]) {
+    if (columnLower[i]!=colUpper2[i]) {
       bool fixed=false;
       for (int jj=columnStart[i];jj<columnStart[i]+columnLength[i];jj++) {
         int iRow = row[jj];

@@ -6,7 +6,7 @@
 
 #include "OsiCuts.hpp"
 #include "OsiSolverInterface.hpp"
-
+class CglStored;
 /** Information about where the cut generator is invoked from. */
 
 class CglTreeInfo {
@@ -49,9 +49,9 @@ public:
   virtual
     ~CglTreeInfo ();
   /// Take action if cut generator can fix a variable (toValue -1 for down, +1 for up)
-  virtual void fixes(int variable, int toValue, int fixedVariable,double fixedToValue) {}
+  virtual void fixes(int variable, int toValue, int fixedVariable,bool fixedToLower) {}
   /// Initalizes fixing arrays etc - returns true if we want to save info
-  virtual bool initializeFixing() {return false;}
+  virtual bool initializeFixing(const OsiSolverInterface * model) {return false;}
   
 };
 
@@ -82,10 +82,11 @@ public:
   /// Destructor 
   virtual
     ~CglTreeProbingInfo ();
+  OsiSolverInterface * analyze(const OsiSolverInterface & si, int createSolver=0);
   /// Take action if cut generator can fix a variable (toValue -1 for down, +1 for up)
-  virtual void fixes(int variable, int toValue, int fixedVariable,double fixedToValue);
+  virtual void fixes(int variable, int toValue, int fixedVariable,bool fixedToLower);
   /// Initalizes fixing arrays etc - returns true if we want to save info
-  virtual bool initializeFixing() ;
+  virtual bool initializeFixing(const OsiSolverInterface * model) ;
   /// Entries for fixing variables
   inline fixEntry * fixEntries() const
   { convert(); return fixEntry_;}

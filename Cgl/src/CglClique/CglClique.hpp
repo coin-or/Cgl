@@ -128,7 +128,7 @@ private:
 	    nodes(0), all_nbr(0), all_edgecost(0) {}
     };
 
-private:
+protected:
     /** An indicator showing whether the whole matrix in the solverinterface is
 	a set packing problem or not */
     bool setPacking_;
@@ -244,7 +244,6 @@ private:
     /**  */
     void recordClique(const int len, int* indices, OsiCuts& cs) const;
 };
-
 //#############################################################################
 /** A function that tests the methods in the CglClique class. The
     only reason for it not to be a member method is that this way it doesn't
@@ -253,5 +252,49 @@ private:
     compiled with debugging. */
 void CglCliqueUnitTest(const OsiSolverInterface * siP,
 		       const std::string mpdDir);
+/// This works on a fake solver i.e. invented rows
+class CglFakeClique : public CglClique {
+  
+public:
+  /// Copy constructor
+  CglFakeClique(const CglFakeClique& rhs);
+  /// Clone
+  virtual CglCutGenerator * clone() const;
+  
+  /// Assignment operator
+  CglFakeClique& operator=(const CglFakeClique& rhs);
+  
+  virtual void
+  generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
+	       const CglTreeInfo info = CglTreeInfo()) const;
+  
+  /**@name Constructors and destructors */
+  //@{
+  /** Default constructor.
+      If the setPacking argument is set to true then CglFakeClique will assume that the
+      problem in the solverinterface passed to the generateCuts() method
+      describes a set packing problem, i.e.,
+      - all variables are binary
+      - the matrix is a 0-1 matrix
+      - all constraints are '= 1' or '<= 1'
+      
+      Otherwise the user can use the considerRows() method to set the list of
+      clique rows, that is,
+      - all coeffs corresponding to binary variables at fractional level is 1
+      - all other coeffs are non-negative
+      - the constraint is '= 1' or '<= 1'.
+      
+      If the user does not set the list of clique rows then CglFakeClique will
+      start the generateCuts() methods by scanning the matrix for them.
+  */
+  CglFakeClique(OsiSolverInterface * solver=NULL,bool setPacking = false);
+  /// Destructor
+  virtual ~CglFakeClique();
+  /// Assign solver (generator takes over ownership)
+  void assignSolver(OsiSolverInterface * fakeSolver);
+protected:
+  /// fake solver to use
+  mutable OsiSolverInterface * fakeSolver_;
+};
 
 #endif

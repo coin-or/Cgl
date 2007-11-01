@@ -8,6 +8,7 @@
 #include "CglCutGenerator.hpp"
 
 class CoinWarmStartBasis;
+class CglTreeProbingInfo;
 /** Stored Cut Generator Class */
 class CglStored : public CglCutGenerator {
  
@@ -38,6 +39,9 @@ public:
   /// Get
   inline double getRequiredViolation() const
   { return requiredViolation_;}
+  /// Takes over ownership of probing info
+  inline void setProbingInfo(CglTreeProbingInfo * info)
+  { probingInfo_ = info;}
   //@}
 
   /**@name Cut stuff */
@@ -86,6 +90,8 @@ protected:
   //@{
   /// Only add if more than this requiredViolation
   double requiredViolation_;
+  /// Pointer to probing information
+  CglTreeProbingInfo * probingInfo_;
   /// Cuts
   mutable OsiCuts cuts_;
   //@}
