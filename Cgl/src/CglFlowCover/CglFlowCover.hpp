@@ -110,7 +110,7 @@ public:
     
     CglFlowVUB(const CglFlowVUB& source) { 
 	varInd_= source.varInd_; 
-	upper_ = source.varInd_; 
+	upper_ = source.upper_; 
     } 
     
     CglFlowVUB& operator=(const CglFlowVUB& rhs) { 
