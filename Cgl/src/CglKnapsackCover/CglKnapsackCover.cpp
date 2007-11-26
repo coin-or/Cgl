@@ -2526,11 +2526,10 @@ CglKnapsackCover::liftCoverCut(
     printf("lambda < epsilon....aborting. \n");
     std::cout << "lambda " << lambda << " epsilon " << epsilon_ << std::endl;
     //abort();
-    goodCut=0;
 #else
     //std::cout << "lambda " << lambda << " exiting" << std::endl;
-    goodCut=0;
 #endif
+    return 0;
   }
 
   // mu is vector of partial sums: 
@@ -2550,7 +2549,6 @@ CglKnapsackCover::liftCoverCut(
   }
 
   cut.reserve(nRowElem);
-
   // the cut coefficent for the members of the cover is 1.0
   cut.setConstant(cover.getNumElements(),cover.getIndices(),1.0);
   
@@ -2558,7 +2556,7 @@ CglKnapsackCover::liftCoverCut(
   int h;
   if (muMinusLambda[1] >= cover.getElements()[1]-epsilon_){
     for (h=0; h<remainder.getNumElements(); h++){
-      if (remainder.getElements()[h] <= muMinusLambda[1]){
+      if (remainder.getElements()[h] <= muMinusLambda[1]+epsilon_){
         // cutCoef[nCut] is 0, so don't bother storing 
       }    
       else{  
@@ -2567,7 +2565,7 @@ CglKnapsackCover::liftCoverCut(
         int found=0;
         i=2;
         while (!found && i<(cover.getNumElements()+1)){
-          if (remainder.getElements()[h] <= muMinusLambda[i]+epsilon_){
+          if (remainder.getElements()[h] <= muMinusLambda[i]-epsilon_){
 #ifdef CGL_DEBUG
 	    bool e = cut.isExistingIndex(remainder.getIndices()[h]);
             assert( !e );
@@ -2603,7 +2601,7 @@ CglKnapsackCover::liftCoverCut(
       int found=0; // Todo: searcing is inefficient: sort...
       i=0;
       while(!found && i<cover.getNumElements()){
-        if (remainder.getElements()[h] <= muMinusLambda[i+1]+epsilon_){
+        if (remainder.getElements()[h] <= muMinusLambda[i+1]-epsilon_){
 #ifdef CGL_DEBUG
 	  bool notE = !cut.isExistingIndex(remainder.getIndices()[h]);
           assert( notE );
