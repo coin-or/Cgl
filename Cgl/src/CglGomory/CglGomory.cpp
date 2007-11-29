@@ -249,7 +249,9 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
     if (status==-99) factorization.areaFactor(factorization.areaFactor() * 2.0);
   } 
   if (status) {
+#ifdef COIN_DEVELOP
     std::cout<<"Bad factorization of basis - status "<<status<<std::endl;
+#endif
     return -1;
   }
   // End of creation of factorization (A) ====
