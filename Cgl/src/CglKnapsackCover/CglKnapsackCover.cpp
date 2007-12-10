@@ -2496,6 +2496,13 @@ CglKnapsackCover::seqLiftAndUncomplementAndAdd(
 // liftCoverCut:  Given a canonical knapsack inequality and a
 //                cover, constructs a lift cover cut via
 //                sequence-independent lifting.
+//
+//                Reference: "Sequence Independent Lifting of Cover 
+//                Inequalities," by Gu, Nemhauser, and Savelsbergh
+//                in Integer Prog. and Combinatorial Opt, 4th Int'l
+//                IPCO Conference Proceedings, Copenhagen, Denmark,
+//                May 1995, pgs 452-461.
+//                
 //-------------------------------------------------------------------
 int
 CglKnapsackCover::liftCoverCut(
