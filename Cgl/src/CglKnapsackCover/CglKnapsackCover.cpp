@@ -2596,8 +2596,10 @@ CglKnapsackCover::liftCoverCut(
 
   // else use superadditive function g 
   else {
-    double * rho= new double[cover.getNumElements()];
+    int coverSizePlusOne = cover.getNumElements()+1;
+    double * rho= new double[coverSizePlusOne];
     rho[0]=lambda;
+    rho[cover.getNumElements()]=0.0;
     for (i=1; i<cover.getNumElements(); i++){
       rho[i]=CoinMax(0.0, cover.getElements()[i]- muMinusLambda[1]);
     }
@@ -2608,7 +2610,7 @@ CglKnapsackCover::liftCoverCut(
       int found=0; // Todo: searcing is inefficient: sort...
       i=0;
       while(!found && i<cover.getNumElements()){
-        if (remainder.getElements()[h] <= muMinusLambda[i+1]-epsilon_){
+        if (remainder.getElements()[h] <= muMinusLambda[i+1]){
 #ifdef CGL_DEBUG
 	  bool notE = !cut.isExistingIndex(remainder.getIndices()[h]);
           assert( notE );
