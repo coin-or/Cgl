@@ -1795,6 +1795,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	if (!startModel_->isProvenDualInfeasible()) {
 	  CoinWarmStart * empty = startModel_->getEmptyWarmStart();
 	  startModel_->setWarmStart(empty);
+	  delete empty;
 	  startModel_->setHintParam(OsiDoDualInInitial,true,OsiHintTry);
 	  startModel_->initialSolve();
 	}

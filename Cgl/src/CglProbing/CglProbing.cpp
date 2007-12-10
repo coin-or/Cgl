@@ -7254,11 +7254,11 @@ maxPass_(3),
 logLevel_(0),
 maxProbe_(100),
 maxStack_(50),
-maxElements_(100000),
+maxElements_(1000),
 maxPassRoot_(3),
 maxProbeRoot_(100),
 maxStackRoot_(50),
-maxElementsRoot_(1000),
+maxElementsRoot_(10000),
 usingObjective_(0)
 {
 
