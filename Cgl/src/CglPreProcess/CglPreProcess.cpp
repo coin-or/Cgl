@@ -999,7 +999,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     }
   }
   // Initialize random seed
-  CoinSeedRandom(987654321);
+  CoinThreadRandom randomGenerator(987654321);
   if (makeEquality==2||makeEquality==3||makeEquality==4) {
     int iRow, iColumn;
     int numberIntegers = 0;
@@ -1127,7 +1127,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	double * hashColumn = new double [numberColumns];
 	int i;
 	for (i=0;i<numberColumns;i++)
-	  hashColumn[i]=CoinDrand48();
+	  hashColumn[i]=randomGenerator.randomDouble();
 	double * valueY = new double [3*numberY];
 	int * rowY = new int [3*numberY];
 	int * columnY = new int[3*numberY];

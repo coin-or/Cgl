@@ -58,7 +58,9 @@ CglOddHoleUnitTest(
     const int fixed[]={0,0,0};
     OsiCuts cs;
     CglOddHole test1;
-    test1.generateCuts(NULL,matrix,sol,dj,cs,which,fixed,true);
+    CglTreeInfo info;
+    info.randomNumberGenerator=NULL;
+    test1.generateCuts(NULL,matrix,sol,dj,cs,which,fixed,info,true);
     CoinPackedVector check;
     int index[] = {0,1,2};
     double el[] = {1,1,1};

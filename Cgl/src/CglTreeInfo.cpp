@@ -21,7 +21,7 @@
 // Default constructor 
 CglTreeInfo::CglTreeInfo ()
   : level(-1), pass(-1), formulation_rows(-1), inTree(false),
-    strengthenRow(NULL) {}
+    strengthenRow(NULL),randomNumberGenerator(NULL) {}
 
 // Copy constructor 
 CglTreeInfo::CglTreeInfo (const CglTreeInfo & rhs)
@@ -29,7 +29,8 @@ CglTreeInfo::CglTreeInfo (const CglTreeInfo & rhs)
     pass(rhs.pass), 
     formulation_rows(rhs.formulation_rows), 
     inTree(rhs.inTree),
-    strengthenRow(rhs.strengthenRow)
+    strengthenRow(rhs.strengthenRow),
+    randomNumberGenerator(rhs.randomNumberGenerator)
 {
 }
 // Clone
@@ -50,6 +51,7 @@ CglTreeInfo::operator=(const CglTreeInfo& rhs)
     formulation_rows = rhs.formulation_rows; 
     inTree = rhs.inTree;
     strengthenRow = rhs.strengthenRow;
+    randomNumberGenerator = rhs.randomNumberGenerator;
   }
   return *this;
 }

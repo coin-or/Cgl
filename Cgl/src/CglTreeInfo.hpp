@@ -6,6 +6,7 @@
 
 #include "OsiCuts.hpp"
 #include "OsiSolverInterface.hpp"
+#include "CoinHelperFunctions.hpp"
 class CglStored;
 /** Information about where the cut generator is invoked from. */
 
@@ -31,6 +32,8 @@ public:
       The calling function can then replace those rows.
   */
   OsiRowCut ** strengthenRow;
+  /// Optional pointer to thread specific random number generator
+  CoinThreadRandom * randomNumberGenerator;
   /// Default constructor 
   CglTreeInfo ();
  

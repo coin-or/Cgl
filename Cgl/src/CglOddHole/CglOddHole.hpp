@@ -114,7 +114,7 @@ private:
 		    const CoinPackedMatrix & rowCopy,
 		    const double * solution, const double * dj,
 		    OsiCuts & cs, const int * suitableRow,
-		    const int * fixedColumn,
+		    const int * fixedColumn,const CglTreeInfo info,
 		    bool packed);
   //@}
 

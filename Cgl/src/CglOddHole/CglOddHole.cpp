@@ -112,7 +112,7 @@ void CglOddHole::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   const OsiRowCutDebugger * debugger = NULL;
 #endif
   temp.generateCuts(debugger, *rowCopy,solution,
-		    si.getReducedCost(),cs,suitable,fixed,true);
+		    si.getReducedCost(),cs,suitable,fixed,info,true);
   // now cover
   //if no >= then skip
   bool doCover=false;
@@ -138,7 +138,7 @@ void CglOddHole::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   }
   if (doCover&&nsuitable) 
     temp.generateCuts(debugger, *rowCopy,solution,si.getReducedCost(),
-		      cs,suitable,fixed,false);
+		      cs,suitable,fixed,info,false);
   delete [] checkRow;
   delete [] solution;
   delete [] fixed;
@@ -150,6 +150,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 			      const double * dj, OsiCuts & cs,
 				 const int * suitableRow,
 			      const int * fixedColumn,
+			      const CglTreeInfo info,
 			      bool packed)
 {
   CoinPackedMatrix columnCopy = rowCopy;
@@ -290,9 +291,16 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
   }
   //random numbers to winnow out duplicate cuts
   double * check = new double[nCols];
-  CoinSeedRandom(13579);
-  for (i=0;i<nCols;i++) {
-    check[i]=CoinDrand48();
+  if (info.randomNumberGenerator) {
+    const CoinThreadRandom * randomGenerator = info.randomNumberGenerator;
+    for (i=0;i<nCols;i++) {
+      check[i]=randomGenerator->randomDouble();
+    }
+  } else {
+    CoinSeedRandom(13579);
+    for (i=0;i<nCols;i++) {
+      check[i]=CoinDrand48(); // NOT on a thread by thread basis
+    }
   }
 
   // Shortest path algorithm from Dijkstra - is there a better one?

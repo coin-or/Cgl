@@ -2408,7 +2408,7 @@ CglLandPSimplex::updateM1_M2_M3(TabRow & row, double tolerance, bool reducedSpac
       {
         if(perturb)//assign to M1 or M2 at random
         {
-          int sign = CoinDrand48() > 0.5 ? 1 : -1;
+          int sign = CoinDrand48() > 0.5 ? 1 : -1; // NOT on a thread by thread basis
           if(sign == -1)//put into M1
           {
             inM1_[nM1++] = nonBasics_[i];

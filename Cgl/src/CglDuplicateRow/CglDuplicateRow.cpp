@@ -78,11 +78,21 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     // First look at duplicate or dominated columns
     double * random = new double[numberRows];
     double * sort = new double[numberColumns+1];
-    for (i=0;i<numberRows;i++) {
-      if (rowLower[i]<-1.0e20||rowUpper[i]>1.0e20)
-	random[i]=0.0;
-      else
-	random[i] = CoinDrand48();
+    if (info.randomNumberGenerator) {
+      const CoinThreadRandom * randomGenerator = info.randomNumberGenerator;
+      for (i=0;i<numberRows;i++) {
+	if (rowLower[i]<-1.0e20||rowUpper[i]>1.0e20)
+	  random[i]=0.0;
+	else
+	  random[i] = randomGenerator->randomDouble();
+      }
+    } else {
+      for (i=0;i<numberRows;i++) {
+	if (rowLower[i]<-1.0e20||rowUpper[i]>1.0e20)
+	  random[i]=0.0;
+	else
+	  random[i] = CoinDrand48();
+      }
     }
     int * which = new int[numberColumns];
     int nPossible=0;
