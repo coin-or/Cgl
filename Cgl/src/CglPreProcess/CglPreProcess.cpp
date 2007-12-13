@@ -3204,11 +3204,13 @@ CglPreProcess::modified(OsiSolverInterface * model,
   }
   OsiRowCut ** whichCut = new OsiRowCut * [numberRows+1];
   numberChanges=0;
+  CoinThreadRandom randomGenerator;
   CglTreeProbingInfo info(model);
   info.level = 0;
   info.pass = 0;
   info.formulation_rows = numberRows;
   info.inTree = false;
+  info.randomNumberGenerator=&randomGenerator;
   info.strengthenRow= whichCut;
   // See if user asked for heavy probing
   bool heavyProbing=false;
