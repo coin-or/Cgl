@@ -55,10 +55,10 @@ distclean-local:
 
 addlibsfile = cgl_addlibs.txt
 
-install-exec-local:
+install-exec-local: install-doc
 	$(install_sh_DATA) $(addlibsfile) $(DESTDIR)$(libdir)/$(addlibsfile)
 
-uninstall-local:
+uninstall-local: uninstall-doc
 	rm -f $(DESTDIR)$(libdir)/$(addlibsfile)
 
 ########################################################################
