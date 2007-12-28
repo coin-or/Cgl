@@ -57,8 +57,9 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 ########################################################################
 
 # Here list all the header files that are required by a user of the library,
-# and that therefore should be installed in 'install'
-include_HEADERS = \
+# and that therefore should be installed in 'install/coin'
+includecoindir = $(includedir)/coin
+includecoin_HEADERS = \
 	../inc/config_cgl.h \
 	CglCutGenerator.hpp \
 	CglMessage.hpp \
@@ -78,8 +79,8 @@ install-exec-local:
 	echo "#define HAVE_CONFIG_H" >>bla
 	echo "#endif" >> bla
 	cat $(srcdir)/$(ConfigHeader) >> bla
-	$(install_sh_DATA) bla $(DESTDIR)$(includedir)/$(ConfigHeader)
+	$(install_sh_DATA) bla $(DESTDIR)$(includecoincdir)/$(ConfigHeader)
 	rm -f bla
 
 uninstall-local:
-	rm -f $(DESTDIR)$(includedir)/$(ConfigHeader)
+	rm -f $(DESTDIR)$(includecoincdir)/$(ConfigHeader)
