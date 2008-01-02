@@ -712,9 +712,10 @@ CglMixedIntegerRounding2::generateMirCuts(
   CoinIndexedVector contVariablesInS(si.getNumCols());
   CoinIndexedVector rowToUse(si.getNumCols());
   // And work vectors
-  CoinIndexedVector workVectors[3];
-  for (int i=0; i<3; i++)
+  CoinIndexedVector workVectors[4];
+  for (int i=0; i<4; i++)
     workVectors[i].reserve(si.getNumCols());
+  CoinIndexedVector setRowsAggregated(si.getNumRows());
   for (int iRow = 0; iRow < numRowMixAndRowContVBAndRowInt; ++iRow) {
 
     int rowSelected;  // row selected to be aggregated next
@@ -722,7 +723,7 @@ CglMixedIntegerRounding2::generateMirCuts(
     rowAggregated.clear();
     double rhsAggregated;
     // create a set with the indices of rows selected
-    std::set<int> setRowsAggregated;
+    setRowsAggregated.clear();
 
     // loop until the maximum number of aggregated rows is reached
     for (int iAggregate = 0; iAggregate < MAXAGGR_; ++iAggregate) {
@@ -871,7 +872,7 @@ void
 CglMixedIntegerRounding2::copyRowSelected(
 			    const int iAggregate,
 			    const int rowSelected,
-			    std::set<int>& setRowsAggregated,
+			    CoinIndexedVector& setRowsAggregated,
 			    int* listRowsAggregated,
 			    double* xlpExtra,
 			    const char sen,
@@ -888,7 +889,7 @@ CglMixedIntegerRounding2::copyRowSelected(
   rhsToAggregate = rhs;
 
   // update list of indices of rows selected
-  setRowsAggregated.insert(rowSelected);
+  setRowsAggregated.insert(rowSelected,1.0);
   listRowsAggregated[iAggregate] = rowSelected;
 
   // Add a slack variable if needed and compute its current value
@@ -912,7 +913,7 @@ CglMixedIntegerRounding2::selectRowToAggregate(
 			    const CoinIndexedVector& rowAggregated,
 			    const double* colUpperBound,
 			    const double* colLowerBound,
-			    const std::set<int>& setRowsAggregated,
+			    const CoinIndexedVector& setRowsAggregated,
 			    const double* xlp, const double* coefByCol,
 			    const int* rowInds, const int* colStarts,
 			    const int* colLengths,
@@ -962,7 +963,7 @@ CglMixedIntegerRounding2::selectRowToAggregate(
       // find a row to use in aggregation
       for (int i = iStart; i < iStop; ++i) {
 	int rowInd = rowInds[i];
-	if (setRowsAggregated.find(rowInd) == setRowsAggregated.end()) {
+	if (!setRowsAggregated.denseVector()[rowInd]) {
 	  // if the row was not already selected, select it
 	  RowType rType = rowTypes_[rowInd];
 	  if ( ((rType == ROW_MIX) || (rType == ROW_CONT)) 
@@ -1233,7 +1234,8 @@ CglMixedIntegerRounding2::cMirSeparation(
   // Construct set C, T will be the rest.
   // Also, for T we construct a CoinIndexedVector named complT which
   // contains the vars in T that are strictly between their bounds
-  std::set<int> setC;
+  CoinIndexedVector & setC = workVectors[3];
+  setC.clear();
   CoinIndexedVector * complT = &workVectors[2];
   complT->clear();
   double infinity = si.getInfinity();
@@ -1244,7 +1246,7 @@ CglMixedIntegerRounding2::cMirSeparation(
     // be in complT
     if (colUpperBound[indCol] != infinity) {
       if (xlp[indCol] >= colUpperBound[indCol] / 2.0) {
-	setC.insert(j);
+	setC.insert(j,1.0);
 	numeratorBeta -= knapsackElements[indCol] * colUpperBound[indCol];
       } else {
 	if ( (xlp[indCol] <= EPSILON_) || 
@@ -1331,7 +1333,7 @@ CglMixedIntegerRounding2::cMirSeparation(
       int indCol = knapsackIndices[jIndex];
       // do nothing if upper bound is infinity
       if (colUpperBound[indCol] >= infinity) continue;
-      setC.insert(jIndex);
+      setC.insert(jIndex,1.0);
       double violation = 0.0;
       double sCoef = 0.0;
       double localNumeratorBeta = numeratorBeta -
@@ -1352,7 +1354,7 @@ CglMixedIntegerRounding2::cMirSeparation(
 	numeratorBeta = localNumeratorBeta;
       }
       else
-	setC.erase(jIndex);
+	setC.quickAdd(jIndex,-1.0);
     }
   }
 
@@ -1508,7 +1510,7 @@ CglMixedIntegerRounding2::cMirInequality(
 				  const double* xlp, 
 				  const double sStar,	       
 				  const double* colUpperBound,
-				  const std::set<int>& setC,
+				  const CoinIndexedVector& setC,
 				  CoinIndexedVector& cMIR,
 				  double& rhscMIR,
 				  double& sCoef,
@@ -1524,7 +1526,7 @@ CglMixedIntegerRounding2::cMirInequality(
       for (int i = 0; i < numInt; ++i) {
 	const int iIndex = knapsackIndices[i];
 	double G = 0.0;
-	if (setC.find(i) == setC.end()) {
+	if (setC.denseVector()[i] != 1.0) {
 	  // i is not in setC, i.e., it is in T
 	  G = functionG(knapsackElements[iIndex] / delta, f);
 	  violation += (G * xlp[iIndex]);

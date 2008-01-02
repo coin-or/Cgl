@@ -33,10 +33,10 @@ public:
     return ( x.infeasibility < y.infeasibility);
   }
 };
-#if defined(_MSC_VER) || defined(__MINGW32__) || defined(__CYGWIN32__)|| (__GNUC__ <3)
+//#if defined(_MSC_VER) || defined(__MINGW32__) || defined(__CYGWIN32__)|| (__GNUC__ <3)
 // Seems to be bug in cygwin (that of course was years ago as of 8/2007)
 #define GNU_OLDWAY
-#endif
+//#endif
 #ifndef GNU_OLDWAY
 // Use a hash set to find duplicates
 #include <ext/hash_map>
