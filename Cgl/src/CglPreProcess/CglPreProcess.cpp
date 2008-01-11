@@ -4082,6 +4082,7 @@ CglPreProcess::createOriginalIndices() const
 	  originalRow_[i]=-1;
       }
     }
+    std::sort(originalColumn_,originalColumn_+nColumns);
   } else {
     int i;
     for (i=0;i<nColumns;i++)

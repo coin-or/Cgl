@@ -67,6 +67,8 @@ CglFlowCover::flowPreprocess(const OsiSolverInterface& si) const
 	delete [] rowTypes_; rowTypes_ = 0;
     }
     rowTypes_ = new CglFlowRowType [numRows];// Distructor will free memory
+    // Get integer types
+    const char * columnType = si.columnType (true);
     
     // Summarize the row type infomation.
     int numUNDEFINED   = 0;
@@ -186,7 +188,7 @@ CglFlowCover::flowPreprocess(const OsiSolverInterface& si) const
 	    int    xInd,  yInd;   // x is binary
 	    double xCoef, yCoef;
 
-	    if ( si.isBinary(index0) ) {
+	    if ( columnType[index0]==1 ) {
 		xInd  = index0;   yInd  = index1;
 		xCoef = coef0;    yCoef = coef1;
 	    }
@@ -477,6 +479,8 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     CglFlowVLB VLB;
     CglFlowVUB VUB;
 
+    // Get integer types
+    const char * columnType = si.columnType ();
     for (i = 0; i < rowLen; ++i) {
 	if ( xlp[ind[i]] - floor(xlp[ind[i]]) > EPSILON_ && ceil(xlp[ind[i]]) - xlp[ind[i]] > EPSILON_ )
 	    break;
@@ -533,7 +537,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	    return generated;     
 	}
 
-	if ( si.isBinary(ind[i]) ) {   // Binary variable
+	if ( columnType[ind[i]]==1 ) {   // Binary variable
 	    value = coef[i];
 	    if (value > EPSILON_)
 		sign[i] = CGLFLOW_COL_BINPOS;
@@ -1134,6 +1138,8 @@ CglFlowCover::determineOneRowType(const OsiSolverInterface& si,
 	return CGLFLOW_ROW_UNDEFINED;
     
     CglFlowRowType rowType = CGLFLOW_ROW_UNDEFINED;
+    // Get integer types
+    const char * columnType = si.columnType ();
     
     int  numPosBin = 0;      // num of positive binary variables
     int  numNegBin = 0;      // num of negative binary variables
@@ -1153,12 +1159,12 @@ CglFlowCover::determineOneRowType(const OsiSolverInterface& si,
     for ( i = 0; i < rowLen; ++i ) {
 	if ( coef[i] < -EPSILON_ ) {
 	    ++numNegCol;
-	    if( si.isBinary(ind[i]) )
+	    if( columnType[ind[i]]==1 )
 		++numNegBin;
 	}
 	else {
 	    ++numPosCol;
-	    if( si.isBinary(ind[i]) )
+	    if( columnType[ind[i]]==1 )
 		++numPosBin;    
 	}
     }

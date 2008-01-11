@@ -66,8 +66,8 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
   const CoinPackedMatrix & tempMatrixByRow = *si.getMatrixByRow();
   CoinPackedMatrix matrixByRow;
   matrixByRow.submatrixOf(tempMatrixByRow, numRows_, indRows_);
-  CoinPackedMatrix matrixByCol = matrixByRow;
-  matrixByCol.reverseOrdering();
+  CoinPackedMatrix matrixByCol(matrixByRow,0,0,true);
+  //matrixByCol.reverseOrdering();
   //const CoinPackedMatrix & matrixByRow = *si.getMatrixByRow();
   const double* LHS        = si.getRowActivity();
   const double* coefByRow  = matrixByRow.getElements();

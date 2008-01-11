@@ -63,7 +63,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   const OsiRowCutDebugger * debugger = NULL;
 #endif
 
-  generateCuts(debugger, cs, *si.getMatrixByCol(),
+  generateCuts(debugger, cs, *si.getMatrixByCol(), *si.getMatrixByRow(),
 	   si.getObjCoefficients(), si.getColSolution(),
 	   si.getColLower(), si.getColUpper(), 
 	   si.getRowLower(), si.getRowUpper(),
@@ -198,6 +198,7 @@ int
 CglGomory::generateCuts( const OsiRowCutDebugger * debugger, 
                          OsiCuts & cs,
                          const CoinPackedMatrix & columnCopy,
+                         const CoinPackedMatrix & rowCopy,
                          const double * objective, const double * colsol,
                          const double * colLower, const double * colUpper,
                          const double * rowLower, const double * rowUpper,
@@ -259,9 +260,6 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   double bounds[2]={-DBL_MAX,0.0};
   int iColumn,iRow;
 
-  // get row copy of matrix
-  CoinPackedMatrix rowCopy =  columnCopy;
-  rowCopy.reverseOrdering();
   const int * column = rowCopy.getIndices();
   const CoinBigIndex * rowStart = rowCopy.getVectorStarts();
   const int * rowLength = rowCopy.getVectorLengths(); 
@@ -928,6 +926,24 @@ bool
 CglGomory::needsOptimalBasis() const
 {
   return true;
+}
+// Does actual work - returns number of cuts
+int
+CglGomory::generateCuts( const OsiRowCutDebugger * debugger, 
+                         OsiCuts & cs,
+                         const CoinPackedMatrix & columnCopy,
+                         const double * objective, const double * colsol,
+                         const double * colLower, const double * colUpper,
+                         const double * rowLower, const double * rowUpper,
+			 const char * intVar,
+                         const CoinWarmStartBasis* warm,
+                         const CglTreeInfo info) const
+{
+  CoinPackedMatrix rowCopy;
+  rowCopy.reverseOrderedCopyOf(columnCopy);
+  return generateCuts( debugger, cs, columnCopy, rowCopy,
+		       objective, colsol, colLower, colUpper,
+		       rowLower, rowUpper, intVar, warm, info);
 }
 // Create C++ lines to get to current state
 std::string

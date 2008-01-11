@@ -263,6 +263,7 @@ private:
 	     const OsiRowCutDebugger * debugger, 
 	     OsiCuts & cs, 
 	     double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
+	     CoinPackedMatrix *columnCopy,
 	     double * rowLower, double * rowUpper,
 	     char * intVar, double * minR, double * maxR, int * markR, 
               CglTreeInfo * info) const;
@@ -271,6 +272,7 @@ private:
 	     const OsiRowCutDebugger * debugger, 
 	     OsiCuts & cs, 
 	     double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
+		    CoinPackedMatrix *columnCopy,
 	     double * rowLower, double * rowUpper,
 	     char * intVar, double * minR, double * maxR, int * markR, 
              CglTreeInfo * info) const;
@@ -279,6 +281,7 @@ private:
                     const OsiRowCutDebugger * debugger, 
                     OsiCuts & cs, 
                     double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
+		   CoinPackedMatrix *columnCopy,
                     double * rowLower, double * rowUpper,
                     char * intVar, double * minR, double * maxR,int * markR,
                      CglTreeInfo * info) const;

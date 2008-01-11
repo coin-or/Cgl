@@ -36,6 +36,18 @@ public:
   int generateCuts( const OsiRowCutDebugger * debugger, 
 		    OsiCuts & cs,
 		    const CoinPackedMatrix & columnCopy,
+		    const CoinPackedMatrix & rowCopy,
+		    const double * objective, const double * colsol,
+		    const double * colLower, const double * colUpper,
+		    const double * rowLower, const double * rowUpper,
+		    const char * intVar ,
+		    const CoinWarmStartBasis* warm,
+                    const CglTreeInfo info = CglTreeInfo()) const;
+  /** Generates cuts given matrix and solution etc,
+      returns number of cuts generated (no row copy passed in) */
+  int generateCuts( const OsiRowCutDebugger * debugger, 
+		    OsiCuts & cs,
+		    const CoinPackedMatrix & columnCopy,
 		    const double * objective, const double * colsol,
 		    const double * colLower, const double * colUpper,
 		    const double * rowLower, const double * rowUpper,

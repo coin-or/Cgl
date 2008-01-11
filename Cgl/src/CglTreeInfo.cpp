@@ -95,10 +95,12 @@ CglTreeProbingInfo::CglTreeProbingInfo (const OsiSolverInterface * model)
   integerVariable_ = new int [numberVariables_];
   backward_ = new int [numberVariables_];
   int i;
+  // Get integer types
+  const char * columnType = model->columnType (true);
   for (i=0;i<numberVariables_;i++) {
     backward_[i]=-1;
-    if (model->isInteger(i)) {
-      if (model->isBinary(i)) {
+    if (columnType[i]) {
+      if (columnType[i]==1) {
 	backward_[i]=numberIntegers_;
 	integerVariable_[numberIntegers_++]=i;
       } else {
@@ -1205,10 +1207,12 @@ CglTreeProbingInfo::initializeFixing(const OsiSolverInterface * model)
   backward_ = new int [numberVariables_];
   numberIntegers_=0;
   int i;
+  // Get integer types
+  const char * columnType = model->columnType (true);
   for (i=0;i<numberVariables_;i++) {
     backward_[i]=-1;
-    if (model->isInteger(i)) {
-      if (model->isBinary(i)) {
+    if (columnType[i]) {
+      if (columnType[i]==1) {
 	backward_[i]=numberIntegers_;
 	integerVariable_[numberIntegers_++]=i;
       } else {
