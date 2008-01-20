@@ -10,7 +10,10 @@
 #include <cfloat>
 #include <cassert>
 #include <iostream>
-//#define CGL_DEBUG 2
+//#define CGL_DEBUG 1
+//#ifdef NDEBUG
+//#undef NDEBUG
+//#endif
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedVector.hpp"
 #include "CoinPackedMatrix.hpp"
@@ -386,15 +389,18 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	for (j=0;j<numberInArray;j++) {
 	  int indexValue=arrayRows[j];
 	  double value=arrayElements[indexValue];
-	  if (fabs(value)>1.0e-6) {
+	  if (fabs(value)>1.0e-5) {
 	    assert (fabs(value-1.0)<1.0e-7);
 	    assert (indexValue==iBasic);
 	    nn++;
 	  }
 	}
 	assert (nn==1);
+	array.clear();
+	work.checkClear();
       }
 #endif
+      array.clear();
       if(intVar[iColumn]&&reducedValue<1.0-away_&&reducedValue>away_) {
 #ifdef CGL_DEBUG
 	cutVector.checkClear();
@@ -749,10 +755,16 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		  break;
 		}
 	      } else {
-		largest=max(largest,value);
-		smallest=min(smallest,value);
-		cutIndex[number]=cutIndex[i];
-		packed[number++]=packed[i];
+		int iColumn = cutIndex[i];
+		if (colUpper[iColumn]!=colLower[iColumn]) {
+		  largest=max(largest,value);
+		  smallest=min(smallest,value);
+		  cutIndex[number]=cutIndex[i];
+		  packed[number++]=packed[i];
+		} else {
+		  // fixed so subtract out
+		  rhs -= packed[i]*colLower[iColumn];
+		}
 	      }
 	    }
 	    if (largest>1.0e9*smallest) {
