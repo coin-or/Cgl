@@ -731,9 +731,10 @@ CglKnapsackCover::liftAndUncomplementAndAdd(
     cut.setConstant(cover.getNumElements(),cover.getIndices(),1.0);
   }
   
-  // Uncomplement the complemented variables in the cut
-  int k;
-  if (fabs(b-rowub)> epsilon_) {
+  if (goodCut) {
+    // Uncomplement the complemented variables in the cut
+    int k;
+    //if (fabs(b-rowub)> epsilon_) {
     double * elements = cut.getElements();
     int * indices = cut.getIndices();
     for (k=0; k<cut.getNumElements(); k++){
@@ -744,8 +745,7 @@ CglKnapsackCover::liftAndUncomplementAndAdd(
         cutRhs += elements[k];
       }
     }
-  }
-  if (goodCut) {
+    //}
     // Create row cut. Effectiveness defaults to 0.
     OsiRowCut rc;
     rc.setRow(cut);
