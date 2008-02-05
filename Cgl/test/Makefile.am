@@ -57,7 +57,7 @@ if COIN_HAS_CLP
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiClp`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiClp/libOsiClp.la \
 	$(CLPOBJDIR)/src/libClp.la
-  LIBS  += `cat $(CLPOBJDIR)/clp_addlibs.txt`
+  LIBS  += `cat $(CLPDOCDIR)/clp_addlibs.txt`
 endif
 
 if COIN_HAS_CBC
@@ -65,13 +65,13 @@ if COIN_HAS_CBC
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiCbc`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiCbc/libOsiCbc.la \
 	$(CBCOBJDIR)/src/libCbc.la
-  LIBS += `cat $(CBCOBJDIR)/cbc_addlibs.txt`
+  LIBS += `cat $(CBCDOCDIR)/cbc_addlibs.txt`
 endif
 
 if COIN_HAS_CPX
   AM_CPPFLAGS += -I`$(CYGPATH_W) $(CPXINCDIR)` \
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiCpx`
-  unitTest_LDADD += $(OSIOBJDIR)/src/OsiCpx/libOsiCpx.la
+  unitTest_LDADD += $(OSIDOCDIR)/src/OsiCpx/libOsiCpx.la
 endif
 
 if COIN_HAS_DYLP
@@ -81,7 +81,7 @@ if COIN_HAS_DYLP
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiDylp`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiDylp/libOsiDylp.la \
 	$(DYLPOBJDIR)/src/Dylp/libDylp.la
-  LIBS += `cat $(DYLPOBJDIR)/dylp_addlibs.txt`
+  LIBS += `cat $(DYLPDOCDIR)/dylp_addlibs.txt`
 endif
 
 if COIN_HAS_FMP
@@ -118,7 +118,7 @@ if COIN_HAS_SYMPHONY
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiSym`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiSym/libOsiSym.la \
 	$(SYMPHONYOBJDIR)/src/libSym.la
-  LIBS += `cat $(SYMPHONYOBJDIR)/sym_addlibs.txt`
+  LIBS += `cat $(SYMPHONYDOCDIR)/sym_addlibs.txt`
 endif
 
 if COIN_HAS_VOL
@@ -126,7 +126,7 @@ if COIN_HAS_VOL
 	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiVol`
   unitTest_LDADD += $(OSIOBJDIR)/src/OsiVol/libOsiVol.la \
 	$(VOLOBJDIR)/src/libVol.la
-  LIBS += `cat $(VOLOBJDIR)/vol_addlibs.txt`
+  LIBS += `cat $(VOLDOCDIR)/vol_addlibs.txt`
 endif
 
 if COIN_HAS_XPR
@@ -141,8 +141,8 @@ unitTest_LDADD += \
 	$(COINUTILSOBJDIR)/src/libCoinUtils.la
 
 # List additional libraries
-LIBS += `cat $(OSIOBJDIR)/osi_addlibs.txt`\
-	`cat $(COINUTILSOBJDIR)/coinutils_addlibs.txt` \
+LIBS += `cat $(OSIDOCDIR)/osi_addlibs.txt`\
+	`cat $(COINUTILSDOCDIR)/coinutils_addlibs.txt` \
 	$(ADDLIBS)
 
 test: unitTest$(EXEEXT)
