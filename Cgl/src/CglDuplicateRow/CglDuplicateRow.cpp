@@ -260,7 +260,7 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 			if (iColumn!=jColumn&&iColumn!=kColumn) {
 			  double elValue = elementByRow[j];
 			  double lo = columnLower[iColumn];
-			  double up = columnUpper[iColumn];
+			  double up = colUpper2[iColumn];
 			  if (elValue>0.0) {
 			    minSum += lo*elValue;
 			    maxSum += up*elValue;
@@ -342,7 +342,7 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     }
   }
   for ( i=0;i<numberColumns;i++) {
-    if (columnLower[i]!=columnUpper[i]) {
+    if (columnLower[i]!=colUpper2[i]) {
       bool fixed=false;
       for (int jj=columnStart[i];jj<columnStart[i]+columnLength[i];jj++) {
         int iRow = row[jj];
@@ -409,8 +409,8 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
               if (logLevel_)
                 printf("row %d strict subset of row %d, fix some in row %d\n",
                        k,i,i);
-              // treat k as duplicate
-              duplicate_[k]=i;
+              // treat i as duplicate
+              duplicate_[i]=k;
               // zero out check so we can see what is extra
               for ( j=rowStart[k];j<rowStart[k]+rowLength[k];j++) {
                 int iColumn = column[j];
