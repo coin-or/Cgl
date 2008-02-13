@@ -773,8 +773,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	
 	if (label[i] != CGLFLOW_COL_INCUT && sign[i] < 0) { // N-\C-
 	    temp += up[i];
-	    if ( y[i] >= lambda * x[i] ) {      // L-
-//	    if ( up[i] > lambda) {      // L-
+	    if ( up[i] > lambda) {      // L-
 		yCoef[i] = 0.0;
 		xCoef[i] = -lambda;
 		label[i] = CGLFLOW_COL_INLMIN;
