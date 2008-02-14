@@ -2567,7 +2567,7 @@ CglKnapsackCover::liftCoverCut(
         int found=0;
         i=2;
         while (!found && i<(cover.getNumElements()+1)){
-          if (remainder.getElements()[h] <= muMinusLambda[i]+epsilon_){
+          if (remainder.getElements()[h] <= muMinusLambda[i]){
 #ifdef CGL_DEBUG
 	    bool e = cut.isExistingIndex(remainder.getIndices()[h]);
             assert( !e );
