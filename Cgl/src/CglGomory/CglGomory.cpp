@@ -260,6 +260,12 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   }
   // End of creation of factorization (A) ====
   
+  double relaxation = factorization.conditionNumber();
+#ifdef COIN_DEVELOP
+  if (relaxation>1.0e12)
+    printf("condition %g\n",relaxation);
+#endif
+  relaxation *= 1.0e-18;
   double bounds[2]={-DBL_MAX,0.0};
   int iColumn,iRow;
 
@@ -776,6 +782,10 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	    bounds[1]=rhs;
 	    if (number>50&&numberNonInteger)
 	      bounds[1] = bounds[1]+1.0e-6+1.0e-8*fabs(rhs); // weaken
+	    if (number>5&&numberNonInteger&&relaxation>1.0e-20) {
+	      //printf("relaxing rhs by %g\n",relaxation*fabs(rhs));
+	      bounds[1] = bounds[1]+relaxation*fabs(rhs); // weaken
+	    }
 	    {
 	      OsiRowCut rc;
 	      rc.setRow(number,cutIndex,packed,false);
