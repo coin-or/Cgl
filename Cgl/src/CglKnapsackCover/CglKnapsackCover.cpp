@@ -76,6 +76,10 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
   for (k=0; k<nCols; k++){
     back[k]=-1;
     xstar[k]=colsol[k];
+    if (xstar[k]>colUpper[k])
+      xstar[k]=colUpper[k];
+    else if (xstar[k]<colLower[k])
+      xstar[k]=colLower[k];
     complement[k]=0;
     vubRow[k]=-1;
     vlbRow[k]=-1;
@@ -129,7 +133,7 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
       int iColumn=column[j];
       double value = elementByRow[j];
       if (colUpper[iColumn]>colLower[iColumn]) {
-	sum += colsol[iColumn]*value;
+	sum += xstar[iColumn]*value;
 	if (vubRow[iColumn]==-2&&value*multiplier>0.0) {
 	  // binary
 	  numberBinary++;
