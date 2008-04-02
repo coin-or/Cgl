@@ -769,8 +769,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	
 	if (label[i] != CGLFLOW_COL_INCUT && sign[i] < 0) { // N-\C-
 	    temp += up[i];
-	    if ( y[i] >= lambda * x[i] ) {      // L-
-//	    if ( up[i] > lambda) {      // L-
+	    if ( up[i] > lambda) {      // L-
 		yCoef[i] = 0.0;
 		xCoef[i] = -lambda;
 		label[i] = CGLFLOW_COL_INLMIN;
@@ -907,7 +906,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	}
     }
 
-#if 0 // LIFTING?
+#if 1 // LIFTING?
     double estY, estX;
     double movement = 0.0;
     double dPrimePrime = temp + cutRHS; 
@@ -920,8 +919,8 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 				    y[i], x[i], 
 				    dPrimePrime, M);
 	    
-	    xCoef[i] = estX;
-	    yCoef[i] = -estY;
+	    xCoef[i] = -estX;
+	    yCoef[i] = estY;
 #if CGLFLOW_DEBUG
 	    if (lifted == true) {
 		printf("Success: Lifted col %i (up_i=%f,yCoef[i]=%f,xCoef[i]=%f) in N+\\C+\n", 
