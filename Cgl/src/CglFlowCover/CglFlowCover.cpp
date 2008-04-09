@@ -16,6 +16,7 @@
 #  pragma warning(disable:4786)
 #endif
 
+#include <cstdlib>
 #include <cmath>
 
 #include "CoinHelperFunctions.hpp"

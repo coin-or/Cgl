@@ -3,6 +3,7 @@
 #  pragma warning(disable:4786)
 #endif
 
+#include <cstdlib>
 #include <cstdio>
 
 #ifdef NDEBUG
