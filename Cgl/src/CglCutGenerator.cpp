@@ -4,9 +4,9 @@
 // Turn off compiler warning about long names
 #  pragma warning(disable:4786)
 #endif
-//#include <stdlib.h>
-#include <assert.h>
-//#include <float.h>
+#include <cstdlib>
+#include <cassert>
+//#include <cfloat>
 //#include <iostream>
 
 #include "CglCutGenerator.hpp"
