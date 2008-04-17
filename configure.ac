@@ -12,7 +12,7 @@
 
 AC_PREREQ(2.59)
 
-AC_INIT([Cgl],[0.52.0],[coin-cgl@lists.coin-or.org])
+AC_INIT([Cgl],[0.52stable],[coin-cgl@lists.coin-or.org])
 
 AC_COPYRIGHT([
 Copyright 2006 International Business Machines and others.
