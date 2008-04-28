@@ -253,6 +253,7 @@ private:
 void CglCliqueUnitTest(const OsiSolverInterface * siP,
 		       const std::string mpdDir);
 /// This works on a fake solver i.e. invented rows
+class CglProbing;
 class CglFakeClique : public CglClique {
   
 public:
@@ -295,6 +296,8 @@ public:
 protected:
   /// fake solver to use
   mutable OsiSolverInterface * fakeSolver_;
+  /// Probing object
+  mutable CglProbing * probing_;
 };
 
 #endif

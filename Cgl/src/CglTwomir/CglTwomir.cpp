@@ -1085,7 +1085,6 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
 
   /* obtain factorization */
   CoinFactorization factorization;
-  factorization.increasingRows(2); /* ??? */
   /* obtain address of the LP matrix */
   const OsiSolverInterface *si = (const OsiSolverInterface *) solver_ptr;
   const CoinPackedMatrix *colMatrixPtr = si->getMatrixByCol();

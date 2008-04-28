@@ -243,7 +243,9 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
 	}
       }
     }
+#ifdef COIN_DEVELOP
     printf("Current number of integers is %d\n",currentNumber);
+#endif
     // now look at continuous
     bool allGood=true;
     double direction = model->getObjSense() ;
@@ -276,6 +278,8 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
 	}
       }
     }
+    int * newInts = new int[numberColumns];
+    int nNew=0;
     for (iColumn=0;iColumn<numberColumns;iColumn++) {
       if (upper[iColumn]>lower[iColumn]) {
 	double objValue = objective[iColumn]*direction;
@@ -283,6 +287,8 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
 	if ((objValue||makeAll)&&!model->isInteger(iColumn)) {
 	  if (objValue)
 	    numberObj++;
+	  else if (columnLength[iColumn]==1)
+	    continue; // don't bother with singletons
 	  CoinBigIndex start = columnStart[iColumn];
 	  CoinBigIndex end = start + columnLength[iColumn];
 	  if (objValue>=0.0) {
@@ -441,12 +447,23 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
 	    numberNonZero++;
 	  else
 	    numberZero++; 
-	  model->setInteger(iColumn);
+	  newInts[nNew++] = iColumn;
 	}
       }
     }
+    // do if some but not too many
+    if (nNew&&nNew<currentNumber) {
+      for (int i=0;i<nNew;i++) {
+	int iColumn = newInts[i];
+	model->setInteger(iColumn);
+      }
+    } else {
+      numberNonZero=0;
+      numberZero=0;
+    }
+    delete [] newInts;
     // Can we look at remainder and make any integer
-    if (makeAll) {
+    if (makeAll&&false) {
       int nLook=0;
       int nEl=0;
       for (iColumn=0;iColumn<numberColumns;iColumn++) {
@@ -896,13 +913,19 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
 	  numberIntegers++;
 	}
       }
+#ifdef COIN_DEVELOP
       printf("ZZZZYY CglPreProcess analysis says all (%d) continuous with costs were made integer\n",numberIntegers);
+#endif
     }
+#ifdef COIN_DEVELOP
     if (numberZero)
       printf("ZZZZYY %d continuous with zero cost were made integer\n",numberZero);
+#endif
     numberIntegers += numberZero;
+#ifdef COIN_DEVELOP
     if (numberEq||numberEqI)
       printf("ZZZZYY %d rows made equality from continuous, %d from integer\n",numberEq,numberEqI);
+#endif
     totalNumberIntegers += numberIntegers;
     if (!makeAll)
       numberIntegers=0;
@@ -998,6 +1021,9 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	feasible=false;
     }
   }
+  bool allToGub = makeEquality==5;
+  if (allToGub)
+    makeEquality=3;
   // Initialize random seed
   CoinThreadRandom randomGenerator(987654321);
   if (makeEquality==2||makeEquality==3||makeEquality==4) {
@@ -1601,6 +1627,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	    nPlus=1;
 	    iPlus=iColumn;
 	    valuePlus=value;
+	  } else {
+	    nPlus++;
 	  }
 	} else {
 	  if (nMinus>0&&value!=valueMinus) {
@@ -1609,6 +1637,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	    nMinus=1;
 	    iMinus=iColumn;
 	    valueMinus=value;
+	  } else {
+	    nMinus++;
 	  }
 	}
       } else {
@@ -1828,11 +1858,23 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     OsiSolverInterface * oldModel = startModel_;
     if (doInitialPresolve)
       oldModel = modifiedModel_[0];
-    CglDuplicateRow dupCuts(oldModel);
+    //CglDuplicateRow dupCuts(oldModel);
     //dupCuts.setLogLevel(1);
     // If +1 try duplicate rows
-    if (allPlusOnes) 
+    if (allPlusOnes) {
+#if 0 
+      // put at beginning
+      CglCutGenerator ** temp = generator_;
+      generator_ = new CglCutGenerator * [numberCutGenerators_+1];
+      memcpy(generator_+1,temp,numberCutGenerators_*sizeof(CglCutGenerator *));
+      delete[] temp ;
+      numberCutGenerators_++;
+      generator_[0]=new CglDuplicateRow(oldModel);
+#else
+      CglDuplicateRow dupCuts(oldModel);
       addCutGenerator(&dupCuts);
+#endif
+    }
     for (int iPass=doInitialPresolve;iPass<numberSolvers_;iPass++) {
       // Look at Vubs
       {
@@ -2046,6 +2088,9 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       //sprintf(name,"pre%2.2d.mps",iPass);
       //newModel->writeMpsNative(name, NULL, NULL,0,1,0);
       if (!numberChanges) {
+#ifdef COIN_DEVELOP
+	printf("exiting after pass %d of %d\n",iPass,numberSolvers_);
+#endif
         numberSolvers_=iPass+1;
         break;
       }
@@ -2096,23 +2141,23 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     // Look for possible SOS
     int numberSOS=0;
     int * mark = new int[numberColumns];
-    char * sosRow = new char[numberRows];
+    int * sosRow = new int [numberRows];
     CoinZeroN(sosRow,numberRows);
     CoinFillN(mark,numberColumns,-1);
     int numberOverlap=0;
     int numberInSOS=0;
     for (iRow=0;iRow<numberRows;iRow++) {
       if (rowLower[iRow]==1.0&&rowUpper[iRow]==1.0) {
-        if (rowLength[iRow]<5)
+        if (rowLength[iRow]<5||(rowLength[iRow]<20&&allToGub))
           continue;
         bool goodRow=true;
         for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
-          int iColumn = column[j];
+          iColumn = column[j];
           if (element[j]!=1.0||!returnModel->isInteger(iColumn)||columnLower[iColumn]) {
             goodRow=false;
             break;
           }
-          if (mark[iColumn]>=0) {
+          if (mark[iColumn]>=0&&!allToGub) {
             goodRow=false;
             numberOverlap++;
           }
@@ -2123,9 +2168,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
             int iColumn = column[j];
             mark[iColumn]=numberSOS;
           }
-          numberSOS++;
+          sosRow[numberSOS++]=iRow;
           numberInSOS += rowLength[iRow];
-          sosRow[iRow]=1;
         }
       }
     }
@@ -2158,22 +2202,22 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
           int n=0;
           int numberObj=0;
           CoinZeroN(numberInRow,numberRows);
-          for (iColumn=0;iColumn<numberColumns;iColumn++) {
-            if (mark[iColumn]==iSOS) {
-              if (objective[iColumn])
-                numberObj++;
-              for (CoinBigIndex j=columnStart[iColumn];
-                   j<columnStart[iColumn]+columnLength[iColumn];j++) {
-                int iRow = row[j];
-                if (!sosRow[iRow])
-                  numberInRow[iRow]++;
-              }
-              whichSOS_[numberInSOS]=iColumn;
-              weightSOS_[numberInSOS]=n;
-              numberInSOS++;
-              n++;
-            }
-          }
+	  int kRow = sosRow[iSOS];
+          for (int j=rowStart[kRow];j<rowStart[kRow]+rowLength[kRow];j++) {
+            int iColumn = column[j];
+	    whichSOS_[numberInSOS]=iColumn;
+	    weightSOS_[numberInSOS]=n;
+	    numberInSOS++;
+	    n++;
+	    if (objective[iColumn])
+	      numberObj++;
+	    for (CoinBigIndex j=columnStart[iColumn];
+		 j<columnStart[iColumn]+columnLength[iColumn];j++) {
+	      int iRow = row[j];
+	      if (!sosRow[iRow])
+		numberInRow[iRow]++;
+	    }
+	  }
           // See if any rows look good
           int bestRow=-1;
           int numberDifferent=1;
@@ -3231,8 +3275,6 @@ CglPreProcess::modified(OsiSolverInterface * model,
     int numberStrengthened=0;
     info.pass = iPass;
     int numberChangedThisPass=0;
-    int numberFromCglDuplicate=0;
-    const int * duplicate=NULL;
     /*
       needResolve    solution is stale
       rebuilt   constraint system deleted and recreated (implies initialSolve)
@@ -3243,17 +3285,20 @@ CglPreProcess::modified(OsiSolverInterface * model,
       OsiCuts cs;
       CoinZeroN(whichCut,numberRows);
       CglProbing * probingCut=NULL;
+      int numberFromCglDuplicate=0;
+      const int * duplicate=NULL;
+      CglDuplicateRow * dupRow = NULL;
       if (iGenerator>=0) {
         //char name[20];
         //sprintf(name,"prex%2.2d.mps",iGenerator);
         //newModel->writeMpsNative(name, NULL, NULL,0,1,0);
+        // refresh as model may have changed
+        generator_[iGenerator]->refreshSolver(newModel);
         // skip duplicate rows except once
-        CglDuplicateRow * dupRow = dynamic_cast<CglDuplicateRow *> (generator_[iGenerator]);
+        dupRow = dynamic_cast<CglDuplicateRow *> (generator_[iGenerator]);
         if (dupRow&&(iPass||iBigPass))
             continue;
         probingCut = dynamic_cast<CglProbing *> (generator_[iGenerator]);
-        // refresh as model may have changed
-        generator_[iGenerator]->refreshSolver(newModel);
 	if (!probingCut)
 	  generator_[iGenerator]->generateCuts(*newModel,cs,info);
 	else
@@ -3270,6 +3315,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
           duplicate = dupRow->duplicate();
         }
       } else {
+#if 0
         // special probing
         CglProbing generator1;
         probingCut=&generator1;
@@ -3283,6 +3329,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  generator1.setMaxElements(300);
 	  generator1.setMaxProbeRoot(model->getNumCols());
 	}
+	// out for now - think about cliques
         if(!generator1.snapshot(*newModel,NULL,false)) {
           generator1.createCliques(*newModel,2,1000,true);
           generator1.setMode(0);
@@ -3297,6 +3344,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
         } else {
           feasible=false;
         }
+#endif
       }
       // check changes
       // first are any rows strengthened by cuts
@@ -3423,6 +3471,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  newModel->setWarmStart(basis);
 	  delete basis;
 	}
+        if (dupRow&&cs.sizeRowCuts())
+	  newModel->applyCuts(cs);
 	delete [] keepRow;
         delete [] del;
 /*
@@ -3688,6 +3738,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
         }
       }
       numberTwo = twoCuts.sizeRowCuts()-numberTwo;
+      numberChanges += numberTwo + numberStrengthened/10;
       if (numberFixed||numberTwo||numberStrengthened||numberBounds)
         handler_->message(CGL_PROCESS_STATS,messages_)
           <<numberFixed<<numberBounds<<numberStrengthened<<numberTwo
@@ -3720,7 +3771,6 @@ CglPreProcess::modified(OsiSolverInterface * model,
         iPass=numberPasses-2;
       }
     }
-    numberChanges += numberTwo;
   }
   delete [] whichCut;
   int numberRowCuts = twoCuts.sizeRowCuts() ;

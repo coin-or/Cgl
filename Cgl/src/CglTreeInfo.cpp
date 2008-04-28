@@ -96,7 +96,7 @@ CglTreeProbingInfo::CglTreeProbingInfo (const OsiSolverInterface * model)
   backward_ = new int [numberVariables_];
   int i;
   // Get integer types
-  const char * columnType = model->columnType (true);
+  const char * columnType = model->getColType (true);
   for (i=0;i<numberVariables_;i++) {
     backward_[i]=-1;
     if (columnType[i]) {
@@ -478,10 +478,9 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver)
   int * whichM = new int [numberIntegers_];
   int *whichClique=NULL;
   int numberRows=si.getNumRows(); 
-  int numberColumns=si.getNumCols(); 
   int numberMatrixCliques=0;
   const CoinPackedMatrix * rowCopy = si.getMatrixByRow();
-  assert(numberRows&&numberColumns);
+  assert(numberRows&&si.getNumCols());
   int iRow;
   const int * column = rowCopy->getIndices();
   const double * elementByRow = rowCopy->getElements();
@@ -1208,7 +1207,7 @@ CglTreeProbingInfo::initializeFixing(const OsiSolverInterface * model)
   numberIntegers_=0;
   int i;
   // Get integer types
-  const char * columnType = model->columnType (true);
+  const char * columnType = model->getColType (true);
   for (i=0;i<numberVariables_;i++) {
     backward_[i]=-1;
     if (columnType[i]) {

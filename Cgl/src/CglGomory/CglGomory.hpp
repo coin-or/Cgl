@@ -75,10 +75,14 @@ public:
    more than "away" away from integrality will be investigated 
   (default 0.05) */
   //@{
-  /// Set
+  /// Set away
   void setAway(double value);
-  /// Get
+  /// Get away
   double getAway() const;
+  /// Set away at root
+  void setAwayAtRoot(double value);
+  /// Get away at root
+  double getAwayAtRoot() const;
   //@}
 
 
@@ -116,6 +120,8 @@ private:
   //@{
   /// Only investigate if more than this away from integrality
   double away_;
+  /// Only investigate if more than this away from integrality (at root)
+  double awayAtRoot_;
   /// Limit - only generate if fewer than this in cut
   int limit_;
   /// Limit - only generate if fewer than this in cut (at root)

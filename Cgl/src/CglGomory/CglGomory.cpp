@@ -211,19 +211,19 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 {
   // get limit on length of cut
   int limit = info.inTree ? limit_ : CoinMax(limit_,limitAtRoot_);
+  // get what to look at
+  double away = info.inTree ? away_ : CoinMax(away_,awayAtRoot_);
   int numberRows=columnCopy.getNumRows();
   int numberColumns=columnCopy.getNumCols(); 
   // Allow bigger length on initial matrix (if special setting)
   if (limit==512&&!info.inTree&&!info.pass)
     limit=1024;
-  
   // Start of code to create a factorization from warm start (A) ====
   // check factorization is okay
   CoinFactorization factorization;
   // We can either set increasing rows so ...IsBasic gives pivot row
   // or we can just increment iBasic one by one
   // for now let ...iBasic give pivot row
-  factorization.increasingRows(2);
   int status=-100;
   // probably could use pivotVariables from OsiSimplexModel
   int * rowIsBasic = new int[numberRows];
@@ -261,8 +261,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   // End of creation of factorization (A) ====
   
   double relaxation = factorization.conditionNumber();
-#ifdef COIN_DEVELOP
-  if (relaxation>1.0e12)
+#ifdef COIN_DEVELOP_z
+  if (relaxation>1.0e49)
     printf("condition %g\n",relaxation);
 #endif
   relaxation *= 1.0e-18;
@@ -407,7 +407,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
       }
 #endif
       array.clear();
-      if(intVar[iColumn]&&reducedValue<1.0-away_&&reducedValue>away_) {
+      if(intVar[iColumn]&&reducedValue<1.0-away&&reducedValue>away) {
 #ifdef CGL_DEBUG
 	cutVector.checkClear();
 #endif
@@ -596,7 +596,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	}
 	// say zeroed out
 	cutVector.setNumElements(0);
-	if (sum >rhs+0.9*away_&&
+	if (sum >rhs+0.9*away&&
 	    fabs((sum-rhs)-violation)<1.0e-6) {
 	  //#ifdef CGL_DEBUG
 #ifdef CGL_DEBUG
@@ -783,8 +783,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	    if (number>50&&numberNonInteger)
 	      bounds[1] = bounds[1]+1.0e-6+1.0e-8*fabs(rhs); // weaken
 	    if (number>5&&numberNonInteger&&relaxation>1.0e-20) {
-	      //printf("relaxing rhs by %g\n",relaxation*fabs(rhs));
-	      bounds[1] = bounds[1]+relaxation*fabs(rhs); // weaken
+	      //printf("relaxing rhs by %g\n",CoinMin(relaxation*fabs(rhs),1.0e-3));
+	      bounds[1] = bounds[1]+CoinMin(relaxation*fabs(rhs),1.0e-3); // weaken
 	    }
 	    {
 	      OsiRowCut rc;
@@ -889,6 +889,17 @@ double CglGomory::getAway() const
   return away_;
 }
 
+// Away stuff at root
+void CglGomory::setAwayAtRoot(double value)
+{
+  if (value>0.0&&value<=0.5)
+    awayAtRoot_=value;
+}
+double CglGomory::getAwayAtRoot() const
+{
+  return awayAtRoot_;
+}
+
 //-------------------------------------------------------------------
 // Default Constructor 
 //-------------------------------------------------------------------
@@ -896,6 +907,7 @@ CglGomory::CglGomory ()
 :
 CglCutGenerator(),
 away_(0.05),
+awayAtRoot_(0.05),
 limit_(50),
 limitAtRoot_(0)
 {
@@ -908,6 +920,7 @@ limitAtRoot_(0)
 CglGomory::CglGomory (const CglGomory & source) :
   CglCutGenerator(source),
   away_(source.away_),
+  awayAtRoot_(source.awayAtRoot_),
   limit_(source.limit_),
   limitAtRoot_(source.limitAtRoot_)
 {  
@@ -938,6 +951,7 @@ CglGomory::operator=(const CglGomory& rhs)
   if (this != &rhs) {
     CglCutGenerator::operator=(rhs);
     away_=rhs.away_;
+    awayAtRoot_=rhs.awayAtRoot_;
     limit_=rhs.limit_;
     limitAtRoot_=rhs.limitAtRoot_;
   }
@@ -986,6 +1000,10 @@ CglGomory::generateCpp( FILE * fp)
     fprintf(fp,"3  gomory.setAway(%g);\n",away_);
   else
     fprintf(fp,"4  gomory.setAway(%g);\n",away_);
+  if (awayAtRoot_!=other.awayAtRoot_)
+    fprintf(fp,"3  gomory.setAwayAtRoot(%g);\n",awayAtRoot_);
+  else
+    fprintf(fp,"4  gomory.setAwayAtRoot(%g);\n",awayAtRoot_);
   if (getAggressiveness()!=other.getAggressiveness())
     fprintf(fp,"3  gomory.setAggressiveness(%d);\n",getAggressiveness());
   else

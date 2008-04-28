@@ -338,6 +338,7 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     for (i=0;i<numberRows;i++) {
       duplicate_[i]=-3;
       rhs_[i]=-1000000;
+      effectiveLower[i]=-1000000;
     }
   }
   for ( i=0;i<numberColumns;i++) {
@@ -374,16 +375,21 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   int * which2 = new int[numberColumns];
   for (i=0;i<numberRows;i++) {
     if (duplicate_[i]==-1) {
-      if (effectiveRhs[i]>0)
-        duplicate_[i]=-1;
-      else if (effectiveRhs[i]==0)
+      if (effectiveRhs[i]>0) {
+	// leave
+      } else if (effectiveRhs[i]==0) {
         duplicate_[i]=-2;
-      else
+      } else {
         duplicate_[i]=-3;
+	// leave unless >=1 row
+	if (effectiveLower[i]==1&&rhs_[i]<0.0)
+	  duplicate_[i]=-4;
+      }
     } else {
       effectiveRhs[i]=-1000;
     }
   }
+  // Look at <= rows
   for (i=0;i<numberRows;i++) {
     // initially just one
     if (effectiveRhs[i]==1&&duplicate_[i]==-1) {
@@ -400,7 +406,7 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
         }
       }
       for ( k=i+1;k<numberRows;k++) {
-        if (effectiveRhs[k]==1&&duplicate_[i]==-1) {
+        if (effectiveRhs[k]==1&&duplicate_[k]==-1) {
           int nn2=0;
           int nnsame=0;
           for ( j=rowStart[k];j<rowStart[k]+rowLength[k];j++) {
@@ -414,6 +420,9 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
                 nnsame++;
             }
           }
+	  //if (nnsame)
+	  //printf("rows %d and %d, %d same - %d %d\n",
+	  //   i,k,nnsame,nn,nn2);
           if (nnsame==nn2) {
             if (nn2<nn&&effectiveLower[k]==rhs_[k]&&rhs_[i]==rhs_[k]) {
               if (logLevel_)
@@ -515,6 +524,183 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       for (k=0;k<nn;k++) 
         check[which2[k]]=0;
       
+    }
+  }
+  // Look at >=1 rows
+  for (i=0;i<numberRows;i++) {
+    if (duplicate_[i]==-4) {
+      int nn=0;
+      int j,k;
+      for (j=rowStart[i];j<rowStart[i]+rowLength[i];j++) {
+	int iColumn = column[j];
+	if (columnLower[iColumn]!=colUpper2[iColumn]) {
+#ifndef NDEBUG
+          assert (elementByRow[j]==1.0);
+#endif
+          check[iColumn]=1;
+          which2[nn++]=iColumn;
+        }
+      }
+      for ( k=i+1;k<numberRows;k++) {
+        if (duplicate_[k]==-4) {
+          int nn2=0;
+          int nnsame=0;
+          for ( j=rowStart[k];j<rowStart[k]+rowLength[k];j++) {
+            int iColumn = column[j];
+            if (columnLower[iColumn]!=colUpper2[iColumn]) {
+#ifndef NDEBUG
+              assert (elementByRow[j]==1.0);
+#endif
+              nn2++;
+              if (check[iColumn]) 
+                nnsame++;
+            }
+          }
+	  // may be redundant
+	  if (nnsame==nn||nnsame==nn2) {
+	    if (nn2>nn) {
+	      // k redundant
+	      if (logLevel_) 
+		printf("row %d slack superset of row %d, drop row %d\n",
+		       k,i,k);
+	      // treat k as duplicate
+	      duplicate_[k]=i;
+	    } else if (nn2<nn) {
+	      // i redundant ?
+	      if (logLevel_)
+		printf("row %d slack superset of row %d, drop row %d\n",
+		     i,k,i);
+	      // treat i as duplicate
+	      duplicate_[i]=k;
+	    } else {
+	      if (logLevel_) 
+		printf("row %d same as row %d, drop row %d\n",
+		       k,i,k);
+	      // treat k as duplicate
+	      duplicate_[k]=i;
+	    }
+          }
+        }
+      }
+      for (k=0;k<nn;k++) 
+        check[which2[k]]=0;
+      
+    }
+  }
+  if ((mode_&1)!=0&&true) {
+    // look at doubletons
+    const double * rowLower = si.getRowLower();
+    const double * rowUpper = si.getRowUpper();
+    int i;
+    int nPossible=0;
+    for (i=0;i<numberRows;i++) {
+      if (rowLength[i]==2&&(duplicate_[i]<0&&duplicate_[i]!=-2)) {
+	bool possible=true;
+	int j;
+	for (j=rowStart[i];j<rowStart[i]+2;j++) {
+	  int iColumn = column[j];
+	  if (fabs(elementByRow[j])!=1.0||!si.isInteger(iColumn)) {
+	    possible=false;
+	    break;
+	  }
+	}
+	if (possible) {
+	  int j = rowStart[i];
+	  int column0 = column[j];
+	  double element0 = elementByRow[j];
+	  int column1 = column[j+1];
+	  double element1 = elementByRow[j+1];
+	  if (element0==1.0&&element1==1.0&&rowLower[i]==1.0&&
+	      rowUpper[i]>1.0e30) {
+	    if (logLevel_) {
+	      printf("Cover row %d %g <= ",i,rowLower[i]);
+	      printf("(%d,%g) (%d,%g) ",column0,element0,column1,element1);
+	      printf(" <= %g\n",rowUpper[i]);
+	    }
+	    effectiveRhs[nPossible++]=i;
+	  } else {
+	    // not at present
+	    //printf("NON Cover row %d %g <= ",i,rowLower[i]);
+	    //printf("(%d,%g) (%d,%g) ",column0,element0,column1,element1);
+	    //printf(" <= %g\n",rowUpper[i]);
+	  }
+	}
+      }
+    }
+    if (nPossible) {
+      int * check2 = new int [numberColumns];
+      CoinFillN(check2,numberColumns,-1);
+      for (int iPossible=0;iPossible<nPossible;iPossible++) {
+#ifndef NDEBUG
+	for (i=0;i<numberColumns;i++)
+	  assert (check2[i]==-1);
+#endif
+	i=effectiveRhs[iPossible];
+	int j = rowStart[i];
+	int column0 = column[j];
+	int column1 = column[j+1];
+	int k;
+	int nMarked=0;
+	for (int kPossible=iPossible+1;kPossible<nPossible;kPossible++) {
+	  k=effectiveRhs[kPossible];
+	  int j = rowStart[k];
+	  int columnB0 = column[j];
+	  int columnB1 = column[j+1];
+	  if (column0==columnB1||column1==columnB1) {
+	    columnB1=columnB0;
+	    columnB0=column[j+1];
+	  }
+	  bool good = false;
+	  if (column0==columnB0) {
+	    if (column1==columnB1) {
+	      // probably should have been picked up
+	      // safest to ignore
+	    } else {
+	      good=true;
+	    }
+	  } else if (column1==columnB0) {
+	    if (column0==columnB1) {
+	      // probably should have been picked up
+	      // safest to ignore
+	    } else {
+	      good=true;
+	    }
+	  }
+	  if (good) {
+	    if (check2[columnB1]<0) {
+	      check2[columnB1]=k;
+	      which2[nMarked++]=columnB1;
+	    } else {
+	      // found
+#ifndef COIN_DEVELOP
+	      if (logLevel_>1)
+#endif 
+		printf("***Make %d %d %d >=2 and take out rows %d %d %d\n",
+		       columnB1,column0,column1,
+		       i,k,check2[columnB1]);
+	      OsiRowCut rc;
+	      rc.setLb(2.0);
+	      rc.setUb(DBL_MAX);   
+	      int index[3];
+	      double element[3]={1.0,1.0,1.0};
+	      index[0]=column0;
+	      index[1]=column1;
+	      index[2]=columnB1;
+	      rc.setRow(3,index,element,false);
+	      cs.insert(rc);
+	      // drop rows
+	      duplicate_[i]=-2;
+	      duplicate_[k]=-2;
+	      duplicate_[check2[columnB1]]=-2;
+	    }
+	  }
+	}
+	for (k=0;k<nMarked;k++) {
+	  int iColumn = which2[k];
+	  check2[iColumn]=-1;
+	}
+      }
+      delete [] check2;
     }
   }
   delete [] check;
@@ -679,6 +865,7 @@ CglDuplicateRow::refreshSolver(OsiSolverInterface * solver)
   rhs_ = new int[numberRows];
   duplicate_ = new int[numberRows];
   lower_ = new int[numberRows];
+  const double * columnLower = solver->getColLower();
   const double * rowLower = solver->getRowLower();
   const double * rowUpper = solver->getRowUpper();
   // Row copy
@@ -719,6 +906,24 @@ CglDuplicateRow::refreshSolver(OsiSolverInterface * solver)
       } else {
         lower_[iRow]=markBad;
         rhs_[iRow]=markBad;
+      }
+    } else if (rowUpper[iRow]>1.0e30&&rowLower[iRow]==1.0) {
+      // may be OK to look for dominated in >=1 rows
+      // check elements
+      bool good=true;
+      for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+        int iColumn = column[j];
+        if (!solver->isInteger(iColumn))
+          good=false;
+        double value = elementByRow[j];
+        if (floor(value)!=value||value<1.0) {
+          good=false;
+        }
+	if (columnLower[iColumn]!=0.0)
+	  good=false;
+      }
+      if (good) {
+        lower_[iRow] = 1;
       }
     }
   }

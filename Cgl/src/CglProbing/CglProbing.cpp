@@ -302,10 +302,14 @@ public:
     size_=maxRowCuts;
     rowCut_ = new  OsiRowCut2 * [size_];
     hash_ = new CoinHashLink[4*size_];
+#if 0
+    CoinFillN((int *) hash_,8*size_,-1); 
+#else
     for (int i=0;i<4*size_;i++) {
       hash_[i].index=-1;
       hash_[i].next=-1;
     }
+#endif
     numberCuts_=0;
     lastHash_=-1;
   }
@@ -357,7 +361,7 @@ public:
       int jpos=ipos;
       while ( true ) {
 	int j1 = hash_[ipos].index;
-	
+
 	if ( j1 >= 0 ) {
 	  if ( !same(newCut,*rowCut_[j1]) ) {
 	    int k = hash_[ipos].next;
@@ -1558,12 +1562,12 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   int nCols=si.getNumCols(); 
 
   // get integer variables
-  const char * intVarOriginal = si.columnType(true);
+  const char * intVarOriginal = si.getColType(true);
   char * intVar = CoinCopyOfArray(intVarOriginal,nCols);
   int i;
   int numberIntegers=0;
-  memcpy(colLower,si.getColLower(),nCols*sizeof(double));
-  memcpy(colUpper,si.getColUpper(),nCols*sizeof(double));
+  CoinMemcpyN(si.getColLower(),nCols,colLower);
+  CoinMemcpyN(si.getColUpper(),nCols,colUpper);
   const double * colsol =si.getColSolution();
   // and put reasonable bounds on integer variables
   for (i=0;i<nCols;i++) {
@@ -1675,14 +1679,14 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       rowCopy->appendRow(n,columns,elements);
       delete [] columns;
       delete [] elements;
-      memcpy(rowLower,si.getRowLower(),nRows*sizeof(double));
-      memcpy(rowUpper,si.getRowUpper(),nRows*sizeof(double));
+      CoinMemcpyN(si.getRowLower(),nRows,rowLower);
+      CoinMemcpyN(si.getRowUpper(),nRows,rowUpper);
       rowLower[nRows]=-DBL_MAX;
       rowUpper[nRows]=cutoff+offset;
       nRows++;
     } else {
-      memcpy(rowLower,si.getRowLower(),nRows*sizeof(double));
-      memcpy(rowUpper,si.getRowUpper(),nRows*sizeof(double));
+      CoinMemcpyN(si.getRowLower(),nRows,rowLower);
+      CoinMemcpyN(si.getRowUpper(),nRows,rowUpper);
     }
   } else {
     // use snapshot
@@ -1693,8 +1697,8 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     assert (rowCopy_->getNumRows()==numberRows_);
     rowLower = new double[nRows];
     rowUpper = new double[nRows];
-    memcpy(rowLower,rowLower_,nRows*sizeof(double));
-    memcpy(rowUpper,rowUpper_,nRows*sizeof(double));
+    CoinMemcpyN(rowLower_,nRows,rowLower);
+    CoinMemcpyN(rowUpper_,nRows,rowUpper);
     if (usingObjective_>0) {
       rowLower[nRows-1]=-DBL_MAX;
       rowUpper[nRows-1]=cutoff+offset;
@@ -1807,6 +1811,8 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   // Let us never add more than twice the number of rows worth of row cuts
   // Keep cuts out of cs until end so we can find duplicates quickly
   int nRowsFake = info->inTree ? nRowsSafe/3 : nRowsSafe;
+  if (!info->inTree&&!info->pass) 
+    nRowsFake *= 50;
   row_cut rowCut(nRowsFake);
   int * markR = new int [nRows];
   double * minR = new double [nRows];
@@ -1874,18 +1880,25 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 #	  endif
 	  //if (!info->inTree)
 	  //printf("not in tree - ncols %d\n",nCols);
+	  // Column copy
+	  //const double * element = matrixByCol.getElements();
+	  //const int * row = matrixByCol.getIndices();
+	  //const CoinBigIndex * columnStart = matrixByCol.getVectorStarts();
+	  //const int * columnLength = si.getMatrixByCol()->getVectorLengths();
           for (i=0;i<nCols;i++) {
             if (intVar[i]&&colUpper[i]-colLower[i]>1.0e-8) {
               double away = fabs(0.5-(colsol[i]-floor(colsol[i])));
               if (away<0.49999||!info->inTree) {
+                //array[numberThisTime_].infeasibility=away;
                 array[numberThisTime_].infeasibility=-away;
+                //array[numberThisTime_].infeasibility=-columnLength[i];
                 array[numberThisTime_++].sequence=i;
               }
             }
           }
 	  //printf("maxP %d num %d\n",maxProbe,numberThisTime_);
           std::sort(array,array+numberThisTime_,double_int_pair_compare());
-          numberThisTime_=CoinMin(numberThisTime_,maxProbe);
+          //numberThisTime_=CoinMin(numberThisTime_,maxProbe);
           for (i=0;i<numberThisTime_;i++) {
             lookedAt_[i]=array[i].sequence;
           }
@@ -2689,8 +2702,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
   int rowCuts;
   double disaggEffectiveness;
   /* clean up djs and solution */
-  memcpy(djs,si.getReducedCost(),nCols*sizeof(double));
-  memcpy(colsol, si.getColSolution(),nCols*sizeof(double));
+  CoinMemcpyN(si.getReducedCost(),nCols,djs);
+  CoinMemcpyN( si.getColSolution(),nCols,colsol);
   disaggEffectiveness=1.0e-3;
   rowCuts=rowCuts_;
   
@@ -2803,12 +2816,63 @@ int CglProbing::probe( const OsiSolverInterface & si,
     ipass++;
     //printf("pass %d\n",ipass);
     nfixed=0;
+    int justFix= (!info->inTree&&!info->pass) ? -1 : 0;
+    int maxProbe = info->inTree ? maxProbe_ : maxProbeRoot_;
+    if (justFix<0)
+      maxProbe=numberThisTime_;
+    if (maxProbe==123) {
+      // Try and be a bit intelligent
+      maxProbe=0;
+      if (!info->inTree) {
+	if (!info->pass||numberThisTime_<200) {
+	  maxProbe=numberThisTime_;
+	} else {
+	  int cutDown = 4;
+	  int offset = info->pass % cutDown;
+	  int i;
+	  for (i=offset;i<numberThisTime_;i+=cutDown) {
+	    lookedAt_[maxProbe++]=lookedAt_[i];
+	  }
+	}
+      } else {
+	// in tree
+	int cutDown = CoinMax(numberThisTime_/100,4);
+	int offset = info->pass % cutDown;
+	int i;
+	for (i=offset;i<numberThisTime_;i+=cutDown) {
+	  lookedAt_[maxProbe++]=lookedAt_[i];
+	}
+      }
+    }
     for (iLook=0;iLook<numberThisTime_;iLook++) {
       double solval;
       double down;
       double up;
-      if (rowCut.outOfSpace())
-        break;
+      if (rowCut.outOfSpace()||iLook>maxProbe) {
+	if (!justFix&&(!nfixed||info->inTree)) {
+#ifdef COIN_DEVELOP
+	  if (!info->inTree)
+	    printf("Exiting a on pass %d, maxProbe %d\n",
+		   ipass,maxProbe);
+#endif	  
+	  break;
+	} else if (justFix<=0) {
+	  if (!info->inTree) {
+	    rowCuts=0;
+	    justFix=1;
+	    disaggEffectiveness=COIN_DBL_MAX;
+	    needEffectiveness=COIN_DBL_MAX;
+	    //maxStack=10;
+	    maxPass=1;
+	  } else {
+#ifdef COIN_DEVELOP
+	    printf("Exiting b on pass %d, maxProbe %d\n",
+		   ipass,maxProbe);
+#endif	  
+	    break;
+	  }
+	}
+      }
       int awayFromBound=1;
       j=lookedAt_[iLook];
       //printf("looking at %d (%d out of %d)\n",j,iLook,numberThisTime_); 
@@ -4402,14 +4466,14 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
   double disaggEffectiveness;
   if (mode_) {
     /* clean up djs and solution */
-    memcpy(djs,si.getReducedCost(),nCols*sizeof(double));
-    memcpy(colsol, si.getColSolution(),nCols*sizeof(double));
+    CoinMemcpyN(si.getReducedCost(),nCols,djs);
+    CoinMemcpyN( si.getColSolution(),nCols,colsol);
     disaggEffectiveness=1.0e-3;
     rowCuts=rowCuts_;
   } else {
     // need to go from a neutral place
     memset(djs,0,nCols*sizeof(double));
-    memcpy(colsol, si.getColSolution(),nCols*sizeof(double));
+    CoinMemcpyN( si.getColSolution(),nCols,colsol);
     disaggEffectiveness=-1.0e10;
     if (rowCuts_!=4)
       rowCuts=1;
@@ -5881,7 +5945,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
   int nRows=rowCopy->getNumRows();
   int nCols=rowCopy->getNumCols();
   double * colsol = new double[nCols];
-  memcpy(colsol, si.getColSolution(),nCols*sizeof(double));
+  CoinMemcpyN( si.getColSolution(),nCols,colsol);
   int rowCuts=rowCuts_;
   double_int_pair * array = new double_int_pair [numberCliques_];
   // look at <= cliques
@@ -7063,12 +7127,12 @@ int CglProbing::snapshot ( const OsiSolverInterface & si,
   numberRows_=si.getNumRows();
   colLower_ = new double[numberColumns_];
   colUpper_ = new double[numberColumns_];
-  memcpy(colLower_,si.getColLower(),numberColumns_*sizeof(double));
-  memcpy(colUpper_,si.getColUpper(),numberColumns_*sizeof(double));
+  CoinMemcpyN(si.getColLower(),numberColumns_,colLower_);
+  CoinMemcpyN(si.getColUpper(),numberColumns_,colUpper_);
   rowLower_= new double [numberRows_+1];
   rowUpper_= new double [numberRows_+1];
-  memcpy(rowLower_,si.getRowLower(),numberRows_*sizeof(double));
-  memcpy(rowUpper_,si.getRowUpper(),numberRows_*sizeof(double));
+  CoinMemcpyN(si.getRowLower(),numberRows_,rowLower_);
+  CoinMemcpyN(si.getRowUpper(),numberRows_,rowUpper_);
 
   int i;
   if (possible) {
@@ -7082,7 +7146,7 @@ int CglProbing::snapshot ( const OsiSolverInterface & si,
   
 
   // get integer variables
-  const char * intVarOriginal = si.columnType(true);
+  const char * intVarOriginal = si.getColType(true);
   char * intVar = CoinCopyOfArray(intVarOriginal,numberColumns_);
   numberIntegers_=0;
   number01Integers_=0;
@@ -7429,18 +7493,18 @@ CglProbing::CglProbing (  const CglProbing & rhs)
     rowCopy_= new CoinPackedMatrix(*(rhs.rowCopy_));
     columnCopy_= new CoinPackedMatrix(*(rhs.columnCopy_));
     rowLower_=new double[numberRows_];
-    memcpy(rowLower_,rhs.rowLower_,numberRows_*sizeof(double));
+    CoinMemcpyN(rhs.rowLower_,numberRows_,rowLower_);
     rowUpper_=new double[numberRows_];
-    memcpy(rowUpper_,rhs.rowUpper_,numberRows_*sizeof(double));
+    CoinMemcpyN(rhs.rowUpper_,numberRows_,rowUpper_);
     colLower_=new double[numberColumns_];
-    memcpy(colLower_,rhs.colLower_,numberColumns_*sizeof(double));
+    CoinMemcpyN(rhs.colLower_,numberColumns_,colLower_);
     colUpper_=new double[numberColumns_];
-    memcpy(colUpper_,rhs.colUpper_,numberColumns_*sizeof(double));
+    CoinMemcpyN(rhs.colUpper_,numberColumns_,colUpper_);
     int i;
     numberIntegers_=rhs.numberIntegers_;
     number01Integers_=rhs.number01Integers_;
     cutVector_=new disaggregation [number01Integers_];
-    memcpy(cutVector_,rhs.cutVector_,number01Integers_*sizeof(disaggregation));
+    CoinMemcpyN(rhs.cutVector_,number01Integers_,cutVector_);
     for (i=0;i<number01Integers_;i++) {
       if (cutVector_[i].index) {
 	cutVector_[i].index = CoinCopyOfArray(rhs.cutVector_[i].index,cutVector_[i].length);
@@ -7464,18 +7528,18 @@ CglProbing::CglProbing (  const CglProbing & rhs)
     lookedAt_ = NULL;
   if (numberCliques_) {
     cliqueType_ = new cliqueType [numberCliques_];
-    memcpy(cliqueType_,rhs.cliqueType_,numberCliques_*sizeof(cliqueType));
+    CoinMemcpyN(rhs.cliqueType_,numberCliques_,cliqueType_);
     cliqueStart_ = new int [numberCliques_+1];
-    memcpy(cliqueStart_,rhs.cliqueStart_,(numberCliques_+1)*sizeof(int));
+    CoinMemcpyN(rhs.cliqueStart_,(numberCliques_+1),cliqueStart_);
     int n = cliqueStart_[numberCliques_];
     cliqueEntry_ = new cliqueEntry [n];
-    memcpy(cliqueEntry_,rhs.cliqueEntry_,n*sizeof(cliqueEntry));
+    CoinMemcpyN(rhs.cliqueEntry_,n,cliqueEntry_);
     oneFixStart_ = new int [numberColumns_];
-    memcpy(oneFixStart_,rhs.oneFixStart_,numberColumns_*sizeof(int));
+    CoinMemcpyN(rhs.oneFixStart_,numberColumns_,oneFixStart_);
     zeroFixStart_ = new int [numberColumns_];
-    memcpy(zeroFixStart_,rhs.zeroFixStart_,numberColumns_*sizeof(int));
+    CoinMemcpyN(rhs.zeroFixStart_,numberColumns_,zeroFixStart_);
     endFixStart_ = new int [numberColumns_];
-    memcpy(endFixStart_,rhs.endFixStart_,numberColumns_*sizeof(int));
+    CoinMemcpyN(rhs.endFixStart_,numberColumns_,endFixStart_);
     int n2=-1;
     for (int i=numberColumns_-1;i>=0;i--) {
       if (oneFixStart_[i]>=0) {
@@ -7485,7 +7549,7 @@ CglProbing::CglProbing (  const CglProbing & rhs)
     }
     assert (n==n2);
     whichClique_ = new int [n];
-    memcpy(whichClique_,rhs.whichClique_,n*sizeof(int));
+    CoinMemcpyN(rhs.whichClique_,n,whichClique_);
     if (rhs.cliqueRowStart_) {
       cliqueRowStart_ = CoinCopyOfArray(rhs.cliqueRowStart_,numberRows_+1);
       n=cliqueRowStart_[numberRows_];
@@ -7599,13 +7663,13 @@ CglProbing::operator=(
       rowCopy_= new CoinPackedMatrix(*(rhs.rowCopy_));
       columnCopy_= new CoinPackedMatrix(*(rhs.columnCopy_));
       rowLower_=new double[numberRows_];
-      memcpy(rowLower_,rhs.rowLower_,numberRows_*sizeof(double));
+      CoinMemcpyN(rhs.rowLower_,numberRows_,rowLower_);
       rowUpper_=new double[numberRows_];
-      memcpy(rowUpper_,rhs.rowUpper_,numberRows_*sizeof(double));
+      CoinMemcpyN(rhs.rowUpper_,numberRows_,rowUpper_);
       colLower_=new double[numberColumns_];
-      memcpy(colLower_,rhs.colLower_,numberColumns_*sizeof(double));
+      CoinMemcpyN(rhs.colLower_,numberColumns_,colLower_);
       colUpper_=new double[numberColumns_];
-      memcpy(colUpper_,rhs.colUpper_,numberColumns_*sizeof(double));
+      CoinMemcpyN(rhs.colUpper_,numberColumns_,colUpper_);
       int i;
       numberIntegers_=rhs.numberIntegers_;
       number01Integers_=rhs.number01Integers_;
@@ -7614,7 +7678,7 @@ CglProbing::operator=(
       }
       delete [] cutVector_;
       cutVector_=new disaggregation [number01Integers_];
-      memcpy(cutVector_,rhs.cutVector_,number01Integers_*sizeof(disaggregation));
+      CoinMemcpyN(rhs.cutVector_,number01Integers_,cutVector_);
       for (i=0;i<number01Integers_;i++) {
         if (cutVector_[i].index) {
           cutVector_[i].index = CoinCopyOfArray(rhs.cutVector_[i].index,cutVector_[i].length);
@@ -7638,18 +7702,18 @@ CglProbing::operator=(
       lookedAt_ = NULL;
     if (numberCliques_) {
       cliqueType_ = new cliqueType [numberCliques_];
-      memcpy(cliqueType_,rhs.cliqueType_,numberCliques_*sizeof(cliqueType));
+      CoinMemcpyN(rhs.cliqueType_,numberCliques_,cliqueType_);
       cliqueStart_ = new int [numberCliques_+1];
-      memcpy(cliqueStart_,rhs.cliqueStart_,(numberCliques_+1)*sizeof(int));
+      CoinMemcpyN(rhs.cliqueStart_,(numberCliques_+1),cliqueStart_);
       int n = cliqueStart_[numberCliques_];
       cliqueEntry_ = new cliqueEntry [n];
-      memcpy(cliqueEntry_,rhs.cliqueEntry_,n*sizeof(cliqueEntry));
+      CoinMemcpyN(rhs.cliqueEntry_,n,cliqueEntry_);
       oneFixStart_ = new int [numberColumns_];
-      memcpy(oneFixStart_,rhs.oneFixStart_,numberColumns_*sizeof(int));
+      CoinMemcpyN(rhs.oneFixStart_,numberColumns_,oneFixStart_);
       zeroFixStart_ = new int [numberColumns_];
-      memcpy(zeroFixStart_,rhs.zeroFixStart_,numberColumns_*sizeof(int));
+      CoinMemcpyN(rhs.zeroFixStart_,numberColumns_,zeroFixStart_);
       endFixStart_ = new int [numberColumns_];
-      memcpy(endFixStart_,rhs.endFixStart_,numberColumns_*sizeof(int));
+      CoinMemcpyN(rhs.endFixStart_,numberColumns_,endFixStart_);
       int n2=-1;
       for (int i=numberColumns_-1;i>=0;i--) {
 	if (oneFixStart_[i]>=0) {
@@ -7659,7 +7723,7 @@ CglProbing::operator=(
       }
       assert (n==n2);
       whichClique_ = new int [n];
-      memcpy(whichClique_,rhs.whichClique_,n*sizeof(int));
+      CoinMemcpyN(rhs.whichClique_,n,whichClique_);
       if (rhs.cliqueRowStart_) {
         cliqueRowStart_ = CoinCopyOfArray(rhs.cliqueRowStart_,numberRows_+1);
         n=cliqueRowStart_[numberRows_];
@@ -8182,7 +8246,7 @@ CglProbing::setupRowCliqueInformation(const OsiSolverInterface & si)
   for (iRow=0;iRow<numberRows_;iRow++) {
     if (array[iRow]) {
       int start = cliqueRowStart_[iRow];
-      memcpy(cliqueRow_+start,array[iRow],rowLength[iRow]*sizeof(cliqueEntry));
+      CoinMemcpyN(array[iRow],rowLength[iRow],cliqueRow_+start);
       delete [] array[iRow];
     }
   }

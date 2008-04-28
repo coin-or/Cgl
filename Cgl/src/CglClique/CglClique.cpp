@@ -773,6 +773,7 @@ CglClique::generateCpp( FILE * fp)
 }
 /*****************************************************************************/
 
+#include "../CglProbing/CglProbing.hpp"
 CglFakeClique::CglFakeClique(OsiSolverInterface * solver, bool setPacking) :
   CglClique(setPacking,true)
 {
@@ -780,15 +781,26 @@ CglFakeClique::CglFakeClique(OsiSolverInterface * solver, bool setPacking) :
     fakeSolver_ = solver->clone();
   else
     fakeSolver_ = NULL;
+  if (fakeSolver_) {
+    probing_ = new CglProbing();
+    probing_->refreshSolver(fakeSolver_);
+  } else {
+    probing_ = NULL;
+  }
+			      
 }
 // Copy constructor
 CglFakeClique::CglFakeClique(const CglFakeClique& rhs)
   : CglClique(rhs)
 {
-  if (rhs.fakeSolver_)
+  if (rhs.fakeSolver_) {
     fakeSolver_ = rhs.fakeSolver_->clone();
-  else
+    probing_ = new CglProbing(*rhs.probing_);
+    probing_->refreshSolver(fakeSolver_);
+  } else {
     fakeSolver_ = NULL;
+    probing_ = NULL;
+  }
 }
 
 //-------------------------------------------------------------------
@@ -804,6 +816,7 @@ CglFakeClique::clone() const
 CglFakeClique::~CglFakeClique()
 {
   delete fakeSolver_;
+  delete probing_;
 }
 // Assign solver (generator takes over ownership)
 void 
@@ -815,6 +828,8 @@ CglFakeClique::assignSolver(OsiSolverInterface * fakeSolver)
     delete [] sp_orig_row_ind;
     sp_orig_row_ind=NULL;
   }
+  if (probing_)
+    probing_->refreshSolver(fakeSolver_);
 }
 // Generate cuts
 void
@@ -827,6 +842,13 @@ CglFakeClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
     fakeSolver_->setColSolution(si.getColSolution());
     fakeSolver_->setColUpper(si.getColUpper());
     CglClique::generateCuts(*fakeSolver_,cs,info);
+    if (probing_) {
+      // get and set branch and bound cutoff
+      double cutoff;
+      si.getDblParam(OsiDualObjectiveLimit,cutoff);
+      fakeSolver_->setDblParam(OsiDualObjectiveLimit,cutoff);
+      probing_->generateCuts(*fakeSolver_,cs,info);
+    }
   } else {
     // just use real solver
     CglClique::generateCuts(si,cs,info);

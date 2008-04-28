@@ -69,7 +69,7 @@ CglFlowCover::flowPreprocess(const OsiSolverInterface& si) const
     }
     rowTypes_ = new CglFlowRowType [numRows];// Distructor will free memory
     // Get integer types
-    const char * columnType = si.columnType (true);
+    const char * columnType = si.getColType (true);
     
     // Summarize the row type infomation.
     int numUNDEFINED   = 0;
@@ -481,7 +481,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     CglFlowVUB VUB;
 
     // Get integer types
-    const char * columnType = si.columnType ();
+    const char * columnType = si.getColType ();
     for (i = 0; i < rowLen; ++i) {
 	if ( xlp[ind[i]] - floor(xlp[ind[i]]) > EPSILON_ && ceil(xlp[ind[i]]) - xlp[ind[i]] > EPSILON_ )
 	    break;
@@ -911,7 +911,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	}
     }
 
-#if 1 // LIFTING?
+#if 0 // LIFTING?
     double estY, estX;
     double movement = 0.0;
     double dPrimePrime = temp + cutRHS; 
@@ -1139,7 +1139,7 @@ CglFlowCover::determineOneRowType(const OsiSolverInterface& si,
     
     CglFlowRowType rowType = CGLFLOW_ROW_UNDEFINED;
     // Get integer types
-    const char * columnType = si.columnType ();
+    const char * columnType = si.getColType ();
     
     int  numPosBin = 0;      // num of positive binary variables
     int  numNegBin = 0;      // num of negative binary variables
