@@ -2664,7 +2664,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
   int nCols=rowCopy->getNumCols();
   double * colsol = new double[nCols];
   double * djs = new double[nCols];
+#ifdef MOVE_SINGLETONS
   const double * objective = si.getObjCoefficients();
+#endif
   const double * currentColLower = si.getColLower();
   const double * currentColUpper = si.getColUpper();
   double * tempL = new double [nCols];
@@ -3541,12 +3543,15 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 if (!ifCut&&(gap>primalTolerance_&&gap<1.0e8)) {
                   // see if the strengthened row is a cut
                   // also see if singletons can go to good objective
+#ifdef MOVE_SINGLETONS
                   bool moveSingletons=true;
+#endif
                   for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
                        kk++) {
                     int iColumn = column[kk];
                     double value = rowElements[kk];
                     sum += value*colsol[iColumn];
+#ifdef MOVE_SINGLETONS
                     if (moveSingletons&&j!=iColumn) {
                       if (colUpper[iColumn]>colLower[iColumn]) {
                         if (columnLength[iColumn]!=1) {
@@ -3554,7 +3559,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
                         }
                       }
                     }
+#endif
                   }
+#ifdef MOVE_SINGLETONS
                   if (moveSingletons) {
                     // can fix any with good costs
                     for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
@@ -3583,6 +3590,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       }
                     }
                   }
+#endif
                   if (sum-gap*colsol[j]>maxR[irow]+primalTolerance_||(info->strengthenRow&&rowLower[irow]<-1.0e20)) {
                     // can be a cut
                     // subtract gap from upper and integer coefficient
@@ -3661,12 +3669,15 @@ int CglProbing::probe( const OsiSolverInterface & si,
                   // see if the strengthened row is a cut
                   sum =0.0;
                   // also see if singletons can go to good objective
+#ifdef MOVE_SINGLETONS
                   bool moveSingletons=true;
+#endif
                   for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
                        kk++) {
                     int iColumn = column[kk];
                     double value = rowElements[kk];
                     sum += value*colsol[iColumn];
+#ifdef MOVE_SINGLETONS
                     if (moveSingletons&&j!=iColumn) {
                       if (colUpper[iColumn]>colLower[iColumn]) {
                         if (columnLength[iColumn]!=1) {
@@ -3674,7 +3685,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
                         }
                       }
                     }
+#endif
                   }
+#ifdef MOVE_SINGLETONS
                   if (moveSingletons) {
                     // can fix any with good costs
                     for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
@@ -3703,6 +3716,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       }
                     }
                   }
+#endif
                   if (sum+gap*colsol[j]<minR[irow]-primalTolerance_||(info->strengthenRow&&rowUpper[irow]>1.0e20)) {
                     // can be a cut
                     // add gap to lower and integer coefficient
@@ -3778,6 +3792,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
           } else {
             if (iway==1&&feasible==3) {
               iway=3;
+#ifdef MOVE_SINGLETONS
               // look for singletons that can move (just at root)
               if ((rowCuts&2)!=0&&goingToTrueBound&&info->strengthenRow) {
                 for (istackR=0;istackR<nstackR;istackR++) {
@@ -3872,6 +3887,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                   }
                 }
               }
+#endif
               /* point back to stack */
               for (istackC=nstackC-1;istackC>=0;istackC--) {
                 int icol=stackC[istackC];
