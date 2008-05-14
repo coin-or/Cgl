@@ -2687,6 +2687,11 @@ int CglProbing::probe( const OsiSolverInterface & si,
   // Set up maxes
   int maxStack = info->inTree ? maxStack_ : maxStackRoot_;
   int maxPass = info->inTree ? maxPass_ : maxPassRoot_;
+  if ((totalTimesCalled_%10)==-1) {
+    int newMax=CoinMin(2*maxStack,50);
+    maxStack=CoinMax(newMax,maxStack);
+  }
+  totalTimesCalled_++;
   const int * column = rowCopy->getIndices();
   const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
   const int * rowLength = rowCopy->getVectorLengths(); 
@@ -2696,7 +2701,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
   const int * columnLength = columnCopy->getVectorLengths(); 
   const double * columnElements = columnCopy->getElements();
   double movement;
-  int i, j, k,kk,jj;
+  int i, j, kk,jj;
   int jcol,kcol,irow,krow;
   bool anyColumnCuts=false;
   double dbound, value, value2;
@@ -2832,25 +2837,59 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	  int cutDown = 4;
 	  int offset = info->pass % cutDown;
 	  int i;
-	  for (i=offset;i<numberThisTime_;i+=cutDown) {
-	    lookedAt_[maxProbe++]=lookedAt_[i];
+	  int k=0;
+	  int kk=offset;
+	  for (i=0;i<numberThisTime_;i++) {
+	    if (!kk) {
+#define XXXXXX
+#ifdef XXXXXX
+	      lookedAt_[maxProbe]=lookedAt_[i];
+#endif
+	      maxProbe++;
+	      kk=cutDown-1;
+	    } else {
+	      stackC[k++]=lookedAt_[i];
+	      kk--;
+	    }
 	  }
+#ifdef XXXXXX
+	  memcpy(lookedAt_+maxProbe,stackC,k*sizeof(int));
+#endif
 	}
       } else {
 	// in tree
-	int cutDown = CoinMax(numberThisTime_/100,4);
-	int offset = info->pass % cutDown;
-	int i;
-	for (i=offset;i<numberThisTime_;i+=cutDown) {
-	  lookedAt_[maxProbe++]=lookedAt_[i];
+	if (numberThisTime_<200) {
+	  maxProbe=numberThisTime_;
+	} else {
+	  int cutDown = CoinMax(numberThisTime_/100,4);
+	  int offset = info->pass % cutDown;
+	  int i;
+	  int k=0;
+	  int kk=offset;
+	  for (i=0;i<numberThisTime_;i++) {
+	    if (!kk) {
+#ifdef XXXXXX
+	      lookedAt_[maxProbe]=lookedAt_[i];
+#endif
+	      maxProbe++;
+	      kk=cutDown-1;
+	    } else {
+	      stackC[k++]=lookedAt_[i];
+	      kk--;
+	    }
+	  }
+#ifdef XXXXXX
+	  memcpy(lookedAt_+maxProbe,stackC,k*sizeof(int));
+#endif
 	}
       }
     }
+    int leftTotalStack=maxStack*CoinMax(200,maxProbe);
     for (iLook=0;iLook<numberThisTime_;iLook++) {
       double solval;
       double down;
       double up;
-      if (rowCut.outOfSpace()||iLook>maxProbe) {
+      if (rowCut.outOfSpace()||leftTotalStack<=0) {
 	if (!justFix&&(!nfixed||info->inTree)) {
 #ifdef COIN_DEVELOP
 	  if (!info->inTree)
@@ -2866,7 +2905,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	    needEffectiveness=COIN_DBL_MAX;
 	    //maxStack=10;
 	    maxPass=1;
-	  } else {
+	  } else if (!nfixed) {
 #ifdef COIN_DEVELOP
 	    printf("Exiting b on pass %d, maxProbe %d\n",
 		   ipass,maxProbe);
@@ -2877,7 +2916,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
       }
       int awayFromBound=1;
       j=lookedAt_[iLook];
-      //printf("looking at %d (%d out of %d)\n",j,iLook,numberThisTime_); 
+      //if (j==231||j==226)
+      //printf("size %d %d j is %d\n",rowCut.numberCuts(),cs.sizeRowCuts(),j);//printf("looking at %d (%d out of %d)\n",j,iLook,numberThisTime_); 
       solval=colsol[j];
       down = floor(solval+tolerance);
       up = ceil(solval-tolerance);
@@ -2968,7 +3008,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
           markC[j]=3; // say fixed
         istackC=0;
         /* update immediately */
-        for (k=columnStart[j];k<columnStart[j]+columnLength[j];k++) {
+	int k;
+        for ( k=columnStart[j];k<columnStart[j]+columnLength[j];k++) {
           irow = row[k];
           value = columnElements[k];
           assert (markR[irow]!=-2);
@@ -3028,7 +3069,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
             }
           }
         }
-        while (istackC<nstackC&&nstackC<maxStack) {
+        while (istackC<nstackC&&nstackC<maxStack) { // could be istackC<maxStack?
+	  leftTotalStack--;
           int jway;
           jcol=stackC[istackC];
           jway=markC[jcol];
@@ -3543,6 +3585,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 if (!ifCut&&(gap>primalTolerance_&&gap<1.0e8)) {
                   // see if the strengthened row is a cut
                   // also see if singletons can go to good objective
+		  // Taken out as should be found elsewhere
+		  // and has to be original column length
 #ifdef MOVE_SINGLETONS
                   bool moveSingletons=true;
 #endif
@@ -4244,7 +4288,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
         int kInt = -1;
         double valueInteger=0.0;
         // Find largest integer coefficient
-        for (k = krs; k < kre; ++k) {
+	int k;
+        for ( k = krs; k < kre; ++k) {
           j = column[k];
           if (intVar[j]) {
             double value=rowElements[k];
@@ -4408,6 +4453,24 @@ int CglProbing::probe( const OsiSolverInterface & si,
   if (!ninfeas) {
     rowCut.addCuts(cs,info->strengthenRow);
   }
+#if 0
+  {
+    int numberRowCutsAfter = cs.sizeRowCuts() ;
+    int k ;
+    for (k = 0;k<numberRowCutsAfter;k++) {
+      OsiRowCut thisCut = cs.rowCut(k) ;
+      printf("Cut %d is %g <=",k,thisCut.lb());
+      int n=thisCut.row().getNumElements();
+      const int * column = thisCut.row().getIndices();
+      const double * element = thisCut.row().getElements();
+      assert (n);
+      for (int i=0;i<n;i++) {
+	printf(" %g*x%d",element[i],column[i]);
+      }
+      printf(" <= %g\n",thisCut.ub());
+    }
+  }
+#endif
   return (ninfeas);
 }
 // Does probing and adding cuts
@@ -7467,6 +7530,7 @@ usingObjective_(0)
   numberIntegers_=0;
   number01Integers_=0;
   numberThisTime_=0;
+  totalTimesCalled_=0;
   lookedAt_=NULL;
   cutVector_=NULL;
   numberCliques_=0;
@@ -7538,6 +7602,7 @@ CglProbing::CglProbing (  const CglProbing & rhs)
     cutVector_=NULL;
   }
   numberThisTime_=rhs.numberThisTime_;
+  totalTimesCalled_=rhs.totalTimesCalled_;
   if (numberColumns_)
     lookedAt_=CoinCopyOfArray(rhs.lookedAt_,numberColumns_);
   else
@@ -7712,6 +7777,7 @@ CglProbing::operator=(
       cutVector_=NULL;
     }
     numberThisTime_=rhs.numberThisTime_;
+    totalTimesCalled_=rhs.totalTimesCalled_;
     if (numberColumns_)
       lookedAt_=CoinCopyOfArray(rhs.lookedAt_,numberColumns_);
     else

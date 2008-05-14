@@ -371,6 +371,8 @@ private:
   int number01Integers_;
   /// Number looked at this time
   mutable int numberThisTime_;
+  /// Total number of times called
+  mutable int totalTimesCalled_;
   /// Which ones looked at this time
   mutable int * lookedAt_;
   /** Only useful type of disaggregation is most normal
