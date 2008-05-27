@@ -783,8 +783,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	    if (number>50&&numberNonInteger)
 	      bounds[1] = bounds[1]+1.0e-6+1.0e-8*fabs(rhs); // weaken
 	    if (number>5&&numberNonInteger&&relaxation>1.0e-20) {
-	      //printf("relaxing rhs by %g\n",relaxation*fabs(rhs));
-	      bounds[1] = bounds[1]+relaxation*fabs(rhs); // weaken
+	      //printf("relaxing rhs by %g\n",CoinMin(relaxation*fabs(rhs),1.0e-3));
+	      bounds[1] = bounds[1]+CoinMin(relaxation*fabs(rhs),1.0e-3); // weaken
 	    }
 	    {
 	      OsiRowCut rc;
