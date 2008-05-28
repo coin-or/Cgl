@@ -779,14 +779,22 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	    }
 	  }
 	  if (number<limit||!numberNonInteger) {
+	    bool goodCut=true;
 	    bounds[1]=rhs;
 	    if (number>50&&numberNonInteger)
 	      bounds[1] = bounds[1]+1.0e-6+1.0e-8*fabs(rhs); // weaken
 	    if (number>5&&numberNonInteger&&relaxation>1.0e-20) {
-	      //printf("relaxing rhs by %g\n",CoinMin(relaxation*fabs(rhs),1.0e-3));
-	      bounds[1] = bounds[1]+CoinMin(relaxation*fabs(rhs),1.0e-3); // weaken
+	      relaxation *= fabs(rhs);
+	      //printf("relaxing rhs by %g\n",CoinMin(relaxation,1.0e-3));
+	      bounds[1] = bounds[1]+CoinMin(relaxation,1.0e-3); // weaken
+#if 1
+	      //bounds[1] = bounds[1]+relaxation*fabs(rhs); // weaken
+	      // may be better to thow away
+	      if (relaxation>1.0e6)
+		goodCut=false;
+#endif
 	    }
-	    {
+	    if (goodCut) {
 	      OsiRowCut rc;
 	      rc.setRow(number,cutIndex,packed,false);
 	      rc.setLb(bounds[0]);
