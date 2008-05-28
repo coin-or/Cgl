@@ -442,7 +442,8 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
 	if (!thisGood) {
 	  if (objValue)
 	    allGood=false;
-	} else if (makeAll&&!model->isInteger(iColumn)) {
+	} else if (makeAll&&!model->isInteger(iColumn)&&
+		   upper[iColumn]-lower[iColumn]<10) {
 	  if (objValue)
 	    numberNonZero++;
 	  else
@@ -2065,9 +2066,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       presolvedModel->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
       presolvedModel->initialSolve();
       // maybe we can fix some
-#ifdef COIN_DEVELOP
       int numberFixed = 
-#endif
       reducedCostFix(*presolvedModel);
 #ifdef COIN_DEVELOP
       if (numberFixed)
@@ -2087,7 +2086,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       oldModel=newModel;
       //sprintf(name,"pre%2.2d.mps",iPass);
       //newModel->writeMpsNative(name, NULL, NULL,0,1,0);
-      if (!numberChanges) {
+      if (!numberChanges&&!numberFixed) {
 #ifdef COIN_DEVELOP
 	printf("exiting after pass %d of %d\n",iPass,numberSolvers_);
 #endif
