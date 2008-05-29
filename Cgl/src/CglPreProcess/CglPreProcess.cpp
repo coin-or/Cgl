@@ -2739,9 +2739,9 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
               sumFixed += newLower[iColumn]*value;
             }
           }
-          //if (numberInteger==1) {
-          //printf("int %d\n",whichInteger);
-          //}
+          // Adjust
+          maximumUp += sumFixed;
+          maximumDown += sumFixed;
           // For moment just when all one sign and ints
           //maximumUp += 1.0e-8*fabs(maximumUp);
           //maximumDown -= 1.0e-8*fabs(maximumDown);
