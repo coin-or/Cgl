@@ -911,7 +911,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	}
     }
 
-#if 1 // LIFTING?
+#if 0 // LIFTING?
     double estY, estX;
     double movement = 0.0;
     double dPrimePrime = temp + cutRHS; 
