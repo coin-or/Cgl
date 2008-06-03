@@ -14,7 +14,7 @@
 #include "OsiRowCut.hpp"
 #include "OsiColCut.hpp"
 #include "OsiRowCutDebugger.hpp"
-#include "OsiCuts.hpp"
+#include "CglStored.hpp"
 #include "CglCutGenerator.hpp"
 #include "CoinTime.hpp"
 #include "CoinSort.hpp"
@@ -963,6 +963,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   startModel_=&model;
   CoinPackedMatrix matrixByRow(*originalModel_->getMatrixByRow());
   int numberRows = originalModel_->getNumRows();
+  if (rowType_)
+    assert (numberRowType_==numberRows);
   int numberColumns = originalModel_->getNumCols();
   //int originalNumberColumns=numberColumns;
   int minimumLength = 5;
@@ -1747,30 +1749,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     oldModel->messageHandler()->setLogLevel(saveLogLevel);
     if (presolvedModel) {
       presolvedModel->messageHandler()->setLogLevel(saveLogLevel);
-      if (prohibited_) {
-	const int * original = pinfo->originalColumns();
-	int numberColumns = presolvedModel->getNumCols();
-	// number prohibited must stay constant
-	int n=0;
-	int i;
-	for (i=0;i<numberProhibited_;i++) {
-	  if(prohibited_[i])
-	    n++;
-	}
-	int last=-1;
-	int n2=0;
-	for (i=0;i<numberColumns;i++) {
-	  int iColumn = original[i];
-	  assert (iColumn>last);
-	  last=iColumn;
-	  char p = prohibited_[iColumn];
-	  if (p)
-	    n2++;
-	  prohibited_[i]=p;
-	}
-	assert (n==n2);
-	numberProhibited_=numberColumns;
-      }
+      // update prohibited and rowType
+      update(pinfo,presolvedModel);
       if (!presolvedModel->getNumRows()) {
 	doInitialPresolve=0;
 	delete presolvedModel;
@@ -1796,8 +1776,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   constraint system. Safe as long as tightenPrimalBounds doesn't ask for
   the current solution.
 */
-  if (!infeas)
+  if (!infeas) {
+    //startModel_->writeMps("before-tighten");
     infeas = tightenPrimalBounds(*startModel_);
+    //startModel_->writeMps("after-tighten");
+  }
   if (infeas) {
     handler_->message(CGL_INFEASIBLE,messages_)
       <<CoinMessageEol;
@@ -2021,30 +2004,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
         break;
       }
       presolvedModel->messageHandler()->setLogLevel(saveLogLevel);
-      if (prohibited_) {
-        const int * original = pinfo->originalColumns();
-        int numberColumns = presolvedModel->getNumCols();
-        // number prohibited must stay constant
-        int n=0;
-        int i;
-        for (i=0;i<numberProhibited_;i++) {
-          if(prohibited_[i])
-            n++;
-        }
-        int last=-1;
-        int n2=0;
-        for (i=0;i<numberColumns;i++) {
-          int iColumn = original[i];
-          assert (iColumn>last);
-          last=iColumn;
-          char p = prohibited_[iColumn];
-          if (p)
-            n2++;
-          prohibited_[i]=p;
-        }
-        assert (n==n2);
-        numberProhibited_=numberColumns;
-      }
+      // update prohibited and rowType
+      update(pinfo,presolvedModel);
       //char name[20];
       //sprintf(name,"prex%2.2d.mps",iPass);
       //presolvedModel->writeMpsNative(name, NULL, NULL,0,1,0);
@@ -2324,6 +2285,44 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       <<returnModel->getNumRows()<<returnModel->getNumCols()
       <<numberIntegers<<returnModel->getNumElements()
       <<CoinMessageEol;
+    // If can make some cuts then do so
+    if (rowType_) {
+      int numberRows = returnModel->getNumRows();
+      int numberCuts=0;
+      for (int i=0;i<numberRows;i++) {
+	if (rowType_[i]>0)
+	  numberCuts++;
+      }
+      if (numberCuts) {
+	CglStored stored;
+	
+	int * whichRow = new int[numberRows];
+	// get row copy
+	const CoinPackedMatrix * rowCopy = returnModel->getMatrixByRow();
+	const int * column = rowCopy->getIndices();
+	const int * rowLength = rowCopy->getVectorLengths();
+	const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
+	const double * rowLower = returnModel->getRowLower();
+	const double * rowUpper = returnModel->getRowUpper();
+	const double * element = rowCopy->getElements();
+	int iRow,nDelete=0;
+	for (iRow=0;iRow<numberRows;iRow++) {
+	  if (rowType_[iRow]==1) {
+	    // take out
+	    whichRow[nDelete++]=iRow;
+	  }
+	}
+	for (int jRow=0;jRow<nDelete;jRow++) {
+	  iRow=whichRow[jRow];
+	  int start = rowStart[iRow];
+	  stored.addCut(rowLower[iRow],rowUpper[iRow],rowLength[iRow],
+			column+start,element+start);
+	}
+	returnModel->deleteRows(nDelete,whichRow);
+	delete [] whichRow;
+	cuts_ = stored;
+      }
+    }
   }
   return returnModel;
 }
@@ -2829,8 +2828,30 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
   OsiHintStrength saveStrength2;
   originalModel_->getHintParam(OsiDoDualInInitial,
                         saveHint2,saveStrength2);
+  OsiSolverInterface * clonedCopy=NULL;
   if (modelIn.isProvenOptimal()) {
     OsiSolverInterface * modelM = &modelIn;
+    // If some cuts add back rows
+    if (cuts_.sizeRowCuts()) {
+      clonedCopy = modelM->clone();
+      modelM=clonedCopy;
+      int numberRowCuts = cuts_.sizeRowCuts() ;
+      // add in
+      CoinBuild build;
+      for (int k = 0;k<numberRowCuts;k++) {
+	const OsiRowCut * thisCut = cuts_.rowCutPointer(k) ;
+	int n=thisCut->row().getNumElements();
+	const int * columnCut = thisCut->row().getIndices();
+	const double * elementCut = thisCut->row().getElements();
+	double lower = thisCut->lb();
+	double upper = thisCut->ub();
+	build.addRow(n,columnCut,elementCut,lower,upper);
+      }
+      modelM->addRows(build);
+      // basis is wrong
+      CoinWarmStartBasis empty;
+      modelM->setWarmStart(&empty);
+    }
     for (int iPass=numberSolvers_-1;iPass>=0;iPass--) {
       OsiSolverInterface * model = model_[iPass];
       if (model->getNumCols()) {
@@ -3188,7 +3209,8 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
       if (model->isInteger(iColumn)) 
 	model->setColUpper(iColumn,columnLower[iColumn]);
     }
-  } 
+  }
+  delete clonedCopy;
   originalModel_->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
   originalModel_->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
   //printf("dumping ss.mps.gz in postprocess\n");
@@ -3218,6 +3240,7 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
   //printf("Time without basis %g seconds, %d iterations\n",CoinCpuTime()-time1,originalModel_->getIterationCount());
   if (!originalModel_->isProvenOptimal()) {
 #ifdef COIN_DEVELOP
+    originalModel_->writeMps("bad3");
     printf("bad end unwind in postprocess\n");
 #endif
   }
@@ -3446,7 +3469,16 @@ CglPreProcess::modified(OsiSolverInterface * model,
             }
           }
         }
-        // recreate
+	if (rowType_) {
+	  assert (numberRowType_==numberRows);
+	  int numberRowType_=0;
+	  for (iRow=0;iRow<numberRows;iRow++) {
+	    if (keepRow[iRow]) {
+	      rowType_[numberRowType_++]=rowType_[iRow];
+	    }
+	  }
+	}
+	// recreate
         int * del = new int[numberRows];
 	// save and modify basis
 	CoinWarmStartBasis* basis =
@@ -3786,6 +3818,16 @@ CglPreProcess::modified(OsiSolverInterface * model,
       build.addRow(n,columnCut,elementCut,lower,upper);
     }
     newModel->addRows(build);
+    if (rowType_) {
+      // adjust
+      int numberRows=newModel->getNumRows();
+      char * temp = CoinCopyOfArrayPartial(rowType_,numberRows,numberRowType_);
+      delete [] rowType_;
+      rowType_ = temp;
+      for (int iRow=numberRowType_;iRow<numberRows;iRow++)
+	rowType_[iRow]=-1;
+      numberRowType_=numberRows;
+    }
   }
   if (!feasible) {
     delete newModel;
@@ -3819,7 +3861,9 @@ CglPreProcess::CglPreProcess()
   whichSOS_(NULL),
   weightSOS_(NULL),
   numberProhibited_(0),
-  prohibited_(NULL)
+  prohibited_(NULL),
+  numberRowType_(0),
+  rowType_(NULL)
 {
   handler_ = new CoinMessageHandler();
   handler_->setLogLevel(2);
@@ -3836,7 +3880,8 @@ CglPreProcess::CglPreProcess(const CglPreProcess & rhs)
   originalColumn_(NULL),
   originalRow_(NULL),
   numberCutGenerators_(rhs.numberCutGenerators_),
-  numberProhibited_(rhs.numberProhibited_)
+  numberProhibited_(rhs.numberProhibited_),
+  numberRowType_(rhs.numberRowType_)
 {
   if (defaultHandler_) {
     handler_ = new CoinMessageHandler();
@@ -3892,6 +3937,8 @@ CglPreProcess::CglPreProcess(const CglPreProcess & rhs)
     weightSOS_ = NULL;
   }
   prohibited_ = CoinCopyOfArray(rhs.prohibited_,numberProhibited_);
+  rowType_ = CoinCopyOfArray(rhs.rowType_,numberRowType_);
+  cuts_ = rhs.cuts_;
 }
   
 // Assignment operator 
@@ -3905,6 +3952,7 @@ CglPreProcess::operator=(const CglPreProcess& rhs)
     appData_=rhs.appData_;
     numberCutGenerators_=rhs.numberCutGenerators_;
     numberProhibited_ = rhs.numberProhibited_;
+    numberRowType_ = rhs.numberRowType_;
     if (defaultHandler_) {
       handler_ = new CoinMessageHandler();
       handler_->setLogLevel(rhs.handler_->logLevel());
@@ -3957,6 +4005,8 @@ CglPreProcess::operator=(const CglPreProcess& rhs)
       weightSOS_ = NULL;
     }
     prohibited_ = CoinCopyOfArray(rhs.prohibited_,numberProhibited_);
+    rowType_ = CoinCopyOfArray(rhs.rowType_,numberRowType_);
+    cuts_ = rhs.cuts_;
   }
   return *this;
 }
@@ -4010,6 +4060,9 @@ CglPreProcess::gutsOfDestructor()
   delete [] prohibited_;
   prohibited_=NULL;
   numberProhibited_=0;
+  delete [] rowType_;
+  rowType_=NULL;
+  numberRowType_=0;
 }
 // Add one generator
 void 
@@ -4140,6 +4193,45 @@ CglPreProcess::createOriginalIndices() const
       originalRow_[i]=i;
   }
 }
+// Update prohibited and rowType
+void 
+CglPreProcess::update(const OsiPresolve * pinfo,
+		      const OsiSolverInterface * solver)
+{
+  if (prohibited_) {
+    const int * original = pinfo->originalColumns();
+    int numberColumns = solver->getNumCols();
+    // number prohibited must stay constant
+    int n=0;
+    int i;
+    for (i=0;i<numberProhibited_;i++) {
+      if(prohibited_[i])
+	n++;
+    }
+    int last=-1;
+    int n2=0;
+    for (i=0;i<numberColumns;i++) {
+      int iColumn = original[i];
+      assert (iColumn>last);
+      last=iColumn;
+      char p = prohibited_[iColumn];
+      if (p)
+	n2++;
+      prohibited_[i]=p;
+    }
+    assert (n==n2);
+    numberProhibited_=numberColumns;
+  }
+  if (rowType_) {
+    const int * original = pinfo->originalRows();
+    int numberRows = solver->getNumRows();
+    for (int i=0;i<numberRows;i++) {
+      int iRow = original[i];
+      rowType_[i]=rowType_[iRow];
+    }
+    numberRowType_=numberRows;
+  }
+}
 /* Fix some of problem - returning new problem.
    Uses reduced costs.
    Optional signed character array
@@ -4257,6 +4349,20 @@ CglPreProcess::passInProhibited(const char * prohibited,int numberColumns)
   delete [] prohibited_;
   prohibited_ = CoinCopyOfArray(prohibited,numberColumns);
   numberProhibited_ = numberColumns;
+}
+/* Pass in row types
+   0 normal
+   1 cut rows - will be dropped if remain in
+   At end of preprocess cut rows will be dropped
+   and put into cuts
+*/
+void 
+CglPreProcess::passInRowTypes(const char * rowTypes,int numberRows)
+{
+  delete [] rowType_;
+  rowType_ = CoinCopyOfArray(rowTypes,numberRows);
+  numberRowType_ = numberRows;
+  cuts_ = CglStored();
 }
 // Make continuous variables integer
 void 

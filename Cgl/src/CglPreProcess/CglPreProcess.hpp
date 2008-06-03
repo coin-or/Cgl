@@ -9,6 +9,7 @@
 #include "CoinFinite.hpp"
 #include "CoinMessageHandler.hpp"
 #include "OsiSolverInterface.hpp"
+#include "CglStored.hpp"
 #include "OsiPresolve.hpp"
 #include "CglCutGenerator.hpp"
 
@@ -147,6 +148,29 @@ public:
   /// Updated prohibited columns
   inline const char * prohibited()
   { return prohibited_;}
+  /** Pass in row types
+      0 normal
+      1 cut rows - will be dropped if remain in
+      At end of preprocess cut rows will be dropped
+      and put into cuts
+  */
+  void passInRowTypes(const char * rowTypes,int numberRows);
+  /** Updated row types - may be NULL
+      Carried around and corresponds to existing rows
+      -1 added by preprocess e.g. x+y=1
+      0 normal
+      1 cut rows - can be dropped if wanted
+  */
+  inline const char * rowTypes()
+  { return rowType_;}
+  /// Return cuts from dropped rows
+  inline const CglStored & cuts() const
+  { return cuts_;}
+  /// Return pointer to cuts from dropped rows
+  inline const CglStored * cutsPointer() const
+  { return &cuts_;}
+  /// Update prohibited and rowType
+  void update(const OsiPresolve * pinfo,const OsiSolverInterface * solver);
   //@}
 
   ///@name Cut generator methods 
@@ -295,6 +319,17 @@ private:
   int numberProhibited_;
   /// Columns which should not be presolved e.g. SOS
   char * prohibited_;
+  /// Number of rows in original row types
+  int numberRowType_;
+  /** Row types (may be NULL) 
+      Carried around and corresponds to existing rows
+      -1 added by preprocess e.g. x+y=1
+      0 normal
+      1 cut rows - can be dropped if wanted
+  */
+  char * rowType_;
+  /// Cuts from dropped rows
+  CglStored cuts_;
  //@}
 };
 
