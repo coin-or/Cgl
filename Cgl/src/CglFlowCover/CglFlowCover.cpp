@@ -911,7 +911,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	}
     }
 
-#if 0 // LIFTING?
+#if 1 // LIFTING?
     double estY, estX;
     double movement = 0.0;
     double dPrimePrime = temp + cutRHS; 
@@ -951,7 +951,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 		       colInd[i], movement);
 #endif
 		lifted = true;
-		yCoef[i] = -movement;
+		xCoef[i] = -movement;
 		cutRHS -= movement;
 	    }
 	    else {
