@@ -27,7 +27,7 @@
 
 
 #define CGLFLOW_DEBUG 0
-#define MY_FLOW_DEBUG 0
+
 //-------------------------------------------------------------------
 // Overloaded operator<< for printing VUB and VLB.
 //-------------------------------------------------------------------  
@@ -67,7 +67,7 @@ CglFlowCover::flowPreprocess(const OsiSolverInterface& si) const
     if (rowTypes_ != 0) {
 	delete [] rowTypes_; rowTypes_ = 0;
     }
-    rowTypes_ = new CglFlowRowType [numRows];// Distructor will free memory
+    rowTypes_ = new CglFlowRowType [numRows];// Destructor will free memory
     // Get integer types
     const char * columnType = si.getColType (true);
     
@@ -497,10 +497,16 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 
     //-------------------------------------------------------------------------
 
-    if (sense == 'G') flipRow(rowLen, coef, rhs);
+    if (sense == 'G') flipRow(rowLen, coef, rhs); // flips everything,
+						  // but the sense
+					  
 
 #if CGLFLOW_DEBUG
-    std::cout << "Generate Flow cover -- initial constraint..." << std::endl;
+    std::cout << "***************************" << std::endl;
+    std::cout << "Generate Flow cover -- initial constraint, converted to L sense..." << std::endl;
+    std::cout << "Rhs = " << rhs << std::endl;
+    std::cout << "coef [var_index]" << " -- " <<  "xlp[var_index]" << '\t' << "vub_coef[vub_index] vub_lp_value OR var_index_col_ub" << std::endl;
+   
     for(int iD = 0; iD < rowLen; ++iD) {
 	VUB = getVubs(ind[iD]);
 
@@ -716,6 +722,34 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 
     lambda = tempSum - knapRHS;
 
+
+
+#if CGLFLOW_DEBUG
+    double sum_mj_Cplus = 0.0;
+    double sum_mj_Cminus= 0.0;
+    double checkLambda;
+    // print out the knapsack variables
+    std::cout << "Knapsack Cover: C+" << std::endl;
+    for (i = 0; i < rowLen; ++i) { 
+	if ( label[i] == CGLFLOW_COL_INCUT && sign[i] > 0 ) {
+	  std::cout << ind[i] << '\t' << up[i] << std::endl;
+	  sum_mj_Cplus += up[i];
+	}
+    } 
+    std::cout << "Knapsack Cover: C-" << std::endl;
+    for (i = 0; i < rowLen; ++i) { 
+	if ( label[i] == CGLFLOW_COL_INCUT && sign[i] < 0 ) {
+	  std::cout << ind[i] << '\t' << up[i] << std::endl;
+	  sum_mj_Cminus += up[i];
+	}
+    }
+
+    // rlh: verified "lambda" is lambda in the paper.
+    // lambda = (sum coefficients in C+) - (sum of VUB
+    // coefficients in C-) - rhs-orig-constraint
+    std::cout << "lambda = " << lambda << std::endl;
+#endif
+
     //-------------------------------------------------------------------------
     // Generate a violated SGFC
 
@@ -736,7 +770,6 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	yCoef[i] = 0.0;
     }
     
-
     // Project out variables in C-
     // d^' = d + sum_{i in C^-} m_i. Now cutRHS = d^'
     for (i = 0; i < rowLen; ++i) { 
@@ -767,7 +800,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 		}
 	    }
 	    else {  // C+\C++
-		xCoef[i] = 0.0;
+	        xCoef[i] = 0.0;  // rlh: is this necesarry? (xCoef initialized to zero)
 		sum += up[i];
 	    } 
 	}
@@ -775,6 +808,9 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	if (label[i] != CGLFLOW_COL_INCUT && sign[i] < 0) { // N-\C-
 	    temp += up[i];
 	    if ( up[i] > lambda) {      // L-
+#if CGLFLOW_DEBUG
+	        std::cout << "Variable " << ind[i] << " is in L-" << std::endl;
+#endif
 		yCoef[i] = 0.0;
 		xCoef[i] = -lambda;
 		label[i] = CGLFLOW_COL_INLMIN;
@@ -783,8 +819,11 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 		}
 	    }
 	    else  {        // L--
+#if CGLFLOW_DEBUG
+	      std::cout << "Variable " << ind[i] << " is in L-- " << std::endl;
+#endif
 		yCoef[i] = -1.0;
-		xCoef[i] = 0.0;
+		xCoef[i] = 0.0; // rlh: is this necesarry? (xCoef initialized to zero)
 		label[i] = CGLFLOW_COL_INLMINMIN;
 		sum += up[i];
 	    }
@@ -792,7 +831,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     }
    
     // Sort the upper bounds (m_i) of variables in C++ and L-.
-  
+
     int     ix;
     int     index  = 0;
     double  temp1  = 0.0;
@@ -823,7 +862,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     }
     //printf("mins %g %g\n",minNegM,minPlsM);
     if( index == 0 || numPlusPlus == 0) {
-	// No col in C++ and L-(not all). RETURN.
+	// No column in C++ and L-(not all). RETURN.
 #if CGLFLOW_DEBUG
 	std::cout << "index = 0. RETURN." << std::endl; 
 #endif
@@ -875,11 +914,13 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     for ( i = 1; i <= index; ++i ) {
 	M[i] = M[(i-1)] + mt[(i-1)];
 #if CGLFLOW_DEBUG
+	std::cout << "t = " << t << std::endl; 
 	printf("mt[%i]=%f, M[%i]=%f\n",i-1, mt[i-1], i, M[i]);
 #endif
     }
     // Exit if very big M
-    if (M[index]>1.0e30) {
+    if (M[index]>1.0e30) { // rlh: should test for huge col UB earler 
+			   // no sense doing all this work in that case.
 #if CGLFLOW_DEBUG
       std::cout << "M[index]>1.0e30. RETURN." << std::endl; 
 #endif
@@ -897,21 +938,25 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
       delete [] M; 
       return generated;
     }
+
     /* Get ml */
     double ml = CoinMin(sum, lambda);
-    //printf("ml %g sum %g lambda %g\n",ml,sum,lambda);
+#if CGLFLOW_DEBUG
+    // sum = sum_{i in C+\C++} m_i + sum_{i in L--} m_i = m. Page 15.
+    std::cout << "ml = min(m, lambda) = min(" << sum << ", " << lambda << ") =" << ml << std::endl; 
+#endif
     /* rho_i = max[0, m_i - (minPlsM - lamda) - ml */
     if (t < index ) { /* rho exits only for t <= index-1 */
 	value = (minPlsM - lambda) + ml;
 	for (i = t; i < index; ++i) {
 	    rho[i] =  CoinMax(0.0, mt[i] - value);
-#if MY_FLOW_DEBUG
+#if CGLFLOW_DEBUG
 	    printf("rho[%i]=%f\n", i, rho[i]);
 #endif
 	}
     }
 
-#if 0 // LIFTING?
+#if 1 // LIFTING
     double estY, estX;
     double movement = 0.0;
     double dPrimePrime = temp + cutRHS; 
@@ -946,18 +991,18 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 		      M, rho);
                 
 	    if(movement > EPSILON_) {
-#if MY_FLOW_DEBUG
+#if CGLFLOW_DEBUG
 		printf("Success: Lifted col %i in C-, movement=%f\n", 
-		       colInd[i], movement);
+		       ind[i], movement);
 #endif
 		lifted = true;
-		yCoef[i] = -movement;
+		xCoef[i] = -movement;
 		cutRHS -= movement;
 	    }
 	    else {
-#if MY_FLOW_DEBUG
+#if CGLFLOW_DEBUG
 		printf("Failed to Lift col %i in C-, g=%f\n",
-		       colInd[i], movement);
+		       ind[i], movement);
 #endif
 	    }
 	}
@@ -1073,7 +1118,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	    generated = true;
 
 #if CGLFLOW_DEBUG
-	    std::cout << "generateOneFlowCover(): Find a cut" << std::endl;
+	    std::cout << "generateOneFlowCover(): Found a cut" << std::endl;
 #endif
 	}
 	else {
