@@ -720,6 +720,21 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	    label[i] = 1 - label[i];
     }
 
+   // No cover, no cut. 
+    bool emptyCover = true; 
+    for (i = 0; i < rowLen; ++i) {
+      if (label[i] == CGLFLOW_COL_INCUT) {
+	emptyCover = false; 
+	break;
+      }
+     }
+    if (emptyCover) {	
+#if CGLFLOW_DEBUG
+      std::cout << "No cover. RETURN." << std::endl; 
+#endif
+      return generated;  
+    }
+
     lambda = tempSum - knapRHS;
 
 
