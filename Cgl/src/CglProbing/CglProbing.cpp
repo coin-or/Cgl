@@ -7392,7 +7392,7 @@ int CglProbing::getMaxProbe() const
 // Set maximum number of variables to look at in one probe
 void CglProbing::setMaxLook(int value)
 {
-  if (value>0)
+  if (value>=0)
     maxStack_=value;
 }
 // Get maximum number of variables to look at in one probe
