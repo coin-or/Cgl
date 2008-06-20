@@ -68,8 +68,14 @@ int main (int argc, const char *argv[])
     testDir = argv[1];
   }
   else {
-    mpsDir = "../../Data/Sample/";
-    testDir = "CglTestData/";
+    const char dirsep =  CoinFindDirSeparator();
+    if (dirsep == '/') {
+      mpsDir = "../../Data/Sample/";
+      testDir = "CglTestData/";
+    } else {
+      mpsDir = "..\\..\\Data\\Sample\\";
+      testDir = "CglTestData\\";
+    }
   }
 
 #ifdef COIN_HAS_OSL
