@@ -732,6 +732,13 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 #if CGLFLOW_DEBUG
       std::cout << "No cover. RETURN." << std::endl; 
 #endif
+      delete [] sign;                              
+      delete [] up; 
+      delete [] x;   
+      delete [] y;  
+      delete [] candidate;
+      delete [] label;
+      delete [] ratio;
       return generated;  
     }
 
