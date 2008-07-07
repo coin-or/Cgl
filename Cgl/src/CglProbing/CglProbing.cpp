@@ -2664,9 +2664,6 @@ int CglProbing::probe( const OsiSolverInterface & si,
   int nCols=rowCopy->getNumCols();
   double * colsol = new double[nCols];
   double * djs = new double[nCols];
-#ifdef MOVE_SINGLETONS
-  const double * objective = si.getObjCoefficients();
-#endif
   const double * currentColLower = si.getColLower();
   const double * currentColUpper = si.getColUpper();
   double * tempL = new double [nCols];
@@ -2700,6 +2697,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
   const CoinBigIndex * columnStart = columnCopy->getVectorStarts();
   const int * columnLength = columnCopy->getVectorLengths(); 
   const double * columnElements = columnCopy->getElements();
+#ifdef MOVE_SINGLETONS
+  const double * objective = si.getObjCoefficients();
+  const int * columnLength2 = si.getMatrixByCol()->getVectorLengths(); 
+#endif
   double movement;
   int i, j, kk,jj;
   int jcol,kcol,irow,krow;
@@ -3598,7 +3599,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #ifdef MOVE_SINGLETONS
                     if (moveSingletons&&j!=iColumn) {
                       if (colUpper[iColumn]>colLower[iColumn]) {
-                        if (columnLength[iColumn]!=1) {
+                        if (columnLength2[iColumn]!=1) {
                           moveSingletons=false;
                         }
                       }
@@ -3613,7 +3614,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       int iColumn = column[kk];
                       if (j!=iColumn) {
                         if (colUpper[iColumn]>colLower[iColumn]) {
-                          if (columnLength[iColumn]==1) {
+                          if (columnLength2[iColumn]==1) {
                             double value = rowElements[kk];
                             if (direction*objective[iColumn]*value<0.0&&!markC[iColumn]) {
                               // Fix
@@ -3724,7 +3725,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #ifdef MOVE_SINGLETONS
                     if (moveSingletons&&j!=iColumn) {
                       if (colUpper[iColumn]>colLower[iColumn]) {
-                        if (columnLength[iColumn]!=1) {
+                        if (columnLength2[iColumn]!=1) {
                           moveSingletons=false;
                         }
                       }
@@ -3739,7 +3740,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       int iColumn = column[kk];
                       if (j!=iColumn) {
                         if (colUpper[iColumn]>colLower[iColumn]) {
-                          if (columnLength[iColumn]==1) {
+                          if (columnLength2[iColumn]==1) {
                             double value = rowElements[kk];
                             if (direction*objective[iColumn]*value>0.0&&!markC[iColumn]) {
                               // Fix
@@ -3850,7 +3851,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       int iColumn = column[kk];
                       if (moveSingletons&&j!=iColumn) {
                         if (colUpper[iColumn]>colLower[iColumn]) {
-                          if (columnLength[iColumn]!=1) {
+                          if (columnLength2[iColumn]!=1) {
                             moveSingletons=false;
                           }
                         }
@@ -3863,7 +3864,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                         int iColumn = column[kk];
                         if (j!=iColumn) {
                           if (colUpper[iColumn]>colLower[iColumn]) {
-                            if (columnLength[iColumn]==1) {
+                            if (columnLength2[iColumn]==1) {
                               double value = rowElements[kk];
                               if (direction*objective[iColumn]*value<0.0&&!markC[iColumn]) {
                                 // Fix
@@ -3894,7 +3895,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       int iColumn = column[kk];
                       if (moveSingletons&&j!=iColumn) {
                         if (colUpper[iColumn]>colLower[iColumn]) {
-                          if (columnLength[iColumn]!=1) {
+                          if (columnLength2[iColumn]!=1) {
                             moveSingletons=false;
                           }
                         }
@@ -3907,7 +3908,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                         int iColumn = column[kk];
                         if (j!=iColumn) {
                           if (colUpper[iColumn]>colLower[iColumn]) {
-                            if (columnLength[iColumn]==1) {
+                            if (columnLength2[iColumn]==1) {
                               double value = rowElements[kk];
                               if (direction*objective[iColumn]*value>0.0&&!markC[iColumn]) {
                                 // Fix
