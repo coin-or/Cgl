@@ -2697,6 +2697,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
   const CoinBigIndex * columnStart = columnCopy->getVectorStarts();
   const int * columnLength = columnCopy->getVectorLengths(); 
   const double * columnElements = columnCopy->getElements();
+#define MOVE_SINGLETONS
 #ifdef MOVE_SINGLETONS
   const double * objective = si.getObjCoefficients();
   const int * columnLength2 = si.getMatrixByCol()->getVectorLengths(); 
