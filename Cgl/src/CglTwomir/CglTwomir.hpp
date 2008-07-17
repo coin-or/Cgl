@@ -2,7 +2,6 @@
 // Corporation and others.  All Rights Reserved.
 #ifndef CglTwomir_H
 #define CglTwomir_H
-
 #include <string>
 
 #include "CglCutGenerator.hpp"
@@ -113,6 +112,7 @@ public:
   void setTwomirScale (int qmin, int qmax) {q_min_ = qmin; q_max_ = qmax;}
   void setAMax (int a) {a_max_ = a;}
   void setMaxElements (int n) {max_elements_ = n;}
+  void setMaxElementsRoot (int n) {max_elements_root_ = n;}
   void setCutTypes (bool mir, bool twomir, bool tab, bool form)
   { do_mir_ = mir; do_2mir_ = twomir; do_tab_ = tab; do_form_ = form;}
   void setFormulationRows (int n) {form_nrows_ = n;}
@@ -124,6 +124,7 @@ public:
   int getQmax() const {return q_max_;}
   int getAmax() const {return a_max_;}
   int getMaxElements() const {return max_elements_;}
+  int getMaxElementsRoot() const {return max_elements_root_;}
   int getIfMir() const { return do_mir_;}
   int getIfTwomir() const { return do_2mir_;}
   int getIfTableau() const { return do_tab_;}
@@ -165,7 +166,7 @@ private:
   int q_max_;  /// q_max - last value of t to use for 2-Step tMIR inequalities
   int a_max_;  /// a_max - maximum value of bhat/alpha
   int max_elements_; /// Maximum number of elements in cut
-
+  int max_elements_root_; /// Maximum number of elements in cut at root
   int form_nrows_; //number of rows on which formulation cuts will be generated
   //@}
 };
