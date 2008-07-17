@@ -1334,6 +1334,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 			      saveTakeHint,saveStrength);
 	  startModel_->setHintParam(OsiDoDualInResolve,false,OsiHintTry);
 	  startModel_->resolve();
+	  numberIterationsPre_ += startModel_->getIterationCount();
 	  startModel_->setHintParam(OsiDoDualInResolve,saveTakeHint,saveStrength);
 	} else {
 	  // not such a good idea?
@@ -1796,6 +1797,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 			      saveTakeHint,saveStrength);
     startModel_->setHintParam(OsiDoDualInInitial,true,OsiHintTry);
     startModel_->initialSolve();
+    numberIterationsPre_ += startModel_->getIterationCount();
     // double check
     if (!startModel_->isProvenOptimal()) {
       if (!startModel_->isProvenDualInfeasible()) {
@@ -1806,12 +1808,14 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	startModel_->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
 	startModel_->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
 	startModel_->initialSolve();
+	numberIterationsPre_ += startModel_->getIterationCount();
 	if (!startModel_->isProvenDualInfeasible()) {
 	  CoinWarmStart * empty = startModel_->getEmptyWarmStart();
 	  startModel_->setWarmStart(empty);
 	  delete empty;
 	  startModel_->setHintParam(OsiDoDualInInitial,true,OsiHintTry);
 	  startModel_->initialSolve();
+	  numberIterationsPre_ += startModel_->getIterationCount();
 	}
 	startModel_->setHintParam(OsiDoPresolveInInitial,saveHint,saveStrength);
       }
@@ -2026,6 +2030,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       //if (iPass)
       presolvedModel->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
       presolvedModel->initialSolve();
+      numberIterationsPre_ += presolvedModel->getIterationCount();
       // maybe we can fix some
       int numberFixed = 
       reducedCostFix(*presolvedModel);
@@ -2985,6 +2990,7 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 	}
       }
       model->initialSolve();
+      numberIterationsPost_ += model->getIterationCount();
       if (!model->isProvenOptimal()) {
 #ifdef COIN_DEVELOP
 	  model->writeMps("bad2");
@@ -3237,6 +3243,7 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
   }
   //double time1 = CoinCpuTime();
   originalModel_->initialSolve();
+  numberIterationsPost_ += originalModel_->getIterationCount();
   //printf("Time without basis %g seconds, %d iterations\n",CoinCpuTime()-time1,originalModel_->getIterationCount());
   if (!originalModel_->isProvenOptimal()) {
 #ifdef COIN_DEVELOP
@@ -3784,6 +3791,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  newModel->initialSolve() ;
 	else
 	  newModel->resolve() ;
+	numberIterationsPre_ += newModel->getIterationCount();
 	feasible = newModel->isProvenOptimal();
       }
       if (!feasible)
@@ -3861,6 +3869,8 @@ CglPreProcess::CglPreProcess()
   whichSOS_(NULL),
   weightSOS_(NULL),
   numberProhibited_(0),
+  numberIterationsPre_(0),
+  numberIterationsPost_(0),
   prohibited_(NULL),
   numberRowType_(0),
   rowType_(NULL)
@@ -3881,6 +3891,8 @@ CglPreProcess::CglPreProcess(const CglPreProcess & rhs)
   originalRow_(NULL),
   numberCutGenerators_(rhs.numberCutGenerators_),
   numberProhibited_(rhs.numberProhibited_),
+  numberIterationsPre_(rhs.numberIterationsPre_),
+  numberIterationsPost_(rhs.numberIterationsPost_),
   numberRowType_(rhs.numberRowType_)
 {
   if (defaultHandler_) {
@@ -3952,6 +3964,8 @@ CglPreProcess::operator=(const CglPreProcess& rhs)
     appData_=rhs.appData_;
     numberCutGenerators_=rhs.numberCutGenerators_;
     numberProhibited_ = rhs.numberProhibited_;
+    numberIterationsPre_ = rhs.numberIterationsPre_;
+    numberIterationsPost_ = rhs.numberIterationsPost_;
     numberRowType_ = rhs.numberRowType_;
     if (defaultHandler_) {
       handler_ = new CoinMessageHandler();
@@ -4060,6 +4074,8 @@ CglPreProcess::gutsOfDestructor()
   delete [] prohibited_;
   prohibited_=NULL;
   numberProhibited_=0;
+  numberIterationsPre_=0;
+  numberIterationsPost_=0;
   delete [] rowType_;
   rowType_=NULL;
   numberRowType_=0;
