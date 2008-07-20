@@ -1290,3 +1290,195 @@ CglTreeProbingInfo::convert() const
     numberEntries_ = -1;
   }
 }
+// Fix entries in a solver using implications
+int 
+CglTreeProbingInfo::fixColumns(OsiSolverInterface & si) const
+{
+  int nFix=0;
+  const double * lower = si.getColLower();
+  const double * upper = si.getColUpper();
+  bool feasible=true;
+  for (int jColumn=0;jColumn<(int) numberIntegers_;jColumn++) {
+    int iColumn = integerVariable_[jColumn];
+    if (upper[iColumn]==0.0) {
+      int j;
+      for ( j=toZero_[jColumn];j<toOne_[jColumn];j++) {
+	int kColumn=fixEntry_[j].sequence;
+	kColumn = integerVariable_[kColumn];
+	bool fixToOne = fixEntry_[j].oneFixed;
+	if (fixToOne) {
+	  if (lower[kColumn]==0.0) {
+	    if (upper[kColumn]==1.0) {
+	      si.setColLower(kColumn,1.0);
+	      nFix++;
+	    } else {
+	      // infeasible!
+	      feasible=false;
+	    }
+	  }
+	} else {
+	  if (upper[kColumn]==1.0) {
+	    if (lower[kColumn]==0.0) {
+	      si.setColUpper(kColumn,0.0);
+	      nFix++;
+	    } else {
+	      // infeasible!
+	      feasible=false;
+	    }
+	  }
+	}
+      }
+    } else if (lower[iColumn]==1.0) {
+      int j;
+      for ( j=toOne_[jColumn];j<toZero_[jColumn+1];j++) {
+	int kColumn=fixEntry_[j].sequence;
+	kColumn = integerVariable_[kColumn];
+	bool fixToOne = fixEntry_[j].oneFixed;
+	if (fixToOne) {
+	  if (lower[kColumn]==0.0) {
+	    if (upper[kColumn]==1.0) {
+	      si.setColLower(kColumn,1.0);
+	      nFix++;
+	    } else {
+	      // infeasible!
+	      feasible=false;
+	    }
+	  }
+	} else {
+	  if (upper[kColumn]==1.0) {
+	    if (lower[kColumn]==0.0) {
+	      si.setColUpper(kColumn,0.0);
+	      nFix++;
+	    } else {
+	      // infeasible!
+	      feasible=false;
+	    }
+	  }
+	}
+      }
+    }
+  }
+  if (!feasible) {
+    printf("treeprobing says infeasible!\n");
+    nFix=-1;
+  }
+  return nFix;
+}
+// Packs down entries
+int 
+CglTreeProbingInfo::packDown()
+{
+  convert();
+  int iPut=0;
+  int iLast=0;
+  for (int jColumn=0;jColumn<(int) numberIntegers_;jColumn++) {
+    int j;
+    for ( j=iLast;j<toOne_[jColumn];j++) {
+      int kColumn=fixEntry_[j].sequence;
+      if (kColumn<numberIntegers_) 
+	fixEntry_[iPut++]=fixEntry_[j];
+    }
+    iLast=toOne_[jColumn];
+    toOne_[jColumn]=iPut;
+    for ( j=iLast;j<toZero_[jColumn+1];j++) {
+      int kColumn=fixEntry_[j].sequence;
+      if (kColumn<numberIntegers_) 
+	fixEntry_[iPut++]=fixEntry_[j];
+    }
+    iLast=toZero_[jColumn+1];
+    toZero_[jColumn+1]=iPut;
+  }
+  return iPut;
+}
+void
+CglTreeProbingInfo::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
+				 const CglTreeInfo info) const
+{
+  const double * lower = si.getColLower();
+  const double * upper = si.getColUpper();
+  const double * colsol =si.getColSolution();
+  for (int jColumn=0;jColumn<(int) numberIntegers_;jColumn++) {
+    int iColumn = integerVariable_[jColumn];
+    assert (iColumn>=0&&iColumn<si.getNumCols());
+    if (lower[iColumn]==0.0&&upper[iColumn]==1.0) {
+      double value1 = colsol[iColumn];
+      int j;
+      for ( j=toZero_[jColumn];j<toOne_[jColumn];j++) {
+	int kColumn=fixEntry_[j].sequence;
+	kColumn = integerVariable_[kColumn];
+	assert (kColumn>=0&&kColumn<si.getNumCols());
+	if (lower[kColumn]==0.0&&upper[kColumn]==1.0) {
+	  double value2 = colsol[kColumn];
+	  bool fixToOne = fixEntry_[j].oneFixed;
+	  if (fixToOne) {
+	    if (value1+value2<0.99999) {
+	      OsiRowCut rc;
+	      int index[2];
+	      double element[2];
+	      index[0]=iColumn;
+	      element[0]=1.0;
+	      index[1]=kColumn;
+	      element[1]= 1.0;
+	      rc.setLb(1.0);
+	      rc.setUb(COIN_DBL_MAX);   
+	      rc.setRow(2,index,element,false);
+	      cs.insert(rc);
+	    }
+	  } else {
+	    if (value1-value2<-0.00001) {
+	      OsiRowCut rc;
+	      int index[2];
+	      double element[2];
+	      index[0]=iColumn;
+	      element[0]=1.0;
+	      index[1]=kColumn;
+	      element[1]= -1.0;
+	      rc.setLb(0.0);
+	      rc.setUb(COIN_DBL_MAX);   
+	      rc.setRow(2,index,element,false);
+	      cs.insert(rc);
+	    }
+	  }
+	}
+      }
+      for ( j=toOne_[jColumn];j<toZero_[jColumn+1];j++) {
+	int kColumn=fixEntry_[j].sequence;
+	kColumn = integerVariable_[kColumn];
+	assert (kColumn>=0&&kColumn<si.getNumCols());
+	if (lower[kColumn]==0.0&&upper[kColumn]==1.0) {
+	  double value2 = colsol[kColumn];
+	  bool fixToOne = fixEntry_[j].oneFixed;
+	  if (fixToOne) {
+	    if (value1-value2>0.00001) {
+	      OsiRowCut rc;
+	      int index[2];
+	      double element[2];
+	      index[0]=iColumn;
+	      element[0]=1.0;
+	      index[1]=kColumn;
+	      element[1]= -1.0;
+	      rc.setLb(-COIN_DBL_MAX);
+	      rc.setUb(0.0);   
+	      rc.setRow(2,index,element,false);
+	      cs.insert(rc);
+	    }
+	  } else {
+	    if (value1+value2>1.00001) {
+	      OsiRowCut rc;
+	      int index[2];
+	      double element[2];
+	      index[0]=iColumn;
+	      element[0]=1.0;
+	      index[1]=kColumn;
+	      element[1]= 1.0;
+	      rc.setLb(-COIN_DBL_MAX);
+	      rc.setUb(1.0);   
+	      rc.setRow(2,index,element,false);
+	      cs.insert(rc);
+	    }
+	  }
+	}
+      }
+    }
+  }
+}

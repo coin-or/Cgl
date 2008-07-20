@@ -90,6 +90,13 @@ public:
   virtual void fixes(int variable, int toValue, int fixedVariable,bool fixedToLower);
   /// Initalizes fixing arrays etc - returns true if we want to save info
   virtual bool initializeFixing(const OsiSolverInterface * model) ;
+  /// Fix entries in a solver using implications
+  int fixColumns(OsiSolverInterface & si) const;
+  /// Packs down entries
+  int packDown();
+  /// Generate cuts from implications
+  void generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
+		    const CglTreeInfo info) const;
   /// Entries for fixing variables
   inline fixEntry * fixEntries() const
   { convert(); return fixEntry_;}
