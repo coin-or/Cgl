@@ -1191,9 +1191,13 @@ CglTreeProbingInfo::fixes(int variable, int toValue, int fixedVariable,bool fixe
     fixingEntry_[numberEntries_++] = (intVariable << 1) | 1;
 }
 // Initalizes fixing arrays etc - returns true if we want to save info
-bool 
+int
 CglTreeProbingInfo::initializeFixing(const OsiSolverInterface * model) 
 {
+  if (numberEntries_>=0)
+    return 2; // already got arrays
+  else if (numberEntries_==-2)
+    return numberEntries_;
   delete [] fixEntry_;
   delete [] toZero_;
   delete [] toOne_;
@@ -1225,7 +1229,7 @@ CglTreeProbingInfo::initializeFixing(const OsiSolverInterface * model)
   fixingEntry_ = NULL;
   maximumEntries_ =0;
   numberEntries_ = 0;
-  return true;
+  return 1;
 }
 // Converts to ordered and takes out duplicates
 void 
@@ -1287,7 +1291,7 @@ CglTreeProbingInfo::convert() const
     }
     delete [] fixingEntry_;
     fixingEntry_ = NULL;
-    numberEntries_ = -1;
+    numberEntries_ = -2;
   }
 }
 // Fix entries in a solver using implications
@@ -1359,7 +1363,9 @@ CglTreeProbingInfo::fixColumns(OsiSolverInterface & si) const
     }
   }
   if (!feasible) {
+#ifdef COIN_DEVELOP
     printf("treeprobing says infeasible!\n");
+#endif
     nFix=-1;
   }
   return nFix;
