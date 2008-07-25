@@ -1601,6 +1601,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	    nPlus=1;
 	    iPlus=iColumn;
 	    valuePlus=value;
+	  } else {
+	    nPlus++;
 	  }
 	} else {
 	  if (nMinus>0&&value!=valueMinus) {
@@ -1609,6 +1611,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	    nMinus=1;
 	    iMinus=iColumn;
 	    valueMinus=value;
+	  } else {
+	    nMinus++;
 	  }
 	}
       } else {

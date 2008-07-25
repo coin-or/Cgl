@@ -2680,6 +2680,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
   const CoinBigIndex * columnStart = columnCopy->getVectorStarts();
   const int * columnLength = columnCopy->getVectorLengths(); 
   const double * columnElements = columnCopy->getElements();
+  const int * columnLength2 = si.getMatrixByCol()->getVectorLengths(); 
   double movement;
   int i, j, k,kk,jj;
   int jcol,kcol,irow,krow;
@@ -3485,7 +3486,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     sum += value*colsol[iColumn];
                     if (moveSingletons&&j!=iColumn) {
                       if (colUpper[iColumn]>colLower[iColumn]) {
-                        if (columnLength[iColumn]!=1) {
+                        if (columnLength2[iColumn]!=1) {
                           moveSingletons=false;
                         }
                       }
@@ -3498,7 +3499,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       int iColumn = column[kk];
                       if (j!=iColumn) {
                         if (colUpper[iColumn]>colLower[iColumn]) {
-                          if (columnLength[iColumn]==1) {
+                          if (columnLength2[iColumn]==1) {
                             double value = rowElements[kk];
                             if (direction*objective[iColumn]*value<0.0&&!markC[iColumn]) {
                               // Fix
@@ -3605,7 +3606,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     sum += value*colsol[iColumn];
                     if (moveSingletons&&j!=iColumn) {
                       if (colUpper[iColumn]>colLower[iColumn]) {
-                        if (columnLength[iColumn]!=1) {
+                        if (columnLength2[iColumn]!=1) {
                           moveSingletons=false;
                         }
                       }
@@ -3618,7 +3619,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       int iColumn = column[kk];
                       if (j!=iColumn) {
                         if (colUpper[iColumn]>colLower[iColumn]) {
-                          if (columnLength[iColumn]==1) {
+                          if (columnLength2[iColumn]==1) {
                             double value = rowElements[kk];
                             if (direction*objective[iColumn]*value>0.0&&!markC[iColumn]) {
                               // Fix
@@ -3727,7 +3728,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       int iColumn = column[kk];
                       if (moveSingletons&&j!=iColumn) {
                         if (colUpper[iColumn]>colLower[iColumn]) {
-                          if (columnLength[iColumn]!=1) {
+                          if (columnLength2[iColumn]!=1) {
                             moveSingletons=false;
                           }
                         }
@@ -3740,7 +3741,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                         int iColumn = column[kk];
                         if (j!=iColumn) {
                           if (colUpper[iColumn]>colLower[iColumn]) {
-                            if (columnLength[iColumn]==1) {
+                            if (columnLength2[iColumn]==1) {
                               double value = rowElements[kk];
                               if (direction*objective[iColumn]*value<0.0&&!markC[iColumn]) {
                                 // Fix
@@ -3771,7 +3772,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       int iColumn = column[kk];
                       if (moveSingletons&&j!=iColumn) {
                         if (colUpper[iColumn]>colLower[iColumn]) {
-                          if (columnLength[iColumn]!=1) {
+                          if (columnLength2[iColumn]!=1) {
                             moveSingletons=false;
                           }
                         }
@@ -3784,7 +3785,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                         int iColumn = column[kk];
                         if (j!=iColumn) {
                           if (colUpper[iColumn]>colLower[iColumn]) {
-                            if (columnLength[iColumn]==1) {
+                            if (columnLength2[iColumn]==1) {
                               double value = rowElements[kk];
                               if (direction*objective[iColumn]*value>0.0&&!markC[iColumn]) {
                                 // Fix
