@@ -148,6 +148,12 @@ public:
   /// Updated prohibited columns
   inline const char * prohibited()
   { return prohibited_;}
+  /// Number of iterations PreProcessing
+  inline int numberIterationsPre() const
+  { return numberIterationsPre_;}
+  /// Number of iterations PostProcessing
+  inline int numberIterationsPost() const
+  { return numberIterationsPost_;}
   /** Pass in row types
       0 normal
       1 cut rows - will be dropped if remain in
@@ -317,6 +323,10 @@ private:
   double * weightSOS_;
   /// Number of columns in original prohibition set
   int numberProhibited_;
+  /// Number of iterations done in PreProcessing
+  int numberIterationsPre_;
+  /// Number of iterations done in PostProcessing
+  int numberIterationsPost_;
   /// Columns which should not be presolved e.g. SOS
   char * prohibited_;
   /// Number of rows in original row types

@@ -53,8 +53,9 @@ public:
     ~CglTreeInfo ();
   /// Take action if cut generator can fix a variable (toValue -1 for down, +1 for up)
   virtual void fixes(int variable, int toValue, int fixedVariable,bool fixedToLower) {}
-  /// Initalizes fixing arrays etc - returns true if we want to save info
-  virtual bool initializeFixing(const OsiSolverInterface * model) {return false;}
+  /** Initalizes fixing arrays etc - returns >0 if we want to save info
+      0 if we don't and -1 if is to be used */
+  virtual int initializeFixing(const OsiSolverInterface * model) {return 0;}
   
 };
 
@@ -88,8 +89,16 @@ public:
   OsiSolverInterface * analyze(const OsiSolverInterface & si, int createSolver=0);
   /// Take action if cut generator can fix a variable (toValue -1 for down, +1 for up)
   virtual void fixes(int variable, int toValue, int fixedVariable,bool fixedToLower);
-  /// Initalizes fixing arrays etc - returns true if we want to save info
-  virtual bool initializeFixing(const OsiSolverInterface * model) ;
+  /** Initalizes fixing arrays etc - returns >0 if we want to save info
+      0 if we don't and -1 if is to be used */
+  virtual int initializeFixing(const OsiSolverInterface * model) ;
+  /// Fix entries in a solver using implications
+  int fixColumns(OsiSolverInterface & si) const;
+  /// Packs down entries
+  int packDown();
+  /// Generate cuts from implications
+  void generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
+		    const CglTreeInfo info) const;
   /// Entries for fixing variables
   inline fixEntry * fixEntries() const
   { convert(); return fixEntry_;}
@@ -133,7 +142,7 @@ protected:
   int numberIntegers_;
   /// Maximum number in fixEntry_
   int maximumEntries_;
-  /// Number entries in fixingEntry_ (and fixEntry_) or -1 if correct style
+  /// Number entries in fixingEntry_ (and fixEntry_) or -2 if correct style
   mutable int numberEntries_;
 };
 

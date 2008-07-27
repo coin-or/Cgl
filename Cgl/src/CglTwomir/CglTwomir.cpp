@@ -120,7 +120,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   t_max = t_max_;
   t_min = t_min_;
   a_max = a_max_;
-  max_elements = max_elements_;
+  max_elements = info.inTree ? max_elements_ : max_elements_root_;
 
   if (!do_mir_) t_max = t_min - 1;
   if (!do_2mir_) q_max = q_min - 1;
@@ -199,7 +199,7 @@ CglTwomir::CglTwomir () :
   probname_(),
   do_mir_(true), do_2mir_(true), do_tab_(true), do_form_(true),
   t_min_(1), t_max_(1), q_min_(1), q_max_(1), a_max_(2),max_elements_(50000),
-  form_nrows_(0) {}
+  max_elements_root_(50000),form_nrows_(0) {}
 
 //-------------------------------------------------------------------
 // Copy constructor 
@@ -216,6 +216,7 @@ CglTwomir::CglTwomir (const CglTwomir & source) :
   q_max_(source.q_max_),
   a_max_(source.a_max_),
   max_elements_(source.max_elements_),
+  max_elements_root_(source.max_elements_root_),
   form_nrows_(source.form_nrows_)
 {
   probname_ = source.probname_ ;
@@ -255,6 +256,7 @@ CglTwomir::operator=(const CglTwomir& rhs)
     q_max_=rhs.q_max_;
     a_max_=rhs.a_max_;
     max_elements_=rhs.max_elements_;
+    max_elements_root_ = rhs.max_elements_root_;
     form_nrows_=rhs.form_nrows_;
   }
   return *this;
@@ -1730,7 +1732,7 @@ int DGG_cutsOffPoint(double *x, DGG_constraint_t *cut)
 
   fprintf(stdout, "LHS = %f, SENSE = %c, RHS = %f\n", LHS, cut->sense, cut->rhs);
   DGG_TEST(1, 1, "found a bad cut!");
-
+  return 0;
 }
 // Returns true if needs optimal basis to do cuts
 bool 
@@ -1774,6 +1776,10 @@ CglTwomir::generateCpp( FILE * fp)
     fprintf(fp,"3  twomir.setMaxElements(%d);\n",max_elements_);
   else
     fprintf(fp,"4  twomir.setMaxElements(%d);\n",max_elements_);
+  if (max_elements_root_!=other.max_elements_root_)
+    fprintf(fp,"3  twomir.setMaxElementsRoot(%d);\n",max_elements_root_);
+  else
+    fprintf(fp,"4  twomir.setMaxElementsRoot(%d);\n",max_elements_root_);
   if (getAggressiveness()!=other.getAggressiveness())
     fprintf(fp,"3  twomir.setAggressiveness(%d);\n",getAggressiveness());
   else

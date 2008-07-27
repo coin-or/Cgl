@@ -982,14 +982,14 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     double estY, estX;
     double movement = 0.0;
     double dPrimePrime = temp + cutRHS; 
-    bool lifted = false;
+    int lifted = false;
     for( i = 0; i < rowLen; ++i ) {
 	if ( (label[i] != CGLFLOW_COL_INCUT) && (sign[i] > 0) ) {/* N+\C+*/
 	    lifted = liftPlus(estY, estX,
-				    index, up[i],
-				    lambda,
-				    y[i], x[i], 
-				    dPrimePrime, M);
+                              index, up[i],
+                              lambda,
+                              y[i], x[i], 
+                              dPrimePrime, M);
 	    
 	    xCoef[i] = -estX;
 	    yCoef[i] = estY;

@@ -11,6 +11,7 @@
 #include <cfloat>
 #include <cassert>
 #include <iostream>
+#define PROBING100 0
 //#define PRINT_DEBUG
 //#define CGL_DEBUG 1
 //#undef NDEBUG
@@ -2679,7 +2680,11 @@ int CglProbing::probe( const OsiSolverInterface & si,
   int * index = new int[nCols];
   // Let us never add more than twice the number of rows worth of row cuts
   // Keep cuts out of cs until end so we can find duplicates quickly
+#ifdef PROBING4
+  int nRowsFake = info->inTree ? nRowsSafe/3 : nRowsSafe*10;
+#else
   int nRowsFake = info->inTree ? nRowsSafe/3 : nRowsSafe;
+#endif
   row_cut rowCut(nRowsFake);
   // Set up maxes
   int maxStack = info->inTree ? maxStack_ : maxStackRoot_;
@@ -2697,6 +2702,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
   const CoinBigIndex * columnStart = columnCopy->getVectorStarts();
   const int * columnLength = columnCopy->getVectorLengths(); 
   const double * columnElements = columnCopy->getElements();
+#define MOVE_SINGLETONS
 #ifdef MOVE_SINGLETONS
   const double * objective = si.getObjCoefficients();
   const int * columnLength2 = si.getMatrixByCol()->getVectorLengths(); 
@@ -2818,7 +2824,26 @@ int CglProbing::probe( const OsiSolverInterface & si,
     if (nCut)
       printf("%d possible cuts\n",nCut);
   }
-  bool saveFixingInfo =  (info->inTree) ? false : info->initializeFixing(&si);
+  bool saveFixingInfo =  false;
+#if PROBING100
+  CglTreeProbingInfo * probingInfo = dynamic_cast<CglTreeProbingInfo *> (info);
+  const int * backward = NULL;
+  const int * integerVariable = NULL;
+  const int * toZero = NULL;
+  const int * toOne = NULL;
+  const fixEntry * fixEntries=NULL;
+#endif
+  if (info->inTree) {
+#if PROBING100
+    backward = probingInfo->backward();
+    integerVariable = probingInfo->integerVariable();
+    toZero = probingInfo->toZero();
+    toOne = probingInfo->toOne();
+    fixEntries=probingInfo->fixEntries();
+#endif
+  } else {
+    saveFixingInfo = (info->initializeFixing(&si)>0);
+  }
   while (ipass<maxPass&&nfixed) {
     int iLook;
     ipass++;
@@ -2886,6 +2911,12 @@ int CglProbing::probe( const OsiSolverInterface & si,
       }
     }
     int leftTotalStack=maxStack*CoinMax(200,maxProbe);
+#ifdef PROBING5
+    if (!info->inTree&&!info->pass)
+      leftTotalStack = 1234567890;
+#endif
+    //printf("maxStack %d maxPass %d numberThisTime %d info pass %d\n",
+    //   maxStack,maxPass,numberThisTime_,info->pass);
     for (iLook=0;iLook<numberThisTime_;iLook++) {
       double solval;
       double down;
@@ -3081,6 +3112,125 @@ int CglProbing::probe( const OsiSolverInterface & si,
             //continue;
             //printf("fixed %d on stack\n",jcol);
           }
+#if PROBING100
+	  if (backward) {
+	    int jColumn = backward[jcol];
+	    if (jColumn>=0) {
+	      int nFix=0;
+	      // 0-1 see what else could be fixed
+	      if (jway==1) {
+		// fixed to 0
+		int j;
+		for ( j=toZero_[jColumn];j<toOne_[jColumn];j++) {
+		  int kColumn=fixEntry_[j].sequence;
+		  kColumn = integerVariable_[kColumn];
+		  bool fixToOne = fixEntry_[j].oneFixed;
+		  if (fixToOne) {
+		    if (colLower[kColumn]==0.0) {
+		      if (colUpper[kColumn]==1.0) {
+			// See if on list
+			if (!markC[kColumn]) {
+			  if(nStackC<nCols) {
+			    stackC[nstackC]=kColumn;
+			    saveL[nstackC]=colLower[kColumn];
+			    saveU[nstackC]=colUpper[kColumn];
+			    assert (saveU[nstackC]>saveL[nstackC]);
+			    assert (nstackC<nCols);
+			    nstackC++;
+			    markC[kColumn]=2;
+			    nFix++;
+			  }
+			} else if (markC[kColumn]==1) {
+			  notFeasible=true;
+			}
+		      } else {
+			// infeasible!
+			notFeasible=true;
+		      }
+		    }
+		  } else {
+		    if (colUpper[kColumn]==1.0) {
+		      if (colLower[kColumn]==0.0) {
+			// See if on list
+			if (!markC[kColumn]) {
+			  if(nStackC<nCols) {
+			    stackC[nstackC]=kColumn;
+			    saveL[nstackC]=colLower[kColumn];
+			    saveU[nstackC]=colUpper[kColumn];
+			    assert (saveU[nstackC]>saveL[nstackC]);
+			    assert (nstackC<nCols);
+			    nstackC++;
+			    markC[kColumn]=1;
+			    nFix++;
+			  }
+			} else if (markC[kColumn]==2) {
+			  notFeasible=true;
+			}
+		      } else {
+			// infeasible!
+			notFeasible=true;
+		      }
+		    }
+		  }
+		}
+	      } else if (jway==2) {
+		int j;
+		for ( j=toOne_[jColumn];j<toZero_[jColumn+1];j++) {
+		  int kColumn=fixEntry_[j].sequence;
+		  kColumn = integerVariable_[kColumn];
+		  bool fixToOne = fixEntry_[j].oneFixed;
+		  if (fixToOne) {
+		    if (colLower[kColumn]==0.0) {
+		      if (colUpper[kColumn]==1.0) {
+			// See if on list
+			if (!markC[kColumn]) {
+			  if(nStackC<nCols) {
+			    stackC[nstackC]=kColumn;
+			    saveL[nstackC]=colLower[kColumn];
+			    saveU[nstackC]=colUpper[kColumn];
+			    assert (saveU[nstackC]>saveL[nstackC]);
+			    assert (nstackC<nCols);
+			    nstackC++;
+			    markC[kColumn]=2;
+			    nFix++;
+			  }
+			} else if (markC[kColumn]==1) {
+			  notFeasible=true;
+			}
+		      } else {
+			// infeasible!
+			notFeasible=true;
+		      }
+		    }
+		  } else {
+		    if (colUpper[kColumn]==1.0) {
+		      if (colLower[kColumn]==0.0) {
+			// See if on list
+			if (!markC[kColumn]) {
+			  if(nStackC<nCols) {
+			    stackC[nstackC]=kColumn;
+			    saveL[nstackC]=colLower[kColumn];
+			    saveU[nstackC]=colUpper[kColumn];
+			    assert (saveU[nstackC]>saveL[nstackC]);
+			    assert (nstackC<nCols);
+			    nstackC++;
+			    markC[kColumn]=1;
+			    nFix++;
+			  }
+			} else if (markC[kColumn]==2) {
+			  notFeasible=true;
+			}
+		      } else {
+			// infeasible!
+			notFeasible=true;
+		      }
+		    }
+		  }
+		}
+	      }
+	    }
+	  }
+#endif
           for (k=columnStart[jcol];k<columnStart[jcol]+columnLength[jcol];k++) {
             // break if found not feasible
             if (notFeasible)
@@ -8413,4 +8563,90 @@ CglProbing::generateCpp( FILE * fp)
   else
     fprintf(fp,"4  probing.setAggressiveness(%d);\n",getAggressiveness());
   return "probing";
+}
+//-------------------------------------------------------------
+void
+CglImplication::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
+				const CglTreeInfo info) const
+{
+  if (probingInfo_) {
+    //int n1=cs.sizeRowCuts();
+    probingInfo_->generateCuts(si,cs,info);
+    //int n2=cs.sizeRowCuts();
+    //if (n2>n1)
+    //printf("added %d cuts\n",n2-n1);
+  }
+}
+
+//-------------------------------------------------------------------
+// Default Constructor 
+//-------------------------------------------------------------------
+CglImplication::CglImplication ()
+:
+CglCutGenerator(),
+probingInfo_(NULL)
+{
+  // nothing to do here
+}
+//-------------------------------------------------------------------
+// Constructor with info
+//-------------------------------------------------------------------
+CglImplication::CglImplication (CglTreeProbingInfo * info)
+:
+CglCutGenerator(),
+probingInfo_(info)
+{
+  // nothing to do here
+}
+//-------------------------------------------------------------------
+// Copy constructor 
+//-------------------------------------------------------------------
+CglImplication::CglImplication (
+                  const CglImplication & source)
+:
+CglCutGenerator(source),
+probingInfo_(source.probingInfo_)
+{  
+  // Nothing to do here
+}
+
+
+//-------------------------------------------------------------------
+// Clone
+//-------------------------------------------------------------------
+CglCutGenerator *
+CglImplication::clone() const
+{
+  return new CglImplication(*this);
+}
+
+//-------------------------------------------------------------------
+// Destructor 
+//-------------------------------------------------------------------
+CglImplication::~CglImplication ()
+{
+  // Nothing to do here
+}
+
+//----------------------------------------------------------------
+// Assignment operator 
+//-------------------------------------------------------------------
+CglImplication &
+CglImplication::operator=(
+                   const CglImplication& rhs)
+{
+  if (this != &rhs) {
+    CglCutGenerator::operator=(rhs);
+    probingInfo_=rhs.probingInfo_;
+  }
+  return *this;
+}
+// Create C++ lines to get to current state
+std::string
+CglImplication::generateCpp( FILE * fp) 
+{
+  CglImplication other;
+  fprintf(fp,"0#include \"CglImplication.hpp\"\n");
+  fprintf(fp,"3  CglImplication implication;\n");
+  return "implication";
 }
