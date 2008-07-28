@@ -1018,12 +1018,14 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver)
 	int jCount = count[jClique];
 	count[jClique]=0;
 	if (jCount==cliqueStart[jClique+1]-cliqueStart[jClique]) {
-	  if (printit>1) {
+#if 0
+		if (printit) {
 	    printf("One can extend %d [ ",jClique);
 	    for (int i=cliqueStart[jClique];i<cliqueStart[jClique+1];i++)
 	      printf("%d(%d) ",entry[i].sequence,entry[i].oneFixes);
 	    printf("] by %d(1)\n",iColumn);
 	  }
+#endif
 	  nStrengthen++;
 	  if (numberEntries+jCount+1>maximumEntries) {
 	    maximumEntries = CoinMax(numberEntries+jCount+1,(maximumEntries*12)/10+100);
