@@ -83,4 +83,4 @@ install-exec-local:
 	rm -f bla
 
 uninstall-local:
-	rm -f $(DESTDIR)$(includecoincdir)/$(ConfigHeader)
+	rm -f $(DESTDIR)$(includecoindir)/$(ConfigHeader)
