@@ -263,10 +263,10 @@ private:
 	     const OsiRowCutDebugger * debugger, 
 	     OsiCuts & cs, 
 	     double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
-	     CoinPackedMatrix *columnCopy,
-	     double * rowLower, double * rowUpper,
-	     char * intVar, double * minR, double * maxR, int * markR, 
-              CglTreeInfo * info) const;
+	     CoinPackedMatrix *columnCopy,const CoinBigIndex * rowStartPos,
+	     const double * rowLower, const double * rowUpper,
+	     const char * intVar, double * minR, double * maxR, int * markR, 
+	     CglTreeInfo * info) const;
   /// Does probing and adding cuts (with cliques)
   int probeCliques( const OsiSolverInterface & si, 
 	     const OsiRowCutDebugger * debugger, 
@@ -298,14 +298,16 @@ private:
       It may also declare rows to be redundant */
   int tighten(double *colLower, double * colUpper,
               const int *column, const double *rowElements, 
-              const CoinBigIndex *rowStart, const int * rowLength,
+              const CoinBigIndex *rowStart,const CoinBigIndex * rowStartPos,
+	      const int * rowLength,
               double *rowLower, double *rowUpper, 
               int nRows,int nCols,char * intVar,int maxpass,
               double tolerance) const;
   /// This just sets minima and maxima on rows
   void tighten2(double *colLower, double * colUpper,
                 const int *column, const double *rowElements, 
-                const CoinBigIndex *rowStart, const int * rowLength,
+                const CoinBigIndex *rowStart,const CoinBigIndex * rowStartPos,
+		const int * rowLength,
                 double *rowLower, double *rowUpper, 
                 double * minR, double * maxR, int * markR,
                 int nRows,int nCols) const;
