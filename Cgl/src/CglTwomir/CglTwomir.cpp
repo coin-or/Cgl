@@ -166,9 +166,62 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	printf("TwoMir cut had %d zero coefficients!\n",nZero);
 #endif
       } else {
+#ifdef CBC_CHECK_CUT
+	double rhs = cut->rhs;
+	int * cutIndex = cut->index;
+	double * packed = cut->coeff;
+	int i,number2=cut->nz;
+	int number=0;
+	double largest=0.0;
+	double smallest=1.0e30;
+	const double *colUpper = si.getColUpper();
+	const double *colLower = si.getColLower();
+	bool goodCut=true;
+	for (i=0;i<number2;i++) {
+	  double value=fabs(packed[i]);
+	  if (value<1.0e-9) {
+	    int iColumn = cutIndex[i];
+	    if (colUpper[iColumn]-colLower[iColumn]<100.0) {
+	      // weaken cut
+	      if (packed[i]>0.0) 
+		rhs -= value*colUpper[iColumn];
+	      else
+	 	rhs += value*colLower[iColumn];
+	    } else {
+	      // throw away
+	      goodCut=false;
+#ifdef CLP_INVESTIGATE
+	      printf("Twomir thrown away on small value %g\n",value);
+#endif
+	      break;
+	    }
+	  } else {
+	    int iColumn = cutIndex[i];
+	    if (colUpper[iColumn]!=colLower[iColumn]) {
+	      largest=max(largest,value);
+	      smallest=min(smallest,value);
+	      cutIndex[number]=cutIndex[i];
+	      packed[number++]=packed[i];
+	    } else {
+	      // fixed so subtract out
+	      rhs -= packed[i]*colLower[iColumn];
+	    }
+	  }
+	}
+#ifdef CLP_INVESTIGATE
+	if (largest>=1.0e9*smallest)
+	  printf("Twomir thrown away on ratios %g %g\n",smallest,largest);
+#endif
+	if (largest<1.0e9*smallest&&goodCut) {
+	  rowcut.setRow(number, cutIndex, packed);
+	  rowcut.setUb(DBL_MAX);
+	  rowcut.setLb(rhs);
+	}
+#else
 	rowcut.setRow(cut->nz, cut->index, cut->coeff);
 	rowcut.setUb(DBL_MAX);
 	rowcut.setLb(cut->rhs);
+#endif
 	cs.insert(rowcut);
       }
     
