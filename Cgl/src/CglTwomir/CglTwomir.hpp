@@ -280,7 +280,12 @@ private:
 
 /* the min value that a coeff can have in the tableau row
    before being set to zero. */
+#define CBC_CHECK_CUT
+#ifndef CBC_CHECK_CUT
 #define DGG_MIN_TABLEAU_COEFFICIENT 1.0e-8
+#else
+#define DGG_MIN_TABLEAU_COEFFICIENT 1.0e-12
+#endif
 
 /* smallest value rho is allowed to have for a simple 2-step MIR
    (ie: not an extended two-step MIR) */
