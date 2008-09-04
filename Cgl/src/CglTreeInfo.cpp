@@ -1405,6 +1405,9 @@ CglTreeProbingInfo::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   const double * lower = si.getColLower();
   const double * upper = si.getColUpper();
   const double * colsol =si.getColSolution();
+  CoinPackedVector lbs;
+  CoinPackedVector ubs;
+  int numberFixed=0;
   for (int jColumn=0;jColumn<(int) numberIntegers_;jColumn++) {
     int iColumn = integerVariable_[jColumn];
     assert (iColumn>=0&&iColumn<si.getNumCols());
@@ -1487,6 +1490,64 @@ CglTreeProbingInfo::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	  }
 	}
       }
+    } else if (upper[iColumn]==0.0) {
+      for (int j=toZero_[jColumn];j<toOne_[jColumn];j++) {
+	int kColumn=fixEntry_[j].sequence;
+	kColumn = integerVariable_[kColumn];
+	assert (kColumn>=0&&kColumn<si.getNumCols());
+	bool fixToOne = fixEntry_[j].oneFixed;
+	if (lower[kColumn]==0.0&&upper[kColumn]==1.0) {
+	  if (fixToOne) {
+	    lbs.insert(kColumn,1.0);
+	  } else {
+	    ubs.insert(kColumn,0.0);
+	  }
+	  numberFixed++;
+	} else if ((fixToOne&&upper[kColumn]==0.0)||
+		   (!fixToOne&&lower[kColumn]==1.0)) {
+	  // infeasible!
+	  // generate infeasible cut and return
+	  OsiRowCut rc;
+	  rc.setLb(DBL_MAX);
+	  rc.setUb(0.0);   
+	  cs.insert(rc);
+	  //printf("IMPINFEAS!\n");
+	  return;
+	}
+      }
+    } else {
+      for (int j=toOne_[jColumn];j<toZero_[jColumn+1];j++) {
+	int kColumn=fixEntry_[j].sequence;
+	kColumn = integerVariable_[kColumn];
+	assert (kColumn>=0&&kColumn<si.getNumCols());
+	bool fixToOne = fixEntry_[j].oneFixed;
+	if (lower[kColumn]==0.0&&upper[kColumn]==1.0) {
+	  if (fixToOne) {
+	    lbs.insert(kColumn,1.0);
+	  } else {
+	    ubs.insert(kColumn,0.0);
+	  }
+	  numberFixed++;
+	} else if ((fixToOne&&upper[kColumn]==0.0)||
+		   (!fixToOne&&lower[kColumn]==1.0)) {
+	  // infeasible!
+	  // generate infeasible cut and return
+	  OsiRowCut rc;
+	  rc.setLb(DBL_MAX);
+	  rc.setUb(0.0);   
+	  cs.insert(rc);
+	  //printf("IMPINFEAS!\n");
+	  return;
+	}
+      }
     }
+  }
+  if (numberFixed) {
+    //printf("IMP fixed %d\n",numberFixed);
+    OsiColCut cc;
+    cc.setUbs(ubs);
+    cc.setLbs(lbs);
+    cc.setEffectiveness(1.0);
+    cs.insert(cc);
   }
 }

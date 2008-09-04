@@ -951,10 +951,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     presolve_[i]=NULL;
   }
   // Put presolve option on
-  int i1=tuning&15;
-  int i2=tuning-i1;
-  i1 |= 8;
-  tuning=i1+i2;;
+  tuning |= 8;
   // clear original
   delete [] originalColumn_;
   delete [] originalRow_;
@@ -1727,7 +1724,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     OsiPresolve * pinfo = new OsiPresolve();
     int presolveActions=0;
     // Allow dual stuff on integers
-    presolveActions=1;
+    // Allow stuff which may not unroll cleanly
+    presolveActions=1+16;
+    if ((tuning&32)!=0)
+      presolveActions |= 32;
     // Do not allow all +1 to be tampered with
     //if (allPlusOnes)
     //presolveActions |= 2;
@@ -1973,7 +1973,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       OsiPresolve * pinfo = new OsiPresolve();
       int presolveActions=0;
       // Allow dual stuff on integers
-      presolveActions=1;
+      // Allow stuff which may not unroll cleanly
+      presolveActions=1+16;
       // Do not allow all +1 to be tampered with
       //if (allPlusOnes)
       //presolveActions |= 2;
@@ -2985,7 +2986,8 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 	  if (columnLower[iColumn]==columnUpper[iColumn])
 	    numberFixed++;
 	}
-	if (numberColumns>2000&&numberFixed<numberColumns) {
+	if (numberColumns>2000&&numberFixed<numberColumns&&
+	    numberFixed*5>numberColumns) {
 	  model->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
 	}
       }
