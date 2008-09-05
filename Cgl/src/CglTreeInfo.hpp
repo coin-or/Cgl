@@ -94,6 +94,8 @@ public:
   virtual int initializeFixing(const OsiSolverInterface * model) ;
   /// Fix entries in a solver using implications
   int fixColumns(OsiSolverInterface & si) const;
+  /// Fix entries in a solver using implications for one variable
+  int fixColumns(int iColumn, int value, OsiSolverInterface & si) const;
   /// Packs down entries
   int packDown();
   /// Generate cuts from implications

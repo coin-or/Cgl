@@ -1372,6 +1372,82 @@ CglTreeProbingInfo::fixColumns(OsiSolverInterface & si) const
   }
   return nFix;
 }
+// Fix entries in a solver using implications for one variable
+int 
+CglTreeProbingInfo::fixColumns(int iColumn,int value, OsiSolverInterface & si) const
+{
+  assert (value==0||value==1);
+  int nFix=0;
+  const double * lower = si.getColLower();
+  const double * upper = si.getColUpper();
+  bool feasible=true;
+  int jColumn = backward_[iColumn];
+  assert (jColumn>=0);
+  if (!value) {
+    int j;
+    for ( j=toZero_[jColumn];j<toOne_[jColumn];j++) {
+      int kColumn=fixEntry_[j].sequence;
+      kColumn = integerVariable_[kColumn];
+      bool fixToOne = fixEntry_[j].oneFixed;
+      if (fixToOne) {
+	if (lower[kColumn]==0.0) {
+	  if (upper[kColumn]==1.0) {
+	    si.setColLower(kColumn,1.0);
+	    nFix++;
+	  } else {
+	    // infeasible!
+	    feasible=false;
+	  }
+	}
+      } else {
+	if (upper[kColumn]==1.0) {
+	  if (lower[kColumn]==0.0) {
+	    si.setColUpper(kColumn,0.0);
+	    nFix++;
+	  } else {
+	    // infeasible!
+	    feasible=false;
+	  }
+	}
+      }
+    }
+  } else {
+    int j;
+    for ( j=toOne_[jColumn];j<toZero_[jColumn+1];j++) {
+      int kColumn=fixEntry_[j].sequence;
+      kColumn = integerVariable_[kColumn];
+      bool fixToOne = fixEntry_[j].oneFixed;
+      if (fixToOne) {
+	if (lower[kColumn]==0.0) {
+	  if (upper[kColumn]==1.0) {
+	    si.setColLower(kColumn,1.0);
+	    nFix++;
+	  } else {
+	    // infeasible!
+	    feasible=false;
+	  }
+	}
+      } else {
+	if (upper[kColumn]==1.0) {
+	  if (lower[kColumn]==0.0) {
+	    si.setColUpper(kColumn,0.0);
+	    nFix++;
+	  } else {
+	    // infeasible!
+	    feasible=false;
+	  }
+	}
+      }
+    }
+  }
+  if (!feasible) {
+#ifdef COIN_DEVELOP
+    printf("treeprobing says infeasible!\n");
+#endif
+    nFix=-1;
+  }
+  return nFix;
+}
 // Packs down entries
 int 
 CglTreeProbingInfo::packDown()
