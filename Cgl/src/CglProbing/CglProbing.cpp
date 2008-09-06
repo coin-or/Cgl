@@ -1700,7 +1700,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       rowUpper[nRows-1]=cutoff+offset;
     }
   }
-  {
+  if (false) {
     // Now take out rows with too many elements
     int * rowLength = rowCopy->getMutableVectorLengths(); 
     int nDelete = 0;
