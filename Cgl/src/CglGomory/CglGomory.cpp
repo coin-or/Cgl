@@ -212,7 +212,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   // get limit on length of cut
   int limit = info.inTree ? limit_ : CoinMax(limit_,limitAtRoot_);
   // get what to look at
-  double away = info.inTree ? away_ : CoinMax(away_,awayAtRoot_);
+  double away = info.inTree ? away_ : CoinMin(away_,awayAtRoot_);
   int numberRows=columnCopy.getNumRows();
   int numberColumns=columnCopy.getNumCols(); 
   // Allow bigger length on initial matrix (if special setting)

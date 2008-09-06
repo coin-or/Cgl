@@ -3444,14 +3444,16 @@ CglPreProcess::modified(OsiSolverInterface * model,
                     nFree++;
                 }
                 if (n==nFree) {
-                  //printf("Original row %d %g <= ",iRow,rowLower[iRow]);
-                  //for ( i=0;i<n1;i++) 
-                  //printf("%g * x%d ",rowElements[start+i],column[start+i]);
-                  //printf("<= %g\n",rowUpper[iRow]);
-                  //printf("New %g <= ",lower);
-                  //for ( i=0;i<n;i++) 
-                  //printf("%g * x%d ",elementCut[i],columnCut[i]);
-                  //printf("<= %g\n",upper);
+#if 0
+                  printf("Original row %.8d %g <= ",iRow,rowLower[iRow]);
+                  for ( i=0;i<n1;i++) 
+		    printf("%g * x%d ",rowElements[start+i],column[start+i]);
+                  printf("<= %g\n",rowUpper[iRow]);
+                  printf("New                   %g <= ",lower);
+                  for ( i=0;i<n;i++) 
+		    printf("%g * x%d ",elementCut[i],columnCut[i]);
+                  printf("<= %g\n",upper);
+#endif
                 } else {
                   // can't use
                   n=-1;

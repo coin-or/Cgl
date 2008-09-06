@@ -1710,6 +1710,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     }
   }
   CoinBigIndex * rowStartPos = NULL;
+  int * realRows = NULL;
   {
     // Now take out rows with too many elements
     int * rowLength = rowCopy->getMutableVectorLengths(); 
@@ -1773,6 +1774,16 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       }
 #else
 #endif
+      // Set up pointers to real rows
+      realRows = new int [nRows];
+      CoinZeroN(realRows,nRows);
+      for (i=0;i<nDelete;i++)
+	realRows[which[i]]=-1;
+      int k=0;
+      for (i=0;i<nRows;i++) {
+	if (!realRows[i])
+	  realRows[k++]=i; // keep
+      }
       rowCopy->deleteRows(nDelete,which);
       nRows=nKeep;
     }
@@ -1997,12 +2008,12 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	//std::sort(lookedAt_,lookedAt_+numberThisTime_);
         if (!numberCliques_) {
           ninfeas= probe(si, debugger, cs, colLower, colUpper, rowCopy,columnCopy,
-                         rowStartPos, rowLower, rowUpper,
+                         rowStartPos, realRows, rowLower, rowUpper,
                          intVar, minR, maxR, markR,
                          info);
         } else {
           ninfeas= probeCliques(si, debugger, cs, colLower, colUpper, rowCopy,columnCopy,
-                                rowLower, rowUpper,
+                                realRows,rowLower, rowUpper,
                                 intVar, minR, maxR, markR,
                                 info);
         }
@@ -2050,7 +2061,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       }
 #endif
       ninfeas= probeCliques(si, debugger, csNew, colLower, colUpper, rowCopy,columnCopy,
-		     rowLower, rowUpper,
+			    realRows, rowLower, rowUpper,
 		     intVar, minR, maxR, markR,
 		     info);
     }
@@ -2711,6 +2722,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   }
   delete [] intVar;
   delete [] rowStartPos;
+  delete [] realRows;
   // and put back unreasonable bounds on integer variables
   const double * trueLower = si.getColLower();
   const double * trueUpper = si.getColUpper();
@@ -2731,7 +2743,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		       double * colLower, double * colUpper, 
 		       CoinPackedMatrix *rowCopy,
 		       CoinPackedMatrix *columnCopy,
-		       const CoinBigIndex * rowStartPos, 
+		       const CoinBigIndex * rowStartPos,const int * realRows, 
 		       const double * rowLower, const double * rowUpper,
 		       const char * intVar, double * minR, double * maxR, 
 		       int * markR, 
@@ -4589,7 +4601,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			printf("<= %g\n",rowUpper[irow]);
 		      }
 #endif
-                      rowCut.addCutIfNotDuplicate(rc,canReplace&&rowLower[irow]<-1.0e20 ? irow :-1);
+		      int realRow = (canReplace&&rowLower[irow]<-1.0e20) ? irow : -1;
+		      if (realRows&&realRow>0)
+			realRow=realRows[realRow];
+                      rowCut.addCutIfNotDuplicate(rc,realRow);
                     }
                   }
                 }
@@ -4709,7 +4724,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			printf("<= %g\n",rowUpper[irow]);
 		      }
 #endif
-                      rowCut.addCutIfNotDuplicate(rc,canReplace&&rowUpper[irow]>1.0e20 ? irow : -1);
+		      int realRow = (canReplace&&rowUpper[irow]>1.0e20) ? irow : -1;
+		      if (realRows&&realRow>0)
+			realRow=realRows[realRow];
+                      rowCut.addCutIfNotDuplicate(rc,realRow);
                     }
                   }
                 }
@@ -5076,7 +5094,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			printf("<= %g\n",rowUpper[irow]);
 		      }
 #endif
-                      rowCut.addCutIfNotDuplicate(rc,(canReplace&&rowLower[irow]<-1.0e20) ? irow : -1);
+		      int realRow = (canReplace&&rowLower[irow]<-1.0e20) ? irow : -1;
+		      if (realRows&&realRow>0)
+			realRow=realRows[realRow];
+                      rowCut.addCutIfNotDuplicate(rc,realRow);
                     }
                   }
                 }
@@ -5152,7 +5173,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			printf("<= %g\n",rowUpper[irow]);
 		      }
 #endif
-                      rowCut.addCutIfNotDuplicate(rc,(canReplace&&rowUpper[irow]>1.0e20) ? irow : -1);
+		      int realRow = (canReplace&&rowUpper[irow]>1.0e20) ? irow : -1;
+		      if (realRows&&realRow>0)
+			realRow=realRows[realRow];
+                      rowCut.addCutIfNotDuplicate(rc,realRow);
                     }
                   }
                 }
@@ -5373,7 +5397,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
                               OsiCuts & cs, 
                               double * colLower, double * colUpper, 
 		       CoinPackedMatrix *rowCopy,
-		       CoinPackedMatrix *columnCopy,
+			      CoinPackedMatrix *columnCopy, const int * realRows,
 		       double * rowLower, double * rowUpper,
 		       char * intVar, double * minR, double * maxR, 
 		       int * markR, 
@@ -6436,7 +6460,10 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			printf("<= %g\n",rowUpper[irow]);
 		      }
 #endif
-			rowCut.addCutIfNotDuplicate(rc,rowLower[irow]<-1.0e20 ? irow : -1);
+		      int realRow = (rowLower[irow]<-1.0e20) ? irow : -1;
+		      if (realRows&&realRow>0)
+			realRow=realRows[realRow];
+		      rowCut.addCutIfNotDuplicate(rc,realRow);
 		      }
 		    }
 		  }
@@ -6512,7 +6539,10 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			printf("<= %g\n",rowUpper[irow]);
 		      }
 #endif
-			rowCut.addCutIfNotDuplicate(rc,rowUpper[irow]>1.0e20 ? irow : -1);
+		      int realRow = (rowUpper[irow]>1.0e20) ? irow : -1;
+		      if (realRows&&realRow>0)
+			realRow=realRows[realRow];
+		      rowCut.addCutIfNotDuplicate(rc,realRow);
 		      }
 		    }
 		  }
@@ -6783,7 +6813,10 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			printf("<= %g\n",rowUpper[irow]);
 		      }
 #endif
-			rowCut.addCutIfNotDuplicate(rc,rowLower[irow]<-1.0e20? irow : -1);
+		      int realRow = (rowLower[irow]<-1.0e20) ? irow : -1;
+		      if (realRows&&realRow>0)
+			realRow=realRows[realRow];
+			rowCut.addCutIfNotDuplicate(rc,realRow);
 		      }
 		    }
 		  }
@@ -6859,7 +6892,10 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			printf("<= %g\n",rowUpper[irow]);
 		      }
 #endif
-			rowCut.addCutIfNotDuplicate(rc,rowUpper[irow]>1.0e20 ? irow : -1);
+		      int realRow = (rowUpper[irow]>1.0e20) ? irow : -1;
+		      if (realRows&&realRow>0)
+			realRow=realRows[realRow];
+			rowCut.addCutIfNotDuplicate(rc,realRow);
 		      }
 		    }
 		  }

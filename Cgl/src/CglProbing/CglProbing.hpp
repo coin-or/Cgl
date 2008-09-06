@@ -264,7 +264,7 @@ private:
 	     OsiCuts & cs, 
 	     double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
 	     CoinPackedMatrix *columnCopy,const CoinBigIndex * rowStartPos,
-	     const double * rowLower, const double * rowUpper,
+	     const int * realRow, const double * rowLower, const double * rowUpper,
 	     const char * intVar, double * minR, double * maxR, int * markR, 
 	     CglTreeInfo * info) const;
   /// Does probing and adding cuts (with cliques)
@@ -272,7 +272,7 @@ private:
 	     const OsiRowCutDebugger * debugger, 
 	     OsiCuts & cs, 
 	     double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
-		    CoinPackedMatrix *columnCopy,
+		    CoinPackedMatrix *columnCopy, const int * realRow,
 	     double * rowLower, double * rowUpper,
 	     char * intVar, double * minR, double * maxR, int * markR, 
              CglTreeInfo * info) const;
