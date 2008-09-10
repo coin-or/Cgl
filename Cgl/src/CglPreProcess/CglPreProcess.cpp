@@ -2834,6 +2834,7 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
   originalModel_->getHintParam(OsiDoDualInInitial,
                         saveHint2,saveStrength2);
   OsiSolverInterface * clonedCopy=NULL;
+  double saveObjectiveValue = modelIn.getObjValue();
   if (modelIn.isProvenOptimal()) {
     OsiSolverInterface * modelM = &modelIn;
     // If some cuts add back rows
@@ -3245,11 +3246,20 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
   originalModel_->initialSolve();
   numberIterationsPost_ += originalModel_->getIterationCount();
   //printf("Time without basis %g seconds, %d iterations\n",CoinCpuTime()-time1,originalModel_->getIterationCount());
+  double objectiveValue = originalModel_->getObjValue();
+  double testObj = 1.0e-8*CoinMax(fabs(saveObjectiveValue),
+				  fabs(objectiveValue))+1.0e-4;
   if (!originalModel_->isProvenOptimal()) {
 #ifdef COIN_DEVELOP
     originalModel_->writeMps("bad3");
     printf("bad end unwind in postprocess\n");
 #endif
+    handler_->message(CGL_POST_INFEASIBLE,messages_)
+      <<CoinMessageEol;
+  } else if (fabs(saveObjectiveValue-objectiveValue)>testObj) {
+    handler_->message(CGL_POST_CHANGED,messages_)
+      <<saveObjectiveValue<<objectiveValue
+      <<CoinMessageEol;
   }
   originalModel_->setHintParam(OsiDoDualInInitial,saveHint2,saveStrength2);
   originalModel_->setHintParam(OsiDoPresolveInInitial,saveHint,saveStrength);

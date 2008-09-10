@@ -1774,15 +1774,17 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       }
 #else
 #endif
-      // Set up pointers to real rows
-      realRows = new int [nRows];
-      CoinZeroN(realRows,nRows);
-      for (i=0;i<nDelete;i++)
-	realRows[which[i]]=-1;
-      int k=0;
-      for (i=0;i<nRows;i++) {
-	if (!realRows[i])
-	  realRows[k++]=i; // keep
+      if (info->strengthenRow) {
+	// Set up pointers to real rows
+	realRows = new int [nRows];
+	CoinZeroN(realRows,nRows);
+	for (i=0;i<nDelete;i++)
+	  realRows[which[i]]=-1;
+	int k=0;
+	for (i=0;i<nRows;i++) {
+	  if (!realRows[i])
+	    realRows[k++]=i; // keep
+	}
       }
       rowCopy->deleteRows(nDelete,which);
       nRows=nKeep;

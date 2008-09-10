@@ -25,7 +25,9 @@ static Cgl_message us_english[]=
   {CGL_ELEMENTS_CHANGED1,9,2,"%d elements changed"},
   {CGL_ELEMENTS_CHANGED2,10,3,"element in row %d for column %d changed from %g to %g"},
   {CGL_MADE_INTEGER,11,1,"%d variables made integer"},
-  {CGL_ADDED_INTEGERS,12,1,"Added %d variables (from %d rows) with %d elements\n"},
+  {CGL_ADDED_INTEGERS,12,1,"Added %d variables (from %d rows) with %d elements"},
+  {CGL_POST_INFEASIBLE,13,1,"Postprocessed model is infeasible - possible tolerance issue - try without preprocessing"},
+  {CGL_POST_CHANGED,14,1,"Postprocessing changed objective from %g to %g - possible tolerance issue - try without preprocessing"},
   {CGL_DUMMY_END,999999,0,""}
 };
 /* Constructor */
