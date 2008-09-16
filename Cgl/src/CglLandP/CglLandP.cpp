@@ -482,7 +482,7 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
 #endif
   if(info.inTree)//put lower pivot limit
   {
-    params.pivotLimit = min(params.pivotLimit, params.pivotLimitInTree);
+    params.pivotLimit = CoinMin(params.pivotLimit, params.pivotLimitInTree);
   }
   if(params.timeLimit < 0){
     params.pivotLimit = 0;
@@ -613,9 +613,9 @@ CglLandP& CglLandP::operator=(const CglLandP &rhs)
         {
           stat.meanNegativeRcRows += ((double) landpSi.extra.nNegativeRcRows);
           stat.meanBestRow += ((double) landpSi.extra.bestRow);
-          stat.maxBestRow = max((double) landpSi.extra.bestRow, stat.maxBestRow);
+          stat.maxBestRow = CoinMax((double) landpSi.extra.bestRow, stat.maxBestRow);
           stat.meanBestRc += landpSi.extra.bestRc;
-          stat.maxRc = max((double) stat.maxRc, landpSi.extra.maxRc);
+          stat.maxRc = CoinMax((double) stat.maxRc, landpSi.extra.maxRc);
         }
 #endif
 	      nCut++;

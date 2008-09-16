@@ -295,7 +295,7 @@ void eraseLastCuts(OsiCuts & cuts, int k = 2)
   
   int numCuts = cuts.sizeRowCuts();
   int begin = numCuts - 1;
-  int end = max(numCuts - 3,0);
+  int end = CoinMax(numCuts - 3,0);
   for(int ii = begin ; ii > end ; ii--)
   {
     cuts.eraseRowCut(ii);
@@ -922,7 +922,7 @@ CglLandPSimplex::changeBasis(int incoming, int leaving, int leavingStatus)
     {
       if(!eq(row_k_.row[i],debug_.bestNewRow_[i]))
       {
-        norm_inf = max(fabs(row_k_.row[i]-debug_.bestNewRow_[i]),norm_inf);
+        norm_inf = CoinMax(fabs(row_k_.row[i]-debug_.bestNewRow_[i]),norm_inf);
         std::cerr<<"Variable" <<i<<", coefficient : "<<row_k_.row[i]<<" should have been "<<debug_.bestNewRow_[i]<<std::endl;
         std::cerr<<"lo bound "<<getLoBound(i)<<" up bound "<< getUpBound(i)<<std::endl;
       }
@@ -2248,9 +2248,9 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
 #endif
       
       extra.bestRow += (best_l+1);
-      extra.maxBestRow = max (extra.maxBestRow, (best_l+1));
+      extra.maxBestRow = CoinMax(extra.maxBestRow, (best_l+1));
       extra.bestRc += chosenReducedCostVal_;
-      extra.maxRc = max(extra.maxRc, chosenReducedCostVal_);
+      extra.maxRc = CoinMax(extra.maxRc, chosenReducedCostVal_);
     }
     direction = bestDirection;
     delete [] rc;

@@ -510,7 +510,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 		}
 		// sort 
 		std::sort(sortit,sortit+nincut,double_double_int_triple_compare());
-		nincut = min(nincut,maximumEntries_);
+		nincut = CoinMin(nincut,maximumEntries_);
 		sum=0.0;
 		for (k=0;k<nincut;k++) {
 		  int jcol=sortit[k].sequence;

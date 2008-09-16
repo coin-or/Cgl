@@ -4,6 +4,7 @@
 //           Carnegie Mellon University, Pittsburgh, PA 15213
 // Date:     11/22/05
 //---------------------------------------------------------------------------
+#include "CoinHelperFunctions.hpp"
 #include "CglLandPValidator.hpp"
 #include "CoinPackedMatrix.hpp"
 #include "OsiRowCut.hpp"
@@ -76,8 +77,8 @@ CglValidator::cleanCut(OsiRowCut & aCut, const double * solCut, const OsiSolverI
   
     else //Not a small coefficient keep it
     {
-      smallest = min(val,smallest);
-      biggest = max (val,biggest);
+      smallest = CoinMin(val,smallest);
+      biggest = CoinMax(val,biggest);
       if(biggest > maxRatio_ * smallest)
 	{
 #ifdef DEBUG
@@ -167,8 +168,8 @@ CglValidator::cleanCut2(OsiRowCut & aCut, const double * solCut, const OsiSolver
     double val = fabs(elems[i]);
     if (val > veryTiny)//tiny should be very very small
     {
-      smallest = min(val,smallest);
-      biggest = max (val,biggest);
+      smallest = CoinMin(val,smallest);
+      biggest = CoinMax(val,biggest);
     }
   }
 

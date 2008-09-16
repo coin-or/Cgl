@@ -965,7 +965,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     double ml = CoinMin(sum, lambda);
 #if CGLFLOW_DEBUG
     // sum = sum_{i in C+\C++} m_i + sum_{i in L--} m_i = m. Page 15.
-    std::cout << "ml = min(m, lambda) = min(" << sum << ", " << lambda << ") =" << ml << std::endl; 
+    std::cout << "ml = CoinMin(m, lambda) = CoinMin(" << sum << ", " << lambda << ") =" << ml << std::endl; 
 #endif
     /* rho_i = max[0, m_i - (minPlsM - lamda) - ml */
     if (t < index ) { /* rho exits only for t <= index-1 */

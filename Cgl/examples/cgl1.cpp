@@ -174,7 +174,7 @@ int main(int argc, const char *argv[])
       // almost equal to prior value.
       //
       // The test is:
-      // abs(oldObj-newObj) <= 0.0001*(max(abs(oldObj),abs(newObj))+1.);
+      // abs(oldObj-newObj) <= 0.0001*(CoinMax(abs(oldObj),abs(newObj))+1.);
       // see CoinRelFloatEqual.h 
       // -----------------------------------------------
       equalObj = eq( si.getObjValue(), obj );

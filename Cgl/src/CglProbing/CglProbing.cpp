@@ -2833,10 +2833,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
     if (gap>1.0e-8) {
       if (colsol[i]<colLower[i]+primalTolerance_) {
         colsol[i]=colLower[i];
-        djs[i] = max(0.0,djValue);
+        djs[i] = CoinMax(0.0,djValue);
       } else if (colsol[i]>colUpper[i]-primalTolerance_) {
         colsol[i]=colUpper[i];
-        djs[i] = min(0.0,djValue);
+        djs[i] = CoinMin(0.0,djValue);
       } else {
         djs[i]=0.0;
       }

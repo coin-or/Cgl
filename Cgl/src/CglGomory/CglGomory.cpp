@@ -323,7 +323,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	// wrong - but probably large rhs
 	rowType[iRow]=type;
 #ifdef CGL_DEBUG
-	assert (min(rowUpper[iRow]-rowActivity[iRow],
+	assert (CoinMin(rowUpper[iRow]-rowActivity[iRow],
 		    rowActivity[iRow]-rowUpper[iRow])<1.0e-7);
 	//abort();
         continue;
@@ -763,8 +763,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      } else {
 		int iColumn = cutIndex[i];
 		if (colUpper[iColumn]!=colLower[iColumn]) {
-		  largest=max(largest,value);
-		  smallest=min(smallest,value);
+		  largest=CoinMax(largest,value);
+		  smallest=CoinMin(smallest,value);
 		  cutIndex[number]=cutIndex[i];
 		  packed[number++]=packed[i];
 		} else {
