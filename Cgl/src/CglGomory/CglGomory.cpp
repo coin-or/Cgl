@@ -594,6 +594,9 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
             } 
           }
 	}
+	// Final test on number
+	//if (number>limit)
+	//continue;
 	// say zeroed out
 	cutVector.setNumElements(0);
 	if (sum >rhs+0.9*away&&
