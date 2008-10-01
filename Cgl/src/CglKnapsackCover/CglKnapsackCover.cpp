@@ -2793,7 +2793,7 @@ CglKnapsackCover::exactSolveKnapsack(
 CglKnapsackCover::CglKnapsackCover ()
 :
 CglCutGenerator(),
-epsilon_(1.0e-08),
+epsilon_(1.0e-07),
 epsilon2_(1.0e-5),
 onetol_(1-epsilon_),
 maxInKnapsack_(50),
