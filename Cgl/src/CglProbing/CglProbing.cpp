@@ -223,19 +223,31 @@ public:
       return -1;
     }
   }
-  void addCuts(OsiCuts & cs, OsiRowCut ** whichRow)
+  void addCuts(OsiCuts & cs, OsiRowCut ** whichRow,int iPass)
   {
     int numberCuts=cs.sizeRowCuts();
     int i ;
     if (numberCuts_<nRows_) {
-      for (i=0;i<numberCuts_;i++) {
-        cs.insert(*rowCut_[i]);
-        if (whichRow) {
-          int iRow= rowCut_[i]->whichRow();
-          if (iRow>=0&&!whichRow[iRow])
-            whichRow[iRow]=cs.rowCutPtr(numberCuts);;
-        }
-        numberCuts++;
+      if ((iPass&1)==1) {
+	for (i=0;i<numberCuts_;i++) {
+	  cs.insert(*rowCut_[i]);
+	  if (whichRow) {
+	    int iRow= rowCut_[i]->whichRow();
+	    if (iRow>=0&&!whichRow[iRow])
+	      whichRow[iRow]=cs.rowCutPtr(numberCuts);;
+	  }
+	  numberCuts++;
+	}
+      } else {
+	for (i=numberCuts_-1;i>=0;i--) {
+	  cs.insert(*rowCut_[i]);
+	  if (whichRow) {
+	    int iRow= rowCut_[i]->whichRow();
+	    if (iRow>=0&&!whichRow[iRow])
+	      whichRow[iRow]=cs.rowCutPtr(numberCuts);;
+	  }
+	  numberCuts++;
+	}
       }
     } else {
       // just best
@@ -302,6 +314,36 @@ static void checkBounds(const OsiRowCutDebugger * debugger,OsiColCut & cut)
   }
 }
 #endif
+//-------------------------------------------------------------------
+// Returns the greatest common denominator of two 
+// positive integers, a and b, found using Euclid's algorithm 
+//-------------------------------------------------------------------
+static int gcd(int a, int b) 
+{
+  int remainder = -1;
+  // make sure a<=b (will always remain so)
+  if(a > b) {
+    // Swap a and b
+    int temp = a;
+    a = b;
+    b = temp;
+  }
+  // if zero then gcd is nonzero (zero may occur in rhs of packed)
+  if (!a) {
+    if (b) {
+      return b;
+    } else {
+      printf("**** gcd given two zeros!!\n");
+      abort();
+    }
+  }
+  while (remainder) {
+    remainder = b % a;
+    b = a;
+    a = remainder;
+  }
+  return b;
+}
 #define CGL_REASONABLE_INTEGER_BOUND 1.23456789e10
 // This tightens column bounds (and can declare infeasibility)
 // It may also declare rows to be redundant
@@ -2713,7 +2755,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   delete [] maxR;
   // Add in row cuts
   if (!ninfeas) {
-    rowCut.addCuts(cs,info->strengthenRow);
+    rowCut.addCuts(cs,info->strengthenRow,0);
   }
   // delete stuff
   delete rowCopy;
@@ -2772,6 +2814,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
   int * index = new int[nCols];
   // Let us never add more than twice the number of rows worth of row cuts
   // Keep cuts out of cs until end so we can find duplicates quickly
+#define PROBING4
 #ifdef PROBING4
   int nRowsFake = info->inTree ? nRowsSafe/3 : nRowsSafe*10;
 #else
@@ -5198,6 +5241,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
     for (i = 0; i < nRowsSafe; ++i) {
       if ((rowLower[i]>-1.0e20||rowUpper[i]<1.0e20)&&
           (!info->strengthenRow||!info->strengthenRow[i])) {
+	bool doneSomething=false;
 	int iflagu = 0;
 	int iflagl = 0;
 	double dmaxup = 0.0;
@@ -5205,6 +5249,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	int krs = rowStart[i];
 	int kre = rowStart[i+1];
         int kInt = -1;
+	double rhsAdjustment=0.0;
+	int nPosInt=0;
+	int nNegInt=0;
         double valueInteger=0.0;
         // Find largest integer coefficient
 	int k;
@@ -5221,16 +5268,25 @@ int CglProbing::probe( const OsiSolverInterface & si,
         }
         if (kInt>=0) {
           double upperBound = CoinMin(colUpper[kInt],(double) COIN_INT_MAX);
+	  double upAdjust=0.0;
+	  double downAdjust=0.0;
           for (k = krs; k < kre; ++k) {
             double value=rowElements[k];
             j = column[k];
             if (colUpper[j]==colLower[j]) {
-              dmaxup += colUpper[j]*value;
-              dmaxdown += colUpper[j]*value;
+	      rhsAdjustment += colUpper[j]*value;
               continue;
             }
+	    if (intVar[j]) {
+	      if (value>0.0)
+		nPosInt++;
+	      else
+		nNegInt++;
+	    } else {
+	      nPosInt = -nCols;
+	    }
             if (j!=kInt) {
-              // continuous
+              // treat as continuous
               if (value > 0.0) {
                 if (colUpper[j] >= 1e15) {
                   dmaxup = 1e31;
@@ -5258,13 +5314,44 @@ int CglProbing::probe( const OsiSolverInterface & si,
                   dmaxup += colLower[j] * value;
                 }
               }
+	    } else {
+              // Chosen variable
+              if (value > 0.0) {
+                if (colUpper[j] >= 1e15) {
+                  upAdjust = 1e31;
+                } else {
+                  upAdjust = colUpper[j] * value;
+                }
+                if (colLower[j] <= -1e15) {
+                  downAdjust = -1e31;
+                } else {
+                  downAdjust = colLower[j] * value;
+                }
+              } else if (value<0.0) {
+                if (colUpper[j] >= 1e15) {
+                  downAdjust = -1e31;
+                } else {
+                  downAdjust = colUpper[j] * value;
+                }
+                if (colLower[j] <= -1e15) {
+                  upAdjust = 1e31;
+                } else {
+                  upAdjust = colLower[j] * value;
+                }
+              }
             }
           }
+	  dmaxup += rhsAdjustment;
+	  dmaxdown += rhsAdjustment;
           // end of row
           if (iflagu)
             dmaxup=1.0e31;
           if (iflagl)
             dmaxdown=-1.0e31;
+	  // See if redundant
+	  if (dmaxdown+downAdjust>rowLower[i]-tolerance&&
+	      dmaxup+upAdjust<rowUpper[i]+tolerance) 
+	    continue;
           if (dmaxdown+valueInteger*upperBound>rowLower[i]&&
               dmaxup+valueInteger*upperBound<rowUpper[i]) {
             // check to see if always feasible at 1 but not always at 0
@@ -5313,41 +5400,239 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 else if (sum>rowUpper[i])
                   gap=sum-rowUpper[i];
                 if (gap>1.0e-4||info->strengthenRow!=NULL) {
+		  gap += 1.0e5;
                   rc.setEffectiveness(gap);
                   rc.setRow(n,index,element,false);
 #ifdef STRENGTHEN_PRINT
-		      {
-			printf("1aCut %g <= ",rc.lb());
-			irow=i;
-			int k;
-			for ( k=0;k<n;k++) {
-			  int iColumn = index[k];
-			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rc.ub());
-			printf("Row %g <= ",rowLower[irow]);
-			for (k=rowStart[irow];k<rowStart[irow+1];k++) {
-			  int iColumn = column[k];
-			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rowUpper[irow]);
-		      }
+		  {
+		    printf("1aCut %g <= ",rc.lb());
+		    irow=i;
+		    int k;
+		    for ( k=0;k<n;k++) {
+		      int iColumn = index[k];
+		      printf("%g*",element[k]);
+		      if (si.isInteger(iColumn))
+			printf("i%d ",iColumn);
+		      else
+			printf("x%d ",iColumn);
+		    }
+		    printf("<= %g\n",rc.ub());
+		    printf("Row %g <= ",rowLower[irow]);
+		    for (k=rowStart[irow];k<rowStart[irow+1];k++) {
+		      int iColumn = column[k];
+		      printf("%g*",rowElements[k]);
+		      if (si.isInteger(iColumn))
+			printf("i%d ",iColumn);
+		      else
+			printf("x%d ",iColumn);
+		    }
+		    printf("<= %g\n",rowUpper[irow]);
+		  }
 #endif
                   int returnCode=rowCut.addCutIfNotDuplicate(rc,i);
+		  doneSomething=true;
                   if (returnCode<0)
                     break; // out of space
                 }
               }
             }
           }
+	}
+	if (!doneSomething) {
+	  // see if singleton coefficient can be strengthened
+	  if ((nPosInt==1&&nNegInt>1)||(nNegInt==1&&nPosInt>1)) {
+	    double lo;
+	    double up;
+	    if (rowLower[i]>-1.0e20)
+	      lo = rowLower[i]-rhsAdjustment;
+	    else
+	      lo=-COIN_DBL_MAX;
+	    if(rowUpper[i]<1.0e20)
+	      up = rowUpper[i]-rhsAdjustment;
+	    else
+	      up=COIN_DBL_MAX;
+	    double multiplier=1.0;
+	    if (nNegInt==1) {
+	      // swap signs
+	      multiplier=lo;
+	      lo=-up;
+	      up=-multiplier;
+	      multiplier=-1.0;
+	    }
+	    bool possible=true;
+	    int kInt=-1;
+	    double singletonValue=0;
+	    double scale = 4.0*5.0*6.0;
+	    int kGcd=-1;
+	    double smallestSum = 0.0;
+	    double largestSum = 0.0;
+	    for ( k = krs; k < kre; ++k) {
+	      j = column[k];
+	      double value=multiplier*rowElements[k];
+	      if (colUpper[j]>colLower[j]) {
+		if (value>0.0) {
+		  // singleton
+		  kInt=j;
+		  if (colUpper[j]-colLower[j]!=1.0) {
+		    possible = false;
+		    break;
+		  } else {
+		    singletonValue=value;
+		  }
+		} else {
+		  if (colLower[j]>-1.0e10)
+		    smallestSum += value*colLower[j];
+		  else
+		    smallestSum = -COIN_DBL_MAX;
+		  if (colUpper[j]<-1.0e10)
+		    largestSum += value*colUpper[j];
+		  else
+		    largestSum = COIN_DBL_MAX;
+		  value *=-scale;
+		  if (fabs(value-floor(value+0.5))>1.0e-12) {
+		    possible=false;
+		    break;
+		  } else {
+		    int kVal = (int) floor(value+0.5);
+		    if (kGcd>0) 
+		      kGcd = gcd(kGcd,kVal);
+		    else
+		      kGcd=kVal;
+		  }
+		}
+	      }
+	    }
+	    if (possible) {
+	      double multiple = ((double) kGcd)/scale;
+	      int interesting=0;
+	      double saveLo=lo;
+	      double saveUp=up;
+	      double nearestLo0=lo;
+	      double nearestUp0=up;
+	      double nearestLo1=lo;
+	      double nearestUp1=up;
+	      // adjust rhs for singleton 
+	      if (lo!=-COIN_DBL_MAX) {
+		// singleton at lb
+		lo -= colLower[kInt]*singletonValue;
+		double exact = lo/multiple;
+		if (fabs(exact-floor(exact+0.5))>1.0e-4) {
+		  interesting +=1;
+		  nearestLo0 = ceil(exact)*multiple;
+		} 
+		// singleton at ub
+		lo -= singletonValue;
+		exact = lo/multiple;
+		if (fabs(exact-floor(exact+0.5))>1.0e-4) {
+		  interesting +=2;
+		  nearestLo1 = ceil(exact)*multiple;
+		}
+	      }
+	      if (up!=COIN_DBL_MAX) {
+		// singleton at lb
+		up -= colLower[kInt]*singletonValue;
+		double exact = up/multiple;
+		if (fabs(exact-floor(exact+0.5))>1.0e-4) {
+		  interesting +=4;
+		  nearestUp0 = floor(exact)*multiple;
+		} 
+		// singleton at ub
+		up -= singletonValue;
+		exact = up/multiple;
+		if (fabs(exact-floor(exact+0.5))>1.0e-4) {
+		  interesting +=8;
+		  nearestUp1 = floor(exact)*multiple;
+		} 
+	      }
+	      if (interesting) {
+#ifdef CLP_INVESTIGATE
+		printf("Row %d interesting %d lo,up %g,%g singleton %d value %g bounds %g,%g - gcd %g\n",i,interesting,saveLo,saveUp,kInt,singletonValue,
+		       colLower[kInt],colUpper[kInt],multiple);
+		printf("Orig lo,up %g,%g %d\n",rowLower[i],rowUpper[i],kre-krs);
+		for ( k = krs; k < kre; ++k) {
+		  j = column[k];
+		  double value=multiplier*rowElements[k];
+		  printf(" (%d, %g - bds %g, %g)",j,value,
+			 colLower[j],colUpper[j]);
+		}
+		printf("\n");
+#endif
+		if(colLower[kInt]) {
+#ifdef CLP_INVESTIGATE
+		  printf("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ\n"); //think
+#endif
+		  continue;
+		}
+		// Just do mzzv11 case
+		double exact = singletonValue/multiple;
+		if (fabs(exact-floor(exact+0.5))<1.0e-5)
+		  interesting &= ~2;
+		if (!smallestSum&&interesting==2&&!saveLo&&saveUp>1.0e20) {
+		  double newValue = multiple*floor(exact);
+		  newValue *= multiplier;
+		  OsiRowCut rc;
+		  rc.setLb(rowLower[i]);
+		  rc.setUb(rowUpper[i]);
+		  int n=0;
+		  double sum=0.0;
+		  for ( k = krs; k < kre; ++k) {
+		    int j=column[k];
+		    if (j!=kInt) {
+		      sum += colsol[j]*rowElements[k];
+		      index[n]=j;
+		      element[n++]=rowElements[k];
+		    } else {
+		      sum += colsol[j]*newValue;
+		      if (fabs(newValue)>1.0e-12) {
+			index[n]=j;
+			element[n++]=newValue;
+		      }
+		    }
+		  }
+		  double gap = 0.0;
+		  if (sum<rowLower[i])
+		    gap=rowLower[i]-sum;
+		  else if (sum>rowUpper[i])
+		    gap=sum-rowUpper[i];
+		  if (gap>1.0e-4||info->strengthenRow!=NULL) {
+		    gap += 1.0e5;
+		    rc.setEffectiveness(gap);
+		    rc.setRow(n,index,element,false);
+#ifdef STRENGTHEN_PRINT
+		    {
+		      printf("2cCut %g <= ",rc.lb());
+		      irow=i;
+		      int k;
+		      for ( k=0;k<n;k++) {
+			int iColumn = index[k];
+			printf("%g*",element[k]);
+			if (si.isInteger(iColumn))
+			  printf("i%d ",iColumn);
+			else
+			  printf("x%d ",iColumn);
+		      }
+		      printf("<= %g\n",rc.ub());
+		      printf("Row %g <= ",rowLower[irow]);
+		      for (k=rowStart[irow];k<rowStart[irow+1];k++) {
+			int iColumn = column[k];
+			printf("%g*",rowElements[k]);
+			if (si.isInteger(iColumn))
+			  printf("i%d ",iColumn);
+			else
+			  printf("x%d ",iColumn);
+		      }
+		      printf("<= %g\n",rowUpper[irow]);
+		    }
+#endif
+		    int returnCode=rowCut.addCutIfNotDuplicate(rc,i);
+		    doneSomething=true;
+		    if (returnCode<0)
+		      break; // out of space
+		  }
+		}
+	      }
+	    }
+	  }
         }
       }
     }
@@ -5371,7 +5656,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
   delete [] colsol;
   // Add in row cuts
   if (!ninfeas) {
-    rowCut.addCuts(cs,info->strengthenRow);
+    rowCut.addCuts(cs,info->strengthenRow,info->pass);
   }
 #if 0
   {
@@ -6933,7 +7218,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
   delete [] colsol;
   // Add in row cuts
   if (!ninfeas) {
-    rowCut.addCuts(cs,info->strengthenRow);
+    rowCut.addCuts(cs,info->strengthenRow,0);
   }
   return (ninfeas);
 }
@@ -8117,7 +8402,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
   delete [] colsol;
   // Add in row cuts
   if (!ninfeas) {
-    rowCut.addCuts(cs,info->strengthenRow);
+    rowCut.addCuts(cs,info->strengthenRow,0);
   }
   delete [] array;
   abort();

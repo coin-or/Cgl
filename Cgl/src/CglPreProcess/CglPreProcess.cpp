@@ -2008,6 +2008,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       oldModel->messageHandler()->setLogLevel(saveLogLevel);
       if (!presolvedModel) {
         returnModel=NULL;
+	delete pinfo;
         break;
       }
       presolvedModel->messageHandler()->setLogLevel(saveLogLevel);
@@ -2034,6 +2035,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       presolvedModel->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
       presolvedModel->initialSolve();
       numberIterationsPre_ += presolvedModel->getIterationCount();
+      presolvedModel->setHintParam(OsiDoDualInInitial,saveTakeHint,saveStrength);
+      if (!presolvedModel->isProvenOptimal()) {
+        returnModel=NULL;
+        break;
+      }
       // maybe we can fix some
       int numberFixed = 
       reducedCostFix(*presolvedModel);
@@ -2041,11 +2047,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       if (numberFixed)
 	printf("%d variables fixed on reduced cost\n",numberFixed);
 #endif
-      presolvedModel->setHintParam(OsiDoDualInInitial,saveTakeHint,saveStrength);
-      if (!presolvedModel->isProvenOptimal()) {
-        returnModel=NULL;
-        break;
-      }
       OsiSolverInterface * newModel = modified(presolvedModel,constraints,numberChanges,iPass-doInitialPresolve,numberModifiedPasses);
       returnModel=newModel;
       if (!newModel) {
