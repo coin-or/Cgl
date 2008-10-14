@@ -1855,6 +1855,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	    colLower[i] = trueLower[i];
 	}
       }
+      delete [] realRows;
       return 0;
     }
     // Out elements for fixed columns and sort
