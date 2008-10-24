@@ -2728,13 +2728,18 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   // and put back unreasonable bounds on integer variables
   const double * trueLower = si.getColLower();
   const double * trueUpper = si.getColUpper();
-  for (i=0;i<nCols;i++) {
-    if (intVarOriginal[i]==2) {
-      if (colUpper[i] == CGL_REASONABLE_INTEGER_BOUND) 
-	colUpper[i] = trueUpper[i];
-      if (colLower[i] == -CGL_REASONABLE_INTEGER_BOUND) 
-	colLower[i] = trueLower[i];
+  if (!ninfeas) {
+    for (i=0;i<nCols;i++) {
+      if (intVarOriginal[i]==2) {
+	if (colUpper[i] == CGL_REASONABLE_INTEGER_BOUND) 
+	  colUpper[i] = trueUpper[i];
+	if (colLower[i] == -CGL_REASONABLE_INTEGER_BOUND) 
+	  colLower[i] = trueLower[i];
+      }
     }
+  } else {
+    memcpy(colLower,trueLower,nCols*sizeof(double));
+    memcpy(colUpper,trueUpper,nCols*sizeof(double));
   }
   return ninfeas;
 }
