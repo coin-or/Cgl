@@ -943,6 +943,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 				    int tuning)
 {
   originalModel_ = & model;
+  //originalModel_->setHintParam(OsiDoReducePrint,false,OsiHintTry);
   numberSolvers_ = numberPasses;
   model_ = new OsiSolverInterface * [numberSolvers_];
   modifiedModel_ = new OsiSolverInterface * [numberSolvers_];
@@ -2779,6 +2780,49 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
                   }
                   if (fabs(value-newValue)>1.0e-12) {
                     numberChanges++;
+		    // BUT variable may have bound
+		    double rhsAdjust=0.0;
+		    if (gap>0.0) {
+		      // rowLower
+		      if (value>0.0) {
+			// new value is based on going up from lower bound
+			if (colLower[iColumn]) 
+			  rhsAdjust = colLower[iColumn]*(value-newValue);
+		      } else {
+			// new value is based on going down from upper bound
+			if (colUpper[iColumn]) 
+			  rhsAdjust = colUpper[iColumn]*(value-newValue);
+		      }
+		    } else {
+		      // rowUpper
+		      if (value<0.0) {
+			// new value is based on going up from lower bound
+			if (colLower[iColumn]) 
+			  rhsAdjust = colLower[iColumn]*(value-newValue);
+		      } else {
+			// new value is based on going down from upper bound
+			if (colUpper[iColumn]) 
+			  rhsAdjust = colUpper[iColumn]*(value-newValue);
+		      }
+		    }
+		    if (rhsAdjust) {
+#ifdef CLP_INVESTIGATE
+		      printf("FFor column %d bounds %g, %g on row %d bounds %g, %g coefficient was changed from %g to %g with rhs adjustment of %g\n",
+			     iColumn,colLower[iColumn],colUpper[iColumn],
+			     iRow,rowLower[iRow],rowUpper[iRow],
+			     value,newValue,rhsAdjust);
+#endif
+		      if (rowLower[iRow]>-1.0e20)
+			model.setRowLower(iRow,rowLower[iRow]-rhsAdjust);
+		      if (rowUpper[iRow]<1.0e20)
+			model.setRowUpper(iRow,rowUpper[iRow]-rhsAdjust);
+#ifdef CLP_INVESTIGATE
+		      printf("FFor column %d bounds %g, %g on row %d bounds %g, %g coefficient was changed from %g to %g with rhs adjustment of %g\n",
+			     iColumn,colLower[iColumn],colUpper[iColumn],
+			     iRow,rowLower[iRow],rowUpper[iRow],
+			     value,newValue,rhsAdjust);
+#endif
+		    }
                     element[j]=newValue;
 		    handler_->message(CGL_ELEMENTS_CHANGED2,messages_)
 		      <<iRow<<iColumn<<value<<newValue
@@ -3298,6 +3342,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
   info.pass = 0;
   info.formulation_rows = numberRows;
   info.inTree = false;
+  info.options = !numberProhibited_ ? 0 : 2;
   info.randomNumberGenerator=&randomGenerator;
   info.strengthenRow= whichCut;
   // See if user asked for heavy probing
@@ -3804,12 +3849,30 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	If solution needs to be refreshed, do resolve or initialSolve as appropriate.
       */
       if (needResolve) {
-	if (rebuilt)
+	if (rebuilt) {
+	  // basis shot to bits?
+	  //CoinWarmStartBasis *slack =
+	  //dynamic_cast<CoinWarmStartBasis *>(newModel->getEmptyWarmStart()) ;
+	  //newModel->setWarmStart(slack);
+	  //delete slack ;
 	  newModel->initialSolve() ;
-	else
+	} else {
 	  newModel->resolve() ;
+	}
 	numberIterationsPre_ += newModel->getIterationCount();
 	feasible = newModel->isProvenOptimal();
+	if (!feasible&&getCutoff()>1.0e20) {
+	  // Better double check
+	  CoinWarmStartBasis *slack =
+	    dynamic_cast<CoinWarmStartBasis *>(newModel->getEmptyWarmStart()) ;
+	  newModel->setWarmStart(slack);
+	  delete slack ;
+	  newModel->resolve() ;
+	  numberIterationsPre_ += newModel->getIterationCount();
+	  feasible = newModel->isProvenOptimal();
+	  //if (!feasible)
+	  //newModel->writeMpsNative("infeas.mps",NULL,NULL,2,1);
+	}
       }
       if (!feasible)
         break;

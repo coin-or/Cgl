@@ -20,6 +20,11 @@ public:
   /** The number of rows in the original formulation. Some generators may not
       want to consider already generated rows when generating new ones. */
   int formulation_rows;
+  /** Options 
+      1 - treat costed integers as important
+      2 - switch off some stuff as variables semi-integer
+  */
+  int options;
   /// Set true if in tree (to avoid ambiguity at first branch)
   bool inTree;
   /** Replacement array.  Before Branch and Cut it may be beneficial to strengthen rows
