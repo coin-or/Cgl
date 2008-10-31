@@ -179,7 +179,7 @@ private:
 #include <stdarg.h>
 #include <math.h>
 #include <float.h>
-#include <assert.h>
+#include <cassert>
 #include <iostream.h>
 */
 
