@@ -943,7 +943,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 				    int tuning)
 {
   originalModel_ = & model;
-  //originalModel_->setHintParam(OsiDoReducePrint,false,OsiHintTry);
   numberSolvers_ = numberPasses;
   model_ = new OsiSolverInterface * [numberSolvers_];
   modifiedModel_ = new OsiSolverInterface * [numberSolvers_];
@@ -3313,6 +3312,36 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
   originalModel_->setHintParam(OsiDoDualInInitial,saveHint2,saveStrength2);
   originalModel_->setHintParam(OsiDoPresolveInInitial,saveHint,saveStrength);
 }
+//-------------------------------------------------------------------
+// Returns the greatest common denominator of two 
+// positive integers, a and b, found using Euclid's algorithm 
+//-------------------------------------------------------------------
+static int gcd(int a, int b) 
+{
+  int remainder = -1;
+  // make sure a<=b (will always remain so)
+  if(a > b) {
+    // Swap a and b
+    int temp = a;
+    a = b;
+    b = temp;
+  }
+  // if zero then gcd is nonzero (zero may occur in rhs of packed)
+  if (!a) {
+    if (b) {
+      return b;
+    } else {
+      printf("**** gcd given two zeros!!\n");
+      abort();
+    }
+  }
+  while (remainder) {
+    remainder = b % a;
+    b = a;
+    a = remainder;
+  }
+  return b;
+}
 /* Return model with useful modifications.  
    If constraints true then adds any x+y=1 or x-y=0 constraints
    If NULL infeasible
@@ -3479,8 +3508,222 @@ CglPreProcess::modified(OsiSolverInterface * model,
             if (!thisCut) {
               // put in old row
               int start=rowStart[iRow];
-              build.addRow(rowLength[iRow],column+start,rowElements+start,
-                           rowLower[iRow],rowUpper[iRow]);
+	      int kInt=-1;
+	      double newValue=0.0;
+	      if (!iPass&&!iBigPass) {
+		// worthwhile seeing if odd gcd
+		int end = start + rowLength[iRow];
+		double rhsAdjustment=0.0;
+		int nPosInt=0;
+		int nNegInt=0;
+		// Find largest integer coefficient
+		int k;
+		for ( k = start; k < end; ++k) {
+		  CoinBigIndex j = column[k];
+		  if (columnUpper[j]>columnLower[j]) {
+		    if (newModel->isInteger(j)) {
+		      if (rowElements[k]>0.0)
+			nPosInt++;
+		      else
+			nNegInt++;
+		    } else {
+		      break; // no good
+		    }
+		  } else {
+		    rhsAdjustment += columnLower[j]*rowElements[k];
+		  }
+		}
+		if (k==end) {
+		  // see if singleton coefficient can be strengthened
+		  if ((nPosInt==1&&nNegInt>1)||(nNegInt==1&&nPosInt>1)) {
+		    double lo;
+		    double up;
+		    if (rowLower[iRow]>-1.0e20)
+		      lo = rowLower[iRow]-rhsAdjustment;
+		    else
+		      lo=-COIN_DBL_MAX;
+		    if(rowUpper[iRow]<1.0e20)
+		      up = rowUpper[iRow]-rhsAdjustment;
+		    else
+		      up=COIN_DBL_MAX;
+		    double multiplier=1.0;
+		    if (nNegInt==1) {
+		      // swap signs
+		      multiplier=lo;
+		      lo=-up;
+		      up=-multiplier;
+		      multiplier=-1.0;
+		    }
+		    bool possible=true;
+		    double singletonValue=0;
+		    double scale = 4.0*5.0*6.0;
+		    int kGcd=-1;
+		    double smallestSum = 0.0;
+		    double largestSum = 0.0;
+		    for ( k = start; k < end; ++k) {
+		      CoinBigIndex j = column[k];
+		      double value=multiplier*rowElements[k];
+		      if (columnUpper[j]>columnLower[j]) {
+			if (value>0.0) {
+			  // singleton
+			  kInt=j;
+			  if (columnUpper[j]-columnLower[j]!=1.0) {
+			    possible = false;
+			    break;
+			  } else {
+			    singletonValue=value;
+			  }
+			} else {
+			  if (columnLower[j]>-1.0e10)
+			    smallestSum += value*columnLower[j];
+			  else
+			    smallestSum = -COIN_DBL_MAX;
+			  if (columnUpper[j]<-1.0e10)
+			    largestSum += value*columnUpper[j];
+			  else
+			    largestSum = COIN_DBL_MAX;
+			  value *=-scale;
+			  if (fabs(value-floor(value+0.5))>1.0e-12) {
+			    possible=false;
+			    break;
+			  } else {
+			    int kVal = (int) floor(value+0.5);
+			    if (kGcd>0) 
+			      kGcd = gcd(kGcd,kVal);
+			    else
+			      kGcd=kVal;
+			  }
+			}
+		      }
+		    }
+		    if (possible) {
+		      double multiple = ((double) kGcd)/scale;
+		      int interesting=0;
+		      double saveLo=lo;
+		      double saveUp=up;
+		      double nearestLo0=lo;
+		      double nearestUp0=up;
+		      double nearestLo1=lo;
+		      double nearestUp1=up;
+		      // adjust rhs for singleton 
+		      if (lo!=-COIN_DBL_MAX) {
+			// singleton at lb
+			lo -= columnLower[kInt]*singletonValue;
+			double exact = lo/multiple;
+			if (fabs(exact-floor(exact+0.5))>1.0e-4) {
+			  interesting +=1;
+			  nearestLo0 = ceil(exact)*multiple;
+			} 
+			// singleton at ub
+			lo -= singletonValue;
+			exact = lo/multiple;
+			if (fabs(exact-floor(exact+0.5))>1.0e-4) {
+			  interesting +=2;
+			  nearestLo1 = ceil(exact)*multiple;
+			}
+		      }
+		      if (up!=COIN_DBL_MAX) {
+			// singleton at lb
+			up -= columnLower[kInt]*singletonValue;
+			double exact = up/multiple;
+			if (fabs(exact-floor(exact+0.5))>1.0e-4) {
+			  interesting +=4;
+			  nearestUp0 = floor(exact)*multiple;
+			} 
+			// singleton at ub
+			up -= singletonValue;
+			exact = up/multiple;
+			if (fabs(exact-floor(exact+0.5))>1.0e-4) {
+			  interesting +=8;
+			  nearestUp1 = floor(exact)*multiple;
+			} 
+		      }
+		      if (interesting) {
+#ifdef CLP_INVESTIGATE
+			printf("Row %d interesting %d lo,up %g,%g singleton %d value %g bounds %g,%g - gcd %g\n",iRow,interesting,saveLo,saveUp,kInt,singletonValue,
+			       columnLower[kInt],columnUpper[kInt],multiple);
+			printf("Orig lo,up %g,%g %d\n",rowLower[iRow],rowUpper[iRow],end-start);
+			for ( k = start; k < end; ++k) {
+			  CoinBigIndex j = column[k];
+			  double value=multiplier*rowElements[k];
+			  printf(" (%d, %g - bds %g, %g)",j,value,
+				 columnLower[j],columnUpper[j]);
+			}
+			printf("\n");
+#endif
+			if(columnLower[kInt]) {
+#ifdef CLP_INVESTIGATE
+			  printf("ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ\n"); //think
+#endif
+			  interesting=0;
+			}
+			newValue = singletonValue;
+			double newLoRhs = rowLower[iRow];
+			double newUpRhs = rowUpper[iRow];
+			if ((interesting&3)!=0) {
+			  newLoRhs = nearestLo0;
+			  newValue = nearestLo0-nearestLo1;
+			}
+			if (saveLo==saveUp&&((interesting&5)==5||(interesting&10)==10)) {
+#ifdef CLP_INVESTIGATE
+			  printf("INFEAS? ");
+#endif
+			  interesting=0; //ninfeas++;
+			}
+			if ((interesting&12)) {
+			  double value2 = newValue;
+			  newUpRhs = nearestUp0;
+			  newValue = nearestUp0-nearestUp1;
+#ifdef CLP_INVESTIGATE
+			  if (newValue!=value2) {
+			    printf("??? old newvalue %g ",newValue);
+			  }
+#endif
+			}
+#ifdef CLP_INVESTIGATE
+			printf("guess is new lo %g, new up %g, new value %g\n",
+			       newLoRhs,newUpRhs,newValue);
+#endif
+		      }
+		      // Just do mzzv11 case
+		      double exact = singletonValue/multiple;
+		      if (fabs(exact-floor(exact+0.5))<1.0e-5)
+			interesting &= ~2;
+		      if (!smallestSum&&interesting==2&&!saveLo&&saveUp>1.0e20) {
+			double newValue = multiple*floor(exact);
+			newValue *= multiplier;
+#ifdef CLP_INVESTIGATE
+			printf("New coefficient for %d will be %g\n",kInt,newValue);
+#endif
+		      } else {
+			// don't do
+			kInt=-1;
+		      }
+		    } else {
+		      kInt=-1;
+		    }
+		  }
+		}
+		// endgcd
+	      }
+	      int length = rowLength[iRow];
+	      if (kInt<0) {
+		build.addRow(length,column+start,rowElements+start,
+			     rowLower[iRow],rowUpper[iRow]);
+	      } else {
+		assert (newValue);
+		double * els = CoinCopyOfArray(rowElements+start,length);
+		for ( int k = 0; k < length; ++k) {
+		  int j = column[k+start];
+		  if (j==kInt) {
+		    els[k] = newValue;
+		    break;
+		  }
+		}
+		build.addRow(length,column+start,els,
+			     rowLower[iRow],rowUpper[iRow]);
+		delete [] els;
+	      }
 	      keepRow[iRow]=1;
             } else {
               // strengthens this row (should we check?)
