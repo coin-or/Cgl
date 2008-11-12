@@ -2775,6 +2775,43 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
                   }
                   if (fabs(value-newValue)>1.0e-12) {
                     numberChanges++;
+		    // BUT variable may have bound
+		    double rhsAdjust=0.0;
+		    if (gap>0.0) {
+		      // rowLower
+		      if (value>0.0) {
+			// new value is based on going up from lower bound
+			if (colLower[iColumn]) 
+			  rhsAdjust = colLower[iColumn]*(value-newValue);
+		      } else {
+			// new value is based on going down from upper bound
+			if (colUpper[iColumn]) 
+			  rhsAdjust = colUpper[iColumn]*(value-newValue);
+		      }
+		    } else {
+		      // rowUpper
+		      if (value<0.0) {
+			// new value is based on going up from lower bound
+			if (colLower[iColumn]) 
+			  rhsAdjust = colLower[iColumn]*(value-newValue);
+		      } else {
+			// new value is based on going down from upper bound
+			if (colUpper[iColumn]) 
+			  rhsAdjust = colUpper[iColumn]*(value-newValue);
+		      }
+		    }
+		    if (rhsAdjust) {
+#ifdef CLP_INVESTIGATE
+		      printf("FFor column %d bounds %g, %g on row %d bounds %g, %g coefficient was changed from %g to %g with rhs adjustment of %g\n",
+			     iColumn,colLower[iColumn],colUpper[iColumn],
+			     iRow,rowLower[iRow],rowUpper[iRow],
+			     value,newValue,rhsAdjust);
+#endif
+		      if (rowLower[iRow]>-1.0e20)
+			model.setRowLower(iRow,rowLower[iRow]-rhsAdjust);
+		      if (rowUpper[iRow]<1.0e20)
+			model.setRowUpper(iRow,rowUpper[iRow]-rhsAdjust);
+		    }
                     element[j]=newValue;
 		    handler_->message(CGL_ELEMENTS_CHANGED2,messages_)
 		      <<iRow<<iColumn<<value<<newValue
