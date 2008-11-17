@@ -314,36 +314,6 @@ static void checkBounds(const OsiRowCutDebugger * debugger,OsiColCut & cut)
   }
 }
 #endif
-//-------------------------------------------------------------------
-// Returns the greatest common denominator of two 
-// positive integers, a and b, found using Euclid's algorithm 
-//-------------------------------------------------------------------
-static int gcd(int a, int b) 
-{
-  int remainder = -1;
-  // make sure a<=b (will always remain so)
-  if(a > b) {
-    // Swap a and b
-    int temp = a;
-    a = b;
-    b = temp;
-  }
-  // if zero then gcd is nonzero (zero may occur in rhs of packed)
-  if (!a) {
-    if (b) {
-      return b;
-    } else {
-      printf("**** gcd given two zeros!!\n");
-      abort();
-    }
-  }
-  while (remainder) {
-    remainder = b % a;
-    b = a;
-    a = remainder;
-  }
-  return b;
-}
 #define CGL_REASONABLE_INTEGER_BOUND 1.23456789e10
 // This tightens column bounds (and can declare infeasibility)
 // It may also declare rows to be redundant

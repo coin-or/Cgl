@@ -3671,7 +3671,9 @@ CglPreProcess::modified(OsiSolverInterface * model,
 			  interesting=0; //ninfeas++;
 			}
 			if ((interesting&12)) {
+#ifdef CLP_INVESTIGATE
 			  double value2 = newValue;
+#endif
 			  newUpRhs = nearestUp0;
 			  newValue = nearestUp0-nearestUp1;
 #ifdef CLP_INVESTIGATE
