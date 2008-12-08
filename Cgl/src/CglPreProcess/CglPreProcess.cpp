@@ -1429,8 +1429,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     }
     if (allPlus)
       nPossible++;
-    int iUpper = (int) floor(upperValue+1.0e-5);
-    int iLower = (int) ceil(lowerValue-1.0e-5);
+    int iUpper = static_cast<int> (floor(upperValue+1.0e-5));
+    int iLower = static_cast<int> (ceil(lowerValue-1.0e-5));
     int state=0;
     if (upperValue<1.0e6) {
       if (iUpper==1-numberM1)
@@ -1439,7 +1439,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
         state=2;
       else if (iUpper<-numberM1)
         state=3;
-      if (fabs(((double) iUpper)-upperValue)>1.0e-9)
+      if (fabs((static_cast<double> (iUpper))-upperValue)>1.0e-9)
         state =-1;
     }
     if (!state&&lowerValue>-1.0e6) {
@@ -1449,7 +1449,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
         state=-2;
       else if (-iLower<-numberP1)
         state=-3;
-      if (fabs(((double) iLower)-lowerValue)>1.0e-9)
+      if (fabs((static_cast<double> (iLower))-lowerValue)>1.0e-9)
         state =-1;
     }
     if (good&&state>0) {
@@ -1516,7 +1516,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     if (numberCliques) {
       handler_->message(CGL_CLIQUES,messages_)
         <<numberCliques
-        << ((double)(totalP1+totalM1))/((double) numberCliques)
+        << (static_cast<double>(totalP1+totalM1))/
+	(static_cast<double> (numberCliques))
         <<CoinMessageEol;
       //printf("%d of these could be converted to equality constraints\n",
       //     numberSlacks);
@@ -1613,9 +1614,9 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	    allInteger=false;
 	  if (allInteger&&fabs(value)<1.0e8) {
 	    if (!multiple)
-	      multiple = (int) fabs(value);
+	      multiple = static_cast<int> (fabs(value));
 	    else if (multiple>0)
-	      multiple = gcd(multiple,(int) fabs(value));
+	      multiple = gcd(multiple,static_cast<int> (fabs(value)));
 	  } else {
 	    allInteger=false;
 	  }
@@ -3587,7 +3588,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 			    possible=false;
 			    break;
 			  } else {
-			    int kVal = (int) floor(value+0.5);
+			    int kVal = static_cast<int> (floor(value+0.5));
 			    if (kGcd>0) 
 			      kGcd = gcd(kGcd,kVal);
 			    else
@@ -3597,7 +3598,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 		      }
 		    }
 		    if (possible) {
-		      double multiple = ((double) kGcd)/scale;
+		      double multiple = (static_cast<double> (kGcd))/scale;
 		      int interesting=0;
 		      double saveLo=lo;
 		      double saveUp=up;
@@ -3873,7 +3874,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	      int startV = toOne[v];
 	      int endV = toZero[v+1];
 	      for (int jv=startV;jv<endV;jv++) {
-		if(k==(int) entry[jv].sequence) {
+		if(k==static_cast<int> (entry[jv].sequence)) {
 		  int goingToOneV = entry[jv].oneFixed;
 		  double lo,up;
 		  if (!goingToOneV) {
@@ -3901,7 +3902,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	      int startV = toZero[v];
 	      int endV = toOne[v];
 	      for (int jv=startV;jv<endV;jv++) {
-		if(k==(int) entry[jv].sequence) {
+		if(k==static_cast<int> (entry[jv].sequence)) {
 		  int goingToOneV = entry[jv].oneFixed;
 		  double lo,up;
 		  if (!goingToOneV) {
@@ -3939,7 +3940,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	      int startV = toOne[v];
 	      int endV = toZero[v+1];
 	      for (int jv=startV;jv<endV;jv++) {
-		if(k==(int) entry[jv].sequence) {
+		if(k==static_cast<int> (entry[jv].sequence)) {
 		  int goingToOneV = entry[jv].oneFixed;
 		  double lo,up;
 		  if (goingToOneV) {
@@ -3967,7 +3968,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	      int startV = toZero[v];
 	      int endV = toOne[v];
 	      for (int jv=startV;jv<endV;jv++) {
-		if(k==(int) entry[jv].sequence) {
+		if(k==static_cast<int> (entry[jv].sequence)) {
 		  int goingToOneV = entry[jv].oneFixed;
 		  double lo,up;
 		  if (goingToOneV) {
@@ -4623,9 +4624,9 @@ CglPreProcess::someFixed(OsiSolverInterface & model,
     }
   }
   CoinSort_2(dj,dj+number,sort);
-  int numberToFix = (int) (numberColumns *(1.0-fractionToKeep));
+  int numberToFix = static_cast<int> (numberColumns *(1.0-fractionToKeep));
   if (!fixContinuousAsWell)
-    numberToFix = (int) ((numberColumns-numberContinuous) *(1.0-fractionToKeep));
+    numberToFix = static_cast<int> ((numberColumns-numberContinuous) *(1.0-fractionToKeep));
   numberToFix = CoinMax(numberToFix,numberThrow);
   numberToFix = CoinMin(number,numberToFix);
   printf("%d columns fixed\n",numberToFix);

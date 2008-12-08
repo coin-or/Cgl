@@ -578,7 +578,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver)
 	    if (iPass) {
 	      cliqueEntry2 temp;
 	      temp.oneFixes=1;
-	      temp.sequence=iColumn;
+	      temp.sequence=(iColumn&0x7fffffff);
 	      entry[numberEntries]=temp;
 	    }
 	    numberEntries++;
@@ -588,7 +588,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver)
 	    if (iPass) {
 	      cliqueEntry2 temp;
 	      temp.oneFixes=0;
-	      temp.sequence=iColumn;
+	      temp.sequence=(iColumn&0x7fffffff);
 	      entry[numberEntries]=temp;
 	    }
 	    numberEntries++;
@@ -631,14 +631,14 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver)
 		  if (iPass) {
 		    cliqueEntry2 temp;
 		    temp.oneFixes=0;
-		    temp.sequence=iColumn;
+		    temp.sequence=(iColumn&0x7fffffff);
 		    entry[numberEntries]=temp;
 		  }
 		  numberEntries++;
 		  if (iPass) {
 		    cliqueEntry2 temp;
 		    temp.oneFixes=0;
-		    temp.sequence=jColumn;
+		    temp.sequence=(jColumn&0x7fffffff);
 		    entry[numberEntries]=temp;
 		  }
 		  numberEntries++;
@@ -692,14 +692,14 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver)
 		  if (iPass) {
 		    cliqueEntry2 temp;
 		    temp.oneFixes=0;
-		    temp.sequence=iColumn;
+		    temp.sequence=(iColumn&0x7fffffff);
 		    entry[numberEntries]=temp;
 		  }
 		  numberEntries++;
 		  if (iPass) {
 		    cliqueEntry2 temp;
 		    temp.oneFixes=1;
-		    temp.sequence=jColumn;
+		    temp.sequence=(jColumn&0x7fffffff);
 		    entry[numberEntries]=temp;
 		  }
 		  numberEntries++;
@@ -740,14 +740,14 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver)
 		  if (iPass) {
 		    cliqueEntry2 temp;
 		    temp.oneFixes=1;
-		    temp.sequence=iColumn;
+		    temp.sequence=(iColumn&0x7fffffff);
 		    entry[numberEntries]=temp;
 		  }
 		  numberEntries++;
 		  if (iPass) {
 		    cliqueEntry2 temp;
 		    temp.oneFixes=0;
-		    temp.sequence=jColumn;
+		    temp.sequence=(jColumn&0x7fffffff);
 		    entry[numberEntries]=temp;
 		  }
 		  numberEntries++;
@@ -801,14 +801,14 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver)
 		  if (iPass) {
 		    cliqueEntry2 temp;
 		    temp.oneFixes=1;
-		    temp.sequence=iColumn;
+		    temp.sequence=(iColumn&0x7fffffff);
 		    entry[numberEntries]=temp;
 		  }
 		  numberEntries++;
 		  if (iPass) {
 		    cliqueEntry2 temp;
 		    temp.oneFixes=1;
-		    temp.sequence=jColumn;
+		    temp.sequence=(jColumn&0x7fffffff);
 		    entry[numberEntries]=temp;
 		  }
 		  numberEntries++;
@@ -964,7 +964,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver)
 	    cliqueType=tempT;
 	  }
 	  cliqueEntry2 eI;
-	  eI.sequence=iColumn;
+	  eI.sequence=(iColumn&0x7fffffff);
 	  eI.oneFixes=0;
 	  entry[numberEntries++]=eI;
 	  whichM[0]=iColumn;
@@ -1052,7 +1052,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver)
 	    cliqueType=tempT;
 	  }
 	  cliqueEntry2 eI;
-	  eI.sequence=iColumn;
+	  eI.sequence=(iColumn&0x7fffffff);
 	  eI.oneFixes=1;
 	  entry[numberEntries++]=eI;
 	  whichM[0]=iColumn;
@@ -1184,8 +1184,8 @@ CglTreeProbingInfo::fixes(int variable, int toValue, int fixedVariable,bool fixe
     fixingEntry_ = temp2;
   }
   fixEntry entry1;
-  entry1.oneFixed=fixedTo;
-  entry1.sequence=intFix;
+  entry1.oneFixed=fixedTo&1;
+  entry1.sequence=(intFix&0x7fffffff);
   fixEntry_[numberEntries_] = entry1;
   assert (toValue==-1||toValue==1);
   assert (fixedTo==0||fixedTo==1);
@@ -1261,7 +1261,7 @@ CglTreeProbingInfo::convert() const
 	assert (sizeof(int)==4);
 	std::sort((unsigned int *) fixEntry_+last,(unsigned int *) fixEntry_+n);
 	fixEntry temp2;
-	temp2.sequence=numberVariables_+1;
+	temp2.sequence=(numberVariables_+1)&0x7fffffff;
 	for (int i=last;i<n;i++) {
 	  if (temp2.sequence!=fixEntry_[i].sequence||temp2.oneFixed||fixEntry_[i].oneFixed) {
 	    temp2 = fixEntry_[i];
@@ -1282,7 +1282,7 @@ CglTreeProbingInfo::convert() const
 	assert (sizeof(int)==4);
 	std::sort((unsigned int *) fixEntry_+last,(unsigned int *) fixEntry_+n);
 	fixEntry temp2;
-	temp2.sequence=numberVariables_+1;
+	temp2.sequence=(numberVariables_+1)&0x7fffffff;
 	for (int i=last;i<n;i++) {
 	  if (temp2.sequence!=fixEntry_[i].sequence||temp2.oneFixed||fixEntry_[i].oneFixed) {
 	    temp2 = fixEntry_[i];

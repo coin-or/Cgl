@@ -924,7 +924,7 @@ int DGG_transformConstraint( DGG_data_t *data,
 
       px[i] = data->x[idx];
       rc[i] = data->rc[idx];
-      pi[i] = DGG_isInteger(data, idx); 
+      pi[i] = static_cast<char>(DGG_isInteger(data, idx)); 
       half = (data->ub[idx] - data->lb[idx]) / 2;
 
       if ( data->ub[idx] - data->x[idx] < half ){
