@@ -1749,7 +1749,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     oldModel->getStrParam(OsiSolverName,solverName);
     // Extend if you want other solvers to keep solution
     bool keepSolution=solverName=="clp";
-    presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-8,true,5,prohibited_,keepSolution);
+    presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-8,true,5,prohibited_,keepSolution,rowType_);
     oldModel->messageHandler()->setLogLevel(saveLogLevel);
     if (presolvedModel) {
       presolvedModel->messageHandler()->setLogLevel(saveLogLevel);
@@ -2005,7 +2005,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       oldModel->getStrParam(OsiSolverName,solverName);
       // Extend if you want other solvers to keep solution
       bool keepSolution=solverName=="clp";
-      presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-8,true,5,prohibited_,keepSolution);
+      presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-8,true,5,
+					     prohibited_,keepSolution,rowType_);
       oldModel->messageHandler()->setLogLevel(saveLogLevel);
       if (!presolvedModel) {
         returnModel=NULL;
@@ -4567,6 +4568,28 @@ CglPreProcess::update(const OsiPresolve * pinfo,
   if (rowType_) {
     const int * original = pinfo->originalRows();
     int numberRows = solver->getNumRows();
+#ifdef COIN_DEVELOP
+    int nMarked1=0;
+    for (int i=0;i<pinfo->getNumRows();i++) {
+      if (rowType_[i])
+	nMarked1++;
+    }
+    int nMarked2=0;
+    int k=-1;
+    for (int i=0;i<numberRows;i++) {
+      int iRow = original[i];
+      if (iRow<i)
+	abort();
+      if (iRow<=k)
+	abort();
+      k=iRow;
+      if (rowType_[iRow])
+	nMarked2++;
+    }
+    if (nMarked1>nMarked2)
+      printf("Marked rows reduced from %d to %d\n",
+	     nMarked1,nMarked2);
+#endif
     for (int i=0;i<numberRows;i++) {
       int iRow = original[i];
       rowType_[i]=rowType_[iRow];

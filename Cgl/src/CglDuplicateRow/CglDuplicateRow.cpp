@@ -66,7 +66,8 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     duplicate_[i]=-1;
     int j;
     for (j=rowStart[i];j<rowStart[i]+rowLength[i];j++) {
-      if (elementByRow[j]!=1.0) {
+      int iColumn = column[j];
+      if (elementByRow[j]!=1.0||!si.isInteger(iColumn)) {
         duplicate_[i]=-3;
         rhs_[i]=-1000000;
         break;
@@ -346,9 +347,9 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       double value = columnLower[i];
       for (int jj=columnStart[i];jj<columnStart[i]+columnLength[i];jj++) {
         int iRow = row[jj];
-        nOut += (int) (element[jj]*value);
-        effectiveRhs[iRow] -= (int) (element[jj]*value);
-        effectiveLower[iRow] -= (int) (element[jj]*value);
+        nOut += static_cast<int> (element[jj]*value);
+        effectiveRhs[iRow] -= static_cast<int> (element[jj]*value);
+        effectiveLower[iRow] -= static_cast<int> (element[jj]*value);
       }
     }
   }
@@ -881,7 +882,7 @@ CglDuplicateRow::refreshSolver(OsiSolverInterface * solver)
     lower_[iRow]=markBad;
     duplicate_[iRow]=-1;
     if (rowUpper[iRow]<100) {
-      int iRhs= (int) floor(rowUpper[iRow]);
+      int iRhs= static_cast<int> (floor(rowUpper[iRow]));
       // check elements
       bool good=true;
       for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
@@ -894,7 +895,7 @@ CglDuplicateRow::refreshSolver(OsiSolverInterface * solver)
         }
       }
       if (good) {
-        lower_[iRow] = (int) CoinMax(0.0,ceil(rowLower[iRow]));
+        lower_[iRow] = static_cast<int> (CoinMax(0.0,ceil(rowLower[iRow])));
         if (iRhs>=lower_[iRow]) {
           rhs_[iRow]=iRhs;
           numberGood++;

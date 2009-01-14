@@ -198,11 +198,11 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
   int maxels=MAXELS;
   //How do I do reallocs in C++?
   // 1.0 - value x(i) - value x(j) for each node pair (or reverse if cover) 
-  double * cost = (double *) malloc(maxels*sizeof(double));
+  double * cost = reinterpret_cast<double *> (malloc(maxels*sizeof(double)));
   // arc i.e. j which can be reached from i
-  int * to= (int *) malloc(maxels*sizeof(int));
+  int * to= reinterpret_cast<int *> (malloc(maxels*sizeof(int)));
   //original row for each arc
-  int * rowfound=(int *) malloc(maxels*sizeof(int));
+  int * rowfound=reinterpret_cast<int *> (malloc(maxels*sizeof(int)));
   // start of each column
   int * starts=new int[2*nSmall+1];
   starts[0]=0;
@@ -220,9 +220,9 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
       // reallocate if matrix reached size limit
       if (n+nCols>maxels) {
 	maxels*=2;
-	cost=(double *) realloc(cost,maxels*sizeof(int));
-	to=(int *) realloc(to,maxels*sizeof(int));
-	rowfound=(int *) realloc(rowfound,maxels*sizeof(int));
+	cost=reinterpret_cast<double *> (realloc(cost,maxels*sizeof(int)));
+	to=reinterpret_cast<int *> (realloc(to,maxels*sizeof(int)));
+	rowfound=reinterpret_cast<int *> (realloc(rowfound,maxels*sizeof(int)));
       }
       // get all other connected variables
       for (k=columnStart[i];k<columnStart[i]+columnLength[i];k++) {
@@ -272,9 +272,9 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 
   if (2*n>maxels) {
     maxels=2*n;
-    cost=(double *) realloc(cost,maxels*sizeof(double));
-    to=(int *) realloc(to,maxels*sizeof(int));
-    rowfound=(int *) realloc(rowfound,maxels*sizeof(int));
+    cost=reinterpret_cast<double *> (realloc(cost,maxels*sizeof(double)));
+    to=reinterpret_cast<int *> (realloc(to,maxels*sizeof(int)));
+    rowfound=reinterpret_cast<int *> (realloc(rowfound,maxels*sizeof(int)));
   }
   /* copy and make bipartite*/
 
@@ -320,7 +320,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
   // we don't know how many cuts will be generated
   int ncuts=0;
   int maxcuts=1000;
-  double * hash = (double *) malloc(maxcuts*sizeof(double));
+  double * hash = reinterpret_cast<double *> (malloc(maxcuts*sizeof(double)));
   // to clean (should not be needed)
   int * clean = new int[nSmall2];
   int * candidate = new int[CoinMax(nSmall2,nCols)];
@@ -490,7 +490,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 #endif
 	    good=false;
 	  } else {
-	    if (((double) ii) * minimumViolationPer_>violation||
+	    if (static_cast<double> (ii) * minimumViolationPer_>violation||
 		ii>maximumEntries_) {
 #ifdef CGL_DEBUG
 	      printf("why no cut\n");
@@ -553,7 +553,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 	      //new
 	      if (ncuts==maxcuts) {
 		maxcuts *= 2;
-		hash = (double *) realloc(hash,maxcuts*sizeof(double));
+		hash = reinterpret_cast<double *> (realloc(hash,maxcuts*sizeof(double)));
 	      }
 	      hash[ncuts++]=value;
 	      rc.setRow(ii,candidate,element);

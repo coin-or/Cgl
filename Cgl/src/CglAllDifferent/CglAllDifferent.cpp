@@ -63,9 +63,9 @@ void CglAllDifferent::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   for (i=0;i<numberDifferent_;i++) {
     int iColumn = originalWhich_[i];
     assert (iColumn<nCols);
-    lo[i]  = (int) lower[iColumn];
+    lo[i]  = static_cast<int> (lower[iColumn]);
     assert (floor(lower[iColumn]+0.5)==lower[iColumn]);
-    up[i]  = (int) upper[iColumn];
+    up[i]  = static_cast<int> (upper[iColumn]);
     assert (floor(upper[iColumn]+0.5)==upper[iColumn]);
     assert (up[i]>=lo[i]);
   }
@@ -89,7 +89,7 @@ void CglAllDifferent::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     }
     numberLook++;
     int gap = maxValue-offset+1;
-    double size = ((double) gap) * ((double) numberDifferent_);
+    double size = static_cast<double> (gap) * numberDifferent_;
     if (size>1.0e7) {
       if (logLevel_)
         printf("Only looking at %d sets\n",numberLook);
@@ -381,11 +381,11 @@ void CglAllDifferent::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
         }
       }
       if (firstLo+offset>lo[i]) {
-        lbs.insert(iColumn,(double) (firstLo+offset));
+        lbs.insert(iColumn,static_cast<double> (firstLo+offset));
         nTightened++;
       }
       if (lastUp+offset<up[i]) {
-        ubs.insert(iColumn,(double) (lastUp+offset));
+        ubs.insert(iColumn,static_cast<double> (lastUp+offset));
         nTightened++;
       }
     }

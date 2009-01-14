@@ -57,9 +57,9 @@ public:
   double getMinViolation() {return minViolation_;}
   /** @} */
 
-  const std::string& failureString(RejectionsReasons code) const {return rejections_[(int) code];} 
+  const std::string& failureString(RejectionsReasons code) const {return rejections_[static_cast<int> (code)];} 
   const std::string& failureString(int code) const {return rejections_[ code];} 
-  int numRejected(RejectionsReasons code)const{ return numRejected_[(int) code];}
+  int numRejected(RejectionsReasons code)const{ return numRejected_[static_cast<int> (code)];}
   int numRejected(int code)const{ return numRejected_[ code];}
 private:
   static void fillRejectionReasons();

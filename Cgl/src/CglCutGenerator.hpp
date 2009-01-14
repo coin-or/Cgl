@@ -62,7 +62,7 @@ public:
   */
   virtual std::string generateCpp( FILE * fp) {return "";}
 
-  /// This can be used to refresh any inforamtion
+  /// This can be used to refresh any information
   virtual void refreshSolver(OsiSolverInterface * solver) {}
   //@}
   

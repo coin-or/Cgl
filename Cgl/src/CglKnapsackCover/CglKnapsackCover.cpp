@@ -37,6 +37,7 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
   // of the variable, and 0 otherwise. 
   CoinPackedVector krow; 
   double b=0.0;
+  int numberRowCutsBefore = cs.sizeRowCuts();
   int * complement= new int[nCols];
     
   // Create a local copy of the column solution (colsol), call it xstar, and
@@ -672,6 +673,11 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
       }
 #endif
     }
+  }
+  if (!info.inTree&&((info.options&4)==4||((info.options&8)&&!info.pass))) {
+    int numberRowCutsAfter = cs.sizeRowCuts();
+    for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++)
+      cs.rowCutPtr(i)->setGloballyValid();
   }
   // Clean up: free allocated memory
   if (toCheck != rowsToCheck_)
@@ -2620,7 +2626,7 @@ CglKnapsackCover::liftCoverCut(
           assert( notE );
 #endif
 	  if (i)
-	    cut.insert( remainder.getIndices()[h], (double)i );
+	    cut.insert( remainder.getIndices()[h], static_cast<double>(i) );
           found=1;
         }
         else if (remainder.getElements()[h] < muMinusLambda[i+1]+rho[i+1]){

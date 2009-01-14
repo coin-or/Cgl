@@ -85,6 +85,7 @@ CglClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
    int numberOriginalRows = si.getNumRows();
    if (info.inTree&&justOriginalRows_)
      numberOriginalRows = info.formulation_rows;
+   int numberRowCutsBefore = cs.sizeRowCuts();
    // First select which rows/columns we are interested in.
    if (!setPacking_) {
       selectFractionalBinaries(si);
@@ -116,6 +117,11 @@ CglClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
       find_rcl(cs);
    if (do_star_clique)
       find_scl(cs);
+   if (!info.inTree&&((info.options&4)==4||((info.options&8)&&!info.pass))) {
+     int numberRowCutsAfter = cs.sizeRowCuts();
+     for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++)
+       cs.rowCutPtr(i)->setGloballyValid();
+   }
 
    delete[] cl_indices;     cl_indices = 0;
    delete[] cl_del_indices; cl_del_indices = 0;
@@ -479,14 +485,14 @@ CglClique::scl_delete_node(const int del_ind, int& current_nodenum,
 
    /* delete the entry corresponding to del_ind from current_indices, 
       current_degrees and current_values */
-   memmove((char *)(current_indices + del_ind),
-	   (char *)(current_indices + (del_ind+1)),
+   memmove(reinterpret_cast<char *>(current_indices + del_ind),
+	   reinterpret_cast<char *>(current_indices + (del_ind+1)),
 	   (current_nodenum-del_ind-1) * sizeof(int));
-   memmove((char *)(current_degrees + del_ind),
-	   (char *)(current_degrees + (del_ind+1)),
+   memmove(reinterpret_cast<char *>(current_degrees + del_ind),
+	   reinterpret_cast<char *>(current_degrees + (del_ind+1)),
 	   (current_nodenum-del_ind-1) * sizeof(int));
-   memmove((char *)(current_values + del_ind),
-	   (char *)(current_values + (del_ind+1)),
+   memmove(reinterpret_cast<char *>(current_values + del_ind),
+	   reinterpret_cast<char *>(current_values + (del_ind+1)),
 	   (current_nodenum-del_ind-1) * sizeof(double));
    current_nodenum--;
    

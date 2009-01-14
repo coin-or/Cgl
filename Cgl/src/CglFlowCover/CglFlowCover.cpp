@@ -250,6 +250,7 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     }
     else
 #endif
+    int numberRowCutsBefore = cs.sizeRowCuts();
     
     flowPreprocess(si);
 
@@ -332,6 +333,11 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     std::cout << "\nnumFlowCuts = "<< getNumFlowCuts()  << std::endl;
     std::cout << "CGLFLOW_COL_BINNEG = "<< CGLFLOW_COL_BINNEG  << std::endl;
 #endif
+    if (!info.inTree&&((info.options&4)==4||((info.options&8)&&!info.pass))) {
+      int numberRowCutsAfter = cs.sizeRowCuts();
+      for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++)
+        cs.rowCutPtr(i)->setGloballyValid();
+    }
 
     if (ind != 0)  { delete [] ind; ind = 0; }
     if (coef != 0) { delete [] coef; coef = 0; }

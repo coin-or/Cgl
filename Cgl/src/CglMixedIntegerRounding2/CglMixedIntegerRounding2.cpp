@@ -58,6 +58,7 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
     }
   }
 
+  int numberRowCutsBefore = cs.sizeRowCuts();
   const double* xlp        = si.getColSolution();  // LP solution
   const double* colUpperBound = si.getColUpper();  // vector of upper bounds
   const double* colLowerBound = si.getColLower();  // vector of lower bounds
@@ -88,6 +89,11 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
 		  colInds, rowStarts, rowLengths, matrixByCol,
 		  coefByCol, rowInds, colStarts, colLengths,
 		  cs);
+  if (!info.inTree&&((info.options&4)==4||((info.options&8)&&!info.pass))) {
+    int numberRowCutsAfter = cs.sizeRowCuts();
+    for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++)
+      cs.rowCutPtr(i)->setGloballyValid();
+  }
 
 }
 

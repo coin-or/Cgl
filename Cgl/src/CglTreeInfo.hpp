@@ -23,6 +23,8 @@ public:
   /** Options 
       1 - treat costed integers as important
       2 - switch off some stuff as variables semi-integer
+      4 - set global cut flag if at root node
+      8 - set global cut flag if at root node and first pass
   */
   int options;
   /// Set true if in tree (to avoid ambiguity at first branch)

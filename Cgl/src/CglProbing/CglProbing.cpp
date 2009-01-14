@@ -1564,6 +1564,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   int nRows;
   
   CoinPackedMatrix * rowCopy=NULL;
+  int numberRowCutsBefore = cs.sizeRowCuts();
 
   // get branch and bound cutoff
   double cutoff;
@@ -2757,6 +2758,11 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   } else {
     memcpy(colLower,trueLower,nCols*sizeof(double));
     memcpy(colUpper,trueUpper,nCols*sizeof(double));
+  }
+  if (!info->inTree&&((info->options&4)==4||((info->options&8)&&!info->pass))) {
+    int numberRowCutsAfter = cs.sizeRowCuts();
+    for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++)
+      cs.rowCutPtr(i)->setGloballyValid();
   }
   return ninfeas;
 }
@@ -5246,7 +5252,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
           }
         }
         if (kInt>=0) {
-          double upperBound = CoinMin(colUpper[kInt],(double) COIN_INT_MAX);
+          double upperBound = CoinMin(colUpper[kInt],static_cast<double>(COIN_INT_MAX));
 	  double upAdjust=0.0;
 	  double downAdjust=0.0;
           for (k = krs; k < kre; ++k) {

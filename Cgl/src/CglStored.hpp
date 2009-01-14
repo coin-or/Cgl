@@ -68,6 +68,9 @@ public:
   /// Copy constructor 
   CglStored (const CglStored & rhs);
 
+  /// Constructor from file
+  CglStored (const char * fileName);
+
   /// Clone
   virtual CglCutGenerator * clone() const;
 

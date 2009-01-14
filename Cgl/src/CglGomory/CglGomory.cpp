@@ -65,6 +65,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 #else
   const OsiRowCutDebugger * debugger = NULL;
 #endif
+  int numberRowCutsBefore = cs.sizeRowCuts();
 
   generateCuts(debugger, cs, *si.getMatrixByCol(), *si.getMatrixByRow(),
 	   si.getObjCoefficients(), si.getColSolution(),
@@ -74,6 +75,11 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 
   delete warmstart;
   delete [] intVar;
+  if (!info.inTree&&((info.options&4)==4||((info.options&8)&&!info.pass))) {
+    int numberRowCutsAfter = cs.sizeRowCuts();
+    for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++)
+      cs.rowCutPtr(i)->setGloballyValid();
+  }
 }
 
 // Returns value - floor but allowing for small errors
@@ -159,8 +165,8 @@ inline Rational nearestRational(double value, int maxDenominator)
     return tryA;
   integerPart = floor(value);
   value -= integerPart;
-  tryThis.numerator = tryB.numerator* (int ) integerPart + tryA.numerator;
-  tryThis.denominator = tryB.denominator* (int ) integerPart + tryA.denominator;
+  tryThis.numerator = tryB.numerator* static_cast<int> (integerPart) + tryA.numerator;
+  tryThis.denominator = tryB.denominator* static_cast<int> (integerPart) + tryA.denominator;
   tryA = tryB;
   tryB = tryThis;
 
@@ -178,8 +184,8 @@ inline Rational nearestRational(double value, int maxDenominator)
     value = 1.0/value;
     integerPart = floor(value+1.0e-10);
     value -= integerPart;
-    tryThis.numerator = tryB.numerator* (int ) integerPart + tryA.numerator;
-    tryThis.denominator = tryB.denominator* (int ) integerPart + tryA.denominator;
+    tryThis.numerator = tryB.numerator* static_cast<int> (integerPart) + tryA.numerator;
+    tryThis.denominator = tryB.denominator* static_cast<int>(integerPart) + tryA.denominator;
     tryA = tryB;
     tryB = tryThis;
   }
@@ -618,8 +624,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 #ifdef CGL_DEBUG
 	    assert (sizeof(Rational)==sizeof(double));
 #endif
-	    Rational * cleaned = (Rational *) cutElement;
-	    int * xInt = (int *) cutElement;
+	    Rational * cleaned = reinterpret_cast<Rational *> (cutElement);
+	    int * xInt = reinterpret_cast<int *> (cutElement);
 	    // cut should have an integer slack so try and simplify
 	    // add in rhs and put in cutElements (remember to zero later)
 	    cutIndex[number]=numberColumns+1;
@@ -653,7 +659,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      for (j=0; j<number+1;j++) {
 		double value = fabs(packed[j]);
 		double dxInt = value*multiplier;
-		xInt[j]= (int) (dxInt+0.5); 
+		xInt[j]= static_cast<int> (dxInt+0.5); 
 #if CGL_DEBUG>1
 		printf("%g => %g   \n",value,dxInt);
 #endif
@@ -736,7 +742,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	    rhs += 1.0e-8;
 	    // relax if lots of elements for mixed gomory
 	    if (number>=20) {
-	      rhs  += 1.0e-7*((double) (number/20));
+	      rhs  += 1.0e-7*(static_cast<double> (number/20));
 	    }
 	  }
 	  // Take off tiny elements

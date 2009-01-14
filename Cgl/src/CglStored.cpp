@@ -255,6 +255,51 @@ CglStored::CglStored (const CglStored & source) :
   if (source.probingInfo_)
     probingInfo_ = new CglTreeProbingInfo(*source.probingInfo_);
 }
+//-------------------------------------------------------------------
+// Constructor from file
+//-------------------------------------------------------------------
+CglStored::CglStored (const char * fileName) :
+  CglCutGenerator(),
+  requiredViolation_(1.0e-5),
+  probingInfo_(NULL)
+{  
+  FILE * fp = fopen(fileName,"rb");
+  if (fp) {
+    int numberRead;
+    int maxInCut=0;
+    int * index = NULL;
+    double * coefficient = NULL;
+    double rhs[2];
+    int n=0;
+    while (n>=0) {
+      numberRead = fread(&n,sizeof(int),1,fp);
+      assert (numberRead==1);
+      if (n<0)
+	break;
+      if (n>maxInCut) {
+	maxInCut=n;
+	delete [] index;
+	delete [] coefficient;
+	index = new int [maxInCut];
+	coefficient = new double [maxInCut];
+      }
+      numberRead = fread(rhs,sizeof(double),2,fp);
+      assert (numberRead==2);
+      numberRead = fread(index,sizeof(int),n,fp);
+      assert (numberRead==n);
+      numberRead = fread(coefficient,sizeof(double),n,fp);
+      assert (numberRead==n);
+      OsiRowCut rc;
+      rc.setRow(n,index,coefficient,false);
+      rc.setLb(rhs[0]);
+      rc.setUb(rhs[1]);   
+      cuts_.insert(rc);
+    }
+    delete [] index;
+    delete [] coefficient;
+    fclose(fp);
+  }
+}
 
 //-------------------------------------------------------------------
 // Clone

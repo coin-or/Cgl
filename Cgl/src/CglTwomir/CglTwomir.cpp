@@ -108,11 +108,12 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   }
 
   si.getStrParam(OsiProbName,probname_) ;
+  int numberRowCutsBefore = cs.sizeRowCuts();
   
   DGG_list_t cut_list;
   DGG_list_init (&cut_list);
 
-  DGG_data_t* data = DGG_getData((const void *) &si);
+  DGG_data_t* data = DGG_getData(reinterpret_cast<const void *> (&si));
 
   // Note that the lhs variables are hash defines to data->cparams.*
   q_max = q_max_;
@@ -126,10 +127,10 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   if (!do_2mir_) q_max = q_min - 1;
 
   if (do_tab_ && info.level < 1 && info.pass < 6)
-      DGG_generateTabRowCuts( &cut_list, data, (const void *) &si );
+    DGG_generateTabRowCuts( &cut_list, data, reinterpret_cast<const void *> (&si) );
   
   if (do_form_)
-    DGG_generateFormulationCuts( &cut_list, data, (const void *) &si,
+    DGG_generateFormulationCuts( &cut_list, data, reinterpret_cast<const void *> (&si),
 				 info.formulation_rows );
   
 #ifdef CGL_DEBUG
@@ -241,6 +242,11 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     DGG_freeConstraint (cut_list.c[i]);
   DGG_list_free (&cut_list);
   DGG_freeData (data);
+  if (!info.inTree&&((info.options&4)==4||((info.options&8)&&!info.pass))) {
+    int numberRowCutsAfter = cs.sizeRowCuts();
+    for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++)
+      cs.rowCutPtr(i)->setGloballyValid();
+  }
 }
 
 
@@ -330,9 +336,9 @@ int DGG_freeData( DGG_data_t *data )
 DGG_data_t* DGG_getData(const void *osi_ptr )
 {
   DGG_data_t *data = NULL;
-  const OsiSolverInterface *si = (const OsiSolverInterface *) osi_ptr;
+  const OsiSolverInterface *si = reinterpret_cast<const OsiSolverInterface *> (osi_ptr);
 
-  data = (DGG_data_t*) malloc( sizeof(DGG_data_t) );
+  data = reinterpret_cast<DGG_data_t*> (malloc( sizeof(DGG_data_t)) );
 
   /* retrieve basis information */
   CoinWarmStart *startbasis = si->getWarmStart();
@@ -367,11 +373,11 @@ DGG_data_t* DGG_getData(const void *osi_ptr )
   data->ninteger = 0;
 
   /* allocate memory for the arrays in 'data' */
-  data->info = (int*) malloc( sizeof(int)*(data->ncol+data->nrow) );
-  data->lb = (double*) malloc( sizeof(double)*(data->ncol+data->nrow) );
-  data->ub = (double*) malloc( sizeof(double)*(data->ncol+data->nrow) );
-  data->x  = (double*) malloc( sizeof(double)*(data->ncol+data->nrow) );
-  data->rc = (double*) malloc( sizeof(double)*(data->ncol+data->nrow) );
+  data->info = reinterpret_cast<int*> (malloc( sizeof(int)*(data->ncol+data->nrow)) );
+  data->lb = reinterpret_cast<double*> (malloc( sizeof(double)*(data->ncol+data->nrow)) );
+  data->ub = reinterpret_cast<double*> (malloc( sizeof(double)*(data->ncol+data->nrow)) );
+  data->x  = reinterpret_cast<double*> (malloc( sizeof(double)*(data->ncol+data->nrow)) );
+  data->rc = reinterpret_cast<double*> (malloc( sizeof(double)*(data->ncol+data->nrow)) );
 
   memset(data->info, 0, sizeof(int)*(data->ncol+data->nrow));
 
@@ -547,7 +553,7 @@ DGG_getSlackExpression(const void *osi_ptr, DGG_data_t* data, int row_index)
   int i,j;
 
   /* retrieve the matrix in row format */
-  const OsiSolverInterface *si = (const OsiSolverInterface *) osi_ptr;
+  const OsiSolverInterface *si = reinterpret_cast<const OsiSolverInterface *> (osi_ptr);
   const CoinPackedMatrix *rowMatrixPtr = si->getMatrixByRow();
   const int *rowBeg = 0, *rowCnt = 0, *rowInd = 0;
   const double *rowMat;
@@ -609,7 +615,7 @@ DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
 #endif
 
   /* obtain pointer to solver interface */
-  const OsiSolverInterface *si = (const OsiSolverInterface *) osi_ptr;
+  const OsiSolverInterface *si = reinterpret_cast<const OsiSolverInterface *> (osi_ptr);
   DGG_TEST(!si, 1, "null OsiSolverInterfave");
 
   /* obtain address of the LP matrix */
@@ -626,7 +632,7 @@ DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
   /* allocate memory for constraint in non-sparse form */
   int nz = 0;
   double *value = NULL, rhs = 0.0;
-  value = (double*)malloc(sizeof(double)*(data->nrow+data->ncol));
+  value = reinterpret_cast<double*>(malloc(sizeof(double)*(data->nrow+data->ncol)));
   memset(value, 0, sizeof(double)*(data->nrow+data->ncol));
 
 
@@ -711,8 +717,8 @@ DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
   if (tabrow->index)
     free(tabrow->index);
   
-  tabrow->coeff = (double*) malloc(sizeof(double)*nz);
-  tabrow->index = (int*) malloc(sizeof(int)*nz);
+  tabrow->coeff = reinterpret_cast<double*> (malloc(sizeof(double)*nz));
+  tabrow->index = reinterpret_cast<int*> (malloc(sizeof(int)*nz));
  
   tabrow->nz = 0;
   for( j = 0; j < data->ncol + data->nrow; j++)
@@ -741,7 +747,7 @@ DGG_getFormulaConstraint( int da_row,
   if ( data->nrow <= da_row || 0> da_row)      DGG_THROW(1, "row out of range...");
   
   /* obtain pointer to solver interface */
-  const OsiSolverInterface *si = (const OsiSolverInterface *) osi_ptr;
+  const OsiSolverInterface *si = reinterpret_cast<const OsiSolverInterface *> (osi_ptr);
   //DGG_TEST(!si, 1, "null OsiSolverInterfave");
   
   /* obtain address of the LP matrix */
@@ -800,7 +806,7 @@ DGG_constraint_t* DGG_newConstraint(int max_arrays)
    DGG_constraint_t *c = NULL;
    
    if (max_arrays <= 0) return NULL;
-   c = (DGG_constraint_t*) malloc(sizeof(DGG_constraint_t));
+   c = reinterpret_cast<DGG_constraint_t*> (malloc(sizeof(DGG_constraint_t)));
    c->nz = 0;
    c->max_nz = max_arrays;
    c->rhs = 0.0;
@@ -808,8 +814,8 @@ DGG_constraint_t* DGG_newConstraint(int max_arrays)
 
    c->coeff = NULL;
    c->index = NULL;
-   c->coeff = (double*)malloc(sizeof(double)*max_arrays);
-   c->index = (int*)malloc(sizeof(int)*max_arrays);
+   c->coeff = reinterpret_cast<double*>(malloc(sizeof(double)*max_arrays));
+   c->index = reinterpret_cast<int*>(malloc(sizeof(int)*max_arrays));
    return c;
 }
 
@@ -869,9 +875,9 @@ void DGG_list_free(DGG_list_t *l)
 int DGG_list_addcut (DGG_list_t *l, DGG_constraint_t *cut, int ctype, double alpha)
 {
   l->n ++;
-  l->c = (DGG_constraint_t **)realloc (l->c, l->n * sizeof(DGG_constraint_t *));
-  l->ctype = (int *)realloc (l->ctype, l->n * sizeof (int));
-  l->alpha = (double *)realloc (l->alpha, l->n * sizeof (double));
+  l->c = reinterpret_cast<DGG_constraint_t **>(realloc (l->c, l->n * sizeof(DGG_constraint_t *)));
+  l->ctype = reinterpret_cast<int *>(realloc (l->ctype, l->n * sizeof (int)));
+  l->alpha = reinterpret_cast<double *>(realloc (l->alpha, l->n * sizeof (double)));
 
   if (l->c == NULL || l->ctype == NULL || l->alpha == NULL){
     printf ("No memory, bailing out\n");
@@ -912,9 +918,9 @@ int DGG_transformConstraint( DGG_data_t *data,
                              DGG_constraint_t *constraint )
 {
   double half;
-  double *px = (double*) malloc( sizeof(double)*constraint->max_nz );
-  double *rc = (double*) malloc( sizeof(double)*constraint->max_nz );
-  char   *pi = (char*)   malloc( sizeof(char)  *constraint->max_nz );
+  double *px = reinterpret_cast<double*> (malloc( sizeof(double)*constraint->max_nz ));
+  double *rc = reinterpret_cast<double*> (malloc( sizeof(double)*constraint->max_nz ));
+  char   *pi = reinterpret_cast<char*>   (malloc( sizeof(char)  *constraint->max_nz ));
 
   {
     int i, idx;
@@ -984,7 +990,7 @@ DGG_substituteSlacks( const void *solver_ptr,
   DGG_constraint_t *row=NULL;
  
   /* lcut will store all the column coefficients. allocate space and init. */
-  lcut = (double*)malloc(sizeof(double)*data->ncol); 
+  lcut = reinterpret_cast<double*>(malloc(sizeof(double)*data->ncol)); 
   memset(lcut, 0, sizeof(double)*data->ncol);
  
   /* initialize lrhs */
@@ -1020,8 +1026,8 @@ DGG_substituteSlacks( const void *solver_ptr,
   cut->max_nz = lnz;
   if (lnz)
     {
-      cut->coeff = (double*) malloc( sizeof(double)*lnz );
-      cut->index = (int*) malloc( sizeof(int)*lnz );
+      cut->coeff = reinterpret_cast<double*> (malloc( sizeof(double)*lnz ));
+      cut->index = reinterpret_cast<int*> (malloc( sizeof(int)*lnz ));
     }
 
   /* set new constraint */
@@ -1121,8 +1127,8 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
   if(talk) printf ("2mir_test: generating tab row cuts\n");
   /* allocate memory for basic column/row indicators */
   int *rowIsBasic = 0, *colIsBasic = 0;
-  rowIsBasic = (int*)malloc(sizeof(int)*data->nrow);
-  colIsBasic = (int*)malloc(sizeof(int)*data->ncol);
+  rowIsBasic = reinterpret_cast<int*>(malloc(sizeof(int)*data->nrow));
+  colIsBasic = reinterpret_cast<int*>(malloc(sizeof(int)*data->ncol));
     
   /* initialize the IsBasic arrays with -1 / 1 values indicating 
      where the basic rows and columns are. NOTE: WE could do this 
@@ -1141,7 +1147,7 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
   /* obtain factorization */
   CoinFactorization factorization;
   /* obtain address of the LP matrix */
-  const OsiSolverInterface *si = (const OsiSolverInterface *) solver_ptr;
+  const OsiSolverInterface *si = reinterpret_cast<const OsiSolverInterface *> (solver_ptr);
   const CoinPackedMatrix *colMatrixPtr = si->getMatrixByCol();
   rval = factorization.factorize(*colMatrixPtr, rowIsBasic, colIsBasic); 
   /* 0 = okay. -1 = singular. -2 = too many in basis. -99 = memory. */
@@ -1221,7 +1227,7 @@ double random_01(long unsigned int *next){// uniform [0,1]
     *next=(*next)*1103515245 + 12345;
     x=(*next/65536) % 32768;
     dx=x;    r=dx/32768;  }
-  return (double) (r);
+  return (r);
 }	
 
 int DGG_generateFormulationCutsFromBase( DGG_constraint_t *base,
@@ -1234,7 +1240,7 @@ int DGG_generateFormulationCutsFromBase( DGG_constraint_t *base,
   int int_skala;
   double skala;
   int num_inlist = 0;
-  int* skala_list = (int*) malloc( sizeof(int)*base->nz );
+  int* skala_list = reinterpret_cast<int*> (malloc( sizeof(int)*base->nz ));
   char *isint = NULL;
   double *xout = NULL, *rcout = NULL;
   DGG_constraint_t *scaled_base = NULL;

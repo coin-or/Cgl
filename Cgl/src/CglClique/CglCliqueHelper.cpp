@@ -271,7 +271,7 @@ CglClique::createFractionalGraph() const
       nodes[i].nbrs = all_nbr + old_total;
    }
 
-   fgraph.density = (double) total_deg / (sp_numcols * (sp_numcols-1));
+   fgraph.density = static_cast<double> (total_deg) / (sp_numcols * (sp_numcols-1));
 
    /*========================================================================*
      Compute the min and max degree.
