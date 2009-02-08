@@ -56,7 +56,8 @@ CONFIG_HEADER = $(top_builddir)/inc/config_cgl.h
 CONFIG_CLEAN_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libCglLandP_la_LIBADD =
-am_libCglLandP_la_OBJECTS = CglLandP.lo CglLandPSimplex.lo \
+am_libCglLandP_la_OBJECTS = CglLandP.lo CglLandPUtils.lo \
+	CglLandPTabRow.lo CglLandPMessages.lo CglLandPSimplex.lo \
 	CglLandPValidator.lo CglLandPTest.lo
 libCglLandP_la_OBJECTS = $(am_libCglLandP_la_OBJECTS)
 depcomp = $(SHELL) $(top_srcdir)/../depcomp
@@ -308,6 +309,9 @@ noinst_LTLIBRARIES = libCglLandP.la
 # List all source files for this library, including headers
 libCglLandP_la_SOURCES = \
 	CglLandP.cpp  CglLandP.hpp \
+        CglLandPUtils.cpp  CglLandPUtils.hpp \
+        CglLandPTabRow.cpp CglLandPTabRow.hpp \
+        CglLandPMessages.h CglLandPMessages.cpp \
         CglLandPSimplex.cpp CglLandPSimplex.hpp \
         CglLandPValidator.cpp CglLandPValidator.hpp \
         CglLandPTest.cpp
@@ -340,7 +344,7 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 ########################################################################
 
 # Here list all the header files that are required by a user of the library,
-# and that therefore should be installed in 'install/coin'
+# and that therefore should be installed in 'install'
 includecoindir = $(includedir)/coin
 includecoin_HEADERS = \
 	CglLandP.hpp CglLandPSimplex.hpp CglLandPValidator.hpp 
@@ -397,8 +401,11 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglLandP.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglLandPMessages.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglLandPSimplex.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglLandPTabRow.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglLandPTest.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglLandPUtils.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglLandPValidator.Plo@am__quote@
 
 .cpp.o:

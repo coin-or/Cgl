@@ -19,6 +19,9 @@ noinst_LTLIBRARIES = libCglLandP.la
 # List all source files for this library, including headers
 libCglLandP_la_SOURCES = \
 	CglLandP.cpp  CglLandP.hpp \
+        CglLandPUtils.cpp  CglLandPUtils.hpp \
+        CglLandPTabRow.cpp CglLandPTabRow.hpp \
+        CglLandPMessages.hpp CglLandPMessages.cpp \
         CglLandPSimplex.cpp CglLandPSimplex.hpp \
         CglLandPValidator.cpp CglLandPValidator.hpp \
         CglLandPTest.cpp
@@ -51,7 +54,7 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 ########################################################################
 
 # Here list all the header files that are required by a user of the library,
-# and that therefore should be installed in 'install/coin'
+# and that therefore should be installed in 'install'
 includecoindir = $(includedir)/coin
 includecoin_HEADERS = \
 	CglLandP.hpp CglLandPSimplex.hpp CglLandPValidator.hpp 
