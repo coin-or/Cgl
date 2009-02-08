@@ -650,9 +650,9 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     Parameters params = params_;
     params.rhsWeight = numrows_ + 2;
 
-    printf("CUTGAP After %i pass objective is %g\n",info.pass, si.getObjValue());
 
 #if DO_STAT
+    printf("CUTGAP After %i pass objective is %g\n",info.pass, si.getObjValue());
     if (info.pass == 0 && !info.inTree) { //lookup miplib problem
         std::string name;
         si.getStrParam(OsiProbName,name);
@@ -841,85 +841,6 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
         delete cut;
     }
 
-   printf ("generated %i cuts\n", nCut);
-#ifdef DO_STAT
-    stat.doubleStat[roundStatistic::Angle] = 0;
-
-    std::cout<<std::endl
-    <<"************************************************************************************************************"<<std::endl
-    <<"                                         New round"<<std::endl
-    <<"************************************************************************************************************"<<std::endl
-    <<std::endl;
-    std::cout<<nCut<<" cuts."<<std::endl;
-
-
-    std::set<cutsCos> angles;
-    std::vector<double> norms;
-    norms.reserve(nCut);
-    for (int i = 0 ; i < nCut ; i++) {
-        norms.push_back(cs.rowCut(i).row().twoNorm());
-    }
-
-    for (int i = 0 ; i < nCut ; i++) {
-        const CoinPackedVector& x = cs.rowCut(i).row();
-        stat.doubleStat[roundStatistic::AngleToObj] += acos(cos(x,si.getObjCoefficients(), si.getNumCols()));
-        for (int j = i + 1 ; j < nCut ; j++) {
-            const CoinPackedVector& y = cs.rowCut(j).row();
-            double cosin = sortedSparseDotProduct(x,y)/norms[i]/norms[j];
-            angles.insert(cutsCos(i,j,cosin));
-            if (cosin <= 1)
-                stat.doubleStat[roundStatistic::Angle] += acos(cosin);
-        }
-    }
-
-#ifdef ERASE_SIMILAR
-    for (int i = 0 ; i < nCut ; i++) {
-        const CoinPackedVector& x = cs.rowCut(i).row();
-        stat.doubleStat[roundStatistic::AngleToObj] += acos(cos(x,si.getObjCoefficients(), si.getNumCols()));
-        for (int j = i + 1 ; j < nCut ; j++) {
-            const CoinPackedVector& y = cs.rowCut(j).row();
-            if (similarTwoNorm(x,y,.0001, cs.rowCut(i).lb()/cs.rowCut(j).lb())) {
-                nCut--;
-                cs.eraseRowCut(j);
-                j--;
-            }
-        }
-    }
-#endif
-
-#ifdef ERASE_SMALL_ANGLE
-    const unsigned int numToErase = 0.3 * nCut;
-    std::vector<int> toErase;
-    toErase.reserve(numToErase);
-    for (std::set<cutsCos>::iterator i = angles.begin() ; i != angles.end() ; i++) {
-        if (i->angle < 0.999) continue;
-        std::cout<<"erasing row "<<i->j<<std::endl;
-        std::set<cutsCos>::iterator k = i;
-        k++;
-        while (k != angles.end()) {
-            if (k->i == i->j || k->j == i->j) {
-                std::set<cutsCos>::iterator k2 = k;
-                k++;
-                angles.erase(k2);
-            } else k++;
-        }
-        toErase.push_back(i->j);
-        nCut--;
-#if 0
-        if (toErase.size() > numToErase) {
-            std::cout<<"biggest cosinus erased: "<<i->angle<<std::endl;
-            break;
-        }
-#endif
-    }
-    std::sort(toErase.begin(), toErase.end());
-    for (unsigned int i = toErase.size(); i > 0 ; i--) {
-        cs.eraseRowCut(toErase[i-1]);
-    }
-#endif
-    std::cout<<nCut<<" cuts remain after cleaning."<<std::endl;
-#endif
-
 
     params_.timeLimit -= CoinCpuTime();
 
@@ -933,8 +854,6 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     if (nCut > 0) {
         stat.intStat[roundStatistic::NumCuts] = nCut;
         stat.doubleStat[roundStatistic::Time] += CoinCpuTime();
-
-//   std::cout<<"Mean angle : "<<stat.doubleStat[roundStatistic::Angle]/nCut*(nCut - 1)/2<<std::endl;
 
         OsiSolverInterface * gapTester = si.clone();
         gapTester->applyCuts(cs);

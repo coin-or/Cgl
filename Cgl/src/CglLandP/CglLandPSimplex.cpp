@@ -102,7 +102,6 @@ CglLandPSimplex::printTableauLateX(std::ostream &os){
         row_i_.num = i;
         pullTableauRow(row_i_);
         if (isGtConst(basics_[i])){
-            //printf("Constraint %i is GT\n", iCol);
             for (int j = 0; j < ncols_ ; j++){
                 row_i_[nonBasics_[j]] *= -1;
             }
@@ -118,7 +117,6 @@ CglLandPSimplex::printRowLateX(std::ostream &os, int i){
         new_row_.num = i;
         pullTableauRow(new_row_);
         if (isGtConst(basics_[i])){
-            //printf("Constraint %i is GT\n", iCol);
             for (int j = 0; j < ncols_ ; j++){
                 new_row_[nonBasics_[j]] *= -1;
             }
@@ -134,7 +132,6 @@ CglLandPSimplex::printCutLateX(std::ostream &os, int i){
         new_row_.num = i;
         pullTableauRow(new_row_);
         if (isGtConst(basics_[i])){
-            //printf("Constraint %i is GT\n", iCol);
             for (int j = 0; j < ncols_ ; j++){
                 new_row_[nonBasics_[j]] *= -1;
             }
@@ -306,7 +303,7 @@ CglLandPSimplex::~CglLandPSimplex()
         clp_time += CoinCpuTime();
     }
     total_time += CoinCpuTime();
-    printf("Total time %g time in clp: %g\n", total_time, clp_time);
+    //printf("Total time %g time in clp: %g\n", total_time, clp_time);
 }
 
 /** Compute normalization weights.*/
@@ -358,7 +355,6 @@ CglLandPSimplex::computeWeights(CglLandP::LHSnorm norm, CglLandP::Normalization 
       }
     }
     else if(norm == CglLandP::L2){
-      printf("chose L2 norm\n");
       for (int i = 0 ; i < ncols_orig_ ; i++){
           CoinBigIndex begin = start[i];
           CoinBigIndex end = begin + length[i];
@@ -411,7 +407,6 @@ CglLandPSimplex::computeWeights(CglLandP::LHSnorm norm, CglLandP::Normalization 
     }
     else rhs_weight_ = 1;
     handler_->message(WeightsStats, messages_)<<max_weight<<min_weight<<CoinMessageEol;
-    printf("rhs_weight =%g\n", rhs_weight_);
 }
 void
 CglLandPSimplex::cacheUpdate(const CglLandP::CachedData &cached, bool reducedSpace)
@@ -497,11 +492,9 @@ CglLandPSimplex::generateExtraCut(int i, const CglLandP::CachedData & cached,
         return false;
     }
 
-    printf("var: %i, basic in row %i. integer=%i, colsol_=%f, colsolToCut_=%f.\n",iCol, i,
            isInteger(iCol), colsol_[iCol],
            getColsolToCut(iCol));
 
-    printf("generating extra cut....\n");
     OsiRowCut * cut = new OsiRowCut;
     generateMig(i, *cut, cached, params);
     assert(fabs(row_k_.rhs - colsol_[iCol]) < 1e-10);
@@ -1787,7 +1780,6 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
         double newRhs = row_k_.rhs + gammaSign * elements[i] * row_i_.rhs;
         if (newRhs < rhsTol || newRhs > 1 - rhsTol) {
             //	if(i == 0)
-            printf("RHS is not within bounds: %g\n", newRhs);
             break;
         }
         newSigma = (p + gammaSign * elements[i] * q)*rhs_weight_/(r + gammaSign*elements[i] * s);
@@ -1798,9 +1790,7 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
         if (newSigma > bestSigma - 1e-08*bestSigma) {
 #ifndef NDEBUG
 
-            if (!rc_positive){
-                printf("BUG\n");
-            }
+            assert(rc_positive);
 
 
             if (0 && elements[i] <= 1e-05){
@@ -1817,10 +1807,7 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
 
 
 #ifndef NDEBUG
-        if (rc_positive){
-            printf("BUG2\n");
-            break;
-        }
+        assert(!rc_positive);
 #endif
         int col = nonBasics_[inds[i]];
         if (row_i_[col] *gammaSign > 0) {
@@ -1943,7 +1930,6 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
         return bestColumn;
     }
     else if (allowDegenerate) { //Pivot is degenerate and we allow
-//  printf("Degenerate pivot? %g\n", elements[lastValid]);
         inDegenerateSequence_ = true;
         return bestColumn;
     }
@@ -2396,7 +2382,6 @@ CglLandPSimplex::updateM1_M2_M3(TabRow & row, double tolerance, bool reducedSpac
                 M1_.push_back(nonBasics_[i]);
                 colCandidateToLeave_[i]=1;
             } else {
-                //printf("Column %i eliminated\n",nonBasics_[i]);
                 colCandidateToLeave_[i]=0;
             }
         } else if (row[nonBasics_[i]]>tolerance) {
@@ -2404,7 +2389,6 @@ CglLandPSimplex::updateM1_M2_M3(TabRow & row, double tolerance, bool reducedSpac
                 M2_.push_back(nonBasics_[i]);
                 colCandidateToLeave_[i]=1;
             } else {
-                //printf("Column %i eliminated\n",nonBasics_[i]);
                 colCandidateToLeave_[i]=0;
             }
         } else {
@@ -2423,7 +2407,6 @@ CglLandPSimplex::updateM1_M2_M3(TabRow & row, double tolerance, bool reducedSpac
                     colCandidateToLeave_[i] = 1;
                 }
             } else {
-                //  printf("Column %i eliminated\n",nonBasics_[i]);
                 colCandidateToLeave_[i] = 0;
             }
         }
@@ -2550,23 +2533,6 @@ CglLandPSimplex::createMIG( TabRow &row, OsiRowCut &cut) const
     const double * rowUpper = si_->getRowUpper();
     clp_time += CoinCpuTime();
 
-#if 0
-   CoinWarmStartBasis basis = clp_->getBasis();
-   for(int i = 0 ; i < ncols_ ; i++){
-     if(basis.getStructStatus(i) != basis_->getStructStatus(i))
-     printf("i= %i stat1 %i stat2 %i\n", i, basis.getStructStatus(i), basis_->getStructStatus(i));
-     assert(basis.getStructStatus(i)== basis_->getStructStatus(i));
-   }
-   for(int i = 0 ; i < nrows_ ; i++){
-     //if(rowLower[i] < -1e10 || rowUpper[i] > 1e10 || rowLower[i] == rowUpper[i]) continue;
-     if(basis.getArtifStatus(i) != basis_->getArtifStatus(i))
-     printf("i= %i stat1 %i stat2 %i (%g, %g)\n", i + ncols_ , basis.getArtifStatus(i), basis_->getArtifStatus(i),
-            rowLower[i], rowUpper[i]);
-     //assert(basis.getArtifStatus(i)== basis_->getArtifStatus(i));
-   } 
-   *basis_ = basis;
-   pullTableauRow(row_k_);
-#endif
 
     if (1) {
         double f_0 = row.rhs - floor(row.rhs);
