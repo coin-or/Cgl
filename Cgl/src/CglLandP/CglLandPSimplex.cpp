@@ -492,9 +492,6 @@ CglLandPSimplex::generateExtraCut(int i, const CglLandP::CachedData & cached,
         return false;
     }
 
-           isInteger(iCol), colsol_[iCol],
-           getColsolToCut(iCol));
-
     OsiRowCut * cut = new OsiRowCut;
     generateMig(i, *cut, cached, params);
     assert(fabs(row_k_.rhs - colsol_[iCol]) < 1e-10);
