@@ -23,14 +23,14 @@ static double total_time = 0;
 #endif
 #ifndef NDEBUG
 
-void MyAssertFunc(bool c, const std::string &s, const std::string&  file, unsigned int line){
+static void MyAssertFunc(bool c, const std::string &s, const std::string&  file, unsigned int line){
     if (c != true){
         fprintf(stderr, "Failed MyAssertion: %s in %s line %i.\n", s.c_str(), file.c_str(), line);
         throw -1;
     }
 }
 
-void DblGtAssertFunc(const double& a, const std::string &a_s, const double&b, const std::string& b_s,
+static void DblGtAssertFunc(const double& a, const std::string &a_s, const double&b, const std::string& b_s,
                      const std::string&  file, unsigned int line){
     if (a<b){
         fprintf(stderr, "Failed comparison: %s = %f < %s =%f in  %s line %i.\n", a_s.c_str(),
@@ -39,7 +39,7 @@ void DblGtAssertFunc(const double& a, const std::string &a_s, const double&b, co
     }
 }
 
-void DblEqAssertFunc(const double& a, const std::string &a_s, const double&b, const std::string& b_s,
+static void DblEqAssertFunc(const double& a, const std::string &a_s, const double&b, const std::string& b_s,
                      const std::string&  file, unsigned int line){
     CoinRelFltEq eq(1e-7);
     if (!eq(a,b)){
