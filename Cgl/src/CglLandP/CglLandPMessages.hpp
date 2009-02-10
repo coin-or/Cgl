@@ -1,9 +1,10 @@
-// Copyright (C) 2005, 2007 Pierre Bonami and others.  All Rights Reserved.
+// Copyright (C) 2005-2008, Pierre Bonami and others.  All Rights Reserved.
 // Author:   Pierre Bonami
-//           Tepper School of Business
-//           Carnegie Mellon University, Pittsburgh, PA 15213
-// Date:     21/07/05
+//           LIF
+//           CNRS, Aix-Marseille Universites
+// Date:     02/23/08
 //---------------------------------------------------------------------------
+
 #ifndef CglLandPMessages_H
 #define CglLandPMessages_H
 

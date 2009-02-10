@@ -1,11 +1,10 @@
-/*
- *  CglLandPUtils.h
- *  LandP
- *
- *  Created by Pierre Bonami on 2/23/08.
- *  Copyright 2008 CNRS. All rights reserved.
- *
- */
+// Copyright (C) 2005-2008, Pierre Bonami and others.  All Rights Reserved.
+// Author:   Pierre Bonami
+//           LIF
+//           CNRS, Aix-Marseille Universites
+// Date:     02/23/08
+//---------------------------------------------------------------------------
+
 
 #ifndef CglLandPUtils_H
 #define CglLandPUtils_H

@@ -1,10 +1,10 @@
-/*
- *  CglLandPTabRow.hpp
- *
- *  Created by Pierre Bonami on 2/23/08.
- *  Copyright 2008 CNRS and others. All rights reserved.
- *
- */
+// Copyright (C) 2005-2008, Pierre Bonami and others.  All Rights Reserved.
+// Author:   Pierre Bonami
+//           LIF
+//           CNRS, Aix-Marseille Universites
+// Date:     02/23/08
+//---------------------------------------------------------------------------
+
 #ifndef CglLandPTabRow_H
 #define CglLandPTabRow_H
 
