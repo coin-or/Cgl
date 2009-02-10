@@ -5,7 +5,7 @@
 // Date:     02/23/08
 //---------------------------------------------------------------------------
 
-#include "CglLandPUtils.h"
+#include "CglLandPUtils.hpp"
 #include "OsiRowCut.hpp"
 #include "OsiCuts.hpp"
 namespace LAP {

@@ -19,8 +19,8 @@
 #include "CoinPackedMatrix.hpp"
 
 #include "OsiClpSolverInterface.hpp"
-#include "CglLandPTabRow.h"
-#include "CglLandPUtils.h"
+#include "CglLandPTabRow.hpp"
+#include "CglLandPUtils.hpp"
 #include "CglLandPMessages.hpp"
 namespace LAP
 {

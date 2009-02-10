@@ -20,10 +20,10 @@ Cgl/src/CglLandP/CglLandPMessages.hpp -text
 Cgl/src/CglLandP/CglLandPSimplex.cpp -text
 Cgl/src/CglLandP/CglLandPSimplex.hpp -text
 Cgl/src/CglLandP/CglLandPTabRow.cpp -text
-Cgl/src/CglLandP/CglLandPTabRow.h -text
+Cgl/src/CglLandP/CglLandPTabRow.hpp -text
 Cgl/src/CglLandP/CglLandPTest.cpp -text
 Cgl/src/CglLandP/CglLandPUtils.cpp -text
-Cgl/src/CglLandP/CglLandPUtils.h -text
+Cgl/src/CglLandP/CglLandPUtils.hpp -text
 Cgl/src/CglLandP/CglLandPValidator.cpp -text
 Cgl/src/CglLandP/CglLandPValidator.hpp -text
 Cgl/src/CglLandP/Makefile.am -text

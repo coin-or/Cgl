@@ -8,7 +8,7 @@
 
 #ifndef CglLandPUtils_H
 #define CglLandPUtils_H
-#include "CglLandPTabRow.h"
+#include "CglLandPTabRow.hpp"
 
 class OsiRowCut;
 class OsiCuts;

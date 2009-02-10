@@ -6,7 +6,7 @@
 //---------------------------------------------------------------------------
 
 
-#include "CglLandPTabRow.h"
+#include "CglLandPTabRow.hpp"
 #include "CglLandPSimplex.hpp"
 namespace LAP {
 void
