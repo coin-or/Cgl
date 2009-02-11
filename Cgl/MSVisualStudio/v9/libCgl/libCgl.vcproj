@@ -730,7 +730,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\src\CglLandP\CglLandPUtils.h"
+				RelativePath="..\..\..\src\CglLandP\CglLandPTabRow.hpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\src\CglLandP\CglLandPUtils.hpp"
 				>
 			</File>
 			<File
