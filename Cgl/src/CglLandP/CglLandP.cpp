@@ -888,8 +888,8 @@ template <class T1,class T2>
 struct StableExternalComp{
     const std::vector<T1> &vec_1_;
     const std::vector<T2> &vec_2_;
-    StableExternalComp(const std::vector<T1> vec_1,
-                       const std::vector<T2> vec_2):
+    StableExternalComp(const std::vector<T1> &vec_1,
+                       const std::vector<T2> &vec_2):
             vec_1_(vec_1),
             vec_2_(vec_2){
     }
