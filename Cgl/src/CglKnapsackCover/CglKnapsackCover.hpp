@@ -47,6 +47,8 @@ public:
     ~CglKnapsackCover ();
   /// Create C++ lines to get to current state
   virtual std::string generateCpp( FILE * fp);
+  /// This can be used to refresh any information
+  virtual void refreshSolver(OsiSolverInterface * solver);
   //@}
 
 
@@ -221,6 +223,15 @@ void liftUpDownAndUncomplementAndAdd(
       double & z, 
       int * x) const;
 
+  /** Creates cliques for use by probing.
+      Only cliques >= minimumSize and < maximumSize created
+      Can also try and extend cliques as a result of probing (root node).
+      Returns number of cliques found.
+  */
+  int createCliques( OsiSolverInterface & si, 
+		    int minimumSize=2, int maximumSize=100, bool extendCliques=false);
+  /// Delete all clique information
+  void deleteCliques();
   //@}
 
   // Private member data
@@ -241,6 +252,46 @@ void liftUpDownAndUncomplementAndAdd(
    int* rowsToCheck_;
   /// exactKnapsack can be expensive - this switches off some
   bool expensiveCuts_;
+  /// Cliques
+  /// **** TEMP so can reference from listing
+  mutable const OsiSolverInterface * solver_;
+  mutable int whichRow_;
+  mutable int * complement_;
+  mutable double * elements_;
+  /// Number of cliques
+  int numberCliques_;
+  /// Clique type
+  typedef struct {
+    unsigned int equality:1; //  nonzero if clique is ==
+  } cliqueType;
+  cliqueType * cliqueType_;
+  /// Start of each clique
+  int * cliqueStart_;
+  /// Entries for clique
+  typedef struct {
+    unsigned int oneFixes:1; //  nonzero if variable to 1 fixes all
+    unsigned int sequence:31; //  variable (in matrix) (but also see cliqueRow_)
+  } cliqueEntry;
+  cliqueEntry * cliqueEntry_;
+  /** Start of oneFixes cliques for a column in matrix or -1 if not
+      in any clique */
+  int * oneFixStart_;
+  /** Start of zeroFixes cliques for a column in matrix or -1 if not
+      in any clique */
+  int * zeroFixStart_;
+  /// End of fixes for a column
+  int * endFixStart_;
+  /// Clique numbers for one or zero fixes
+  int * whichClique_;
+  /// Number of columns
+  int numberColumns_;
+  /** For each column with nonzero in row copy this gives a clique "number".
+      So first clique mentioned in row is always 0.  If no entries for row
+      then no cliques.  If sequence > numberColumns then not in clique.
+  */
+  //cliqueEntry * cliqueRow_;
+  /// cliqueRow_ starts for each row
+  //int * cliqueRowStart_;
   //@}
 };
 

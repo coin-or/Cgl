@@ -271,7 +271,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   if (relaxation>1.0e49)
     printf("condition %g\n",relaxation);
 #endif
-  relaxation *= 1.0e-18;
+  relaxation *= conditionNumberMultiplier_;
   double bounds[2]={-DBL_MAX,0.0};
   int iColumn,iRow;
 
@@ -380,7 +380,22 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   double * cutElement = cutVector.denseVector(); 
   // and for packed form (as not necessarily in order)
   double * packed = new double[numberColumns+1];
-
+  double tolerance1=1.0e-6;
+  double tolerance2=0.9;
+  double tolerance3=1.0e-4;
+  double tolerance6=1.0e-6;
+  double tolerance9=1.0e-4;
+  if (!info.inTree) {
+    if (!info.pass) {
+      tolerance1=1.0;
+      tolerance2=1.0e-2;
+      tolerance3=1.0e-6;
+      tolerance6=1.0e-7;
+      tolerance9=1.0e-5;
+    } else {
+    }
+  } else {
+  }
   for (iColumn=0;iColumn<numberColumns;iColumn++) {
     double reducedValue=above_integer(colsol[iColumn]);;
     // This returns pivot row for columns or -1 if not basic (C) ====
@@ -425,6 +440,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	// get pi
 	factorization.updateColumnTranspose ( &work, &array );
 	int numberInArray=array.getNumElements();
+#ifdef CGL_DEBUG
 	// check pivot on iColumn
 	{
 	  double value=0.0;
@@ -436,9 +452,14 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	    value += columnElements[k]*arrayElements[iRow];
 	  }
 	  // should be 1
-#ifdef CGL_DEBUG
 	  assert (fabs(value-1.0) < 1.0e-7);
+	}
 #endif
+	double largestFactor=0.0;
+	for (j=0;j<numberInArray;j++) {
+	  int indexValue=arrayRows[j];
+	  double value=arrayElements[indexValue];
+	  largestFactor = CoinMax(largestFactor,fabs(value));
 	}
 	//reducedValue=colsol[iColumn];
 	// coding from pg 130 of Wolsey 
@@ -454,7 +475,9 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	    // add in row of tableau
 	    for (k=columnStart[j];k<columnStart[j]+columnLength[j];k++) {
 	      iRow = row[k];
-	      value += columnElements[k]*arrayElements[iRow];
+	      double value2 = columnElements[k]*arrayElements[iRow];
+	      largestFactor = CoinMax(largestFactor,fabs(value2));
+	      value += value2;
 	    }
 	    // value is entry in tableau row end (C) ====
 	    if (fabs(value)<1.0e-16) {
@@ -605,8 +628,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	//continue;
 	// say zeroed out
 	cutVector.setNumElements(0);
-	if (sum >rhs+0.9*away&&
-	    fabs((sum-rhs)-violation)<1.0e-6) {
+	if (sum >rhs+tolerance2*away&&
+	    fabs((sum-rhs)-violation)<tolerance1) {
 	  //#ifdef CGL_DEBUG
 #ifdef CGL_DEBUG
 #if CGL_DEBUG<=1
@@ -635,7 +658,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	    
 	    for (j=0;j<number+1;j++) {
 	      double value=above_integer(fabs(packed[j]));
-	      if (fabs(value)<1.0e-4) {
+	      if (fabs(value)<tolerance3) {
 		// too small
 		continue;
 	      } else {
@@ -790,10 +813,15 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	  if (number<limit||!numberNonInteger) {
 	    bounds[1]=rhs;
 	    if (number>50&&numberNonInteger)
-	      bounds[1] = bounds[1]+1.0e-6+1.0e-8*fabs(rhs); // weaken
-	    if (number>5&&numberNonInteger&&relaxation>1.0e-20) {
-	      //printf("relaxing rhs by %g\n",CoinMin(relaxation*fabs(rhs),1.0e-3));
-	      bounds[1] = bounds[1]+CoinMin(relaxation*fabs(rhs),1.0e-4); // weaken
+	      bounds[1] = rhs+tolerance6+1.0e-8*fabs(rhs); // weaken
+	    double test = CoinMin(largestFactor*largestFactorMultiplier_,
+				  relaxation);
+	    if (number>5&&numberNonInteger&&test>1.0e-20) {
+	      //printf("relaxing rhs by %g - largestFactor was %g, rel %g\n",
+	      //   CoinMin(test*fabs(rhs),tolerance9),largestFactor,relaxation);
+	      //bounds[1] = CoinMax(bounds[1],
+	      //		  rhs+CoinMin(test*fabs(rhs),tolerance9)); // weaken
+	      bounds[1] = bounds[1]+CoinMin(test*fabs(rhs),tolerance9); // weaken
 	    }
 	    {
 	      OsiRowCut rc;
@@ -909,6 +937,28 @@ double CglGomory::getAwayAtRoot() const
   return awayAtRoot_;
 }
 
+// ConditionNumberMultiplier stuff
+void CglGomory::setConditionNumberMultiplier(double value)
+{
+  if (value>=0.0)
+    conditionNumberMultiplier_=value;
+}
+double CglGomory::getConditionNumberMultiplier() const
+{
+  return conditionNumberMultiplier_;
+}
+
+// LargestFactorMultiplier stuff
+void CglGomory::setLargestFactorMultiplier(double value)
+{
+  if (value>=0.0)
+    largestFactorMultiplier_=value;
+}
+double CglGomory::getLargestFactorMultiplier() const
+{
+  return largestFactorMultiplier_;
+}
+
 //-------------------------------------------------------------------
 // Default Constructor 
 //-------------------------------------------------------------------
@@ -917,6 +967,8 @@ CglGomory::CglGomory ()
 CglCutGenerator(),
 away_(0.05),
 awayAtRoot_(0.05),
+conditionNumberMultiplier_(1.0e-18),
+largestFactorMultiplier_(1.0e-13),
 limit_(50),
 limitAtRoot_(0)
 {
@@ -930,6 +982,8 @@ CglGomory::CglGomory (const CglGomory & source) :
   CglCutGenerator(source),
   away_(source.away_),
   awayAtRoot_(source.awayAtRoot_),
+  conditionNumberMultiplier_(source.conditionNumberMultiplier_),
+  largestFactorMultiplier_(source.largestFactorMultiplier_),
   limit_(source.limit_),
   limitAtRoot_(source.limitAtRoot_)
 {  
@@ -961,6 +1015,8 @@ CglGomory::operator=(const CglGomory& rhs)
     CglCutGenerator::operator=(rhs);
     away_=rhs.away_;
     awayAtRoot_=rhs.awayAtRoot_;
+    conditionNumberMultiplier_ = rhs.conditionNumberMultiplier_;
+    largestFactorMultiplier_ = rhs.largestFactorMultiplier_;
     limit_=rhs.limit_;
     limitAtRoot_=rhs.limitAtRoot_;
   }

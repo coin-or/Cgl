@@ -2782,22 +2782,53 @@ int CglProbing::probe( const OsiSolverInterface & si,
   int nRows=rowCopy->getNumRows();
   int nRowsSafe=CoinMin(nRows,si.getNumRows());
   int nCols=rowCopy->getNumCols();
-  double * colsol = new double[nCols];
-  double * djs = new double[nCols];
   const double * currentColLower = si.getColLower();
   const double * currentColUpper = si.getColUpper();
-  double * tempL = new double [nCols];
-  double * tempU = new double [nCols];
+  // Set up maxes
+  int maxStack = info->inTree ? maxStack_ : maxStackRoot_;
+  int maxPass = info->inTree ? maxPass_ : maxPassRoot_;
+  if ((totalTimesCalled_%10)==-1) {
+    int newMax=CoinMin(2*maxStack,50);
+    maxStack=CoinMax(newMax,maxStack);
+  }
+#define ONE_ARRAY
+#ifdef ONE_ARRAY
+  unsigned int DIratio = sizeof(double)/sizeof(int);
+  assert (DIratio==1||DIratio==2);
+  int nSpace = 8*nCols+2*nRows+2*maxStack;
+  nSpace += (4*nCols+nRows+maxStack+DIratio-1)>>(DIratio-1);
+  double * colsol = new double[nSpace];
+  double * djs = colsol + nCols;
+  double * columnGap = djs + nCols;
+  double * saveL = columnGap + nCols;
+  double * saveU = saveL + 2*nCols;
+  double * saveMin = saveU + 2*nCols;
+  double * saveMax = saveMin + nRows;
+  double * element = saveMax + nRows;
+  double * lo0 = element + nCols;
+  double * up0 = lo0 + maxStack;
+  int * markC = reinterpret_cast<int *> (up0+maxStack);
+  int * stackC = markC + nCols;
+  int * stackR = stackC + 2*nCols;
+  int * index = stackR + nRows;
+  int * stackC0 = index + nCols;
+#else 
+  double * colsol = new double[nCols];
+  double * djs = new double[nCols];
   double * columnGap = new double [nCols];
-  int * markC = new int [nCols];
-  int * stackC = new int [2*nCols];
-  int * stackR = new int [nRows];
   double * saveL = new double [2*nCols];
   double * saveU = new double [2*nCols];
   double * saveMin = new double [nRows];
   double * saveMax = new double [nRows];
   double * element = new double[nCols];
+  double * lo0 = new double[maxStack];
+  double * up0 = new double[maxStack];
+  int * markC = new int [nCols];
+  int * stackC = new int [2*nCols];
+  int * stackR = new int [nRows];
   int * index = new int[nCols];
+  int * stackC0 = new int[maxStack];
+#endif
   // Let us never add more than twice the number of rows worth of row cuts
   // Keep cuts out of cs until end so we can find duplicates quickly
 #define PROBING4
@@ -2807,13 +2838,6 @@ int CglProbing::probe( const OsiSolverInterface & si,
   int nRowsFake = info->inTree ? nRowsSafe/3 : nRowsSafe;
 #endif
   row_cut rowCut(nRowsFake);
-  // Set up maxes
-  int maxStack = info->inTree ? maxStack_ : maxStackRoot_;
-  int maxPass = info->inTree ? maxPass_ : maxPassRoot_;
-  if ((totalTimesCalled_%10)==-1) {
-    int newMax=CoinMin(2*maxStack,50);
-    maxStack=CoinMax(newMax,maxStack);
-  }
   totalTimesCalled_++;
   const int * column = rowCopy->getIndices();
   const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
@@ -2887,9 +2911,6 @@ int CglProbing::probe( const OsiSolverInterface & si,
   current *= direction;
   /* for both way coding */
   int nstackC0=-1;
-  int * stackC0 = new int[maxStack];
-  double * lo0 = new double[maxStack];
-  double * up0 = new double[maxStack];
   int nstackR,nstackC;
   //int nFix=0;
   for (i=0;i<nCols;i++) {
@@ -5425,11 +5446,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
       }
     }
   }
+#ifndef ONE_ARRAY
   delete [] stackC0;
   delete [] lo0;
   delete [] up0;
-  delete [] tempL;
-  delete [] tempU;
   delete [] columnGap;
   delete [] markC;
   delete [] stackC;
@@ -5441,6 +5461,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
   delete [] index;
   delete [] element;
   delete [] djs;
+#endif
   delete [] colsol;
   // Add in row cuts
   if (!ninfeas) {

@@ -85,6 +85,24 @@ public:
   double getAwayAtRoot() const;
   //@}
 
+  /**@name Change criterion on which the cut id relaxed if the code
+           thinks the factorization has inaccuracies.  The relaxation to
+	   RHS is smallest of -
+	   1) 1.0e-4
+	   2) conditionNumberMultiplier * condition number of factorization
+	   3) largestFactorMultiplier * largest (dual*element) forming tableau
+	      row
+  */
+  //@{
+  /// Set ConditionNumberMultiplier
+  void setConditionNumberMultiplier(double value);
+  /// Get ConditionNumberMultiplier
+  double getConditionNumberMultiplier() const;
+  /// Set LargestFactorMultiplier
+  void setLargestFactorMultiplier(double value);
+  /// Get LargestFactorMultiplier
+  double getLargestFactorMultiplier() const;
+  //@}
 
   /**@name Constructors and destructors */
   //@{
@@ -122,6 +140,10 @@ private:
   double away_;
   /// Only investigate if more than this away from integrality (at root)
   double awayAtRoot_;
+  /// Multiplier for conditionNumber cut relaxation
+  double conditionNumberMultiplier_;
+  /// Multiplier for largest factor cut relaxation
+  double largestFactorMultiplier_;
   /// Limit - only generate if fewer than this in cut
   int limit_;
   /// Limit - only generate if fewer than this in cut (at root)
