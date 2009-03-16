@@ -122,6 +122,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   t_min = t_min_;
   a_max = a_max_;
   max_elements = info.inTree ? max_elements_ : max_elements_root_;
+  data->gomory_threshold = info.inTree ? away_ : awayAtRoot_;
 
   if (!do_mir_) t_max = t_min - 1;
   if (!do_2mir_) q_max = q_min - 1;
@@ -256,6 +257,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 CglTwomir::CglTwomir () :
   CglCutGenerator(),
   probname_(),
+  away_(0.0005),awayAtRoot_(0.0005),
   do_mir_(true), do_2mir_(true), do_tab_(true), do_form_(true),
   t_min_(1), t_max_(1), q_min_(1), q_max_(1), a_max_(2),max_elements_(50000),
   max_elements_root_(50000),form_nrows_(0) {}
@@ -265,6 +267,8 @@ CglTwomir::CglTwomir () :
 //-------------------------------------------------------------------
 CglTwomir::CglTwomir (const CglTwomir & source) :
   CglCutGenerator(source),
+  away_(source.away_),
+  awayAtRoot_(source.awayAtRoot_),
   do_mir_(source.do_mir_),
   do_2mir_(source.do_2mir_),
   do_tab_(source.do_tab_), 
@@ -305,6 +309,8 @@ CglTwomir::operator=(const CglTwomir& rhs)
 {
   if (this != &rhs) {
     CglCutGenerator::operator=(rhs);
+    away_=rhs.away_;
+    awayAtRoot_=rhs.awayAtRoot_;
     do_mir_=rhs.do_mir_;
     do_2mir_=rhs.do_2mir_;
     do_tab_=rhs.do_tab_; 
@@ -1157,7 +1163,7 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
     if (!(DGG_isBasic(data, k) && DGG_isInteger(data,k))) continue;
 
     double frac = frac_part (data->x[k]);
-    if (frac < DGG_GOMORY_THRESH || frac > 1-DGG_GOMORY_THRESH) continue;
+    if (frac < data->gomory_threshold || frac > 1-data->gomory_threshold) continue;
 
     base->nz = 0;
     rval = DGG_getTableauConstraint(k, solver_ptr, data, base, 
@@ -1329,7 +1335,7 @@ DGG_generateCutsFromBase( DGG_constraint_t *orig_base,
   rval = DGG_transformConstraint(data, &x, &rc, &isint, orig_base);
   double frac = frac_part(orig_base->rhs);
   //printf ("frac = %.7f, r %.7f, fr %.7f\n", frac, orig_base->rhs, floor(orig_base->rhs));
-  if (rval || frac < DGG_RHS_THRESH || frac > 1-DGG_RHS_THRESH){
+  if (rval || frac < data->gomory_threshold || frac > 1-data->gomory_threshold){
     free (x); free (rc); free (isint);
     return 0;
   }
@@ -1672,10 +1678,10 @@ int DGG_isBaseTrivial(DGG_data_t *d, DGG_constraint_t* c)
 {
 
   /* is rhs sufficiently fractional */
-  if ( frac_part(ABOV(c->rhs)) < DGG_GOMORY_THRESH )
+  if ( frac_part(ABOV(c->rhs)) < d->gomory_threshold )
     return 1;
 
-  if ( (1.0 - frac_part(ABOV(c->rhs))) < DGG_GOMORY_THRESH )
+  if ( (1.0 - frac_part(ABOV(c->rhs))) < d->gomory_threshold )
     return 1;
 
   return 0;
@@ -1799,6 +1805,29 @@ CglTwomir::needsOptimalBasis() const
 {
   return true;
 }
+
+// Away stuff
+void CglTwomir::setAway(double value)
+{
+  if (value>0.0&&value<=0.5)
+    away_=value;
+}
+double CglTwomir::getAway() const
+{
+  return away_;
+}
+
+// Away stuff at root
+void CglTwomir::setAwayAtRoot(double value)
+{
+  if (value>0.0&&value<=0.5)
+    awayAtRoot_=value;
+}
+double CglTwomir::getAwayAtRoot() const
+{
+  return awayAtRoot_;
+}
+
 // Create C++ lines to get to current state
 std::string
 CglTwomir::generateCpp( FILE * fp) 

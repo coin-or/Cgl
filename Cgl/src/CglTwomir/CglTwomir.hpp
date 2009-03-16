@@ -38,6 +38,7 @@ typedef struct{
 
 typedef struct
 {
+  double gomory_threshold; /* factional variable must be this away from int */
   int ncol,        /* number of columns in LP */
     nrow,        /* number of constaints in LP */
     ninteger;    /* number of integer variables in LP */
@@ -131,6 +132,20 @@ public:
   int getIfFormulation() const { return do_form_;}
   //@}
 
+  /**@name Change criterion on which variables to look at.  All ones
+   more than "away" away from integrality will be investigated 
+  (default 0.05) */
+  //@{
+  /// Set away
+  void setAway(double value);
+  /// Get away
+  double getAway() const;
+  /// Set away at root
+  void setAwayAtRoot(double value);
+  /// Get away at root
+  double getAwayAtRoot() const;
+  //@}
+
   /**@name Constructors and destructors */
   //@{
   /// Default constructor 
@@ -155,6 +170,10 @@ private:
   // Private member data
   /**@name Private member data */
   //@{
+  /// Only investigate if more than this away from integrality
+  double away_;
+  /// Only investigate if more than this away from integrality (at root)
+  double awayAtRoot_;
   bool do_mir_;
   bool do_2mir_;
   bool do_tab_;
