@@ -2893,6 +2893,8 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
 #endif
 		    els[jColumn]=els[iColumn];
 		    cut.insert(jColumn,els[jColumn]);
+		    // recompute as may have changed
+		    ind3 = cut.getIndices();
 		  }
 		}
 	      }
@@ -3165,6 +3167,8 @@ CglKnapsackCover::seqLiftAndUncomplementAndAdd(
 #endif
 		    els[jColumn]=els[iColumn];
 		    cut.insert(jColumn,els[jColumn]);
+		    // recompute as may have changed
+		    ind3 = cut.getIndices();
 		  }
 		}
 	      }
@@ -3431,6 +3435,8 @@ CglKnapsackCover::liftCoverCut(
 #endif
 		    els[jColumn]=els[iColumn];
 		    cut.insert(jColumn,els[jColumn]);
+		    // recompute as may have changed
+		    ind3 = cut.getIndices();
 		  }
 		} else if (false&&complement_[jColumn]&&!cliqueEntry_[k].oneFixes) {
 		  printf("COMP true els %g (c%d) and %g (c%d)\n",
