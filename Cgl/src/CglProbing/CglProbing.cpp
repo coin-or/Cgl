@@ -3443,11 +3443,11 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		  double newUpper=-1.0,newLower=1.0;
 		  value2=rowElements[kk];
 		  int markIt=markC[kcol];
-		  if (colUpper[kcol]<1e10)
+		  if (colUpper[kcol]<=1e10)
 		    assert ((markIt&8)==0);
 		  else
 		    assert ((markIt&8)!=0);
-		  if (colLower[kcol]>-1e10)
+		  if (colLower[kcol]>=-1e10)
 		    assert ((markIt&4)==0);
 		  else
 		    assert ((markIt&4)!=0);
