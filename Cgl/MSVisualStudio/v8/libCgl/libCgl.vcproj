@@ -5,6 +5,7 @@
 	Name="libCgl"
 	ProjectGUID="{DBEA3904-F0B8-408A-9E1A-6497FEBE8C42}"
 	RootNamespace="libCgl"
+	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
 		<Platform
@@ -369,7 +370,19 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\..\src\CglLandP\CglLandPMessages.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\..\..\Cgl\src\CglLandP\CglLandPSimplex.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\src\CglLandP\CglLandPTabRow.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\src\CglLandP\CglLandPUtils.cpp"
 				>
 			</File>
 			<File
