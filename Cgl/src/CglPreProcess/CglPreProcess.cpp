@@ -3552,7 +3552,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
         newModel->addRows(build);
         numberRows = newModel->getNumRows();
 	if (basis) {
-	  assert (numberRows=basis->getNumArtificial());
+	  assert (numberRows==basis->getNumArtificial());
 	  newModel->setWarmStart(basis);
 	  delete basis;
 	}
