@@ -446,10 +446,6 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
 	    allGood=false;
 	} else if (makeAll&&!model->isInteger(iColumn)&&
 		   upper[iColumn]-lower[iColumn]<10) {
-	  if (objValue)
-	    numberNonZero++;
-	  else
-	    numberZero++; 
 	  newInts[nNew++] = iColumn;
 	}
       }
@@ -458,11 +454,28 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
     if (nNew&&nNew<currentNumber) {
       for (int i=0;i<nNew;i++) {
 	int iColumn = newInts[i];
-	model->setInteger(iColumn);
+	double objValue = objective[iColumn];
+	bool thisGood=true;
+	CoinBigIndex start = columnStart[iColumn];
+	CoinBigIndex end = start + columnLength[iColumn];
+	for (CoinBigIndex j=start;j<end;j++) {
+	  int iRow = row[j];
+	  if (count[iRow]==999999) {
+	    thisGood=false;
+	    break;
+	  }
+	}
+	if (thisGood) {
+	  model->setInteger(iColumn);
+	  if (objValue)
+	    numberNonZero++;
+	  else
+	    numberZero++; 
+	} else if (objValue) {
+	  // unable to fix all with obj
+	  allGood=false;
+	}
       }
-    } else {
-      numberNonZero=0;
-      numberZero=0;
     }
     delete [] newInts;
     // Can we look at remainder and make any integer
