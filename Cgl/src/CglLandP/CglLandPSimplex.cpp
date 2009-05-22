@@ -199,25 +199,7 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
 #ifdef COIN_HAS_CLP
     OsiClpSolverInterface * clpSi = dynamic_cast<OsiClpSolverInterface *>(si_);
     if (clpSi) {
-        solver_ = clp;
         clp_ = clpSi;
-    }
-    else {
-#endif
-#ifdef COIN_HAS_XPR
-    OsiXprSolverInterface * xprSi = dynamic_cast<OsiXprSolverInterface *>(si_);
-    if (xprSi) solver_ = xpress;
-#endif
-#ifdef COIN_HAS_CPX
-    else {
-       OsiXprSolverInterface * cpxSi = dynamic_cast<OsiXprSolverInterface *>(si_);
-       if (cpxSi) solver_ = cplex;
-     }
-#ifdef COIN_HAS_XPR
-    }
-#endif
-#endif
-#ifdef COIN_HAS_CLP
     }
 #endif
     int rowsize = ncols_orig_ + nrows_orig_ + 1;
@@ -906,7 +888,7 @@ CglLandPSimplex::changeBasis(int incoming, int leaving, int leavingStatus,
     int clpLeavingStatus = leavingStatus;
 
 #ifdef COIN_HAS_CLP
-    if (solver_ == clp) {
+    if (clp_) {
         if (basics_[leaving] >= ncols_)
             clpLeavingStatus = - leavingStatus;
     }
@@ -2724,11 +2706,6 @@ CglLandPSimplex::pullTableauRow(TabRow &row) const
     row[basics_[row.num]]=0.;
     //  row.row[basics_[row.num]]=1;
     /* get the rhs */
-#ifdef COIN_HAS_XPR
-    if (solver_ == xpress)//rhs was computed in BInvARow
-        row.rhs = row.row[ncols_ + nrows_];
-    else
-#endif
     {
         int iCol = basics_[row.num];
         if (iCol<ncols_)
@@ -2747,25 +2724,7 @@ CglLandPSimplex::pullTableauRow(TabRow &row) const
     for (int j = 0; j < ncols_ ; j++) {
         if (nonBasics_[j]<ncols_) {
             if (basis_->getStructStatus(nonBasics_[j])==CoinWarmStartBasis::atLowerBound) {
-#ifdef COIN_HAS_XPR
-                if ( solver_ == xpress && fabs(getLoBounds(nonBasics_[j]) )>0) {
-                    if (lo_bounds_[nonBasics_[j]] > -infty)
-                        row.rhs -= row.row[nonBasics_[j]] * getLoBounds(nonBasics_[j]);
-                    else {
-                        throw CoinError("Structural at lower bound while there is no upper bound","CglLandPSimplex","pullTableauRow");
-                    }
-                }
-#endif
             } else if (basis_->getStructStatus(nonBasics_[j])==CoinWarmStartBasis::atUpperBound) {
-#ifdef COIN_HAS_XPR
-                if (solver_ == xpress && fabs(getUpBounds(nonBasics_[j]))>0) {
-                    if (up_bounds_[nonBasics_[j]]<infty)
-                        row.rhs -= row.row[nonBasics_[j]] * getUpBounds(nonBasics_[j]);
-                    else {
-                        throw CoinError("Structural at upper bound while there is no upper bound","CglLandPSimplex","pullTableauRow");
-                    }
-                }
-#endif
                 row[nonBasics_[j]] = -row[nonBasics_[j]];
             } else {
                 throw CoinError("Invalid basis","CglLandPSimplex","pullTableauRow");

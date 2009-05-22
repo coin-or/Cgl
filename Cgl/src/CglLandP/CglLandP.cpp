@@ -6,9 +6,6 @@
 //---------------------------------------------------------------------------
 #include "CglLandP.hpp"
 #include "CglLandPSimplex.hpp"
-#ifdef COIN_USE_XPR
-#include "OsiXprSimplexInterface.hpp"
-#endif
 #define INT_INFEAS(value) fabs(value - floor(value+0.5))
 
 #ifdef COIN_HAS_CLP

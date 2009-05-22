@@ -70,7 +70,6 @@ public:
 #ifdef COIN_HAS_CLP
         OsiClpSolverInterface * clpSi = dynamic_cast<OsiClpSolverInterface *>(si_);
         if (clpSi) {
-            solver_ = clp;
             clp_ = clpSi;
         }
 #endif
@@ -224,19 +223,6 @@ private:
     CglLandPSimplex(const CglLandPSimplex&);
     /// No assignment operator
     CglLandPSimplex& operator=(const CglLandPSimplex&);
-    enum lpSolver {
-#ifdef COIN_HAS_CLP
-                    clp
-#endif
-#ifdef COIN_HAS_CPX
-                   ,cplex
-#endif
-#ifdef COIN_HAX_XPR
-                   ,xpress
-#endif
-                  };
-    /** Type of lp solver (for non-standardize tableau manipulation functions.*/
-    lpSolver solver_;
 #ifdef COIN_HAS_CLP
     /** Pointer to OsiClpSolverInterface if used.*/
     OsiClpSolverInterface * clp_;

@@ -246,7 +246,6 @@ CglLandPUnitTest(
 
     siP->resolve();
     double lpRelaxAfter=siP->getObjValue();
-    //assert( eq(lpRelaxAfter, 2592.1908295194507) );
 
     std::cout<<"Relaxation after "<<lpRelaxAfter<<std::endl;
     assert( lpRelaxAfter> 2840. );
