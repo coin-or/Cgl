@@ -43,8 +43,17 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@COIN_HAS_CLP_TRUE@am__append_1 = \
+@COIN_HAS_CLP_TRUE@	CglLandP.cpp  CglLandP.hpp \
+@COIN_HAS_CLP_TRUE@        CglLandPUtils.cpp  CglLandPUtils.hpp \
+@COIN_HAS_CLP_TRUE@        CglLandPTabRow.cpp CglLandPTabRow.hpp \
+@COIN_HAS_CLP_TRUE@        CglLandPMessages.hpp CglLandPMessages.cpp \
+@COIN_HAS_CLP_TRUE@        CglLandPSimplex.cpp CglLandPSimplex.hpp \
+@COIN_HAS_CLP_TRUE@        CglLandPValidator.cpp CglLandPValidator.hpp \
+@COIN_HAS_CLP_TRUE@        CglLandPTest.cpp
+
 subdir = src/CglLandP
-DIST_COMMON = $(includecoin_HEADERS) $(srcdir)/Makefile.am \
+DIST_COMMON = $(am__includecoin_HEADERS_DIST) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -56,9 +65,16 @@ CONFIG_HEADER = $(top_builddir)/inc/config_cgl.h
 CONFIG_CLEAN_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libCglLandP_la_LIBADD =
-am_libCglLandP_la_OBJECTS = CglLandP.lo CglLandPUtils.lo \
-	CglLandPTabRow.lo CglLandPMessages.lo CglLandPSimplex.lo \
-	CglLandPValidator.lo CglLandPTest.lo
+am__libCglLandP_la_SOURCES_DIST = CglLandP.cpp CglLandP.hpp \
+	CglLandPUtils.cpp CglLandPUtils.hpp CglLandPTabRow.cpp \
+	CglLandPTabRow.hpp CglLandPMessages.hpp CglLandPMessages.cpp \
+	CglLandPSimplex.cpp CglLandPSimplex.hpp CglLandPValidator.cpp \
+	CglLandPValidator.hpp CglLandPTest.cpp
+@COIN_HAS_CLP_TRUE@am__objects_1 = CglLandP.lo CglLandPUtils.lo \
+@COIN_HAS_CLP_TRUE@	CglLandPTabRow.lo CglLandPMessages.lo \
+@COIN_HAS_CLP_TRUE@	CglLandPSimplex.lo CglLandPValidator.lo \
+@COIN_HAS_CLP_TRUE@	CglLandPTest.lo
+am_libCglLandP_la_OBJECTS = $(am__objects_1)
 libCglLandP_la_OBJECTS = $(am_libCglLandP_la_OBJECTS)
 depcomp = $(SHELL) $(top_srcdir)/../depcomp
 am__depfiles_maybe = depfiles
@@ -79,7 +95,9 @@ CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 SOURCES = $(libCglLandP_la_SOURCES)
-DIST_SOURCES = $(libCglLandP_la_SOURCES)
+DIST_SOURCES = $(am__libCglLandP_la_SOURCES_DIST)
+am__includecoin_HEADERS_DIST = CglLandP.hpp CglLandPSimplex.hpp \
+	CglLandPValidator.hpp
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -307,15 +325,7 @@ AUTOMAKE_OPTIONS = foreign
 noinst_LTLIBRARIES = libCglLandP.la
 
 # List all source files for this library, including headers
-libCglLandP_la_SOURCES = \
-	CglLandP.cpp  CglLandP.hpp \
-        CglLandPUtils.cpp  CglLandPUtils.hpp \
-        CglLandPTabRow.cpp CglLandPTabRow.hpp \
-        CglLandPMessages.h CglLandPMessages.cpp \
-        CglLandPSimplex.cpp CglLandPSimplex.hpp \
-        CglLandPValidator.cpp CglLandPValidator.hpp \
-        CglLandPTest.cpp
-
+libCglLandP_la_SOURCES = $(am__append_1)
 
 # This is for libtool (on Windows)
 libCglLandP_la_LDFLAGS = $(LT_LDFLAGS)
@@ -346,8 +356,8 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 # Here list all the header files that are required by a user of the library,
 # and that therefore should be installed in 'install'
 includecoindir = $(includedir)/coin
-includecoin_HEADERS = \
-	CglLandP.hpp CglLandPSimplex.hpp CglLandPValidator.hpp 
+@COIN_HAS_CLP_TRUE@includecoin_HEADERS = \
+@COIN_HAS_CLP_TRUE@	CglLandP.hpp CglLandPSimplex.hpp CglLandPValidator.hpp 
 
 all: all-am
 

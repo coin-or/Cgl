@@ -17,7 +17,9 @@ AUTOMAKE_OPTIONS = foreign
 noinst_LTLIBRARIES = libCglLandP.la
 
 # List all source files for this library, including headers
-libCglLandP_la_SOURCES = \
+libCglLandP_la_SOURCES = 
+if COIN_HAS_CLP
+libCglLandP_la_SOURCES += \
 	CglLandP.cpp  CglLandP.hpp \
         CglLandPUtils.cpp  CglLandPUtils.hpp \
         CglLandPTabRow.cpp CglLandPTabRow.hpp \
@@ -25,7 +27,7 @@ libCglLandP_la_SOURCES = \
         CglLandPSimplex.cpp CglLandPSimplex.hpp \
         CglLandPValidator.cpp CglLandPValidator.hpp \
         CglLandPTest.cpp
-
+endif
 
 # This is for libtool (on Windows)
 libCglLandP_la_LDFLAGS = $(LT_LDFLAGS)
@@ -56,6 +58,8 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 # Here list all the header files that are required by a user of the library,
 # and that therefore should be installed in 'install'
 includecoindir = $(includedir)/coin
+if COIN_HAS_CLP
 includecoin_HEADERS = \
 	CglLandP.hpp CglLandPSimplex.hpp CglLandPValidator.hpp 
+endif
 
