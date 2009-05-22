@@ -218,7 +218,10 @@ private:
     CglLandPSimplex(const CglLandPSimplex&);
     /// No assignment operator
     CglLandPSimplex& operator=(const CglLandPSimplex&);
-    enum lpSolver {clp
+    enum lpSolver {
+#ifdef COIN_HAS_CLP
+                    clp
+#endif
 #ifdef COIN_HAS_CPX
                    ,cplex
 #endif
@@ -228,9 +231,10 @@ private:
                   };
     /** Type of lp solver (for non-standardize tableau manipulation functions.*/
     lpSolver solver_;
+#ifdef COIN_HAS_CLP
     /** Pointer to OsiClpSolverInterface if used.*/
     OsiClpSolverInterface * clp_;
-
+#endif
 
     /** Update values in M1 M2 and M3 before an iteration.*/
     void updateM1_M2_M3(TabRow & row, double tolerance, bool recucedSpace, bool alwaysComputeCheap);

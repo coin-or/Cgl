@@ -6,7 +6,9 @@
 //---------------------------------------------------------------------------
 #include "CglLandPSimplex.hpp"
 #include "CoinTime.hpp"
+#ifdef COIN_HAS_CLP
 #include "OsiClpSolverInterface.hpp"
+#endif
 #include "CoinIndexedVector.hpp"
 #include <cassert>
 #define REMOVE_LOG 0
@@ -158,7 +160,9 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
                                  const CglLandP::CachedData &cached,
                                  const CglLandP::Parameters &params,
                                  const Validator& validator):
+#ifdef COIN_HAS_CLP
         clp_(NULL),
+#endif
         row_k_(this),
         row_i_(this),
         new_row_(this),
@@ -192,24 +196,29 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
 
     si_ = const_cast<OsiSolverInterface *>(&si);
 
+#ifdef COIN_HAS_CLP
     OsiClpSolverInterface * clpSi = dynamic_cast<OsiClpSolverInterface *>(si_);
     if (clpSi) {
         solver_ = clp;
         clp_ = clpSi;
     }
-#ifdef COIN_USE_XPR
     else {
-        OsiXprSolverInterface * xprSi = dynamic_cast<OsiXprSolverInterface *>(si_);
-        if (xprSi) solver_ = xpress;
 #endif
-#ifdef COIN_USE_CPX
-        else {
-            OsiXprSolverInterface * cpxSi = dynamic_cast<OsiXprSolverInterface *>(si_);
-            if (cpxSi) solver_ = cplex;
-        }
-#ifdef COIN_USE_XPR
+#ifdef COIN_HAS_XPR
+    OsiXprSolverInterface * xprSi = dynamic_cast<OsiXprSolverInterface *>(si_);
+    if (xprSi) solver_ = xpress;
+#endif
+#ifdef COIN_HAS_CPX
+    else {
+       OsiXprSolverInterface * cpxSi = dynamic_cast<OsiXprSolverInterface *>(si_);
+       if (cpxSi) solver_ = cplex;
+     }
+#ifdef COIN_HAS_XPR
     }
 #endif
+#endif
+#ifdef COIN_HAS_CLP
+    }
 #endif
     int rowsize = ncols_orig_ + nrows_orig_ + 1;
     row_k_.reserve(rowsize);
@@ -741,9 +750,13 @@ CglLandPSimplex::optimize
 #ifdef LandP_DEBUG
                 debug.saveOutgoingStatus();
 #endif
+
+#ifdef COIN_HAS_CLP
                 if (numPivots && ( numPivots % 40 == 0 ) && clp_) {
                     clp_->getModelPtr()->factorize();
                 }
+#endif
+
                 bool recompute_source_row = (numPivots && (numPivots % 10 == 0 ||
                                              fabs(gamma) < 1e-05));
                 bool pivoted = changeBasis(incoming,leaving,direction, recompute_source_row);
@@ -1277,9 +1290,11 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
     CoinIndexedVector indexed;
     indexed.borrowVector(nrows_, capacity, &rIntWork_[0], &rWk1_[0]);
 
+#ifdef COIN_HAS_CLP
     if (clp_)
         clp_->getBInvACol(&indexed);
     else
+#endif
         throw CoinError("Function not implemented in this OsiSolverInterface",
                         "getBInvACol","CglLandpSimplex");
     indexed.returnVector();
@@ -1291,9 +1306,11 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
         }
 
         indexed.borrowVector(nrows_, capacity, &rIntWork_[0], rWk1bis_);
+#ifdef COIN_HAS_CLP
         if (clp_)
             clp_->getBInvACol(&indexed);
         else
+#endif
             indexed.returnVector();
     }
     //Now compute the contribution of the variables in M3_
@@ -2677,6 +2694,7 @@ CglLandPSimplex::pullTableauRow(TabRow &row) const
 
     double infty = si_->getInfinity();
     /* Get the row */
+#ifdef COIN_HAS_CLP
     if (clp_) {
         CoinIndexedVector array2;
         array2.borrowVector(nrows_, 0, row.getIndices() + ncols_, row.denseVector() + ncols_);
@@ -2694,7 +2712,9 @@ CglLandPSimplex::pullTableauRow(TabRow &row) const
             row.setNumElements(n + row.getNumElements());
             array2.returnVector();
         }
-    } else {
+    } else
+#endif
+    {
         si_->getBInvARow(row.num,row.denseVector(),row.denseVector() + ncols_);
     }
     //Clear basic element (it is a trouble for most of the computations)
@@ -2810,8 +2830,7 @@ CglLandPSimplex::removeRows(int nDelete, const int * rowsIdx)
     for (int i = 0 ; i < nDelete ; i++)
         sortedIdx.push_back(rowsIdx[i]);
     std::sort(sortedIdx.end(), sortedIdx.end());
-    assert(clp_);
-    clp_->deleteRows(nDelete, rowsIdx);
+    si_->deleteRows(nDelete, rowsIdx);
     int k = 1;
     int l = sortedIdx[0];
     for (int i = sortedIdx[0] + 1 ; k < nDelete ; i++) {
@@ -2823,7 +2842,7 @@ CglLandPSimplex::removeRows(int nDelete, const int * rowsIdx)
         }
     }
     delete basis_;
-    basis_ = dynamic_cast<CoinWarmStartBasis *> (clp_->getWarmStart());
+    basis_ = dynamic_cast<CoinWarmStartBasis *> (si_->getWarmStart());
     assert(basis_);
 
     /* Update rowFlags_ */

@@ -11,7 +11,9 @@
 #endif
 #define INT_INFEAS(value) fabs(value - floor(value+0.5))
 
+#ifdef COIN_HAS_CLP
 #include "OsiClpSolverInterface.hpp"
+#endif
 
 #define CLONE_SI //Solver is cloned between two cuts
 
