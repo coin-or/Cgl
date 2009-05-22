@@ -17,6 +17,7 @@
 
 #include "CglLandPValidator.hpp"
 #include "CglCutGenerator.hpp"
+#include "CglConfig.h"
 #include "CglParam.hpp"
 
 #ifdef DO_STAT

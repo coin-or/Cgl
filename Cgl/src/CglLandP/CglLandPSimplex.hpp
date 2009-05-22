@@ -18,7 +18,9 @@
 #include "CoinWarmStartBasis.hpp"
 #include "CoinPackedMatrix.hpp"
 
+#ifdef COIN_HAS_CLP
 #include "OsiClpSolverInterface.hpp"
+#endif
 #include "CglLandPTabRow.hpp"
 #include "CglLandPUtils.hpp"
 #include "CglLandPMessages.hpp"
@@ -65,15 +67,19 @@ public:
 
     void setSi(OsiSolverInterface *si) {
         si_ = si;
+#ifdef COIN_HAS_CLP
         OsiClpSolverInterface * clpSi = dynamic_cast<OsiClpSolverInterface *>(si_);
         if (clpSi) {
             solver_ = clp;
             clp_ = clpSi;
         }
+#endif
     }
     void freeSi() {
         delete si_;
+#ifdef COIN_HAS_CLP
         clp_ = NULL;
+#endif
     }
 
     Cuts& extraCuts() {

@@ -905,10 +905,13 @@ CglLandPSimplex::changeBasis(int incoming, int leaving, int leavingStatus,
     double infty = si_->getInfinity();
     int clpLeavingStatus = leavingStatus;
 
+#ifdef COIN_HAS_CLP
     if (solver_ == clp) {
         if (basics_[leaving] >= ncols_)
             clpLeavingStatus = - leavingStatus;
     }
+#endif
+
     //row_k_.print(std::cout, 7, nonBasics_, ncols_);
     //row_i_.print(std::cout, 7, nonBasics_, ncols_);
 #if 0
