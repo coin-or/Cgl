@@ -1,6 +1,6 @@
 // $Id$
 //-----------------------------------------------------------------------------
-// name:     Cgl Lifed Simple Generalized Flow Cover Cut Generator
+// name:     Cgl Lifted Simple Generalized Flow Cover Cut Generator
 // author:   Yan Xu                email: yan.xu@sas.com
 //           Jeff Linderoth        email: jtl3@lehigh.edu
 //           Martin Savelsberg     email: martin.savelsbergh@isye.gatech.edu
@@ -125,10 +125,10 @@ public:
        and value.
     */ 
     //@{  
-    int    getVar() const          { return varInd_; }
-    double getVal() const          { return upper_; }
-    void   setVar(const int v)     { varInd_ = v; }
-    void   setVal(const double v)  { upper_ = v; }
+    inline int    getVar() const          { return varInd_; }
+    inline double getVal() const          { return upper_; }
+    inline void   setVar(const int v)     { varInd_ = v; }
+    inline void   setVal(const double v)  { upper_ = v; }
     //@}
 };
 

@@ -1270,10 +1270,12 @@ CglKnapsackCover::findLPMostViolatedMinCover(
       remainder.insert(krow.getIndices()[i],krow.getElements()[i]);
     }
     
-    if (coverSum <= b){
+    if (coverSum <= b+1.0e-8*(1.0+fabs(b))){
 #ifdef PRINT_DEBUG
-      printf("The identified cover is NOT a cover\n");
-      abort();
+      if (coverSum <= b) {
+	printf("The identified cover is NOT a cover\n");
+	abort();
+      }
 #endif
       delete [] ratio;
       return -1;
@@ -1317,6 +1319,8 @@ Lp relax of most violated minimal cover: row %i has cover of size %i.\n",
 	     xstar[cover.getIndices()[i]]);
       //sumCover += cover.getElements()[i];
     }
+    printf("The b = %.18g, and the cover element sum is %.18g (%.18g)\n\n",
+	   b,cover.sum(),coverSum);
     printf("The b = %g, and the cover sum is %g\n\n", b, cover.sum());
 #endif
 
@@ -1733,7 +1737,8 @@ CglKnapsackCover::findPseudoJohnAndEllisCover(
 	       cover.getIndices()[i], cover.getElements()[i],
 	       xstar[cover.getIndices()[i]]);
       }
-      printf("The b = %g, and the cover element sum is %g\n\n",b,cover.sum());
+      printf("The b = %.18g, and the cover element sum is %.18g (%.18g)\n\n",
+	     b,cover.sum(),coverElementSum);
     }
 #endif
 

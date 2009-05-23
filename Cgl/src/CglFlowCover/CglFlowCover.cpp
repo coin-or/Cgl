@@ -22,6 +22,7 @@
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedMatrix.hpp"
 #include "CoinPackedVector.hpp"
+#include "CoinSort.hpp"
 
 #include "CglFlowCover.hpp"
 
@@ -84,13 +85,13 @@ CglFlowCover::flowPreprocess(const OsiSolverInterface& si) const
     int numSUMVAREQ    = 0;
     int numUNINTERSTED = 0;
 
+    int* ind     = new int [numCols];
+    double* coef = new double [numCols];
     for (iRow = 0; iRow < numRows; ++iRow) {
 
 	int rowLen   = rowLengths[iRow];
 	char sen     = sense[iRow];
 	double rhs   = RHS[iRow];
-	int* ind     = new int [rowLen];
-	double* coef = new double [rowLen];
 
 
 	CoinDisjointCopyN(colInds + rowStarts[iRow], rowLen, ind);
@@ -140,9 +141,9 @@ CglFlowCover::flowPreprocess(const OsiSolverInterface& si) const
 			    "CglFlowCover");
 	}
     
-	delete [] ind;  ind  = 0;
-	delete [] coef; coef = 0;
     }
+    delete [] ind;  ind  = 0;
+    delete [] coef; coef = 0;
 
 #if CGLFLOW_DEBUG
     std::cout << "The num of rows = "  << numRows        << std::endl;
@@ -865,18 +866,31 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     double  temp1  = 0.0;
     double* mt     = new double [rowLen];
     double* M      = new double [rowLen + 1];
+    // order to look at variables
+    int * order = new int [rowLen];
+    int nLook=0;
+    for (int i = 0; i < rowLen; ++i) {
+      if ( (label[i] == CGLFLOW_COL_INCUT && sign[i] > 0) || 
+	   label[i] == CGLFLOW_COL_INLMIN ) {     //  C+ || L- 
+	// possible
+	M[nLook]=-up[i];
+	order[nLook++]=i;
+      }
+    }
+    CoinSort_2(M,M+nLook,order);
+    int kLook=0;
     
-    while (true) {
+    while (kLook<nLook) {
 	ix = UNDEFINED_;
 	value = lambda;
-	for (i = 0; i < rowLen; ++i) {
-	    if ( (label[i] == CGLFLOW_COL_INCUT && sign[i] > 0) || 
-		 label[i] == CGLFLOW_COL_INLMIN ) {     //  C+ || L- 
-		if ( up[i] > value ) {       // C++ || L-(up[i] > lambda)
-		    ix = i;
-		    value = up[i];
-		}
-	    }
+	i = order[kLook];
+	kLook++;
+	if ( (label[i] == CGLFLOW_COL_INCUT && sign[i] > 0) || 
+	     label[i] == CGLFLOW_COL_INLMIN ) {     //  C+ || L- 
+	  if ( up[i] > value ) {       // C++ || L-(up[i] > lambda)
+	    ix = i;
+	    value = up[i];
+	  }
 	}
       
 	if( ix == UNDEFINED_ )  break;
@@ -906,6 +920,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	delete [] yCoef;
 	delete [] mt; 
 	delete [] M; 
+	delete [] order;
 	return generated;
     }
 
@@ -964,6 +979,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
       delete [] yCoef;
       delete [] mt; 
       delete [] M; 
+      delete [] order;
       return generated;
     }
 
@@ -1169,6 +1185,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     delete [] yCoef;
     delete [] mt; 
     delete [] M; 
+    delete [] order;
     delete [] cutInd;
     delete [] cutCoef;
     

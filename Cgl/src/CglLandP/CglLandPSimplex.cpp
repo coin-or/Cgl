@@ -1168,6 +1168,7 @@ CglLandPSimplex::findCutImprovingPivotRow( int &direction, int &gammaSign, doubl
         row_i_.num=bestRow;
         pullTableauRow(row_i_);
     }
+    assert (bestRow<0||direction!=0);
     return bestRow;
 }
 
@@ -1535,6 +1536,7 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
         bestRow<<basics_[bestRow]<<direction<<gammaSign<<bestReducedCost
         <<CoinMessageEol;
     }
+    assert (bestRow<0||direction!=0);
     return bestRow;
 }
 
@@ -1607,6 +1609,7 @@ CglLandPSimplex::rescanReducedCosts( int &direction, int &gammaSign, double tole
         bestRow<<basics_[bestRow]<<direction<<gammaSign<<bestReducedCost
         <<CoinMessageEol;
     }
+    assert (bestRow<0||direction!=0);
     return bestRow;
 }
 
@@ -1926,10 +1929,12 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
     if (bestSigma < sigma_ - 1e-07) { //everything has gone ok
         handler_->message(FoundBestImprovingCol, messages_)<<nonBasics_[bestColumn]<<gammaSign * elements[lastValid]<<bestSigma<<CoinMessageEol<<CoinMessageEol;
         inDegenerateSequence_ = false;
+	assert (bestColumn<0||direction!=0);
         return bestColumn;
     }
     else if (allowDegenerate) { //Pivot is degenerate and we allow
         inDegenerateSequence_ = true;
+	assert (bestColumn<0||direction!=0);
         return bestColumn;
     }
     else { //we don't accept a degenerate pivot
@@ -1981,6 +1986,7 @@ CglLandPSimplex::findBestPivotColumn(int direction,
     if (m < sigma_ ) {
         handler_->message(FoundBestImprovingCol, messages_)<<nonBasics_[varOut]<<gamma<<m<<CoinMessageEol<<CoinMessageEol;
         inDegenerateSequence_ = false;
+	assert (varOut<0||direction!=0);
         return varOut;
     } else if (allowDegenerate && m<=sigma_) {
         inDegenerateSequence_ = true;
@@ -2225,6 +2231,7 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
     }
     direction = bestDirection;
     delete [] rc;
+    assert (bestIncoming<0||direction!=0);
     return bestIncoming;
 
 }
@@ -2745,6 +2752,7 @@ void
 CglLandPSimplex::adjustTableauRow(int var, TabRow & row, int direction)
 {
     double bound = 0;
+    assert (direction!=0);
     if (direction > 0) {
         for (int j = 0 ; j < ncols_orig_ ; j++)
             row[nonBasics_[j]] = - row[nonBasics_[j]];
