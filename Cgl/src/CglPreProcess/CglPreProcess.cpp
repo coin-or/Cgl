@@ -213,6 +213,12 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
   const int * row = model->getMatrixByCol()->getIndices();
   const CoinBigIndex * columnStart = model->getMatrixByCol()->getVectorStarts();
   const int * columnLength = model->getMatrixByCol()->getVectorLengths();
+  // Row copy
+  CoinPackedMatrix matrixByRow(*model->getMatrixByRow());
+  //const double * elementByRow = matrixByRow.getElements();
+  const int * column = matrixByRow.getIndices();
+  const CoinBigIndex * rowStart = matrixByRow.getVectorStarts();
+  const int * rowLength = matrixByRow.getVectorLengths();
   int numberIntegers=1;
   int totalNumberIntegers=0;
   while (numberIntegers) {
@@ -279,16 +285,22 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
       }
     }
     int * newInts = new int[numberColumns];
+    // Columns to zap
+    int nColumnZap=0;
+    int * columnZap = new int[numberColumns];
+    char * noGoodColumn = new char [numberColumns];
+    memset(noGoodColumn,0,numberColumns);
     int nNew=0;
     for (iColumn=0;iColumn<numberColumns;iColumn++) {
       if (upper[iColumn]>lower[iColumn]) {
 	double objValue = objective[iColumn]*direction;
 	bool thisGood=true;
 	if ((objValue||makeAll)&&!model->isInteger(iColumn)) {
-	  if (objValue)
+	  if (objValue) {
 	    numberObj++;
-	  else if (columnLength[iColumn]==1)
+	  } else if (columnLength[iColumn]==1) {
 	    continue; // don't bother with singletons
+	  }
 	  CoinBigIndex start = columnStart[iColumn];
 	  CoinBigIndex end = start + columnLength[iColumn];
 	  if (objValue>=0.0) {
@@ -322,23 +334,32 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
 		    xxxx = 15;
 		}
 		nC++;
-	      }
-	      else if (rowLower[iRow]==rowUpper[iRow])
+	      } else if (rowLower[iRow]==rowUpper[iRow]) {
 		equality=true;
-	      if (fabs(rhs[iRow])>1.0e20||fabs(rhs[iRow]-floor(rhs[iRow]+0.5))>1.0e-10
+	      }
+	      double rhsValue = rhs[iRow];
+	      double lowerValue = rowLower[iRow];
+	      double upperValue = rowUpper[iRow];
+	      if (rhsValue<1.0e20) {
+		if(lowerValue>-1.0e20)
+		  lowerValue -= rhsValue;
+		if(upperValue<1.0e20)
+		  upperValue -= rhsValue;
+	      }
+	      if (fabs(rhsValue)>1.0e20||fabs(rhsValue-floor(rhsValue+0.5))>1.0e-10
 		  ||fabs(element[j])!=1.0) {
 		// no good
 		thisGood=false;
 		break;
 	      }
 	      if (element[j]>0.0) {
-		if (rowLower[iRow]>-1.0e20&&fabs(rowLower[iRow]-floor(rowLower[iRow]+0.5))>1.0e-10) {
+		if (lowerValue>-1.0e20&&fabs(lowerValue-floor(lowerValue+0.5))>1.0e-10) {
 		  // no good
 		  thisGood=false;
 		  break;
 		}
 	      } else {
-		if (rowUpper[iRow]<1.0e20&&fabs(rowUpper[iRow]-floor(rowUpper[iRow]+0.5))>1.0e-10) {
+		if (upperValue<1.0e20&&fabs(upperValue-floor(upperValue+0.5))>1.0e-10) {
 		  // no good
 		  thisGood=false;
 		  break;
@@ -383,20 +404,29 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
 	      } else if (rowLower[iRow]==rowUpper[iRow]) {
 		equality=true;
 	      }
-	      if (fabs(rhs[iRow])>1.0e20||fabs(rhs[iRow]-floor(rhs[iRow]+0.5))>1.0e-10
+	      double rhsValue = rhs[iRow];
+	      double lowerValue = rowLower[iRow];
+	      double upperValue = rowUpper[iRow];
+	      if (rhsValue<1.0e20) {
+		if(lowerValue>-1.0e20)
+		  lowerValue -= rhsValue;
+		if(upperValue<1.0e20)
+		  upperValue -= rhsValue;
+	      }
+	      if (fabs(rhsValue)>1.0e20||fabs(rhsValue-floor(rhsValue+0.5))>1.0e-10
 		  ||fabs(element[j])!=1.0) {
 		// no good
 		thisGood=false;
 		break;
 	      }
 	      if (element[j]<0.0) {
-		if (rowLower[iRow]>-1.0e20&&fabs(rowLower[iRow]-floor(rowLower[iRow]+0.5))>1.0e-10) {
+		if (lowerValue>-1.0e20&&fabs(lowerValue-floor(lowerValue+0.5))>1.0e-10) {
 		  // no good
 		  thisGood=false;
 		  break;
 		}
 	      } else {
-		if (rowUpper[iRow]<1.0e20&&fabs(rowUpper[iRow]-floor(rowUpper[iRow]+0.5))>1.0e-10) {
+		if (upperValue<1.0e20&&fabs(upperValue-floor(upperValue+0.5))>1.0e-10) {
 		  // no good
 		  thisGood=false;
 		  break;
@@ -444,9 +474,63 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
 	if (!thisGood) {
 	  if (objValue)
 	    allGood=false;
+	  // look at again
+	  columnZap[nColumnZap++]=iColumn;
 	} else if (makeAll&&!model->isInteger(iColumn)&&
 		   upper[iColumn]-lower[iColumn]<10) {
 	  newInts[nNew++] = iColumn;
+	}
+      }
+    }
+    // Rows to look at
+    int * rowLook = new int[numberRows];
+    while (nColumnZap) {
+      int nRowLook=0;
+      for (int i=0;i<nColumnZap;i++) {
+	int iColumn=columnZap[i];
+	noGoodColumn[iColumn]=1;
+	CoinBigIndex start = columnStart[iColumn];
+	CoinBigIndex end = start + columnLength[iColumn];
+	for (CoinBigIndex j=start;j<end;j++) {
+	  int iRow = row[j];
+	  if (count[iRow]!=999999) {
+	    count[iRow]=999999;
+	    rowLook[nRowLook++]=iRow;
+	  }
+	}
+      }
+      nColumnZap=0;
+      if (nRowLook) {
+	for (int i=0;i<nRowLook;i++) {
+	  int iRow=rowLook[i];
+	  CoinBigIndex start = rowStart[iRow];
+	  CoinBigIndex end = start + rowLength[iRow];
+	  for (CoinBigIndex j=start;j<end;j++) {
+	    int iColumn = column[j];
+	    if (upper[iColumn]>lower[iColumn]&&
+		!model->isInteger(iColumn)) {
+	      if (!noGoodColumn[iColumn]) {
+		noGoodColumn[iColumn]=1;
+		columnZap[nColumnZap++]=iColumn;
+	      }
+	    }
+	  }
+	}
+      }
+    }
+    delete [] rowLook;
+    delete [] noGoodColumn;
+    delete [] columnZap;
+    // Final look
+    for (iColumn=0;iColumn<numberColumns;iColumn++) {
+      if (upper[iColumn]>lower[iColumn]&&
+	  !model->isInteger(iColumn)&&objective[iColumn]) {
+	CoinBigIndex start = columnStart[iColumn];
+	CoinBigIndex end = start + columnLength[iColumn];
+	for (CoinBigIndex j=start;j<end;j++) {
+	  int iRow = row[j];
+	  if (count[iRow]==999999) 
+	    allGood=false;
 	}
       }
     }
@@ -464,8 +548,8 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
 	    thisGood=false;
 	    break;
 	  }
-	}
-	if (thisGood) {
+	} 
+	if (thisGood&&upper[iColumn]<lower[iColumn]+10.0) {
 	  model->setInteger(iColumn);
 	  if (objValue)
 	    numberNonZero++;
