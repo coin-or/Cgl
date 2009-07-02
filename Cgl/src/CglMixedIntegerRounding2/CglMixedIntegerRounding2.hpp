@@ -245,12 +245,10 @@ private:
 			const double* coefByRow,
 			const int* colInds,
 			const int* rowStarts,
-			const int* rowLengths,
 			const CoinPackedMatrix& matrixByCol,
 			const double* coefByCol,
 			const int* rowInds,
 			const int* colStarts,
-			const int* colLengths,
 			OsiCuts& cs ) const;
 
   // Copy row selected to CoinIndexedVector
@@ -274,7 +272,6 @@ private:
 			     const CoinIndexedVector& setRowsAggregated,
 			     const double* xlp, const double* coefByCol,
 			     const int* rowInds, const int* colStarts,
-			     const int* colLengths,
 			     int& rowSelected,
 			     int& colSelected ) const;
 
@@ -311,7 +308,6 @@ private:
 			const char* sense, const double* RHS,
 			const double* coefByRow,
 			const int* colInds, const int* rowStarts,
-			const int* rowLengths,
 			const double* xlp, const double sStar,
 			const double* colUpperBound,
 			const double* colLowerBound,

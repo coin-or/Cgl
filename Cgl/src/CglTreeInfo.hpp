@@ -25,6 +25,7 @@ public:
       2 - switch off some stuff as variables semi-integer
       4 - set global cut flag if at root node
       8 - set global cut flag if at root node and first pass
+      16 - set global cut flag and make cuts globally valid
   */
   int options;
   /// Set true if in tree (to avoid ambiguity at first branch)

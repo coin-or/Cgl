@@ -20,6 +20,13 @@
 #include "CoinIndexedVector.hpp"
 #include "OsiRowCutDebugger.hpp"
 #include "CoinFactorization.hpp"
+#if CLP_OSL!=1&&CLP_OSL!=3
+#undef CLP_OSL
+#endif
+#undef CLP_OSL
+#ifdef CLP_OSL
+#include "CoinOslFactorization.hpp"
+#endif
 #include "CoinWarmStartBasis.hpp"
 #include "CglGomory.hpp"
 #include "CoinFinite.hpp"
@@ -40,6 +47,8 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     dynamic_cast<const CoinWarmStartBasis*>(warmstart);
   const double * colUpper = si.getColUpper();
   const double * colLower = si.getColLower();
+  if ((info.options&16)!=0)
+    printf("%d %d %d\n",info.inTree,info.options,info.pass);
   for (i=0;i<numberColumns;i++) {
     if (si.isInteger(i)) {
       if (colUpper[i]>colLower[i]+0.5) {
@@ -75,10 +84,14 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 
   delete warmstart;
   delete [] intVar;
-  if (!info.inTree&&((info.options&4)==4||((info.options&8)&&!info.pass))) {
+  if ((!info.inTree&&((info.options&4)==4||((info.options&8)&&!info.pass)))
+      ||(info.options&16)!=0) {
     int numberRowCutsAfter = cs.sizeRowCuts();
-    for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++)
-      cs.rowCutPtr(i)->setGloballyValid();
+    for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++) {
+      int length = cs.rowCutPtr(i)->row().getNumElements();
+      if (length<=limit_)
+	cs.rowCutPtr(i)->setGloballyValid();
+    }
   }
 }
 
@@ -217,6 +230,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 {
   // get limit on length of cut
   int limit = info.inTree ? limit_ : CoinMax(limit_,limitAtRoot_);
+  bool globalCuts = (info.options&16)!=0;
+  double testFixed = (!globalCuts) ? 1.0e-8 : -1.0;
   // get what to look at
   double away = info.inTree ? away_ : CoinMin(away_,awayAtRoot_);
   int numberRows=columnCopy.getNumRows();
@@ -227,6 +242,12 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   // Start of code to create a factorization from warm start (A) ====
   // check factorization is okay
   CoinFactorization factorization;
+#ifdef CLP_OSL
+  CoinOslFactorization * factorization2=NULL;
+  if (alternateFactorization_) {
+    factorization2 = new CoinOslFactorization();
+  }
+#endif
   // We can either set increasing rows so ...IsBasic gives pivot row
   // or we can just increment iBasic one by one
   // for now let ...iBasic give pivot row
@@ -254,9 +275,20 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   }
   //returns 0 -okay, -1 singular, -2 too many in basis, -99 memory */
   while (status<-98) {
-    status=factorization.factorize(columnCopy,
-				   rowIsBasic, columnIsBasic);
-    if (status==-99) factorization.areaFactor(factorization.areaFactor() * 2.0);
+#ifdef CLP_OSL
+    if (!alternateFactorization_) {
+#endif
+      status=factorization.factorize(columnCopy,
+				     rowIsBasic, columnIsBasic);
+      if (status==-99) factorization.areaFactor(factorization.areaFactor() * 2.0);
+#ifdef CLP_OSL
+    } else {
+      double areaFactor=1.0;
+      status=factorization2->factorize(columnCopy,
+				      rowIsBasic, columnIsBasic,areaFactor);
+      if (status==-99) areaFactor *= 2.0;
+    }
+#endif
   } 
   if (status) {
 #ifdef COIN_DEVELOP
@@ -266,7 +298,12 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   }
   // End of creation of factorization (A) ====
   
+#ifdef CLP_OSL
+  double relaxation = !alternateFactorization_ ? factorization.conditionNumber() :
+    factorization2->conditionNumber();
+#else
   double relaxation = factorization.conditionNumber();
+#endif
 #ifdef COIN_DEVELOP_z
   if (relaxation>1.0e49)
     printf("condition %g\n",relaxation);
@@ -410,7 +447,14 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	array.setVector(columnLength[iColumn],row+columnStart[iColumn],
 			columnElements+columnStart[iColumn]);
 	// get column in tableau
-	factorization.updateColumn ( &work, &array );
+#ifdef CLP_OSL
+	if (!alternateFactorization_)
+#endif
+	  factorization.updateColumn ( &work, &array );
+#ifdef CLP_OSL
+	else
+	  factorization2->updateColumn ( &work, &array );
+#endif
 	int nn=0;
 	int numberInArray=array.getNumElements();
 	for (j=0;j<numberInArray;j++) {
@@ -438,7 +482,14 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	int numberNonInteger=0;
 	//Code below computes tableau row ====
 	// get pi
-	factorization.updateColumnTranspose ( &work, &array );
+#ifdef CLP_OSL
+	if (!alternateFactorization_)
+#endif
+	  factorization.updateColumnTranspose ( &work, &array );
+#ifdef CLP_OSL
+	else
+	  factorization2->updateColumnTranspose ( &work, &array );
+#endif
 	int numberInArray=array.getNumElements();
 #ifdef CGL_DEBUG
 	// check pivot on iColumn
@@ -468,9 +519,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	int number=0;
 	// columns
 	for (j=0;j<numberColumns;j++) {
-	  double value=0.0;
-	  if (columnIsBasic[j]<0&&
-	      colUpper[j]>colLower[j]+1.0e-8) {
+	  if (columnIsBasic[j]<0&&colUpper[j]>colLower[j]+testFixed) {
+	    double value=0.0;
 	    int k;
 	    // add in row of tableau
 	    for (k=columnStart[j];k<columnStart[j]+columnLength[j];k++) {
@@ -484,9 +534,12 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      // small value
 	      continue;
 	    } else {
+	      // left in to stop over compilation?
+	      //if (iColumn==-52) printf("for basic %d, column %d has alpha %g, colsol %g\n",
+	      //		      iColumn,j,value,colsol[j]);
 #if CGL_DEBUG>1
 	      if (iColumn==52) printf("for basic %d, column %d has alpha %g, colsol %g\n",
-		     iColumn,j,value,colsol[j]);
+				      iColumn,j,value,colsol[j]);
 #endif
 	      // deal with bounds
 	      if (swap[j]) {
@@ -498,7 +551,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      }
 #if CGL_DEBUG>1
 	      if (iColumn==52) printf("%d value %g reduced %g int %d rhs %g swap %d\n",
-		     j,value,reducedValue,intVar[j],rhs,swap[j]);
+				      j,value,reducedValue,intVar[j],rhs,swap[j]);
 #endif
 	      double coefficient;
 	      if (intVar[j]) {
@@ -525,11 +578,11 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		rhs += colLower[j]*coefficient;
 	      }
 	      if (fabs(coefficient)>= COIN_INDEXED_TINY_ELEMENT) {
-		 cutElement[j] = coefficient;
-		 cutIndex[number++]=j;
-		 // If too many - break from loop
-		 if (number>limit) 
-		   break;
+		cutElement[j] = coefficient;
+		cutIndex[number++]=j;
+		// If too many - break from loop
+		if (number>limit) 
+		  break;
 	      }
 	    }
 	  } else {
@@ -628,8 +681,18 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	//continue;
 	// say zeroed out
 	cutVector.setNumElements(0);
+	bool inAccurate=false;
+	double difference=fabs((sum-rhs)-violation);
+	if (tolerance1>0.99) {
+	  // use absolute
+	  inAccurate = (difference>=tolerance);
+	} else {
+	  double rhs2=CoinMax(fabs(rhs),10.0);
+	  double useTolerance=rhs2*0.1*tolerance1;
+	  inAccurate = (difference>=useTolerance);
+	}
 	if (sum >rhs+tolerance2*away&&
-	    fabs((sum-rhs)-violation)<tolerance1) {
+	    !inAccurate) {
 	  //#ifdef CGL_DEBUG
 #ifdef CGL_DEBUG
 #if CGL_DEBUG<=1
@@ -794,7 +857,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		}
 	      } else {
 		int iColumn = cutIndex[i];
-		if (colUpper[iColumn]!=colLower[iColumn]) {
+		if (colUpper[iColumn]!=colLower[iColumn]||globalCuts) {
 		  largest=CoinMax(largest,value);
 		  smallest=CoinMin(smallest,value);
 		  cutIndex[number]=cutIndex[i];
@@ -829,6 +892,10 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      rc.setLb(bounds[0]);
 	      rc.setUb(bounds[1]);   
 	      cs.insert(rc);
+	      //printf("For column %d on row %d with value %g\n",
+	      //	     iColumn,iBasic,colsol[iColumn]);
+	      //std::cout<<"first violation "<<violation<<" now "
+	      //       <<sum-rhs<<" why?, rhs= "<<rhs<<std::endl;
               //rc.print();
 #ifdef CGL_DEBUG
 	      if (!number)
@@ -871,7 +938,14 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	array.setVector(columnLength[iColumn],row+columnStart[iColumn],
 			columnElements+columnStart[iColumn]);
 	// get column in tableau
-	factorization.updateColumn ( &work, &array );
+#ifdef CLP_OSL
+	if (!alternateFactorization_)
+#endif
+	  factorization.updateColumn ( &work, &array );
+#ifdef CLP_OSL
+	else
+	  factorization2->updateColumn ( &work, &array );
+#endif
 	int numberInArray=array.getNumElements();
 	printf("non-basic %d\n",iColumn);
 	for (int j=0;j<numberInArray;j++) {
@@ -885,6 +959,9 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 #endif
     }
   }
+#ifdef CLP_OSL
+  delete factorization2;
+#endif
 
   delete [] rowActivity;
   delete [] swap;
@@ -970,7 +1047,8 @@ awayAtRoot_(0.05),
 conditionNumberMultiplier_(1.0e-18),
 largestFactorMultiplier_(1.0e-13),
 limit_(50),
-limitAtRoot_(0)
+limitAtRoot_(0),
+alternateFactorization_(0)
 {
 
 }
@@ -985,7 +1063,8 @@ CglGomory::CglGomory (const CglGomory & source) :
   conditionNumberMultiplier_(source.conditionNumberMultiplier_),
   largestFactorMultiplier_(source.largestFactorMultiplier_),
   limit_(source.limit_),
-  limitAtRoot_(source.limitAtRoot_)
+  limitAtRoot_(source.limitAtRoot_),
+  alternateFactorization_(source.alternateFactorization_)
 {  
 }
 
@@ -1019,6 +1098,7 @@ CglGomory::operator=(const CglGomory& rhs)
     largestFactorMultiplier_ = rhs.largestFactorMultiplier_;
     limit_=rhs.limit_;
     limitAtRoot_=rhs.limitAtRoot_;
+    alternateFactorization_=rhs.alternateFactorization_; 
   }
   return *this;
 }

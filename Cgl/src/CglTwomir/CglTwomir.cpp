@@ -245,8 +245,11 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   DGG_freeData (data);
   if (!info.inTree&&((info.options&4)==4||((info.options&8)&&!info.pass))) {
     int numberRowCutsAfter = cs.sizeRowCuts();
-    for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++)
-      cs.rowCutPtr(i)->setGloballyValid();
+    for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++) {
+      int length = cs.rowCutPtr(i)->row().getNumElements();
+      if (length<=max_elements_)
+	cs.rowCutPtr(i)->setGloballyValid();
+    }
   }
 }
 

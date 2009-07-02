@@ -65,8 +65,9 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
 
   // get matrix by row
   const CoinPackedMatrix & tempMatrixByRow = *si.getMatrixByRow();
-  CoinPackedMatrix matrixByRow;
-  matrixByRow.submatrixOf(tempMatrixByRow, numRows_, indRows_);
+  CoinPackedMatrix matrixByRow(false,0.0,0.0);
+  // There are no duplicates but this is faster
+  matrixByRow.submatrixOfWithDuplicates(tempMatrixByRow, numRows_, indRows_);
   CoinPackedMatrix matrixByCol(matrixByRow,0,0,true);
   //matrixByCol.reverseOrdering();
   //const CoinPackedMatrix & matrixByRow = *si.getMatrixByRow();
@@ -74,20 +75,18 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
   const double* coefByRow  = matrixByRow.getElements();
   const int* colInds       = matrixByRow.getIndices();
   const int* rowStarts     = matrixByRow.getVectorStarts();
-  const int* rowLengths    = matrixByRow.getVectorLengths();
 
   // get matrix by column
   //const CoinPackedMatrix & matrixByCol = *si.getMatrixByCol();
   const double* coefByCol  = matrixByCol.getElements();
   const int* rowInds       = matrixByCol.getIndices();
   const int* colStarts     = matrixByCol.getVectorStarts();
-  const int* colLengths    = matrixByCol.getVectorLengths();
 
 
   generateMirCuts(si, xlp, colUpperBound, colLowerBound,
 		  matrixByRow,  LHS, coefByRow,
-		  colInds, rowStarts, rowLengths, matrixByCol,
-		  coefByCol, rowInds, colStarts, colLengths,
+		  colInds, rowStarts, matrixByCol,
+		  coefByCol, rowInds, colStarts,
 		  cs);
   if (!info.inTree&&((info.options&4)==4||((info.options&8)&&!info.pass))) {
     int numberRowCutsAfter = cs.sizeRowCuts();
@@ -679,12 +678,10 @@ CglMixedIntegerRounding2::generateMirCuts(
 			    const double* coefByRow,
 			    const int* colInds,
 			    const int* rowStarts,
-			    const int* rowLengths,
 			    const CoinPackedMatrix& matrixByCol,
 			    const double* coefByCol,
 			    const int* rowInds,
 			    const int* colStarts,
-			    const int* colLengths,
 			    OsiCuts& cs ) const
 {
 
@@ -761,7 +758,6 @@ CglMixedIntegerRounding2::generateMirCuts(
 					colUpperBound, colLowerBound, 
 					setRowsAggregated, xlp, 
 					coefByCol, rowInds, colStarts,
-					colLengths, 
 					rowSelected, colSelected);
 
 	// if finds row to aggregate, compute aggregated row
@@ -830,7 +826,7 @@ CglMixedIntegerRounding2::generateMirCuts(
 	// Find a c-MIR cut with the current mixed knapsack constraint
 	bool hasCut = cMirSeparation(si, matrixByRow, rowToUse,
 				     listRowsAggregated, sense_, RHS_,
-				     coefByRow, colInds, rowStarts, rowLengths,
+				     coefByRow, colInds, rowStarts, 
 				     xlp, sStar, colUpperBound, colLowerBound, 
 				     mixedKnapsack,
 				     rhsMixedKnapsack, contVariablesInS,
@@ -922,7 +918,6 @@ CglMixedIntegerRounding2::selectRowToAggregate(
 			    const CoinIndexedVector& setRowsAggregated,
 			    const double* xlp, const double* coefByCol,
 			    const int* rowInds, const int* colStarts,
-			    const int* colLengths,
 			    int& rowSelected,
 			    int& colSelected ) const
 {
@@ -961,7 +956,7 @@ CglMixedIntegerRounding2::selectRowToAggregate(
     if (delta > deltaMax) {
 
       int iStart = colStarts[indCol];
-      int iStop  = iStart + colLengths[indCol];
+      int iStop  = colStarts[indCol+1];
       //      int count = 0;
 
       //      std::vector<int> rowPossible;
@@ -1210,7 +1205,6 @@ CglMixedIntegerRounding2::cMirSeparation(
 			    const char* sense, const double* RHS,
 			    const double* coefByRow,
 			    const int* colInds, const int* rowStarts,
-			    const int* rowLengths,
 			    const double* xlp, const double sStar,
 			    const double* colUpperBound,
 			    const double* colLowerBound,

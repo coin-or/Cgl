@@ -104,6 +104,13 @@ public:
   double getLargestFactorMultiplier() const;
   //@}
 
+  /**@name change factorization */
+  //@{
+  /// Use alternative factorization
+  inline void useAlternativeFactorization()
+  { alternateFactorization_=1;} 
+  //@}
+
   /**@name Constructors and destructors */
   //@{
   /// Default constructor 
@@ -148,6 +155,8 @@ private:
   int limit_;
   /// Limit - only generate if fewer than this in cut (at root)
   int limitAtRoot_;
+  /// nonzero to use alternative factorization
+  int alternateFactorization_;
   //@}
 };
 
