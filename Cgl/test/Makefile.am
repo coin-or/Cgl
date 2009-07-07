@@ -223,24 +223,24 @@ endif
 if COIN_HAS_OSI_PREINSTALLED
   AM_CPPFLAGS += -I`$(CYGPATH_W) $(OSIINSTDIR)/include/coin`
   LIBS += -L`$(CYGPATH_W) $(OSIINSTDIR)/lib` -lOsi \
-	`cat $(COINUTILSDOCDIR)/coinutils_addlibs.txt`
+	`cat $(OSIDOCDIR)/osi_addlibs.txt`
 else
   AM_CPPFLAGS += -I`$(CYGPATH_W) $(OSISRCDIR)/src` \
 	-I`$(CYGPATH_W) $(OSIOBJDIR)/inc`
   unitTest_LDADD += $(OSIOBJDIR)/src/libOsi.la
-  LIBS += `cat $(COINUTILSOBJDIR)/coinutils_addlibs.txt`
+  LIBS += `cat $(OSIOBJDIR)/osi_addlibs.txt`
 endif
 
 if COIN_HAS_COINUTILS_PREINSTALLED
   AM_CPPFLAGS += -I`$(CYGPATH_W) $(COINUTILSINSTDIR)/include/coin`
   LIBS += -L`$(CYGPATH_W) $(COINUTILSOBJDIR)/lib` -lCoinUtils \
-	`cat $(OSIDOCDIR)/osi_addlibs.txt`
+	`cat $(COINUTILSDOCDIR)/coinutils_addlibs.txt`
 else
   AM_CPPFLAGS += \
 	-I`$(CYGPATH_W) $(COINUTILSSRCDIR)/src` \
 	-I`$(CYGPATH_W) $(COINUTILSOBJDIR)/inc`
   unitTest_LDADD += $(COINUTILSOBJDIR)/src/libCoinUtils.la
-  LIBS += `cat $(OSIOBJDIR)/osi_addlibs.txt`
+  LIBS += `cat $(COINUTILSOBJDIR)/coinutils_addlibs.txt`
 endif
 
 # List additional libraries
