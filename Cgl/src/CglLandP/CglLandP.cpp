@@ -697,8 +697,9 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     std::vector<int> indices;
     getSortedFractionalIndices(indices,cached_, params);
 
+#ifndef NDEBUG
     int numrows = si.getNumRows();
-
+#endif
 
 #ifdef DO_STAT
     //Get informations on current optimum
