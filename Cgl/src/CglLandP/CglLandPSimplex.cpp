@@ -23,12 +23,14 @@ static double total_time = 0;
 #endif
 #ifndef NDEBUG
 
+/* The function is not used anywhere (LL)
 static void MyAssertFunc(bool c, const std::string &s, const std::string&  file, unsigned int line){
     if (c != true){
         fprintf(stderr, "Failed MyAssertion: %s in %s line %i.\n", s.c_str(), file.c_str(), line);
         throw -1;
     }
 }
+*/
 
 static void DblGtAssertFunc(const double& a, const std::string &a_s, const double&b, const std::string& b_s,
                      const std::string&  file, unsigned int line){

@@ -758,7 +758,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
   if(CGLFLOW_DEBUG) {
     double sum_mj_Cplus = 0.0;
     double sum_mj_Cminus= 0.0;
-    double checkLambda;
+    // double checkLambda; // variable not used anywhere (LL)
     // print out the knapsack variables
     std::cout << "Knapsack Cover: C+" << std::endl;
     for (i = 0; i < rowLen; ++i) { 
@@ -1020,7 +1020,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
   if(CGLFLOW_DEBUG) {
     std::cout << "violation = " << violation << std::endl;
   }
-  double violationBeforeLift=violation;
+  //  double violationBeforeLift=violation; // variable not used anywhere (LL)
   if(doLift && fabs(violation) > TOLERANCE_ ) {  // LIFTING
     double estY, estX;
     double movement = 0.0;
