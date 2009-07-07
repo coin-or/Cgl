@@ -1,4 +1,4 @@
-# Copyright (C) 2006 International Business Machines and others.
+# Copyright (C) 2006, 2009 International Business Machines and others.
 # All Rights Reserved.
 # This file is distributed under the Common Public License.
 
@@ -43,10 +43,19 @@ libCgl_la_DEPENDENCIES = $(libCgl_la_LIBADD)
 # "cygpath" stuff is necessary to compile with native compilers on Windows.
 # "top_srcdir" refers to the basic directory for the main package that is
 # being compiled.
-AM_CPPFLAGS = \
+if COIN_HAS_COINUTILS_PREINSTALLED
+  AM_CPPFLAGS = -I`$(CYGPATH_W) $(COINUTILSINSTDIR)/include/coin`
+else
+  AM_CPPFLAGS = \
 	-I`$(CYGPATH_W) $(COINUTILSSRCDIR)/src` \
-	-I`$(CYGPATH_W) $(COINUTILSOBJDIR)/inc` \
-	-I`$(CYGPATH_W) $(OSISRCDIR)/src`
+	-I`$(CYGPATH_W) $(COINUTILSOBJDIR)/inc`
+endif
+
+if COIN_HAS_OSI_PREINSTALLED
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(OSIINSTDIR)/include/coin`
+else
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(OSISRCDIR)/src`
+endif
 
 # This line is necessary to allow VPATH compilation with MS compilers
 # on Cygwin

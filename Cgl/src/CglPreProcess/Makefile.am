@@ -1,4 +1,4 @@
-# Copyright (C) 2006 International Business Machines and others.
+# Copyright (C) 2006, 2009 International Business Machines and others.
 # All Rights Reserved.
 # This file is distributed under the Common Public License.
 
@@ -30,10 +30,21 @@ libCglPreProcess_la_LDFLAGS = $(LT_LDFLAGS)
 AM_CPPFLAGS = \
 	-I`$(CYGPATH_W) $(srcdir)/..` \
 	-I`$(CYGPATH_W) $(srcdir)/../CglProbing` \
-	-I`$(CYGPATH_W) $(srcdir)/../CglDuplicateRow` \
+	-I`$(CYGPATH_W) $(srcdir)/../CglDuplicateRow`
+
+if COIN_HAS_COINUTILS_PREINSTALLED
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(COINUTILSINSTDIR)/include/coin`
+else
+  AM_CPPFLAGS += \
 	-I`$(CYGPATH_W) $(COINUTILSSRCDIR)/src` \
-	-I`$(CYGPATH_W) $(COINUTILSOBJDIR)/inc` \
-	-I`$(CYGPATH_W) $(OSISRCDIR)/src`
+	-I`$(CYGPATH_W) $(COINUTILSOBJDIR)/inc`
+endif
+
+if COIN_HAS_OSI_PREINSTALLED
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(OSIINSTDIR)/include/coin`
+else
+  AM_CPPFLAGS += -I`$(CYGPATH_W) $(OSISRCDIR)/src`
+endif
 
 # This line is necessary to allow VPATH compilation with MS compilers
 # on Cygwin
