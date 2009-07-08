@@ -22,6 +22,7 @@ unitTest_LDADD = ../src/libCgl.la
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows
 AM_CPPFLAGS = \
+	-I`$(CYGPATH_W) $(srcdir)/../src` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglFlowCover` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglGomory` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglKnapsackCover` \
@@ -112,7 +113,7 @@ else
   AM_CPPFLAGS += -I`$(CYGPATH_W) $(DYLPSRCDIR)/src/Dylp` \
 	-I`$(CYGPATH_W) $(DYLPSRCDIR)/src/DylpStdLib` \
 	-I`$(CYGPATH_W) $(DYLPOBJDIR)/inc`
-  unitTest_LDADD += $(DYLPOBJDIR)/src/libDylp.la
+  unitTest_LDADD += $(DYLPOBJDIR)/src/Dylp/libDylp.la
   LIBS += `cat $(DYLPOBJDIR)/dylp_addlibs.txt`
 endif
 endif
@@ -196,7 +197,7 @@ if COIN_HAS_OSI_PREINSTALLED
   LIBS += -L`$(CYGPATH_W) $(OSIINSTDIR)/lib` -lOsiVol
 else
   AM_CPPFLAGS += -I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiVol`
-  unitTest_LDADD += $(OSIOBJDIR)/src/OsiSym/libOsiVol.la
+  unitTest_LDADD += $(OSIOBJDIR)/src/OsiVol/libOsiVol.la
 endif
 if COIN_HAS_VOL_PREINSTALLED
   AM_CPPFLAGS += -I`$(CYGPATH_W) $(VOLINSTDIR)/include/coin`
@@ -233,7 +234,7 @@ endif
 
 if COIN_HAS_COINUTILS_PREINSTALLED
   AM_CPPFLAGS += -I`$(CYGPATH_W) $(COINUTILSINSTDIR)/include/coin`
-  LIBS += -L`$(CYGPATH_W) $(COINUTILSOBJDIR)/lib` -lCoinUtils \
+  LIBS += -L`$(CYGPATH_W) $(COINUTILSINSTDIR)/lib` -lCoinUtils \
 	`cat $(COINUTILSDOCDIR)/coinutils_addlibs.txt`
 else
   AM_CPPFLAGS += \
