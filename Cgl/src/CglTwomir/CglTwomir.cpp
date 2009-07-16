@@ -192,9 +192,6 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	    } else {
 	      // throw away
 	      goodCut=false;
-#ifdef CLP_INVESTIGATE
-	      printf("Twomir thrown away on small value %g\n",value);
-#endif
 	      break;
 	    }
 	  } else {
@@ -210,10 +207,6 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	    }
 	  }
 	}
-#ifdef CLP_INVESTIGATE
-	if (largest>=1.0e9*smallest)
-	  printf("Twomir thrown away on ratios %g %g\n",smallest,largest);
-#endif
 	if (largest<1.0e9*smallest&&goodCut) {
 	  rowcut.setRow(number, cutIndex, packed);
 	  rowcut.setUb(DBL_MAX);

@@ -60,10 +60,10 @@ public:
   virtual
     ~CglTreeInfo ();
   /// Take action if cut generator can fix a variable (toValue -1 for down, +1 for up)
-  virtual void fixes(int variable, int toValue, int fixedVariable,bool fixedToLower) {}
+  virtual bool fixes(int , int , int ,bool) {return false;}
   /** Initalizes fixing arrays etc - returns >0 if we want to save info
       0 if we don't and -1 if is to be used */
-  virtual int initializeFixing(const OsiSolverInterface * model) {return 0;}
+  virtual int initializeFixing(const OsiSolverInterface * ) {return 0;}
   
 };
 
@@ -95,8 +95,10 @@ public:
   virtual
     ~CglTreeProbingInfo ();
   OsiSolverInterface * analyze(const OsiSolverInterface & si, int createSolver=0);
-  /// Take action if cut generator can fix a variable (toValue -1 for down, +1 for up)
-  virtual void fixes(int variable, int toValue, int fixedVariable,bool fixedToLower);
+  /** Take action if cut generator can fix a variable 
+      (toValue -1 for down, +1 for up)
+      Returns true if still room, false if not  */
+  virtual bool fixes(int variable, int toValue, int fixedVariable,bool fixedToLower);
   /** Initalizes fixing arrays etc - returns >0 if we want to save info
       0 if we don't and -1 if is to be used */
   virtual int initializeFixing(const OsiSolverInterface * model) ;

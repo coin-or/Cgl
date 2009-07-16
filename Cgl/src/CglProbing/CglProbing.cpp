@@ -4449,7 +4449,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	      if (colUpper[icol]-colLower[icol]<1.0e-12&&!saveL[istackC]&&saveU[istackC]==1.0) {
 		assert(saveL[istackC]==colLower[icol]||
 		       saveU[istackC]==colUpper[icol]);
-		info->fixes(j,toValue,icol,colLower[icol]==saveL[istackC]);
+		saveFixingInfo = info->fixes(j,toValue,
+					     icol,colLower[icol]==saveL[istackC]);
 	      }
 	    }
 	  }

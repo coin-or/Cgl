@@ -1161,18 +1161,21 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver)
   return newSolver;
 }
 // Take action if cut generator can fix a variable (toValue -1 for down, +1 for up)
-void 
+bool
 CglTreeProbingInfo::fixes(int variable, int toValue, int fixedVariable,bool fixedToLower)
 {
   //printf("%d going to %d fixes %d at %g\n",variable,toValue,fixedVariable,fixedToValue);
   int intVariable = backward_[variable];
   if (intVariable<0) // off as no longer in order FIX
-    return; // not 0-1 (well wasn't when constructor was called)
+    return true; // not 0-1 (well wasn't when constructor was called)
   int intFix = backward_[fixedVariable];
   if (intFix<0)
     intFix = numberIntegers_+fixedVariable; // not 0-1
   int fixedTo = fixedToLower ? 0 : 1;
   if (numberEntries_==maximumEntries_) {
+    // See if taking too much memory
+    if (maximumEntries_>=CoinMax(1000000,10*numberIntegers_))
+      return false;
     maximumEntries_ += 100 +maximumEntries_/2;
     fixEntry * temp1 = new fixEntry [maximumEntries_];
     memcpy(temp1,fixEntry_,numberEntries_*sizeof(fixEntry));
@@ -1193,6 +1196,7 @@ CglTreeProbingInfo::fixes(int variable, int toValue, int fixedVariable,bool fixe
     fixingEntry_[numberEntries_++] = intVariable << 1;
   else
     fixingEntry_[numberEntries_++] = (intVariable << 1) | 1;
+  return true;
 }
 // Initalizes fixing arrays etc - returns true if we want to save info
 int

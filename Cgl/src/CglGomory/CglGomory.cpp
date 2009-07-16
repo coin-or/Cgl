@@ -20,12 +20,14 @@
 #include "CoinIndexedVector.hpp"
 #include "OsiRowCutDebugger.hpp"
 #include "CoinFactorization.hpp"
+#if 0
+#undef CLP_OSL
+#define CLP_OSL 1
 #if CLP_OSL!=1&&CLP_OSL!=3
 #undef CLP_OSL
-#endif
-#undef CLP_OSL
-#ifdef CLP_OSL
+#else
 #include "CoinOslFactorization.hpp"
+#endif
 #endif
 #include "CoinWarmStartBasis.hpp"
 #include "CglGomory.hpp"
