@@ -1173,6 +1173,9 @@ CglTreeProbingInfo::fixes(int variable, int toValue, int fixedVariable,bool fixe
     intFix = numberIntegers_+fixedVariable; // not 0-1
   int fixedTo = fixedToLower ? 0 : 1;
   if (numberEntries_==maximumEntries_) {
+    // See if taking too much memory
+    if (maximumEntries_>=CoinMax(1000000,10*numberIntegers_))
+      return;
     maximumEntries_ += 100 +maximumEntries_/2;
     fixEntry * temp1 = new fixEntry [maximumEntries_];
     memcpy(temp1,fixEntry_,numberEntries_*sizeof(fixEntry));
