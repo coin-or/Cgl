@@ -30,7 +30,7 @@
 void
 CglResidualCapacity::generateCuts(const OsiSolverInterface& si,
 				      OsiCuts& cs,
-				      const CglTreeInfo info) const
+				  const CglTreeInfo /*info*/) const
 {
 
   // If the LP or integer presolve is used, then need to redo preprocessing
@@ -420,7 +420,7 @@ bool
 CglResidualCapacity::treatAsLessThan(const OsiSolverInterface& si,
 				     const int rowLen, const int* ind, 
 				     const double* coef,
-				     const double rhs,
+				     const double /*rhs*/,
 				     const double* colLowerBound,
 				     const double* colUpperBound) const
 {
@@ -464,8 +464,8 @@ CglResidualCapacity::generateResCapCuts(
 				     const double* xlp,
 				     const double* colUpperBound,
 				     const double* colLowerBound,
-				     const CoinPackedMatrix& matrixByRow,
-				     const double* LHS,
+				     const CoinPackedMatrix& /*matrixByRow*/,
+				     const double* /*LHS*/,
 				     const double* coefByRow,
 				     const int* colInds,
 				     const int* rowStarts,
@@ -541,7 +541,7 @@ CglResidualCapacity::resCapSeparation(const OsiSolverInterface& si,
 				      const double rhs,
 				      const double *xlp,  
 				      const double* colUpperBound,
-				      const double* colLowerBound,
+				      const double* /*colLowerBound*/,
 				      OsiRowCut& resCapCut) const
 { 
     // process original row to create row in canonical form

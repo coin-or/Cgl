@@ -18,7 +18,7 @@
 //-------------------------------------------------------------
 void
 CglSimpleRounding::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-				const CglTreeInfo info) const
+				const CglTreeInfo /*info*/) const
 {
   int nRows=si.getNumRows(); // number of rows in the coefficient matrix
   int nCols=si.getNumCols(); // number of columns in the coefficient matrix

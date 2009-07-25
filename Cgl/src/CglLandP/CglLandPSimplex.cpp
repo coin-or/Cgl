@@ -25,13 +25,14 @@ static double total_time = 0;
 #endif
 #ifndef NDEBUG
 
+#if 0
 static void MyAssertFunc(bool c, const std::string &s, const std::string&  file, unsigned int line){
     if (c != true){
         fprintf(stderr, "Failed MyAssertion: %s in %s line %i.\n", s.c_str(), file.c_str(), line);
         throw -1;
     }
 }
-
+#endif
 static void DblGtAssertFunc(const double& a, const std::string &a_s, const double&b, const std::string& b_s,
                      const std::string&  file, unsigned int line){
     if (a<b){
@@ -341,7 +342,7 @@ CglLandPSimplex::computeWeights(CglLandP::LHSnorm norm, CglLandP::Normalization 
       }
       if(norm == CglLandP::Average){
         for(int i = 0 ; i < nrows_orig_ ; i++){
-          rows_weights[i] = (double) nnz[i];
+          rows_weights[i] = static_cast<double> (nnz[i]);
         }
       }
     }
@@ -369,12 +370,12 @@ CglLandPSimplex::computeWeights(CglLandP::LHSnorm norm, CglLandP::Normalization 
       }
       
       for(int i = 0 ; i < nrows_orig_ ; i++){
-        rows_weights[i] = 1./ (double) nnz[i];
+        rows_weights[i] = 1./ static_cast<double> (nnz[i]);
       }
    }
    else if(norm ==CglLandP::Uniform){
       for(int i = 0 ; i < nrows_orig_ ; i++){
-        rows_weights[i] = (double) 1;
+        rows_weights[i] = static_cast<double> (1);
       }
    }
 
@@ -451,7 +452,7 @@ CglLandPSimplex::cacheUpdate(const CglLandP::CachedData &cached, bool reducedSpa
 #endif
 }
 
-bool CglLandPSimplex::resetSolver(const CoinWarmStartBasis * basis)
+bool CglLandPSimplex::resetSolver(const CoinWarmStartBasis * /*basis*/)
 {
     clp_time -= CoinCpuTime();
     si_->disableSimplexInterface();
@@ -526,7 +527,7 @@ CglLandPSimplex::genThisBasisMigs(const CglLandP::CachedData &cached,
 
 bool
 CglLandPSimplex::generateMig(int row, OsiRowCut & cut,
-                             const CglLandP::CachedData &cached,
+                             const CglLandP::CachedData &/*cached*/,
                              const CglLandP::Parameters & params) const
 {
     row_k_.num = row;
@@ -882,7 +883,7 @@ CglLandPSimplex::optimize
 
 bool
 CglLandPSimplex::changeBasis(int incoming, int leaving, int leavingStatus,
-                             bool recompute_source_row)
+                             bool /*recompute_source_row*/)
 {
     double infty = si_->getInfinity();
     int clpLeavingStatus = leavingStatus;
@@ -1186,9 +1187,9 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
     // 1. Put the values
     // 2. Post multiply by basis inverse
     double * rWk1bis_ =NULL;
-    CoinFillN(&rWk1_[0],nrows_,(double) 0);
+    CoinFillN(&rWk1_[0],nrows_,static_cast<double> (0));
     if (modularize)
-        CoinFillN(rWk1bis_, nrows_, (double) 0);
+      CoinFillN(rWk1bis_, nrows_, static_cast<double> (0));
     int capacity = 0;
     clp_time -= CoinCpuTime();
     const CoinPackedMatrix* mat = si_->getMatrixByCol();
@@ -1699,7 +1700,7 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
     if (gammaSign < 0)
         q -= row_i_.rhs;
     double r = 1.;
-    double s = normedCoef( (double) gammaSign, basics_[row_i_.num]);
+    double s = normedCoef( static_cast<double> (gammaSign), basics_[row_i_.num]);
 
 #ifdef OUT_CGLP_PIVOTS
     std::vector<int> swaped;
@@ -2298,7 +2299,7 @@ CglLandPSimplex::computeCglpObjective(double gamma, bool strengthen, TabRow & ne
     int * indices = newRow.getIndices();
     int k = 0;
     {
-        if (col_in_subspace[basics_[row_i_.num]]==false) DblEqAssert(0.,1.);
+      if (col_in_subspace[basics_[row_i_.num]]==false) {DblEqAssert(0.,1.);}
         double & val = newRow[ basics_[row_i_.num]] = gamma;//newRowCoefficient(basics_[row_i_.num], gamma);
         indices[k++] = basics_[row_i_.num];
         if (strengthen && row_i_.num < ncols_orig_ && isInteger(row_i_.num))
@@ -2376,7 +2377,8 @@ CglLandPSimplex::computeRedCostConstantsInRow()
 }
 
 void
-CglLandPSimplex::updateM1_M2_M3(TabRow & row, double tolerance, bool reducedSpace, bool perturb)
+CglLandPSimplex::updateM1_M2_M3(TabRow & row, double tolerance, 
+				bool /*reducedSpace*/, bool perturb)
 {
     M1_.clear();
     M2_.clear();

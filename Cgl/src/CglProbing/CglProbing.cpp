@@ -671,8 +671,8 @@ CglProbing::tighten(double *colLower, double * colUpper,
           for (k = krs; k < kre; ++k) {
             double value=rowElements[k];
             j = column[k];
-            int iClique = static_cast<int> (cliqueRow_[k+bias].sequence);
-            bool oneFixes = (cliqueRow_[k+bias].oneFixes!=0);
+            int iClique = sequenceInCliqueEntry(cliqueRow_[k+bias]);
+            bool oneFixes = oneFixesInCliqueEntry(cliqueRow_[k+bias]);
             if (iClique>=numberColumns_||colUpper[j]==colLower[j]) {
               if (value > 0.0) {
                 if (colUpper[j] >= 1.0e12) {
@@ -892,7 +892,7 @@ CglProbing::tighten(double *colLower, double * colUpper,
               for (k = krs; k < kre; ++k) {
                 double value=rowElements[k];
                 j = column[k];
-                int iClique = static_cast<int> (cliqueRow_[k+bias].sequence);
+                int iClique = sequenceInCliqueEntry(cliqueRow_[k+bias]);
                 //bool oneFixes = (cliqueRow_[k+bias].oneFixes!=0);
                 if (iClique>=numberColumns_) {
                   if (value > 0.0) {
@@ -1010,7 +1010,7 @@ CglProbing::tighten(double *colLower, double * colUpper,
               for (k = krs; k < kre; ++k) {
                 double value=rowElements[k];
                 j = column[k];
-                int iClique = static_cast<int> (cliqueRow_[k+bias].sequence);
+                int iClique = sequenceInCliqueEntry(cliqueRow_[k+bias]);
                 //bool oneFixes = (cliqueRow_[k+bias].oneFixes!=0);
                 if (iClique>=numberColumns_) {
                   if (value < 0.0) {
@@ -1141,10 +1141,10 @@ void
 CglProbing::tighten2(double *colLower, double * colUpper,
 		     const int *column, const double *rowElements, 
 		     const CoinBigIndex *rowStart, 
-		     const CoinBigIndex * rowStartPos,const int * rowLength,
+		     const int * rowLength,
 		     double *rowLower, double *rowUpper, 
 		     double * minR, double * maxR, int * markR,
-		     int nRows,int nCols) const
+		     int nRows) const
 {
   int i, j, k, kre;
   int krs;
@@ -1724,7 +1724,8 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   // Set up maxes
   int maxProbe = info->inTree ? maxProbe_ : maxProbeRoot_;
   int maxElements = info->inTree ? maxElements_ : maxElementsRoot_;
-
+  //if (!info->inTree&&!info->pass)
+  //maxElements=nCols;
   // Get objective offset
   double offset;
   si.getDblParam(OsiObjOffset,offset);
@@ -2037,8 +2038,8 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
         numberThisTime_=0;
         // get min max etc for rows
         tighten2(colLower, colUpper, column, rowElements,
-                 rowStart, rowStartPos ,rowLength, rowLower, rowUpper,
-                 minR , maxR , markR, nRows, nCols);
+                 rowStart, rowLength, rowLower, rowUpper,
+                 minR , maxR , markR, nRows);
         // decide what to look at
         if (mode==1) {
           const double * colsol = si.getColSolution();
@@ -2126,8 +2127,8 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     delete [] array;
     // get min max etc for rows
     tighten2(colLower, colUpper, column, rowElements,
-	     rowStart, rowStartPos,rowLength, rowLower, rowUpper,
-	     minR , maxR , markR, nRows, nCols);
+	     rowStart, rowLength, rowLower, rowUpper,
+	     minR , maxR , markR, nRows);
     OsiCuts csNew;
     // don't do cuts at all if 0 (i.e. we are just checking bounds)
     if (rowCuts_) {
@@ -2292,13 +2293,12 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
             if (elements[which]<0.0) {
               iput=cutVector_[i].length;
               if (j>=0)
-                cutVector_[i].index[iput].affected=(j&0x1fffffff);
+                setAffectedInDisaggregation(cutVector_[i].index[iput],j);
               else
-                cutVector_[i].index[iput].affected=(other&0x1fffffff);
-              cutVector_[i].index[iput].whenAtUB=0;
-              cutVector_[i].index[iput].affectedToUB=0;
-              cutVector_[i].index[iput].zeroOne = 
-		(onList[other] ? 1 : 0)&1;
+                setAffectedInDisaggregation(cutVector_[i].index[iput],other);
+              setWhenAtUBInDisaggregation(cutVector_[i].index[iput],false);
+              setAffectedToUBInDisaggregation(cutVector_[i].index[iput],false);
+              setZeroOneInDisaggregation(cutVector_[i].index[iput],onList[other]);
               cutVector_[i].length++;
             } else { 
               if (elements[1-which]<0.0&&fabs(elements[which]/elements[1-which]-
@@ -2306,13 +2306,12 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                 // delta to 1 => x to upper bound
                 iput=cutVector_[i].length;
                 if (j>=0)
-                  cutVector_[i].index[iput].affected=(j&0x1fffffff);
+                  setAffectedInDisaggregation(cutVector_[i].index[iput],j);
                 else
-                  cutVector_[i].index[iput].affected=(other&0x1fffffff);
-                cutVector_[i].index[iput].whenAtUB=1;
-                cutVector_[i].index[iput].affectedToUB=1;
-                cutVector_[i].index[iput].zeroOne = 
-		  (onList[other] ? 1 : 0)&1;
+                  setAffectedInDisaggregation(cutVector_[i].index[iput],other);
+                setWhenAtUBInDisaggregation(cutVector_[i].index[iput],true);
+                setAffectedToUBInDisaggregation(cutVector_[i].index[iput],true);
+                setZeroOneInDisaggregation(cutVector_[i].index[iput],onList[other]);
                 cutVector_[i].length++;
               } else {
                 if (onList[other]) {
@@ -2332,16 +2331,16 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                     assert (value0==1.0);
                     assert (value1==-1.0);
                     iput=cutVector_[i].length;
-                    cutVector_[i].index[iput].affected=(j&0x1fffffff);
-                    cutVector_[i].index[iput].whenAtUB=1;
-                    cutVector_[i].index[iput].affectedToUB=1;
-                    cutVector_[i].index[iput].zeroOne = 1;
+                    setAffectedInDisaggregation(cutVector_[i].index[iput],j);
+                    setWhenAtUBInDisaggregation(cutVector_[i].index[iput],true);
+                    setAffectedToUBInDisaggregation(cutVector_[i].index[iput],true);
+                    setZeroOneInDisaggregation(cutVector_[i].index[iput],true);
                     cutVector_[i].length++;
                     iput=cutVector_[j].length;
-                    cutVector_[j].index[iput].affected=(i&0x1fffffff);
-                    cutVector_[j].index[iput].whenAtUB=0;
-                    cutVector_[j].index[iput].affectedToUB=0;
-                    cutVector_[j].index[iput].zeroOne = 1;
+                    setAffectedInDisaggregation(cutVector_[j].index[iput],i);
+                    setWhenAtUBInDisaggregation(cutVector_[j].index[iput],false);
+                    setAffectedToUBInDisaggregation(cutVector_[j].index[iput],false);
+                    setZeroOneInDisaggregation(cutVector_[j].index[iput],true);
                     cutVector_[j].length++;
                   }
                 }
@@ -2354,16 +2353,16 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                 int j=backward[other];
                 assert (j>=0);
                 iput=cutVector_[i].length;
-                cutVector_[i].index[iput].affected=(j&0x1fffffff);
-                cutVector_[i].index[iput].whenAtUB=1;
-                cutVector_[i].index[iput].affectedToUB=0;
-                cutVector_[i].index[iput].zeroOne = 1;
+                setAffectedInDisaggregation(cutVector_[i].index[iput],j);
+                setWhenAtUBInDisaggregation(cutVector_[i].index[iput],true);
+                setAffectedToUBInDisaggregation(cutVector_[i].index[iput],false);
+                setZeroOneInDisaggregation(cutVector_[i].index[iput],true);
                 cutVector_[i].length++;
                 iput=cutVector_[j].length;
-                cutVector_[j].index[iput].affected=(i&0x1fffffff);
-                cutVector_[j].index[iput].whenAtUB=1;
-                cutVector_[j].index[iput].affectedToUB=0;
-                cutVector_[j].index[iput].zeroOne = 1;
+                setAffectedInDisaggregation(cutVector_[j].index[iput],i);
+                setWhenAtUBInDisaggregation(cutVector_[j].index[iput],true);
+                setAffectedToUBInDisaggregation(cutVector_[j].index[iput],false);
+                setZeroOneInDisaggregation(cutVector_[j].index[iput],true);
                 cutVector_[j].length++;
               } else {
 #ifdef COIN_DEVELOP
@@ -2380,26 +2379,24 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
             if (elements[which]>0.0) {
               iput=cutVector_[i].length;
               if (j>=0)
-                cutVector_[i].index[iput].affected=(j&0x1fffffff);
+                setAffectedInDisaggregation(cutVector_[i].index[iput],j);
               else
-                cutVector_[i].index[iput].affected=(other&0x1fffffff);
-              cutVector_[i].index[iput].whenAtUB=0;
-              cutVector_[i].index[iput].affectedToUB=0;
-              cutVector_[i].index[iput].zeroOne = 
-		(onList[other] ? 1 : 0)&1;
+                setAffectedInDisaggregation(cutVector_[i].index[iput],other);
+              setWhenAtUBInDisaggregation(cutVector_[i].index[iput],false);
+              setAffectedToUBInDisaggregation(cutVector_[i].index[iput],false);
+              setZeroOneInDisaggregation(cutVector_[i].index[iput],onList[other]);
               cutVector_[i].length++;
             } else { 
               if (elements[1-which]<0.0&&fabs(elements[which]/elements[1-which]-
                                               colUpper[other])<1.0e-5) {
                 iput=cutVector_[i].length;
                 if (j>=0)
-                  cutVector_[i].index[iput].affected=(j&0x1fffffff);
+                  setAffectedInDisaggregation(cutVector_[i].index[iput],j);
                 else
-                  cutVector_[i].index[iput].affected=(other&0x1fffffff);
-                cutVector_[i].index[iput].whenAtUB=1;
-                cutVector_[i].index[iput].affectedToUB=1;
-                cutVector_[i].index[iput].zeroOne = 
-		  (onList[other] ? 1 : 0)&1;
+                  setAffectedInDisaggregation(cutVector_[i].index[iput],other);
+                setWhenAtUBInDisaggregation(cutVector_[i].index[iput],true);
+                setAffectedToUBInDisaggregation(cutVector_[i].index[iput],true);
+                setZeroOneInDisaggregation(cutVector_[i].index[iput],onList[other]);
                 cutVector_[i].length++;
               } else {
                 if (onList[other]) {
@@ -2419,16 +2416,16 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                     assert (value0==-1.0);
                     assert (value1==1.0);
                     iput=cutVector_[i].length;
-                    cutVector_[i].index[iput].affected=(j&0x1fffffff);
-                    cutVector_[i].index[iput].whenAtUB=1;
-                    cutVector_[i].index[iput].affectedToUB=1;
-                    cutVector_[i].index[iput].zeroOne = 1;
+                    setAffectedInDisaggregation(cutVector_[i].index[iput],j);
+                    setWhenAtUBInDisaggregation(cutVector_[i].index[iput],true);
+                    setAffectedToUBInDisaggregation(cutVector_[i].index[iput],true);
+                    setZeroOneInDisaggregation(cutVector_[i].index[iput],true);
                     cutVector_[i].length++;
                     iput=cutVector_[j].length;
-                    cutVector_[j].index[iput].affected=(i&0x1fffffff);
-                    cutVector_[j].index[iput].whenAtUB=0;
-                    cutVector_[j].index[iput].affectedToUB=0;
-                    cutVector_[j].index[iput].zeroOne = 1;
+                    setAffectedInDisaggregation(cutVector_[j].index[iput],i);
+                    setWhenAtUBInDisaggregation(cutVector_[j].index[iput],false);
+                    setAffectedToUBInDisaggregation(cutVector_[j].index[iput],false);
+                    setZeroOneInDisaggregation(cutVector_[j].index[iput],true);
                     cutVector_[j].length++;
                   }
                 }
@@ -2449,28 +2446,29 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
         int k;
         int number = thisOne.length;
         for (k=0;k<number;k++) {
-          unsigned int affected = thisOne.index[k].affected;
-          unsigned int zeroOne = thisOne.index[k].zeroOne;
-          unsigned int whenAtUB = thisOne.index[k].whenAtUB;
-          unsigned int affectedToUB = thisOne.index[k].affectedToUB;
+          int affected = affectedInDisaggregation(thisOne.index[k]);
+          int zeroOne = zeroOneInDisaggregation(thisOne.index[k]) ? 1 : 0;
+          int whenAtUB = whenAtUBInDisaggregation(thisOne.index[k]) ? 1 : 0;
+          int affectedToUB = affectedToUBInDisaggregation(thisOne.index[k]) ? 1: 0;
           sortit[k]=(affected<<3)|(zeroOne<<2)|(whenAtUB<<1)|affectedToUB;
         }
         std::sort(sortit,sortit+number);
-        unsigned int affectedLast = 0xffffffff;
-        unsigned int zeroOneLast = 0;
-        unsigned int whenAtUBLast = 0;
-        unsigned int affectedToUBLast = 0; 
+        int affectedLast = 0xffffffff;
+        int zeroOneLast = 0;
+        int whenAtUBLast = 0;
+        int affectedToUBLast = 0; 
         int put=0;
         for (k=0;k<number;k++) {
-          unsigned int affected = sortit[k]>>3;
-          unsigned int zeroOne = (sortit[k]&4)>>2;
-          unsigned int whenAtUB = (sortit[k]&2)>>1;
-          unsigned int affectedToUB = sortit[k]&1;
+          int affected = sortit[k]>>3;
+          int zeroOne = (sortit[k]&4)>>2;
+          int whenAtUB = (sortit[k]&2)>>1;
+          int affectedToUB = sortit[k]&1;
           disaggregationAction action;
-          action.affected=(affected&0x1fffffff);
-          action.zeroOne=(zeroOne&1);
-          action.whenAtUB=(whenAtUB&1);
-          action.affectedToUB=(affectedToUB&1);
+	  action.affected=0;
+          setAffectedInDisaggregation(action,affected);
+          setZeroOneInDisaggregation(action,zeroOne);
+          setWhenAtUBInDisaggregation(action,whenAtUB);
+          setAffectedToUBInDisaggregation(action,affectedToUB);
           if (affected!=affectedLast||zeroOne!=zeroOneLast) {
             // new variable
             thisOne.index[put++]=action;
@@ -2507,19 +2505,19 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
         int k;
         int number = thisOne.length;
         for (k=0;k<number;k++) {
-          unsigned int affected = thisOne.index[k].affected;
-          unsigned int zeroOne = thisOne.index[k].zeroOne;
+          int affected = affectedInDisaggregation(thisOne.index[k]);
+          bool zeroOne = zeroOneInDisaggregation(thisOne.index[k]);
           if (zeroOne&&static_cast<int>(affected)>i) {
-            unsigned int whenAtUB = thisOne.index[k].whenAtUB;
-            unsigned int affectedToUB = thisOne.index[k].affectedToUB;
+            bool whenAtUB = whenAtUBInDisaggregation(thisOne.index[k]);
+            bool affectedToUB = affectedToUBInDisaggregation(thisOne.index[k]);
             disaggregation otherOne=cutVector_[affected];
             int numberOther = otherOne.length;
             // Could do binary search if a lot
             int lastAction=-1;
             for (int j=0;j<numberOther;j++) {
-              if (static_cast<int> (otherOne.index[j].affected)==i) {
-                unsigned int whenAtUBOther = otherOne.index[j].whenAtUB;
-                unsigned int affectedToUBOther = otherOne.index[j].affectedToUB;
+              if (affectedInDisaggregation(otherOne.index[j])==i) {
+                bool whenAtUBOther = whenAtUBInDisaggregation(otherOne.index[j]);
+                bool affectedToUBOther = affectedToUBInDisaggregation(otherOne.index[j]);
                 /* action -
                    0 -> x + y <=1 (1,1 impossible)
                    1 -> x - y <=0 (1,0 impossible)
@@ -2695,14 +2693,14 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	    int k;
 	    OsiRowCut rc;
 	    for (k=0;k<thisOne.length;k++) {
-	      icol = thisOne.index[k].affected;
-              if (thisOne.index[k].zeroOne)
+	      icol = affectedInDisaggregation(thisOne.index[k]);
+              if (zeroOneInDisaggregation(thisOne.index[k]))
                 icol = cutVector_[icol].sequence;
 	      solValue=colsol[icol];
 	      upper=colUpper_[icol];
               double infeasibility=0.0;
-              if (!thisOne.index[k].whenAtUB) {
-                if (!thisOne.index[k].affectedToUB) {
+              if (!whenAtUBInDisaggregation(thisOne.index[k])) {
+                if (!affectedToUBInDisaggregation(thisOne.index[k])) {
                   // delta -> 0 => x to lb (at present just 0)
                   infeasibility = solValue - upper * solInt;
                   if (infeasibility > 1.0e-3) {
@@ -2720,10 +2718,10 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                   abort();
                 }
               } else {
-                if (thisOne.index[k].affectedToUB) {
+                if (affectedToUBInDisaggregation(thisOne.index[k])) {
                   // delta -> 1 => x to ub (?)
-                  icol = thisOne.index[k].affected;
-                  if (thisOne.index[k].zeroOne)
+                  icol = affectedInDisaggregation(thisOne.index[k]);
+                  if (zeroOneInDisaggregation(thisOne.index[k]))
                     icol = cutVector_[icol].sequence;
                   solValue=colsol[icol];
                   upper=colUpper_[icol];
@@ -2745,9 +2743,9 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                   }
                 } else {
                   // delta + delta2 <= 1
-                  assert (thisOne.index[k].zeroOne);
+                  assert (zeroOneInDisaggregation(thisOne.index[k]));
                   // delta -> 1 => delta2 -> 0
-                  icol = thisOne.index[k].affected;
+                  icol = affectedInDisaggregation(thisOne.index[k]);
                   icol = cutVector_[icol].sequence;
                   // only do if icol > j
                   if (icol >j && colUpper[icol] ) {
@@ -2830,8 +2828,11 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 }
 // Does probing and adding cuts
 int CglProbing::probe( const OsiSolverInterface & si, 
-		       const OsiRowCutDebugger * debugger, 
-		       OsiCuts & cs, 
+		       const OsiRowCutDebugger *
+#ifdef CGL_DEBUG
+		       debugger
+#endif 
+		       ,OsiCuts & cs, 
 		       double * colLower, double * colUpper, 
 		       CoinPackedMatrix *rowCopy,
 		       CoinPackedMatrix *columnCopy,
@@ -5592,7 +5593,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 }
 // Does probing and adding cuts
 int CglProbing::probeCliques( const OsiSolverInterface & si, 
-                              const OsiRowCutDebugger * debugger, 
+                              const OsiRowCutDebugger * , 
                               OsiCuts & cs, 
                               double * colLower, double * colUpper, 
 		       CoinPackedMatrix *rowCopy,
@@ -5913,10 +5914,10 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 	      for (int i=start;i<end;i++) {
 		int iClique = whichClique_[i];
 		for (int k=cliqueStart_[iClique];k<cliqueStart_[iClique+1];k++) {
-		  int kcol = cliqueEntry_[k].sequence;
+		  int kcol = sequenceInCliqueEntry(cliqueEntry_[k]);
                   if (jcol==kcol)
                     continue;
-		  int kway = cliqueEntry_[k].oneFixes;
+		  int kway = oneFixesInCliqueEntry(cliqueEntry_[k]);
                   if (kcol!=jcol) {
                     if (!markC[kcol]) {
                       // not on list yet
@@ -7137,7 +7138,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 // Does probing and adding cuts for clique slacks
 int 
 CglProbing::probeSlacks( const OsiSolverInterface & si, 
-                          const OsiRowCutDebugger * debugger, 
+                          const OsiRowCutDebugger * , 
                           OsiCuts & cs, 
                           double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
 			 CoinPackedMatrix *columnCopy,
@@ -7163,9 +7164,9 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
     if (!cliqueType_[iClique].equality) {
       double sum=0.0;
       for (int j=cliqueStart_[iClique];j<cliqueStart_[iClique+1];j++) {
-        int iColumn = cliqueEntry_[j].sequence;
+        int iColumn = sequenceInCliqueEntry(cliqueEntry_[j]);
         double value = colsol[iColumn];
-        if (cliqueEntry_[j].oneFixes)
+        if (oneFixesInCliqueEntry(cliqueEntry_[j]))
           sum += value;
         else
           sum -= value;
@@ -7251,9 +7252,9 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
       solval=0.0;
       j=0;
       for (j=cliqueStart_[iClique];j<cliqueStart_[iClique+1];j++) {
-        int iColumn = cliqueEntry_[j].sequence;
+        int iColumn = sequenceInCliqueEntry(cliqueEntry_[j]);
         double value = colsol[iColumn];
-        if (cliqueEntry_[j].oneFixes)
+        if (oneFixesInCliqueEntry(cliqueEntry_[j]))
           solval += value;
         else
           solval -= value;
@@ -7385,10 +7386,10 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
             for (int i=start;i<end;i++) {
               int iClique = whichClique_[i];
               for (int k=cliqueStart_[iClique];k<cliqueStart_[iClique+1];k++) {
-                int kcol = cliqueEntry_[k].sequence;
+                int kcol = sequenceInCliqueEntry(cliqueEntry_[k]);
                 if (jcol==kcol)
                   continue;
-                int kway = cliqueEntry_[k].oneFixes;
+                int kway = oneFixesInCliqueEntry(cliqueEntry_[k]);
                 if (kcol!=jcol) {
                   if (!markC[kcol]) {
                     // not on list yet
@@ -9007,7 +9008,7 @@ CglProbing::refreshSolver(OsiSolverInterface * solver)
 */
 int 
 CglProbing::createCliques( OsiSolverInterface & si, 
-			  int minimumSize, int maximumSize, bool extendCliques)
+			  int minimumSize, int maximumSize)
 {
   // get rid of what is there
   deleteCliques();
@@ -9229,8 +9230,8 @@ CglProbing::createCliques( OsiSolverInterface & si,
 	for (i=0;i<numberP1;i++) {
 	  // 1 is strong branch
 	  int iColumn = which[i];
-	  cliqueEntry_[numberEntries].sequence=(iColumn)&0x7fffffff;
-	  cliqueEntry_[numberEntries].oneFixes=1;
+	  setSequenceInCliqueEntry(cliqueEntry_[numberEntries],iColumn);
+	  setOneFixesInCliqueEntry(cliqueEntry_[numberEntries],true);
 	  numberEntries++;
 	  // zero counts
 	  oneFixStart_[iColumn]=0;
@@ -9239,8 +9240,8 @@ CglProbing::createCliques( OsiSolverInterface & si,
 	for (i=0;i<numberM1;i++) {
 	  // 0 is strong branch
 	  int iColumn = which[numberIntegers-i-1];
-	  cliqueEntry_[numberEntries].sequence=(iColumn)&0x7fffffff;
-	  cliqueEntry_[numberEntries].oneFixes=0;
+	  setSequenceInCliqueEntry(cliqueEntry_[numberEntries],iColumn);
+	  setOneFixesInCliqueEntry(cliqueEntry_[numberEntries],false);
 	  numberEntries++;
 	  // zero counts
 	  oneFixStart_[iColumn]=0;
@@ -9250,8 +9251,8 @@ CglProbing::createCliques( OsiSolverInterface & si,
 	for (i=0;i<numberP1;i++) {
 	  // 0 is strong branch
 	  int iColumn = which[i];
-	  cliqueEntry_[numberEntries].sequence=(iColumn)&0x7fffffff;
-	  cliqueEntry_[numberEntries].oneFixes=0;
+	  setSequenceInCliqueEntry(cliqueEntry_[numberEntries],iColumn);
+	  setOneFixesInCliqueEntry(cliqueEntry_[numberEntries],false);
 	  numberEntries++;
 	  // zero counts
 	  oneFixStart_[iColumn]=0;
@@ -9260,8 +9261,8 @@ CglProbing::createCliques( OsiSolverInterface & si,
 	for (i=0;i<numberM1;i++) {
 	  // 1 is strong branch
 	  int iColumn = which[numberIntegers-i-1];
-	  cliqueEntry_[numberEntries].sequence=iColumn&0x7fffffff;
-	  cliqueEntry_[numberEntries].oneFixes=1;
+	  setSequenceInCliqueEntry(cliqueEntry_[numberEntries],iColumn);
+	  setOneFixesInCliqueEntry(cliqueEntry_[numberEntries],true);
 	  numberEntries++;
 	  // zero counts
 	  oneFixStart_[iColumn]=0;
@@ -9275,8 +9276,8 @@ CglProbing::createCliques( OsiSolverInterface & si,
     // First do counts
     for (iClique=0;iClique<numberCliques_;iClique++) {
       for (int j=cliqueStart_[iClique];j<cliqueStart_[iClique+1];j++) {
-	int iColumn = cliqueEntry_[j].sequence;
-	if (cliqueEntry_[j].oneFixes)
+	int iColumn = sequenceInCliqueEntry(cliqueEntry_[j]);
+	if (oneFixesInCliqueEntry(cliqueEntry_[j]))
 	  oneFixStart_[iColumn]++;
 	else
 	  zeroFixStart_[iColumn]++;
@@ -9299,8 +9300,8 @@ CglProbing::createCliques( OsiSolverInterface & si,
     // now put in
     for (iClique=0;iClique<numberCliques_;iClique++) {
       for (int j=cliqueStart_[iClique];j<cliqueStart_[iClique+1];j++) {
-	int iColumn = cliqueEntry_[j].sequence;
-	if (cliqueEntry_[j].oneFixes) {
+	int iColumn = sequenceInCliqueEntry(cliqueEntry_[j]);
+	if (oneFixesInCliqueEntry(cliqueEntry_[j])) {
 	  int put = which[iColumn];
 	  which[iColumn]++;
 	  whichClique_[put]=iClique;
@@ -9427,8 +9428,8 @@ CglProbing::setupRowCliqueInformation(const OsiSolverInterface & si)
           entries = new cliqueEntry [length];
           array[iRow]=entries;
           for (int i=0;i<length;i++) {
-            entries[i].oneFixes=0;
-            entries[i].sequence=(numberColumns_+1)&0x7fffffff;
+            setOneFixesInCliqueEntry(entries[i],false);
+            setSequenceInCliqueEntry(entries[i],numberColumns_+1);
           }
         }
         // put in (and take out all counts)
@@ -9450,10 +9451,11 @@ CglProbing::setupRowCliqueInformation(const OsiSolverInterface & si)
                 count[iClique]--;
               }
               for (k=cliqueStart_[whichClique];k<cliqueStart_[whichClique+1];k++) {
-                if (cliqueEntry_[k].sequence==static_cast<unsigned int> (iColumn)) {
+                if (sequenceInCliqueEntry(cliqueEntry_[k])==iColumn) {
                   int iback=back[iColumn];
-                  entries[iback].sequence=(numberInThis)&0x7fffffff;
-                  entries[iback].oneFixes=cliqueEntry_[k].oneFixes;
+                  setSequenceInCliqueEntry(entries[iback],numberInThis);
+                  setOneFixesInCliqueEntry(entries[iback],
+					   oneFixesInCliqueEntry(cliqueEntry_[k]));
                   break;
                 }
               }

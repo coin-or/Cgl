@@ -542,7 +542,9 @@ CglKnapsackCoverUnitTest(
     if (fp) {
       int ncol,nel;
       double up;
-      fscanf(fp,"%d %d %lg",&ncol,&nel,&up);
+      int x = fscanf(fp,"%d %d %lg",&ncol,&nel,&up);
+      if (x<=0)
+	throw("bad fscanf");
       printf("%d columns, %d elements, upper %g\n",ncol,nel,up);
       double * sol1 = new double[nel];
       double * el1 = new double[nel];
@@ -552,7 +554,9 @@ CglKnapsackCoverUnitTest(
       int * row = new int[nel];
       int i;
       for (i=0;i<nel;i++) {
-	fscanf(fp,"%d %lg %lg",col1+i,el1+i,sol1+i);
+	x=fscanf(fp,"%d %lg %lg",col1+i,el1+i,sol1+i);
+	if (x<=0)
+	  throw("bad fscanf");
 	printf("[%d, e=%g, v=%g] ",col1[i],el1[i],sol1[i]);
 	start[col1[i]]=1;
 	row[i]=0;

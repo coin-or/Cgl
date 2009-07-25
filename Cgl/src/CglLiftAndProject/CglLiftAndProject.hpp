@@ -34,7 +34,7 @@ public:
   */
   void setBeta(int oneOrMinusOne){
     if (oneOrMinusOne==1 || oneOrMinusOne==-1){
-      beta_= (double)oneOrMinusOne;
+      beta_= static_cast<double>(oneOrMinusOne);
     }
     else {
       throw CoinError("Unallowable value. Beta must be 1 or -1",

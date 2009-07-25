@@ -81,13 +81,13 @@ public:
     /** @} */
 
     const std::string& failureString(RejectionsReasons code) const {
-        return rejections_[(int) code];
+      return rejections_[static_cast<int> (code)];
     }
     const std::string& failureString(int code) const {
         return rejections_[ code];
     }
     int numRejected(RejectionsReasons code)const {
-        return numRejected_[(int) code];
+      return numRejected_[static_cast<int> (code)];
     }
     int numRejected(int code)const {
         return numRejected_[ code];

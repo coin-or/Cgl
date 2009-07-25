@@ -29,7 +29,7 @@ namespace { int nPath = 0 ; }
 // Generate cuts
 //------------------------------------------------------------------- 
 void CglAllDifferent::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-			      const CglTreeInfo info) const
+			      const CglTreeInfo ) const
 {
 #ifndef NDEBUG
   int nCols=si.getNumCols();
@@ -553,7 +553,7 @@ CglAllDifferent::operator=(
 
 /// This can be used to refresh any inforamtion
 void 
-CglAllDifferent::refreshSolver(OsiSolverInterface * solver)
+CglAllDifferent::refreshSolver(OsiSolverInterface * )
 {
 }
 // Create C++ lines to get to current state

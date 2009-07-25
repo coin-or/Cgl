@@ -403,6 +403,7 @@ CglLandP::~CglLandP()
 }
 
 CglLandP::CglLandP(const CglLandP & source):
+  CglCutGenerator(source),
         params_(source.params_), cached_(source.cached_),
         validator_(source.validator_), numcols_(source.numcols_),
         originalColLower_(NULL), originalColUpper_(NULL),
@@ -696,7 +697,9 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     std::vector<int> indices;
     getSortedFractionalIndices(indices,cached_, params);
 
+#ifndef NDEBUG
     int numrows = si.getNumRows();
+#endif
 
 
 #ifdef DO_STAT

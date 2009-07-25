@@ -29,7 +29,7 @@ Validator::cleanCut(OsiRowCut & aCut, const double * solCut, const OsiSolverInte
     const double * colLower = (origColLower) ? origColLower : si.getColLower();
     const double * colUpper = (origColUpper) ? origColUpper : si.getColUpper();
 
-    int maxNnz = (int) (maxFillIn_ * (double) numcols);
+    int maxNnz = static_cast<int> (maxFillIn_ * static_cast<double> (numcols));
 
     double rhs = aCut.lb();
     assert (aCut.ub()> 1e50);
@@ -123,7 +123,7 @@ Validator::cleanCut(OsiRowCut & aCut, const double * solCut, const OsiSolverInte
 /**Clean cut 2, different algorithm. First check the dynamic of the cut if < maxRatio scale to a biggest coef of 1
    otherwise scale it so that biggest coeff is 1 and try removing tinys ( < 1/maxRatio) either succeed or fail */
 int
-Validator::cleanCut2(OsiRowCut & aCut, const double * solCut, const OsiSolverInterface &si, const CglParam &par,
+Validator::cleanCut2(OsiRowCut & aCut, const double * solCut, const OsiSolverInterface &si, const CglParam &/*par*/,
                      const double * origColLower, const double * origColUpper) const
 {
     /** Compute fill-in in si */
@@ -132,7 +132,7 @@ Validator::cleanCut2(OsiRowCut & aCut, const double * solCut, const OsiSolverInt
     const double * colLower = (origColLower) ? origColLower : si.getColLower();
     const double * colUpper = (origColUpper) ? origColUpper : si.getColUpper();
 
-    int maxNnz = (int) ( maxFillIn_ * (double) numcols);
+    int maxNnz = static_cast<int> ( maxFillIn_ * static_cast<double> (numcols));
 
     double rhs = aCut.lb();
     assert (aCut.ub()> 1e50);

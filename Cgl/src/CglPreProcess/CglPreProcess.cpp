@@ -3947,7 +3947,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	// we could look harder for infeasibilities 
 	assert (info.numberVariables()==numberColumns);
 	int number01 = info.numberIntegers();
-	const fixEntry * entry = info.fixEntries();
+	const cliqueEntry * entry = info.fixEntries();
 	const int * toZero = info.toZero();
 	const int * toOne = info.toOne();
 	const int * which = info.integerVariable();
@@ -3963,8 +3963,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  // to zero
 	  int j;
 	  for (j=start;j<end;j++) {
-	    int goingToOne = entry[j].oneFixed;
-	    int v = entry[j].sequence;
+	    int goingToOne = oneFixesInCliqueEntry(entry[j]);
+	    int v = sequenceInCliqueEntry(entry[j]);
 	    if (v>=number01)
 	      continue;
 	    if (goingToOne) {
@@ -3972,8 +3972,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	      int startV = toOne[v];
 	      int endV = toZero[v+1];
 	      for (int jv=startV;jv<endV;jv++) {
-		if(k==static_cast<int> (entry[jv].sequence)) {
-		  int goingToOneV = entry[jv].oneFixed;
+		if(k==static_cast<int> (sequenceInCliqueEntry(entry[jv]))) {
+		  int goingToOneV = oneFixesInCliqueEntry(entry[jv]);
 		  double lo,up;
 		  if (!goingToOneV) {
 		    lo=1.0;
@@ -4000,8 +4000,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	      int startV = toZero[v];
 	      int endV = toOne[v];
 	      for (int jv=startV;jv<endV;jv++) {
-		if(k==static_cast<int> (entry[jv].sequence)) {
-		  int goingToOneV = entry[jv].oneFixed;
+		if(k==static_cast<int> (sequenceInCliqueEntry(entry[jv]))) {
+		  int goingToOneV = oneFixesInCliqueEntry(entry[jv]);
 		  double lo,up;
 		  if (!goingToOneV) {
 		    lo=0.0;
@@ -4029,8 +4029,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  end = toZero[k+1];
 	  // to one
 	  for (j=start;j<end;j++) {
-	    int goingToOne = entry[j].oneFixed;
-	    int v = entry[j].sequence;
+	    int goingToOne = oneFixesInCliqueEntry(entry[j]);
+	    int v = sequenceInCliqueEntry(entry[j]);
 	    if (v>=number01)
 	      continue;
 	    if (goingToOne) {
@@ -4038,8 +4038,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	      int startV = toOne[v];
 	      int endV = toZero[v+1];
 	      for (int jv=startV;jv<endV;jv++) {
-		if(k==static_cast<int> (entry[jv].sequence)) {
-		  int goingToOneV = entry[jv].oneFixed;
+		if(k==static_cast<int> (sequenceInCliqueEntry(entry[jv]))) {
+		  int goingToOneV = oneFixesInCliqueEntry(entry[jv]);
 		  double lo,up;
 		  if (goingToOneV) {
 		    lo=0.0;
@@ -4066,8 +4066,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	      int startV = toZero[v];
 	      int endV = toOne[v];
 	      for (int jv=startV;jv<endV;jv++) {
-		if(k==static_cast<int> (entry[jv].sequence)) {
-		  int goingToOneV = entry[jv].oneFixed;
+		if(k==static_cast<int> (sequenceInCliqueEntry(entry[jv]))) {
+		  int goingToOneV = oneFixesInCliqueEntry(entry[jv]);
 		  double lo,up;
 		  if (goingToOneV) {
 		    lo=1.0;

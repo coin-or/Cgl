@@ -23,7 +23,7 @@
 //------------------------------------------------------------------- 
 void 
 CglStored::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-			     const CglTreeInfo info) const
+			const CglTreeInfo /*info*/) const
 {
   // Get basic problem information
   const double * solution = si.getColSolution();
@@ -36,7 +36,7 @@ CglStored::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   }
   if (probingInfo_) {
     int number01 = probingInfo_->numberIntegers();
-    const fixEntry * entry = probingInfo_->fixEntries();
+    const cliqueEntry * entry = probingInfo_->fixEntries();
     const int * toZero = probingInfo_->toZero();
     const int * toOne = probingInfo_->toOne();
     const int * integerVariable = probingInfo_->integerVariable();
@@ -51,12 +51,12 @@ CglStored::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	continue;
       double value1 = solution[iColumn];
       for (int j=toZero[i];j<toOne[i];j++) {
-	int jColumn=entry[j].sequence;
+	int jColumn=sequenceInCliqueEntry(entry[j]);
 	if (jColumn<number01) {
 	  jColumn=integerVariable[jColumn];
 	  assert (jColumn>=0);
 	  double value2 = solution[jColumn];
-	  if (entry[j].oneFixed) {
+	  if (oneFixesInCliqueEntry(entry[j])) {
 	    double violation = 1.0-value1-value2;
 	    if (violation>requiredViolation_) {
 	      //printf("XXX can do %d + %d >=1\n",iColumn,jColumn);
@@ -90,7 +90,7 @@ CglStored::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	  double value2 = solution[jColumn];
 	  double lowerValue = lower[jColumn];
 	  double upperValue = upper[jColumn];
-	  if (entry[j].oneFixed) {
+	  if (oneFixesInCliqueEntry(entry[j])) {
 	    double violation = upperValue-value1*(upperValue-lowerValue)-value2;
 	    if (violation>requiredViolation_) {
 	      //printf("XXX can do %g*%d + %d >=%g\n",(upperValue-lowerValue),iColumn,jColumn,upperValue);
@@ -122,12 +122,12 @@ CglStored::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	}
       }
       for (int j=toOne[i];j<toZero[i+1];j++) {
-	int jColumn=entry[j].sequence;
+	int jColumn=sequenceInCliqueEntry(entry[j]);
 	if (jColumn<number01) {
 	  jColumn=integerVariable[jColumn];
 	  assert (jColumn>=0);
 	  double value2 = solution[jColumn];
-	  if (entry[j].oneFixed) {
+	  if (oneFixesInCliqueEntry(entry[j])) {
 	    double violation = value1-value2;
 	    if (violation>requiredViolation_) {
 	      //printf("XXX can do %d <= %d\n",iColumn,jColumn);
@@ -161,7 +161,7 @@ CglStored::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	  double value2 = solution[jColumn];
 	  double lowerValue = lower[jColumn];
 	  double upperValue = upper[jColumn];
-	  if (entry[j].oneFixed) {
+	  if (oneFixesInCliqueEntry(entry[j])) {
 	    double violation = lowerValue +(upperValue-lowerValue)*value1-value2;
 	    if (violation>requiredViolation_) {
 	      //printf("XXX can do %g*%d <= %d -%g\n",(upperValue-lowerValue),iColumn,jColumn,lowerValue);

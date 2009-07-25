@@ -144,7 +144,7 @@ void CglOddHole::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   delete [] fixed;
     
 }
-void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
+void CglOddHole::generateCuts(const OsiRowCutDebugger * /*debugger*/,
 			      const CoinPackedMatrix & rowCopy, 
 				 const double * solution, 
 			      const double * dj, OsiCuts & cs,
@@ -837,6 +837,6 @@ CglOddHole::setMaximumEntries(int value)
 
 // This can be used to refresh any inforamtion
 void 
-CglOddHole::refreshSolver(OsiSolverInterface * solver)
+CglOddHole::refreshSolver(OsiSolverInterface * )
 {
 }

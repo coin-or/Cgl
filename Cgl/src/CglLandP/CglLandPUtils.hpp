@@ -73,7 +73,7 @@ struct Cuts {
     }
     /** resize vector.*/
     void resize(unsigned int i) {
-        cuts_.resize(i, (OsiRowCut *) NULL);
+      cuts_.resize(i, reinterpret_cast<OsiRowCut *> (NULL));
     }
 private:
     /** Stores the number of cuts.*/

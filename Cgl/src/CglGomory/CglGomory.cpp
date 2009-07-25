@@ -32,12 +32,18 @@
 #include "CoinWarmStartBasis.hpp"
 #include "CglGomory.hpp"
 #include "CoinFinite.hpp"
+#ifdef CGL_DEBUG_GOMORY
+int gomory_try=CGL_DEBUG_GOMORY;
+#endif
 //-------------------------------------------------------------------
 // Generate Gomory cuts
 //------------------------------------------------------------------- 
 void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 			     const CglTreeInfo info) const
 {
+#ifdef CGL_DEBUG_GOMORY
+  gomory_try++;
+#endif
   // Get basic problem information
   int numberColumns=si.getNumCols(); 
 
@@ -79,7 +85,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   int numberRowCutsBefore = cs.sizeRowCuts();
 
   generateCuts(debugger, cs, *si.getMatrixByCol(), *si.getMatrixByRow(),
-	   si.getObjCoefficients(), si.getColSolution(),
+	   si.getColSolution(),
 	   si.getColLower(), si.getColUpper(), 
 	   si.getRowLower(), si.getRowUpper(),
 	   intVar,warm,info);
@@ -219,11 +225,16 @@ inline Rational nearestRational(double value, int maxDenominator)
 
 // Does actual work - returns number of cuts
 int
-CglGomory::generateCuts( const OsiRowCutDebugger * debugger, 
+CglGomory::generateCuts( 
+#ifdef CGL_DEBUG
+			const OsiRowCutDebugger * debugger, 
+#else
+			const OsiRowCutDebugger * , 
+#endif
                          OsiCuts & cs,
                          const CoinPackedMatrix & columnCopy,
                          const CoinPackedMatrix & rowCopy,
-                         const double * objective, const double * colsol,
+                         const double * colsol,
                          const double * colLower, const double * colUpper,
                          const double * rowLower, const double * rowUpper,
 			 const char * intVar,
@@ -238,6 +249,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   double away = info.inTree ? away_ : CoinMin(away_,awayAtRoot_);
   int numberRows=columnCopy.getNumRows();
   int numberColumns=columnCopy.getNumCols(); 
+  int numberElements=columnCopy.getNumElements();
   // Allow bigger length on initial matrix (if special setting)
   if (limit==512&&!info.inTree&&!info.pass)
     limit=1024;
@@ -431,7 +443,14 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
       tolerance3=1.0e-6;
       tolerance6=1.0e-7;
       tolerance9=1.0e-5;
+      limit=numberColumns;
     } else {
+      if (limit>500) {
+	if(numberElements>10*numberColumns)
+	  limit=numberColumns;
+	//else
+	//limit = CoinMax(limit,numberRows/4);
+      }
     }
   } else {
   }
@@ -519,6 +538,10 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	// adjustment to rhs
 	double rhs=0.0;
 	int number=0;
+#ifdef CGL_DEBUG_GOMORY
+	    if (!gomory_try)
+	      printf("start for basic column %d\n",iColumn);
+#endif
 	// columns
 	for (j=0;j<numberColumns;j++) {
 	  if (columnIsBasic[j]<0&&colUpper[j]>colLower[j]+testFixed) {
@@ -531,6 +554,12 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      largestFactor = CoinMax(largestFactor,fabs(value2));
 	      value += value2;
 	    }
+#ifdef CGL_DEBUG_GOMORY
+	    if (!gomory_try&&value)
+	      printf("col %d alpha %g colsol %g swap %c bounds %g %g\n",
+		     j,value,colsol[j],swap[j] ? 'Y' : 'N',
+		     colLower[j],colUpper[j]);
+#endif
 	    // value is entry in tableau row end (C) ====
 	    if (fabs(value)<1.0e-16) {
 	      // small value
@@ -1115,7 +1144,7 @@ int
 CglGomory::generateCuts( const OsiRowCutDebugger * debugger, 
                          OsiCuts & cs,
                          const CoinPackedMatrix & columnCopy,
-                         const double * objective, const double * colsol,
+                         const double * colsol,
                          const double * colLower, const double * colUpper,
                          const double * rowLower, const double * rowUpper,
 			 const char * intVar,
@@ -1125,7 +1154,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   CoinPackedMatrix rowCopy;
   rowCopy.reverseOrderedCopyOf(columnCopy);
   return generateCuts( debugger, cs, columnCopy, rowCopy,
-		       objective, colsol, colLower, colUpper,
+		       colsol, colLower, colUpper,
 		       rowLower, rowUpper, intVar, warm, info);
 }
 // Create C++ lines to get to current state

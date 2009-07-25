@@ -60,10 +60,10 @@ public:
       Keys 1, 2, 5, 6, 7, 8 are defined, but not applicable to 
       cut generators.
   */
-  virtual std::string generateCpp( FILE * fp) {return "";}
+  virtual std::string generateCpp( FILE * ) {return "";}
 
   /// This can be used to refresh any information
-  virtual void refreshSolver(OsiSolverInterface * solver) {}
+  virtual void refreshSolver(OsiSolverInterface * ) {}
   //@}
   
   /**@name Gets and Sets */

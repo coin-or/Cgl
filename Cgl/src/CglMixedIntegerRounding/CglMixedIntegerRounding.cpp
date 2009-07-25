@@ -30,7 +30,7 @@
 void
 CglMixedIntegerRounding::generateCuts(const OsiSolverInterface& si,
 				      OsiCuts& cs,
-				      const CglTreeInfo info) const
+				      const CglTreeInfo ) const
 {
 
   // If the LP or integer presolve is used, then need to redo preprocessing
@@ -85,7 +85,7 @@ CglMixedIntegerRounding::generateCuts(const OsiSolverInterface& si,
 
   generateMirCuts(si, xlp, colUpperBound, colLowerBound,
 		  matrixByRow, LHS, coefByRow,
-		  colInds, rowStarts, rowLengths, matrixByCol,
+		  colInds, rowStarts, rowLengths, //matrixByCol,
 		  coefByCol, rowInds, colStarts, colLengths,
 		  cs);
 }
@@ -657,11 +657,11 @@ CglMixedIntegerRounding::generateMirCuts(
 			    const double* colLowerBound,
 			    const CoinPackedMatrix& matrixByRow,
 			    const double* LHS,
-			    const double* coefByRow,
-			    const int* colInds,
-			    const int* rowStarts,
-			    const int* rowLengths,
-			    const CoinPackedMatrix& matrixByCol,
+			    const double* /*coefByRow*/,
+			    const int* /*colInds*/,
+			    const int* /*rowStarts*/,
+			    const int* /*rowLengths*/,
+			    //const CoinPackedMatrix& matrixByCol,
 			    const double* coefByCol,
 			    const int* rowInds,
 			    const int* colStarts,
@@ -813,7 +813,7 @@ CglMixedIntegerRounding::generateMirCuts(
 	// Find a c-MIR cut with the current mixed knapsack constraint
 	bool hasCut = cMirSeparation(si, matrixByRow, rowToUse,
 				     listRowsAggregated, sense_, RHS_,
-				     coefByRow, colInds, rowStarts, rowLengths,
+				     //coefByRow, colInds, rowStarts, rowLengths,
 				     xlp, sStar, colUpperBound, colLowerBound, 
 				     mixedKnapsack,
 				     rhsMixedKnapsack, contVariablesInS,
@@ -1206,9 +1206,9 @@ CglMixedIntegerRounding::cMirSeparation(
 			    const CoinPackedVector& rowAggregated,
 			    const int* listRowsAggregated,
 			    const char* sense, const double* RHS,
-			    const double* coefByRow,
-			    const int* colInds, const int* rowStarts,
-			    const int* rowLengths,
+			    //const double* coefByRow,
+			    //const int* colInds, const int* rowStarts,
+			    //const int* rowLengths,
 			    const double* xlp, const double sStar,
 			    const double* colUpperBound,
 			    const double* colLowerBound,
@@ -1675,7 +1675,7 @@ CglMixedIntegerRounding::printStats(
 }
 // This can be used to refresh any inforamtion
 void 
-CglMixedIntegerRounding::refreshSolver(OsiSolverInterface * solver)
+CglMixedIntegerRounding::refreshSolver(OsiSolverInterface * )
 {
   doneInitPre_ = false;
 }

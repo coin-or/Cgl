@@ -69,9 +69,10 @@ public:
 
 /** Derived class to pick up probing info. */
 typedef struct {
-  unsigned int oneFixed:1; //  nonzero if variable fixed to 1
-  unsigned int sequence:31; //  variable (in matrix)
-} fixEntry;
+  //unsigned int oneFixed:1; //  nonzero if variable to 1 fixes all
+  //unsigned int sequence:31; //  variable (in matrix) (but also see cliqueRow_)
+  unsigned int fixes;
+} cliqueEntry;
 
 class CglTreeProbingInfo : public CglTreeInfo {
 public:
@@ -112,7 +113,7 @@ public:
   void generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 		    const CglTreeInfo info) const;
   /// Entries for fixing variables
-  inline fixEntry * fixEntries() const
+  inline cliqueEntry * fixEntries() const
   { convert(); return fixEntry_;}
   /// Starts of integer variable going to zero
   inline int * toZero() const
@@ -137,7 +138,7 @@ private:
   void convert() const;
 protected:
   /// Entries for fixing variables
-  mutable fixEntry * fixEntry_;
+  mutable cliqueEntry * fixEntry_;
   /// Starts of integer variable going to zero
   mutable int * toZero_;
   /// Starts of integer variable going to one
@@ -157,5 +158,13 @@ protected:
   /// Number entries in fixingEntry_ (and fixEntry_) or -2 if correct style
   mutable int numberEntries_;
 };
+inline int sequenceInCliqueEntry(const cliqueEntry & cEntry)
+{ return cEntry.fixes&0x7fffffff;}
+inline void setSequenceInCliqueEntry(cliqueEntry & cEntry,int sequence)
+{ cEntry.fixes = sequence|(cEntry.fixes&0x80000000);}
+inline bool oneFixesInCliqueEntry(const cliqueEntry & cEntry)
+{ return (cEntry.fixes&0x80000000)!=0;}
+inline void setOneFixesInCliqueEntry(cliqueEntry & cEntry,bool oneFixes)
+{ cEntry.fixes = (oneFixes ? 0x80000000 : 0)|(cEntry.fixes&0x7fffffff);}
 
 #endif

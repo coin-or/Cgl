@@ -55,14 +55,14 @@ void rs_allocmatINT(int ***v, const int m, const int n)
 {
   int i;
 
-  *v = (int **) calloc (m, sizeof(int *));
+  *v = reinterpret_cast<int **> (calloc (m, sizeof(int *)));
   if (*v == NULL) {
     printf("###ERROR: INTEGER matrix allocation failed\n");
     exit(1);
   }
 
   for(i=0; i<m; i++) {
-    (*v)[i] = (int *) calloc (n, sizeof(int));
+    (*v)[i] = reinterpret_cast<int *> (calloc (n, sizeof(int)));
     if ((*v)[i] == NULL) {
       printf("###ERROR: INTEGER matrix allocation failed\n");
       exit(1);
@@ -71,14 +71,14 @@ void rs_allocmatINT(int ***v, const int m, const int n)
 } /* rs_allocmatINT */
 
 /**********************************************************/
-void rs_deallocmatINT(int ***v, const int m, const int n)
+void rs_deallocmatINT(int ***v, const int m, const int /*n*/)
 {
   int i;
 
   for(i=0; i<m; i++) {
-    free((void *) (*v)[i]);
+    free(reinterpret_cast<void *> ((*v)[i]));
   }
-  free((void *) (*v));
+  free(reinterpret_cast<void *> (*v));
 } /* rs_deallocmatINT */
 
 /**********************************************************/
@@ -86,14 +86,14 @@ void rs_allocmatDBL(double ***v, const int m, const int n)
 {
   int i;
 
-  *v = (double **) calloc (m, sizeof(double *));
+  *v = reinterpret_cast<double **> (calloc (m, sizeof(double *)));
   if (*v == NULL) {
     printf("###ERROR: DOUBLE matrix allocation failed\n");
     exit(1);
   }
 
   for(i=0; i<m; i++) {
-    (*v)[i] = (double *) calloc (n, sizeof(double));
+    (*v)[i] = reinterpret_cast<double *> (calloc (n, sizeof(double)));
     if ((*v)[i] == NULL) {
       printf("###ERROR: DOUBLE matrix allocation failed\n");
       exit(1);
@@ -102,14 +102,14 @@ void rs_allocmatDBL(double ***v, const int m, const int n)
 } /* rs_allocmatDBL */
 
 /**********************************************************/
-void rs_deallocmatDBL(double ***v, const int m, const int n)
+void rs_deallocmatDBL(double ***v, const int m, const int /*n*/)
 {
   int i;
 
   for(i=0; i<m; i++) {
-    free((void *) (*v)[i]);
+    free(reinterpret_cast<void *> ((*v)[i]));
   }
-  free((void *) (*v));
+  free(reinterpret_cast<void *> (*v));
 } /* rs_deallocmatDBL */
 
 /**********************************************************/
@@ -229,12 +229,12 @@ double rs_genalea (int *x0)
   int c = 2836 ;
   int x1, k;
 
-  k = (int) ((*x0)/b) ;
+  k = static_cast<int> ((*x0)/b) ;
   x1 = a*(*x0 - k*b) - k*c ;
   if(x1 < 0) x1 = x1 + m;
   *x0 = x1;
 
-  return((double)x1/(double)m);
+  return(static_cast<double>(x1)/static_cast<double>(m));
 } /* rs_genalea */
 
 /***********************************************************************/
@@ -263,7 +263,7 @@ void CglRedSplit::find_step(int r1, int r2, int *step,
    double btb_val = rs_dotProd(contNonBasicTab[r1], contNonBasicTab[r2], nTab);
    double opt_step = btb_val/norm[r2];
 
-   int f_step= (int) floor(opt_step);
+   int f_step= static_cast<int> (floor(opt_step));
    int c_step = f_step + 1;
 
    double val_f = norm[r1] + f_step * f_step * norm[r2] - 2 * btb_val * f_step;
@@ -470,7 +470,7 @@ int CglRedSplit::generate_cgcut(double *row, double *rhs) {
 } /* generate_cgcut */
 
 /************************************************************************/
-int CglRedSplit::generate_cgcut_2(int basic_ind, double *row, double *rhs) {
+int CglRedSplit::generate_cgcut_2(int/* basic_ind*/, double *row, double *rhs) {
   
 #ifdef RS_TRACEALL
   rs_printvecDBL("CglRedSplit::generate_cgcut_2(): starting row", 
@@ -1023,7 +1023,7 @@ void CglRedSplit::check_optsol(const int calling_place,
 
 /************************************************************************/
 void CglRedSplit::check_optsol(const int calling_place,
-			       const double *lclXlp, const double *slack_val,
+			       const double */*lclXlp*/, const double *slack_val,
 			       const double *ck_row, const double ck_rhs,
 			       const int cut_number, const int do_flip) {
 
@@ -1122,7 +1122,7 @@ bool CglRedSplit::rs_are_different_vectors(const double *vect1,
 bool CglRedSplit::rs_are_different_matrices(const CoinPackedMatrix *mat1, 
 					    const CoinPackedMatrix *mat2,
 					    const int nmaj,
-					    const int nmin) {
+					    const int /*nmin*/) {
   
   const int *matStart1 = mat1->getVectorStarts();
   const double *matElements1 = mat1->getElements();
@@ -1172,7 +1172,7 @@ void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 
 /************************************************************************/
 void CglRedSplit::generateCuts(const OsiSolverInterface &si, OsiCuts & cs,
-			       const CglTreeInfo info)
+			       const CglTreeInfo )
 {
   solver = const_cast<OsiSolverInterface *>(&si);
   if(solver == NULL) {
@@ -1360,14 +1360,14 @@ void CglRedSplit::generateCuts(OsiCuts &cs)
      Reduce mTab if the above value is larger than maxTab_ */
 
   int new_mTab = card_intBasicVar_frac;
-  double nc = (double) card_contNonBasicVar;
+  double nc = static_cast<double> (card_contNonBasicVar);
   double nc3 = nc * nc * nc;
 
   if(nc3 > param.getMaxTab()) {
-    new_mTab = (int) (sqrt(param.getMaxTab()/card_contNonBasicVar));
+    new_mTab = static_cast<int> (sqrt(param.getMaxTab()/card_contNonBasicVar));
   }
   else {
-    new_mTab = (int) (CoinCbrt(param.getMaxTab()));
+    new_mTab = static_cast<int> (CoinCbrt(param.getMaxTab()));
   }
 
   if(new_mTab == 0) {
@@ -1398,7 +1398,7 @@ void CglRedSplit::generateCuts(OsiCuts &cs)
     // Poor randomness; could do better if needed
 
     int seed = card_intBasicVar_frac;
-    start = (int) (nrow * rs_genalea(&seed));
+    start = static_cast<int> (nrow * rs_genalea(&seed));
     
 #ifdef RS_TRACE
     printf("CglRedSlpit::generateCuts(): mTab: %d  new_mTab: %d\n", 

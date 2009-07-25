@@ -21,7 +21,7 @@
 // Generate Lift-and-Project cuts
 //------------------------------------------------------------------- 
 void CglLiftAndProject::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
-				     const CglTreeInfo info) const
+				     const CglTreeInfo /*info*/) const
 {
   // Assumes the mixed 0-1 problem 
   //
@@ -385,9 +385,9 @@ CglLiftAndProject::generateCpp( FILE * fp)
   fprintf(fp,"0#include \"CglLiftAndProject.hpp\"\n");
   fprintf(fp,"3  CglLiftAndProject liftAndProject;\n");
   if (beta_!=other.beta_)
-    fprintf(fp,"3  liftAndProject.setBeta(%d);\n",(int) beta_);
+    fprintf(fp,"3  liftAndProject.setBeta(%d);\n",static_cast<int> (beta_));
   else
-    fprintf(fp,"4  liftAndProject.setBeta(%d);\n",(int) beta_);
+    fprintf(fp,"4  liftAndProject.setBeta(%d);\n",static_cast<int> (beta_));
   fprintf(fp,"3  liftAndProject.setAggressiveness(%d);\n",getAggressiveness());
   if (getAggressiveness()!=other.getAggressiveness())
     fprintf(fp,"3  liftAndProject.setAggressiveness(%d);\n",getAggressiveness());
