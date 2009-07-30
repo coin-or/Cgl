@@ -26,7 +26,8 @@
 
 #include "CglFlowCover.hpp"
 
-
+// added #define to get rid of warnings (so uncomment if =true)
+//#define CGLFLOW_DEBUG2
 static bool CGLFLOW_DEBUG=false;
 static bool doLift=true;
 #include <iomanip>
@@ -331,10 +332,12 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   }
 
 
+#ifdef CGLFLOW_DEBUG2
   if(CGLFLOW_DEBUG) {
     std::cout << "\nnumFlowCuts = "<< getNumFlowCuts()  << std::endl;
     std::cout << "CGLFLOW_COL_BINNEG = "<< CGLFLOW_COL_BINNEG  << std::endl;
   }
+#endif
   if (!info.inTree&&((info.options&4)==4||((info.options&8)&&!info.pass))) {
     int numberRowCutsAfter = cs.sizeRowCuts();
     for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++)
@@ -1006,6 +1009,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
   // Calculate the violation
   violation = -cutRHS;
   for ( i = 0; i < rowLen; ++i ) {
+#ifdef CGLFLOW_DEBUG2
     if(CGLFLOW_DEBUG) {
       std::cout << "i = " << i << " ind = " << ind[i] << " sign = " 
 		<< sign[i] 
@@ -1013,6 +1017,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 		<< xCoef[i] << " y = " << y[i] << " yCoef = " << yCoef[i] 
 		<< " up = " << up[i] << " label = " << label[i] << std::endl;
     }
+#endif
     violation += y[i] * yCoef[i] + x[i] * xCoef[i];
   }
 
@@ -1077,6 +1082,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
   // Calculate the violation
   violation = -cutRHS;
   for ( i = 0; i < rowLen; ++i ) {
+#ifdef CGLFLOW_DEBUG2
     if(CGLFLOW_DEBUG) {
       std::cout << "i = " << i << " ind = " << ind[i] << " sign = " 
 		<< sign[i] 
@@ -1084,6 +1090,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 		<< xCoef[i] << " y = " << y[i] << " yCoef = " << yCoef[i] 
 		<< " up = " << up[i] << " label = " << label[i] << std::endl;
     }
+#endif
     violation += y[i] * yCoef[i] + x[i] * xCoef[i];
   }
 

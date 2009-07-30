@@ -21,7 +21,7 @@
 #include "OsiRowCutDebugger.hpp"
 #include "CoinFactorization.hpp"
 #undef CLP_OSL
-#if 0
+#if 1
 #define CLP_OSL 1
 #if CLP_OSL!=1&&CLP_OSL!=3
 #undef CLP_OSL
@@ -436,6 +436,9 @@ CglGomory::generateCuts(
   double tolerance3=1.0e-4;
   double tolerance6=1.0e-6;
   double tolerance9=1.0e-4;
+#ifdef CLP_INVESTIGATE
+  int saveLimit=limit;
+#endif  
   if (!info.inTree) {
     if (!info.pass) {
       tolerance1=1.0;
@@ -445,15 +448,25 @@ CglGomory::generateCuts(
       tolerance9=1.0e-5;
       limit=numberColumns;
     } else {
-      if (limit>500) {
-	if(numberElements>10*numberColumns)
+      if (limit==1000) {
+	if(numberElements>8*numberColumns)
 	  limit=numberColumns;
-	//else
-	//limit = CoinMax(limit,numberRows/4);
+	else
+	  limit = CoinMax(limit,numberRows/4);
       }
     }
   } else {
+    if (!info.pass) {
+      if (limit==50) 
+	limit = CoinMax(limit,numberColumns/40);
+    }
   }
+#ifdef CLP_INVESTIGATE
+  if (limit>saveLimit) 
+    printf("Gomory limit changed from %d to %d, inTree %c, pass %d, r %d,c %d,e %d\n",
+	   saveLimit,limit,info.inTree ? 'Y' : 'N',info.pass,
+	   numberRows,numberColumns,numberElements);
+#endif  
   for (iColumn=0;iColumn<numberColumns;iColumn++) {
     double reducedValue=above_integer(colsol[iColumn]);;
     // This returns pivot row for columns or -1 if not basic (C) ====

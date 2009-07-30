@@ -1125,6 +1125,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     makeEquality=3;
   // Initialize random seed
   CoinThreadRandom randomGenerator(987654321);
+  bool justOnesWithObj=false;
   if (makeEquality==2||makeEquality==3||makeEquality==4) {
     int iRow, iColumn;
     int numberIntegers = 0;
@@ -1174,6 +1175,70 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	    whichRow[firstOther]=iRow;
 	  }
         }
+      }
+    }
+    if (makeEquality==2&&false) {
+      if(numberOverlap||numberIntegers>numberInSOS+1) {
+	// try just ones with costs
+	CoinFillN(mark,numberColumns,-1);
+	numberOverlap=0;
+	numberInSOS=0;
+	bool allCostsInSOS=true;
+	const double *objective = originalModel_->getObjCoefficients() ;
+	for (iRow=0;iRow<numberRows;iRow++) {
+	  if (rowUpper[iRow]==1.0&&rowLength[iRow]>=5) {
+	    bool goodRow=true;
+	    bool overlap=false;
+	    int nObj=0;
+	    for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+	      int iColumn = column[j];
+	      if (elementByRow[j]!=1.0||!originalModel_->isInteger(iColumn)||lower[iColumn]) {
+		goodRow=false;
+	      }
+	      if (objective[iColumn])
+		nObj++;
+	      if (mark[iColumn]>=0) {
+		overlap=true;
+		numberOverlap++;
+	      }
+	    }
+	    if (nObj&&nObj>=rowLength[iRow]-1) {
+	      if (goodRow) {
+		if (!overlap) {
+		  // mark all
+		  for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+		    int iColumn = column[j];
+		    mark[iColumn]=numberSOS;
+		  }
+		  numberSOS++;
+		  numberInSOS += rowLength[iRow];
+		}
+	      } else {
+		// no good
+		allCostsInSOS=false;
+	      }
+	    }
+	  }
+	}
+	if (numberInSOS&&allCostsInSOS) {
+	  int nGoodObj=0;
+	  int nBadObj=0;
+	  for (int iColumn=0;iColumn<numberColumns;iColumn++) {
+	    if (objective[iColumn]) {
+	      if (mark[iColumn]>=0)
+		nGoodObj++;
+	      else
+		nBadObj++;
+	    }
+	  }
+	  if (nBadObj*10<nGoodObj) {
+	    justOnesWithObj=true;
+	    makeEquality=3;
+#ifdef CLP_INVESTIGATE
+	    printf("trying SOS as all costs there\n");
+#endif
+	  }
+	}
       }
     }
     if (firstOther<numberRows&&makeEquality==4) {
@@ -1624,7 +1689,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
         <<numberFixed
         <<CoinMessageEol;
   }
-  if (numberSlacks&&makeEquality) {
+  if (numberSlacks&&makeEquality&&!justOnesWithObj) {
     handler_->message(CGL_SLACKS,messages_)
       <<numberSlacks
       <<CoinMessageEol;
@@ -2196,6 +2261,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     int iRow, iColumn;
     int numberColumns = returnModel->getNumCols();
     int numberRows = returnModel->getNumRows();
+    const double * objective = returnModel->getObjCoefficients();
     // get row copy
     const CoinPackedMatrix * matrix = returnModel->getMatrixByRow();
     const double * element = matrix->getElements();
@@ -2216,9 +2282,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     int numberInSOS=0;
     for (iRow=0;iRow<numberRows;iRow++) {
       if (rowLower[iRow]==1.0&&rowUpper[iRow]==1.0) {
-        if (rowLength[iRow]<5||(rowLength[iRow]<20&&allToGub))
+        if ((rowLength[iRow]<5&&!justOnesWithObj)||(rowLength[iRow]<20&&allToGub))
           continue;
         bool goodRow=true;
+	int nObj=0;
         for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
           iColumn = column[j];
           if (element[j]!=1.0||!returnModel->isInteger(iColumn)||columnLower[iColumn]) {
@@ -2229,7 +2296,13 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
             goodRow=false;
             numberOverlap++;
           }
+	  if (objective[iColumn])
+	    nObj++;
         }
+	if (goodRow&&justOnesWithObj) {
+	  if (!nObj||nObj<rowLength[iRow]-1) 
+	    goodRow=false;
+	}
         if (goodRow) {
           // mark all
           for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
@@ -3604,6 +3677,12 @@ CglPreProcess::modified(OsiSolverInterface * model,
           OsiRowCut * thisCut = whichCut[iRow];
           whichCut[iRow]=NULL;
           if (rowLower[iRow]>-1.0e20||rowUpper[iRow]<1.0e20) {
+#if 0
+	    if (thisCut) {
+	      printf("Cut on row %d\n",iRow);
+	      thisCut->print();
+	    }
+#endif
             if (!thisCut) {
               // put in old row
               int start=rowStart[iRow];
@@ -3837,15 +3916,24 @@ CglPreProcess::modified(OsiSolverInterface * model,
               double upper = thisCut->ub();
               if (probingCut) {
                 int i;
+                int nFree=0;
+                for ( i=0;i<n;i++) {
+                  int iColumn = columnCut[i];
+                  if (columnUpper[iColumn]>columnLower[iColumn]+1.0e-12)
+                    nFree++;
+                }
+                bool good = (n==nFree);
+		nFree=0;
                 int n1=rowLength[iRow];
                 int start=rowStart[iRow];
-                int nFree=0;
                 for ( i=0;i<n1;i++) {
                   int iColumn = column[start+i];
                   if (columnUpper[iColumn]>columnLower[iColumn]+1.0e-12)
                     nFree++;
                 }
-                if (n==nFree) {
+                if (n1!=nFree) 
+		  good=false;
+                if (good) {
 #if 0
                   printf("Original row %.8d %g <= ",iRow,rowLower[iRow]);
                   for ( i=0;i<n1;i++) 
@@ -3859,6 +3947,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
                 } else {
                   // can't use
                   n=-1;
+		  numberStrengthened--;
                   // put in old row
                   int start=rowStart[iRow];
                   build.addRow(rowLength[iRow],column+start,rowElements+start,
@@ -4137,7 +4226,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	values = lbs.getElements() ;
 	for (j = 0;j<n;j++) {
 	  int iColumn = which[j] ;
-          if (values[j]>columnLower[iColumn]) {
+          if (values[j]>columnLower[iColumn]&&values[j]>-1.0e20) {
             //printf("%d lower from %g to %g\n",iColumn,columnLower[iColumn],values[j]);
             newModel->setColLower(iColumn,values[j]) ;
             if (false) {
@@ -4161,7 +4250,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	values = ubs.getElements() ;
 	for (j = 0;j<n;j++) {
 	  int iColumn = which[j] ;
-          if (values[j]<columnUpper[iColumn]) {
+          if (values[j]<columnUpper[iColumn]&&values[j]<1.0e20) {
             //printf("%d upper from %g to %g\n",iColumn,columnUpper[iColumn],values[j]);
             newModel->setColUpper(iColumn,values[j]) ;
             if (false) {

@@ -69,6 +69,9 @@ public:
   void setLimitAtRoot(int limit);
   /// Get at root
   int getLimitAtRoot() const;
+  /// Return maximum length of cut in tree
+  virtual int maximumLengthOfCutInTree() const
+  { return limit_;}
   //@}
 
   /**@name Change criterion on which variables to look at.  All ones

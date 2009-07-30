@@ -3007,7 +3007,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
   //printf("PROBE %d fixed out of %d\n",nFix,nCols);
   double tolerance = 1.0e1*primalTolerance_;
   // If we are going to replace coefficient then we don't need to be effective
-  double needEffectiveness = info->strengthenRow ? -1.0e10 : 1.0e-3;
+  //double needEffectiveness = info->strengthenRow ? -1.0e10 : 1.0e-3;
+  double needEffectiveness = info->strengthenRow ? 1.0e-8 : 1.0e-3;
   if (PROBING_EXTRA_STUFF) {
     int nCut=0;
     for (int iRow=0;iRow<nRows;iRow++) {
@@ -4694,29 +4695,42 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     double * element = saveU;
                     int n=0;
                     bool coefficientExists=false;
+		    double sum2=0.0;
                     for (int kk =rowStart[irow];kk<rowStart[irow+1];
                          kk++) {
-                      if (column[kk]!=j) {
-                        index[n]=column[kk];
-                        element[n++]=rowElements[kk];
+		      int kColumn = column[kk];
+		      double el = rowElements[kk];
+                      if (kColumn!=j) {
+                        index[n]=kColumn;
+                        element[n++]=el;
                       } else {
-                        double value=rowElements[kk]-gap;
-                        if (fabs(value)>1.0e-12) {
-                          index[n]=column[kk];
-                          element[n++]=value;
+                        el=el-gap;
+                        if (fabs(el)>1.0e-12) {
+                          index[n]=kColumn;
+                          element[n++]=el;
                         }
                         coefficientExists=true;
                       }
+		      sum2 += colsol[kColumn]*el;
                     }
                     if (!coefficientExists) {
                       index[n]=j;
                       element[n++]=-gap;
+		      sum2 -= colsol[j]*gap;
                     }
                     OsiRowCut rc;
                     rc.setLb(-DBL_MAX);
-                    rc.setUb(rowUpper[irow]-gap*(colLower[j]+1.0));
-                    // effectiveness is how far j moves
-                    rc.setEffectiveness((sum-gap*colsol[j]-maxR[irow])/gap);
+		    double ub =rowUpper[irow]-gap*(colLower[j]+1.0);
+                    rc.setUb(ub);
+                    double effectiveness=sum2-ub;
+                    effectiveness = CoinMax(effectiveness,
+					    (sum-gap*colsol[j]
+					     -maxR[irow])/gap);
+		    if (!coefficientExists)
+		      effectiveness=CoinMax(1.0e-7,
+					    effectiveness);
+                    rc.setEffectiveness(effectiveness);
+                    //rc.setEffectiveness((sum-gap*colsol[j]-maxR[irow])/gap);
                     if (rc.effectiveness()>needEffectiveness) {
                       rc.setRow(n,index,element,false);
 #ifdef CGL_DEBUG
@@ -4823,29 +4837,42 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     double * element = saveU;
                     int n=0;
                     bool coefficientExists=false;
+		    double sum2=0.0;
                     for (int kk =rowStart[irow];kk<rowStart[irow+1];
                          kk++) {
-                      if (column[kk]!=j) {
-                        index[n]=column[kk];
-                        element[n++]=rowElements[kk];
+		      int kColumn = column[kk];
+		      double el = rowElements[kk];
+                      if (kColumn!=j) {
+                        index[n]=kColumn;
+                        element[n++]=el;
                       } else {
-                        double value=rowElements[kk]+gap;
-                        if (fabs(value)>1.0e-12) {
-                          index[n]=column[kk];
-                          element[n++]=value;
+                        el=el+gap;
+                        if (fabs(el)>1.0e-12) {
+                          index[n]=kColumn;
+                          element[n++]=el;
                         }
                         coefficientExists=true;
                       }
+		      sum2 += colsol[kColumn]*el;
                     }
                     if (!coefficientExists) {
                       index[n]=j;
                       element[n++]=gap;
+		      sum2 += colsol[j]*gap;
                     }
                     OsiRowCut rc;
-                    rc.setLb(rowLower[irow]+gap*(colLower[j]+1.0));
+		    double lb = rowLower[irow]+gap*(colLower[j]+1.0);
+                    rc.setLb(lb);
                     rc.setUb(DBL_MAX);
-                    // effectiveness is how far j moves
-                    rc.setEffectiveness((minR[irow]-sum-gap*colsol[j])/gap);
+                    // effectiveness
+                    double effectiveness=lb-sum2;
+                    effectiveness = CoinMax(effectiveness,
+					    (minR[irow]-
+					     sum-gap*colsol[j])/gap);
+		    if (!coefficientExists)
+		      effectiveness=CoinMax(1.0e-7,
+					    effectiveness);
+                    rc.setEffectiveness(effectiveness);
                     if (rc.effectiveness()>needEffectiveness) {
                       rc.setRow(n,index,element,false);
 #ifdef CGL_DEBUG
@@ -5193,29 +5220,42 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     double * element = saveU;
                     int n=0;
                     bool coefficientExists=false;
+		    double sum2=0.0;
                     for (int kk =rowStart[irow];kk<rowStart[irow+1];
                          kk++) {
-                      if (column[kk]!=j) {
-                        index[n]=column[kk];
-                        element[n++]=rowElements[kk];
+		      int kColumn = column[kk];
+		      double el = rowElements[kk];
+                      if (kColumn!=j) {
+                        index[n]=kColumn;
+                        element[n++]=el;
                       } else {
-                        double value=rowElements[kk]+gap;
-                        if (fabs(value)>1.0e-12) {
-                          index[n]=column[kk];
-                          element[n++]=value;
+                        el=el+gap;
+                        if (fabs(el)>1.0e-12) {
+                          index[n]=kColumn;
+                          element[n++]=el;
                         }
                         coefficientExists=true;
                       }
+		      sum2 += colsol[kColumn]*el;
                     }
                     if (!coefficientExists) {
                       index[n]=j;
                       element[n++]=gap;
+		      sum2 += colsol[j]*gap;
                     }
                     OsiRowCut rc;
                     rc.setLb(-DBL_MAX);
-                    rc.setUb(rowUpper[irow]+gap*(colUpper[j]-1.0));
-                    // effectiveness is how far j moves
-                    rc.setEffectiveness((sum+gap*colsol[j]-rowUpper[irow])/gap);
+		    double ub = rowUpper[irow]+gap*(colUpper[j]-1.0);
+                    rc.setUb(ub);
+                    // effectiveness
+                    double effectiveness=sum2-ub;
+                    effectiveness = CoinMax(effectiveness,
+					    (sum+gap*colsol[j]-
+					     rowUpper[irow])/gap);
+		    if (!coefficientExists)
+		      effectiveness=CoinMax(1.0e-7,
+					    effectiveness);
+                    rc.setEffectiveness(effectiveness);
                     if (rc.effectiveness()>needEffectiveness) {
                       rc.setRow(n,index,element,false);
 #ifdef CGL_DEBUG
@@ -5272,29 +5312,41 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     double * element = saveU;
                     int n=0;
                     bool coefficientExists=false;
+		    double sum2=0.0;
                     for (int kk =rowStart[irow];kk<rowStart[irow+1];
                          kk++) {
-                      if (column[kk]!=j) {
-                        index[n]=column[kk];
-                        element[n++]=rowElements[kk];
+		      int kColumn = column[kk];
+		      double el = rowElements[kk];
+                      if (kColumn!=j) {
+                        index[n]=kColumn;
+                        element[n++]=el;
                       } else {
-                        double value=rowElements[kk]-gap;
-                        if (fabs(value)>1.0e-12) {
-                          index[n]=column[kk];
-                          element[n++]=value;
+                        el=el-gap;
+                        if (fabs(el)>1.0e-12) {
+                          index[n]=kColumn;
+                          element[n++]=el;
                         }
                         coefficientExists=true;
                       }
+		      sum2 += colsol[kColumn]*el;
                     }
                     if (!coefficientExists) {
                       index[n]=j;
                       element[n++]=-gap;
+		      sum2 -= colsol[j]*gap;
                     }
                     OsiRowCut rc;
-                    rc.setLb(rowLower[irow]-gap*(colUpper[j]-1));
+                    double lb = rowLower[irow]-gap*(colUpper[j]-1);
+                    rc.setLb(lb);
                     rc.setUb(DBL_MAX);
-                    // effectiveness is how far j moves
-                    rc.setEffectiveness((rowLower[irow]-sum+gap*colsol[j])/gap);
+		    double effectiveness=lb-sum2;
+                    effectiveness = CoinMax(effectiveness,
+					    (rowLower[irow]-
+					     sum+gap*colsol[j])/gap);
+		    if (!coefficientExists)
+		      effectiveness=CoinMax(1.0e-7,
+					    effectiveness);
+                    rc.setEffectiveness(effectiveness);
                     if (rc.effectiveness()>needEffectiveness) {
                       rc.setRow(n,index,element,false);
 #ifdef CGL_DEBUG

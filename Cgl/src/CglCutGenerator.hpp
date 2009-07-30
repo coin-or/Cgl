@@ -92,6 +92,9 @@ public:
   virtual bool mayGenerateRowCutsInTree() const;
   /// Return true if needs optimal basis to do cuts
   virtual bool needsOptimalBasis() const;
+  /// Return maximum length of cut in tree
+  virtual int maximumLengthOfCutInTree() const
+  { return COIN_INT_MAX;}
   //@}
   
   // test this class

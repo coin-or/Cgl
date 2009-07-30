@@ -144,6 +144,9 @@ public:
   void setAwayAtRoot(double value);
   /// Get away at root
   double getAwayAtRoot() const;
+  /// Return maximum length of cut in tree
+  virtual int maximumLengthOfCutInTree() const
+  { return max_elements_;}
   //@}
 
   /**@name Constructors and destructors */

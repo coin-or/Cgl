@@ -250,8 +250,8 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
   if (!info.inTree) {
     longRow=25;
     //longRow2=20;
-    //if (!info.pass)
-    //longRow=35;
+    if (!info.pass)
+      longRow=30;
   }
 
   // Set up number of tries for each row
