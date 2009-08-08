@@ -70,8 +70,7 @@ public:
   /// Get at root
   int getLimitAtRoot() const;
   /// Return maximum length of cut in tree
-  virtual int maximumLengthOfCutInTree() const
-  { return limit_;}
+  virtual int maximumLengthOfCutInTree() const;
   //@}
 
   /**@name Change criterion on which variables to look at.  All ones
@@ -158,6 +157,8 @@ private:
   int limit_;
   /// Limit - only generate if fewer than this in cut (at root)
   int limitAtRoot_;
+  /// Dynamic limit in tree
+  mutable int dynamicLimitInTree_;
   /// nonzero to use alternative factorization
   int alternateFactorization_;
   //@}

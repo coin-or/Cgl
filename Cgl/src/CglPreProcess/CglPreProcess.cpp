@@ -1056,7 +1056,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   delete [] originalRow_;
   originalColumn_=NULL;
   originalRow_=NULL;
-  startModel_=&model;
+  //startModel_=&model;
+  // make clone
+  delete startModel_;
+  startModel_ = originalModel_->clone();
   CoinPackedMatrix matrixByRow(*originalModel_->getMatrixByRow());
   int numberRows = originalModel_->getNumRows();
   if (rowType_)
@@ -1242,8 +1245,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       }
     }
     if (firstOther<numberRows&&makeEquality==4) {
-      // make clone
-      startModel_ = originalModel_->clone();
       CoinPackedMatrix * matrixByColumn = const_cast<CoinPackedMatrix *>(startModel_->getMatrixByCol());
       // Column copy
       const int * row = matrixByColumn->getIndices();
@@ -2505,6 +2506,162 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       }
     }
   }
+#if 0
+  if (returnModel) {
+    int numberColumns = returnModel->getNumCols();
+    int numberRows = returnModel->getNumRows();
+    int * del = new int [CoinMax(numberColumns,numberRows)];
+    int * original = new int [numberColumns];
+    int nDel=0;
+    for (int i=0;i<numberColumns;i++) {
+      original[i]=i;
+      if (returnModel->isInteger(i))
+	del[nDel++]=i;
+    }
+    int nExtra=0;
+    if (nDel&&nDel!=numberColumns&&(options_&1)!=0&&false) {
+      OsiSolverInterface * yyyy = returnModel->clone();
+      int nPass=0;
+      while (nDel&&nPass<10) {
+	nPass++;
+	OsiSolverInterface * xxxx = yyyy->clone();
+	int nLeft=0;
+	for (int i=0;i<nDel;i++) 
+	  original[del[i]]=-1;
+	for (int i=0;i<numberColumns;i++) {
+	  int kOrig=original[i];
+	  if (kOrig>=0)
+	    original[nLeft++]=kOrig;
+	}
+	assert (nLeft==numberColumns-nDel);
+	xxxx->deleteCols(nDel,del);
+	numberColumns = xxxx->getNumCols();
+	const CoinPackedMatrix * rowCopy = xxxx->getMatrixByRow();
+	numberRows = rowCopy->getNumRows();
+	const int * column = rowCopy->getIndices();
+	const int * rowLength = rowCopy->getVectorLengths();
+	const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
+	const double * rowLower = xxxx->getRowLower();
+	const double * rowUpper = xxxx->getRowUpper();
+	const double * element = rowCopy->getElements();
+        const CoinPackedMatrix * columnCopy = xxxx->getMatrixByCol();
+        const int * columnLength = columnCopy->getVectorLengths(); 
+	nDel=0;
+	// Could do gcd stuff on ones with costs
+	for (int i=0;i<numberRows;i++) {
+	  if (!rowLength[i]) {
+	    del[nDel++]=i;
+	  } else if (rowLength[i]==1) {
+	    int k=rowStart[i];
+	    int iColumn = column[k];
+	    if (!xxxx->isInteger(iColumn)) {
+	      double mult =1.0/fabs(element[k]);
+	      if (rowLower[i]<-1.0e20) {
+		double value = rowUpper[i]*mult;
+		if (fabs(value-floor(value+0.5))<1.0e-8) {
+		  del[nDel++]=i;
+		  if (columnLength[iColumn]==1) {
+		    xxxx->setInteger(iColumn);
+		    int kOrig=original[iColumn];
+		    returnModel->setInteger(kOrig);
+		  }
+		}
+	      } else if (rowUpper[i]>1.0e20) {
+		double value = rowLower[i]*mult;
+		if (fabs(value-floor(value+0.5))<1.0e-8) {
+		  del[nDel++]=i;
+		  if (columnLength[iColumn]==1) {
+		    xxxx->setInteger(iColumn);
+		    int kOrig=original[iColumn];
+		    returnModel->setInteger(kOrig);
+		  }
+		}
+	      } else {
+		double value = rowUpper[i]*mult;
+		if (rowLower[i]==rowUpper[i]&&
+		    fabs(value-floor(value+0.5))<1.0e-8) {
+		  del[nDel++]=i;
+		  xxxx->setInteger(iColumn);
+		  int kOrig=original[iColumn];
+		  returnModel->setInteger(kOrig);
+		}
+	      }
+	    }
+	  } else {
+	    // only if all singletons
+	    bool possible=false;
+	    if (rowLower[i]<-1.0e20) {
+	      double value = rowUpper[i];
+	      if (fabs(value-floor(value+0.5))<1.0e-8) 
+		possible=true;
+	    } else if (rowUpper[i]>1.0e20) {
+	      double value = rowLower[i];
+	      if (fabs(value-floor(value+0.5))<1.0e-8) 
+		possible=true;
+	    } else {
+	      double value = rowUpper[i];
+	      if (rowLower[i]==rowUpper[i]&&
+		  fabs(value-floor(value+0.5))<1.0e-8)
+		possible=true;
+	    }
+	    if (possible) {
+	      for (CoinBigIndex j=rowStart[i];
+		   j<rowStart[i]+rowLength[i];j++) {
+		int iColumn = column[j];
+		if (columnLength[iColumn]!=1||fabs(element[j])!=1.0) {
+		  possible=false;
+		  break;
+		}
+	      }
+	      if (possible) {
+		for (CoinBigIndex j=rowStart[i];
+		     j<rowStart[i]+rowLength[i];j++) {
+		  int iColumn = column[j];
+		  if (!xxxx->isInteger(iColumn)) {
+		    xxxx->setInteger(iColumn);
+		    int kOrig=original[iColumn];
+		    returnModel->setInteger(kOrig);
+		  }
+		}
+		del[nDel++]=i;
+	      }
+	    }
+	  }
+	}
+	if (nDel) {
+	  xxxx->deleteRows(nDel,del);
+	}
+	if (nDel!=numberRows) {
+	  nDel=0;
+	  for (int i=0;i<numberColumns;i++) {
+	    if (xxxx->isInteger(i)) {
+	      del[nDel++]=i;
+	      nExtra++;
+	    }
+	  }
+	} 
+	delete yyyy;
+	yyyy=xxxx->clone();
+      }
+      numberColumns = yyyy->getNumCols();
+      numberRows = yyyy->getNumRows();
+      if (!numberColumns||!numberRows) {
+	printf("All gone\n");
+	int numberColumns = returnModel->getNumCols();
+	for (int i=0;i<numberColumns;i++)
+	  assert(returnModel->isInteger(i));
+      }
+      // Would need to check if original bounds integer
+      //yyyy->writeMps("noints");
+      delete yyyy;
+      printf("Creating simplified model with %d rows and %d columns - %d extra integers\n",
+	     numberRows,numberColumns,nExtra);
+    }
+    delete [] del;
+    delete [] original;
+    //exit(2);
+  }
+#endif
   return returnModel;
 }
 
@@ -4386,6 +4543,7 @@ CglPreProcess::CglPreProcess()
   numberIterationsPost_(0),
   prohibited_(NULL),
   numberRowType_(0),
+  options_(0),
   rowType_(NULL)
 {
   handler_ = new CoinMessageHandler();
@@ -4406,7 +4564,8 @@ CglPreProcess::CglPreProcess(const CglPreProcess & rhs)
   numberProhibited_(rhs.numberProhibited_),
   numberIterationsPre_(rhs.numberIterationsPre_),
   numberIterationsPost_(rhs.numberIterationsPost_),
-  numberRowType_(rhs.numberRowType_)
+  numberRowType_(rhs.numberRowType_),
+  options_(rhs.options_)
 {
   if (defaultHandler_) {
     handler_ = new CoinMessageHandler();
@@ -4480,6 +4639,7 @@ CglPreProcess::operator=(const CglPreProcess& rhs)
     numberIterationsPre_ = rhs.numberIterationsPre_;
     numberIterationsPost_ = rhs.numberIterationsPost_;
     numberRowType_ = rhs.numberRowType_;
+    options_ = rhs.options_;
     if (defaultHandler_) {
       handler_ = new CoinMessageHandler();
       handler_->setLogLevel(rhs.handler_->logLevel());

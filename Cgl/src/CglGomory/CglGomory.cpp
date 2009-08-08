@@ -94,10 +94,11 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   delete [] intVar;
   if ((!info.inTree&&((info.options&4)==4||((info.options&8)&&!info.pass)))
       ||(info.options&16)!=0) {
+    int limit = maximumLengthOfCutInTree();
     int numberRowCutsAfter = cs.sizeRowCuts();
     for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++) {
       int length = cs.rowCutPtr(i)->row().getNumElements();
-      if (length<=limit_)
+      if (length<=limit)
 	cs.rowCutPtr(i)->setGloballyValid();
     }
   }
@@ -222,7 +223,9 @@ inline Rational nearestRational(double value, int maxDenominator)
     return tryA;
   }
 }
-
+#ifdef CLP_INVESTIGATE
+static int printCount=0;
+#endif
 // Does actual work - returns number of cuts
 int
 CglGomory::generateCuts( 
@@ -241,8 +244,6 @@ CglGomory::generateCuts(
                          const CoinWarmStartBasis* warm,
                          const CglTreeInfo info) const
 {
-  // get limit on length of cut
-  int limit = info.inTree ? limit_ : CoinMax(limit_,limitAtRoot_);
   bool globalCuts = (info.options&16)!=0;
   double testFixed = (!globalCuts) ? 1.0e-8 : -1.0;
   // get what to look at
@@ -251,8 +252,8 @@ CglGomory::generateCuts(
   int numberColumns=columnCopy.getNumCols(); 
   int numberElements=columnCopy.getNumElements();
   // Allow bigger length on initial matrix (if special setting)
-  if (limit==512&&!info.inTree&&!info.pass)
-    limit=1024;
+  //if (limit==512&&!info.inTree&&!info.pass)
+  //limit=1024;
   // Start of code to create a factorization from warm start (A) ====
   // check factorization is okay
   CoinFactorization factorization;
@@ -437,32 +438,42 @@ CglGomory::generateCuts(
   double tolerance6=1.0e-6;
   double tolerance9=1.0e-4;
 #ifdef CLP_INVESTIGATE
-  int saveLimit=limit;
+  int saveLimit = info.inTree ? 50 : 1000;
 #endif  
+  // get limit on length of cut
+  int limit = 0;
+  if (!limit_)
+    dynamicLimitInTree_ = CoinMax(50,numberColumns/40);
   if (!info.inTree) {
+    limit = limitAtRoot_;
     if (!info.pass) {
       tolerance1=1.0;
       tolerance2=1.0e-2;
       tolerance3=1.0e-6;
       tolerance6=1.0e-7;
       tolerance9=1.0e-5;
-      limit=numberColumns;
+      if (!limit||limit>=500)
+	limit=numberColumns;
     } else {
-      if (limit==1000) {
-	if(numberElements>8*numberColumns)
+      if (!limit) {
+	if(numberElements>8*numberColumns||(info.options&32)!=0)
 	  limit=numberColumns;
 	else
-	  limit = CoinMax(limit,numberRows/4);
+	  limit = CoinMax(1000,numberRows/4);
       }
     }
   } else {
-    if (!info.pass) {
-      if (limit==50) 
-	limit = CoinMax(limit,numberColumns/40);
+    limit = limit_;
+    if (!limit) {
+      if (!info.pass) 
+	limit = dynamicLimitInTree_;
+      else
+	limit=50;
     }
   }
 #ifdef CLP_INVESTIGATE
-  if (limit>saveLimit) 
+  printCount++;
+  if (limit>saveLimit&&printCount<1000) 
     printf("Gomory limit changed from %d to %d, inTree %c, pass %d, r %d,c %d,e %d\n",
 	   saveLimit,limit,info.inTree ? 'Y' : 'N',info.pass,
 	   numberRows,numberColumns,numberElements);
@@ -1018,7 +1029,7 @@ CglGomory::generateCuts(
 // Limit stuff
 void CglGomory::setLimit(int limit)
 {
-  if (limit>0)
+  if (limit>=0)
     limit_=limit;
 }
 int CglGomory::getLimit() const
@@ -1028,12 +1039,21 @@ int CglGomory::getLimit() const
 // Limit stuff at root
 void CglGomory::setLimitAtRoot(int limit)
 {
-  if (limit>0)
+  if (limit>=0)
     limitAtRoot_=limit;
 }
 int CglGomory::getLimitAtRoot() const
 {
   return limitAtRoot_;
+}
+// Return maximum length of cut in tree
+int 
+CglGomory::maximumLengthOfCutInTree() const
+{
+  if (limit_)
+    return limit_;
+  else
+    return dynamicLimitInTree_;
 }
 
 // Away stuff
@@ -1092,6 +1112,7 @@ conditionNumberMultiplier_(1.0e-18),
 largestFactorMultiplier_(1.0e-13),
 limit_(50),
 limitAtRoot_(0),
+dynamicLimitInTree_(-1),
 alternateFactorization_(0)
 {
 
@@ -1108,6 +1129,7 @@ CglGomory::CglGomory (const CglGomory & source) :
   largestFactorMultiplier_(source.largestFactorMultiplier_),
   limit_(source.limit_),
   limitAtRoot_(source.limitAtRoot_),
+  dynamicLimitInTree_(source.dynamicLimitInTree_),
   alternateFactorization_(source.alternateFactorization_)
 {  
 }
@@ -1142,6 +1164,7 @@ CglGomory::operator=(const CglGomory& rhs)
     largestFactorMultiplier_ = rhs.largestFactorMultiplier_;
     limit_=rhs.limit_;
     limitAtRoot_=rhs.limitAtRoot_;
+    dynamicLimitInTree_ = rhs.dynamicLimitInTree_;
     alternateFactorization_=rhs.alternateFactorization_; 
   }
   return *this;
