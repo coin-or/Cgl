@@ -27,6 +27,7 @@ public:
       8 - set global cut flag if at root node and first pass
       16 - set global cut flag and make cuts globally valid
       32 - last round of cuts did nothing - maybe be more aggressive
+      64 - in preprocessing stage
   */
   int options;
   /// Set true if in tree (to avoid ambiguity at first branch)

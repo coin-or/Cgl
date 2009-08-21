@@ -3721,6 +3721,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
     int numberTwo=twoCuts.sizeRowCuts();
     int numberStrengthened=0;
     info.pass = iPass;
+    info.options=0;
     int numberChangedThisPass=0;
     /*
       needResolve    solution is stale
@@ -3746,10 +3747,12 @@ CglPreProcess::modified(OsiSolverInterface * model,
         if (dupRow&&(iPass||iBigPass))
             continue;
         probingCut = dynamic_cast<CglProbing *> (generator_[iGenerator]);
-	if (!probingCut)
+	if (!probingCut) {
 	  generator_[iGenerator]->generateCuts(*newModel,cs,info);
-	else
+	} else {
+	  info.options=64;
 	  probingCut->generateCutsAndModify(*newModel,cs,&info);
+	}
 #ifdef CLIQUE_ANALYSIS
 	if (probingCut) {
 	  printf("ordinary probing\n");

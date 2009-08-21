@@ -340,9 +340,9 @@ private:
   /// Upper bounds on rows
   double * rowUpper_;
   /// Lower bounds on columns
-  double * colLower_;
+  mutable double * colLower_;
   /// Upper bounds on columns
-  double * colUpper_;
+  mutable double * colUpper_;
   /// Number of rows in snapshot (or when cliqueRow stuff computed)
   mutable int numberRows_;
   /// Number of columns in problem ( must == current)

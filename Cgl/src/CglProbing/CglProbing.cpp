@@ -112,7 +112,7 @@ public:
     } else if (nRows<10000) {
       maxSize_ = (SIZE_ROW_MULT*(nRows>>1) + SIZE_ROW_ADD)>>1;
     } else {
-      maxSize_ = (SIZE_ROW_MULT*CoinMin(nRows,50000) + SIZE_ROW_ADD)>>2;
+      maxSize_ = (SIZE_ROW_MULT*CoinMin(nRows,100000) + SIZE_ROW_ADD)>>2;
     }
     size_ = (maxSize_>>3)+10;
     if (initialPass)
@@ -319,7 +319,13 @@ public:
       double * effectiveness = new double[numberCuts_];
       int iCut=0;
       for (i=0;i<numberCuts_;i++) {
-        effectiveness[iCut++]=-rowCut_[i]->effectiveness();
+        double value = -rowCut_[i]->effectiveness();
+	if (whichRow) {
+	  int iRow= rowCut_[i]->whichRow();
+	  if (iRow>=0)
+	    value -= 1.0e10;
+	}
+        effectiveness[iCut++]=value;
       }
       std::sort(effectiveness,effectiveness+numberCuts_);
       double threshold = -1.0e20;
@@ -1287,6 +1293,10 @@ void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   delete [] rowUpper;
   delete [] colLower;
   delete [] colUpper;
+  delete [] colLower_;
+  delete [] colUpper_;
+  colLower_	= NULL;
+  colUpper_	= NULL;
   rowCuts_=saveRowCuts;
 }
 int CglProbing::generateCutsAndModify(const OsiSolverInterface & si, 
@@ -1794,10 +1804,10 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     // Now take out rows with too many elements
     int * rowLength = rowCopy->getMutableVectorLengths(); 
     //#define OUTRUBBISH
-#ifdef OUTRUBBISH
     double * elements = rowCopy->getMutableElements();
     int * column = rowCopy->getMutableIndices();
     CoinBigIndex * rowStart = rowCopy->getMutableVectorStarts();
+#ifdef OUTRUBBISH
     double large=1.0e3;
 #endif
     int nDelete = 0;
@@ -1840,6 +1850,61 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	  which[nDelete++]=i;
 	}
 #else
+	if (info->strengthenRow&&!info->pass&&(rowLower[i]<-1.0e20||rowUpper[i]>1.0e20)) {
+	  int nPlus=0;
+	  int nMinus=0;
+	  for (CoinBigIndex j=rowStart[i];j<rowStart[i+1];j++) {
+	    int jColumn=column[j];
+	    if (intVar[jColumn]&&colLower[jColumn]==0.0&&colUpper[jColumn]==1.0) {
+	      double value=elements[j];
+	      if (value>0.0) {
+		nPlus++;
+	      } else {
+		nMinus++;
+	      }
+	    } else {
+	      nPlus=2;
+	      nMinus=2;
+	      break;
+	    }
+	  }
+	  double effectiveness=0.0;
+	  if (nPlus==1&&rowUpper[i]>0.0&&rowUpper[i]<1.0e10) {
+	    // can make element smaller
+	    for (CoinBigIndex j=rowStart[i];j<rowStart[i+1];j++) {
+	      double value=elements[j];
+	      if (value>0.0) {
+		elements[j] -= rowUpper[i];
+		//printf("pass %d row %d plus el from %g to %g\n",info->pass,
+		//     i,elements[j]+rowUpper[i],elements[j]);
+	      }
+	      effectiveness += fabs(elements[j]);
+	    }
+	    rowUpper[i]=0.0;
+	  } else if (nMinus==1&&rowLower[i]<0.0&&rowLower[i]>-1.0e10) {
+	    // can make element smaller in magnitude
+	    for (CoinBigIndex j=rowStart[i];j<rowStart[i+1];j++) {
+	      double value=elements[j];
+	      if (value<0.0) {
+		elements[j] -= rowLower[i];
+		//printf("pass %d row %d minus el from %g to %g\n",info->pass,
+		//     i,elements[j]+rowLower[i],elements[j]);
+	      }
+	      effectiveness += fabs(elements[j]);
+	    }
+	    rowLower[i]=0.0;
+	  }
+	  if (effectiveness) {
+	    OsiRowCut rc;
+	    rc.setLb(rowLower[i]);
+	    rc.setUb(rowUpper[i]);
+	    int start = rowStart[i];
+	    rc.setRow(rowLength[i],column+start,elements+start,false);
+	    rc.setEffectiveness(effectiveness);
+	    assert (!info->strengthenRow[i]);
+	    info->strengthenRow[i]=rc.clone();
+	  }
+	}
 	rowLower[nKeep]=rowLower[i];
 	rowUpper[nKeep]=rowUpper[i];
 	nKeep++;
@@ -1854,6 +1919,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 #else
 #endif
       if (info->strengthenRow) {
+	int nRealRows = si.getNumRows();
 	// Set up pointers to real rows
 	realRows = new int [nRows];
 	CoinZeroN(realRows,nRows);
@@ -1861,8 +1927,12 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	  realRows[which[i]]=-1;
 	int k=0;
 	for (i=0;i<nRows;i++) {
-	  if (!realRows[i])
-	    realRows[k++]=i; // keep
+	  if (!realRows[i]) {
+	    if (i<nRealRows)
+	      realRows[k++]=i; // keep
+	    else
+	      realRows[k++]=-1; // objective - discard
+	  }
 	}
       }
       rowCopy->deleteRows(nDelete,which);
@@ -1896,15 +1966,9 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       return 0;
     }
     // Out elements for fixed columns and sort
-#ifdef OUTRUBBISH
     elements = rowCopy->getMutableElements();
     column = rowCopy->getMutableIndices();
     rowStart = rowCopy->getMutableVectorStarts();
-#else
-    double * elements = rowCopy->getMutableElements();
-    int * column = rowCopy->getMutableIndices();
-    CoinBigIndex * rowStart = rowCopy->getMutableVectorStarts();
-#endif
     rowLength = rowCopy->getMutableVectorLengths(); 
 #if 0
     int nFixed=0;
@@ -1981,7 +2045,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   // Keep cuts out of cs until end so we can find duplicates quickly
   int nRowsFake = info->inTree ? nRowsSafe/3 : nRowsSafe;
   if (!info->inTree&&!info->pass) 
-    nRowsFake *= 50;
+    nRowsFake *= 5;
   row_cut rowCut(nRowsFake,!info->inTree);
   int * markR = new int [nRows];
   double * minR = new double [nRows];
@@ -2904,6 +2968,12 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #else
   int nRowsFake = info->inTree ? nRowsSafe/3 : nRowsSafe;
 #endif
+  if (!info->inTree&&!info->pass) 
+    nRowsFake *= 10;
+  bool justReplace = ((info->options&64)!=0)&&(realRows!=NULL);
+  if (justReplace) {
+    nRowsFake=nRows;
+  }
   row_cut rowCut(nRowsFake, !info->inTree);
   totalTimesCalled_++;
   const int * column = rowCopy->getIndices();
@@ -3009,6 +3079,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
   // If we are going to replace coefficient then we don't need to be effective
   //double needEffectiveness = info->strengthenRow ? -1.0e10 : 1.0e-3;
   double needEffectiveness = info->strengthenRow ? 1.0e-8 : 1.0e-3;
+  if (justReplace&&(info->pass&1)!=0)
+    needEffectiveness=-1.0e10;
   if (PROBING_EXTRA_STUFF) {
     int nCut=0;
     for (int iRow=0;iRow<nRows;iRow++) {
@@ -4557,7 +4629,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
               int icol=stackC[istackC];
               double oldU=saveU[istackC];
               double oldL=saveL[istackC];
-              if(goingToTrueBound==2&&istackC) {
+              if(goingToTrueBound==2&&istackC&&!justReplace) {
                 // upper disaggregation cut would be
                 // xval < upper + (old_upper-upper) (jval-down)
                 boundChange = oldU-colUpper[icol];
@@ -4770,9 +4842,20 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      }
 #endif
 		      int realRow = (canReplace&&rowLower[irow]<-1.0e20) ? irow : -1;
-		      if (realRows&&realRow>0)
+		      if (realRows&&realRow>=0)
 			realRow=realRows[realRow];
-                      rowCut.addCutIfNotDuplicate(rc,realRow);
+		      if (!justReplace) {
+			rowCut.addCutIfNotDuplicate(rc,realRow);
+		      } else if (realRow>=0) {
+			double effectiveness=0.0;
+			for (int i=0;i<n;i++)
+			  effectiveness+=fabs(element[i]);
+			if (!info->strengthenRow[realRow]||info->strengthenRow[realRow]->effectiveness()>effectiveness) {
+			  delete info->strengthenRow[realRow];
+			  rc.setEffectiveness(effectiveness);
+			  info->strengthenRow[realRow]=rc.clone();
+			}
+		      }
                     }
                   }
                 }
@@ -4906,9 +4989,20 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      }
 #endif
 		      int realRow = (canReplace&&rowUpper[irow]>1.0e20) ? irow : -1;
-		      if (realRows&&realRow>0)
+		      if (realRows&&realRow>=0)
 			realRow=realRows[realRow];
-                      rowCut.addCutIfNotDuplicate(rc,realRow);
+		      if (!justReplace) {
+			rowCut.addCutIfNotDuplicate(rc,realRow);
+		      } else if (realRow>=0) {
+			double effectiveness=0.0;
+			for (int i=0;i<n;i++)
+			  effectiveness+=fabs(element[i]);
+			if (!info->strengthenRow[realRow]||info->strengthenRow[realRow]->effectiveness()>effectiveness) {
+			  delete info->strengthenRow[realRow];
+			  rc.setEffectiveness(effectiveness);
+			  info->strengthenRow[realRow]=rc.clone();
+			}
+		      }
                     }
                   }
                 }
@@ -5129,7 +5223,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
               int icol=stackC[istackC];
               double oldU=saveU[istackC];
               double oldL=saveL[istackC];
-              if(goingToTrueBound==2&&istackC) {
+              if(goingToTrueBound==2&&istackC&&!justReplace) {
                 // upper disaggregation cut would be
                 // xval < upper + (old_upper-upper) (up-jval)
                 boundChange = oldU-colUpper[icol];
@@ -5289,9 +5383,20 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      }
 #endif
 		      int realRow = (canReplace&&rowLower[irow]<-1.0e20) ? irow : -1;
-		      if (realRows&&realRow>0)
+		      if (realRows&&realRow>=0)
 			realRow=realRows[realRow];
-                      rowCut.addCutIfNotDuplicate(rc,realRow);
+		      if (!justReplace) {
+			rowCut.addCutIfNotDuplicate(rc,realRow);
+		      } else if (realRow>=0) {
+			double effectiveness=0.0;
+			for (int i=0;i<n;i++)
+			  effectiveness+=fabs(element[i]);
+			if (!info->strengthenRow[realRow]||info->strengthenRow[realRow]->effectiveness()>effectiveness) {
+			  delete info->strengthenRow[realRow];
+			  rc.setEffectiveness(effectiveness);
+			  info->strengthenRow[realRow]=rc.clone();
+			}
+		      }
                     }
                   }
                 }
@@ -5380,9 +5485,20 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      }
 #endif
 		      int realRow = (canReplace&&rowUpper[irow]>1.0e20) ? irow : -1;
-		      if (realRows&&realRow>0)
+		      if (realRows&&realRow>=0)
 			realRow=realRows[realRow];
-                      rowCut.addCutIfNotDuplicate(rc,realRow);
+		      if (!justReplace) {
+			rowCut.addCutIfNotDuplicate(rc,realRow);
+		      } else if (realRow>=0) {
+			double effectiveness=0.0;
+			for (int i=0;i<n;i++)
+			  effectiveness+=fabs(element[i]);
+			if (!info->strengthenRow[realRow]||info->strengthenRow[realRow]->effectiveness()>effectiveness) {
+			  delete info->strengthenRow[realRow];
+			  rc.setEffectiveness(effectiveness);
+			  info->strengthenRow[realRow]=rc.clone();
+			}
+		      }
                     }
                   }
                 }
@@ -5621,7 +5737,20 @@ int CglProbing::probe( const OsiSolverInterface & si,
   delete [] colsol;
   // Add in row cuts
   if (!ninfeas) {
-    rowCut.addCuts(cs,info->strengthenRow,info->pass);
+    if (!justReplace) {
+      rowCut.addCuts(cs,info->strengthenRow,info->pass);
+    } else {
+      for (int i=0;i<nRows;i++) {
+	int realRow=realRows[i];
+	OsiRowCut * cut = info->strengthenRow[realRow];
+	if (realRow>=0&&cut) {
+#ifdef CLP_INVESTIGATE
+	  printf("Row %d, real row %d effectiveness %g\n",i,realRow,cut->effectiveness());
+#endif
+	  cs.insert(cut);
+	}
+      }
+    }
   }
 #if 0
   {
@@ -5645,8 +5774,11 @@ int CglProbing::probe( const OsiSolverInterface & si,
 }
 // Does probing and adding cuts
 int CglProbing::probeCliques( const OsiSolverInterface & si, 
-                              const OsiRowCutDebugger * , 
-                              OsiCuts & cs, 
+                              const OsiRowCutDebugger *
+#ifdef CGL_DEBUG
+			 debugger
+#endif
+                              ,OsiCuts & cs, 
                               double * colLower, double * colUpper, 
 		       CoinPackedMatrix *rowCopy,
 			      CoinPackedMatrix *columnCopy, const int * realRows,
@@ -7190,8 +7322,11 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 // Does probing and adding cuts for clique slacks
 int 
 CglProbing::probeSlacks( const OsiSolverInterface & si, 
-                          const OsiRowCutDebugger * , 
-                          OsiCuts & cs, 
+                          const OsiRowCutDebugger * 
+#ifdef CGL_DEBUG
+			 debugger
+#endif
+			 ,OsiCuts & cs, 
                           double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
 			 CoinPackedMatrix *columnCopy,
                           double * rowLower, double * rowUpper,
