@@ -1813,11 +1813,25 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     int nDelete = 0;
     int nKeep=0;
     int * which = new int[nRows];
+    int nElements=rowCopy->getNumElements();
+    int nTotalOut=0;
+    int nRealRows = si.getNumRows();
+    for (i=0;i<nRows;i++) {
+      if (rowLength[i]>maxElements||(rowLower[i]<-1.0e20&&rowUpper[i]>1.0e20)) {
+	// keep objective
+	if (i<nRealRows) 
+	  nTotalOut+=rowLength[i];
+      }
+    }
+    // keep all if only a few dense
+    if (nTotalOut*10<nElements)
+      maxElements=nCols;
 #ifdef OUTRUBBISH
     int nExtraDel=0;
 #endif
     for (i=0;i<nRows;i++) {
-      if (rowLength[i]>maxElements||(rowLower[i]<-1.0e20&&rowUpper[i]>1.0e20)) {
+      if ((rowLength[i]>maxElements&&i<nRealRows)||
+	  (rowLower[i]<-1.0e20&&rowUpper[i]>1.0e20)) {
 	which[nDelete++]=i;
       } else {
 #ifdef OUTRUBBISH
@@ -1919,7 +1933,6 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 #else
 #endif
       if (info->strengthenRow) {
-	int nRealRows = si.getNumRows();
 	// Set up pointers to real rows
 	realRows = new int [nRows];
 	CoinZeroN(realRows,nRows);
