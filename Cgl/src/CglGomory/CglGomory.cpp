@@ -378,11 +378,15 @@ CglGomory::generateCuts(
 	type=2;
 	rhs=rowLower[iRow];
       } else {
-	// wrong - but probably large rhs
-	rowType[iRow]=type;
+	// probably large rhs
+	if (rowActivity[iRow]-rowLower[iRow]<
+	    rowUpper[iRow]-rowActivity[iRow])
+	  rowType[iRow]=2;
+	else
+	  rowType[iRow]=1;
 #ifdef CGL_DEBUG
 	assert (CoinMin(rowUpper[iRow]-rowActivity[iRow],
-		    rowActivity[iRow]-rowUpper[iRow])<1.0e-7);
+		    rowActivity[iRow]-rowUpper[iRow])<1.0e-5);
 	//abort();
         continue;
 #else
