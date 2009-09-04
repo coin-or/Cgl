@@ -1,4 +1,4 @@
-// Copyright (C) 2005, Pierre Bonami and others.  All Rights Reserved.
+// Copyright (C) 2005-2009, Pierre Bonami and others.  All Rights Reserved.
 // Author:   Pierre Bonami
 //           Tepper School of Business
 //           Carnegie Mellon University, Pittsburgh, PA 15213
@@ -7,22 +7,11 @@
 #ifndef CglLandP_H
 #define CglLandP_H
 
-//Several level of Debug
-// 1 - A few simple sanity check
-// 2 - do extra computations on cut quality
-// 3 - Output cut in initial non-basic space (only if logLevel >= 3 )
-// 4 - Double check (compute in two different ways) reduced cost and f+ f-
-//#define LandP_DEBUG 1
-
-
 #include "CglLandPValidator.hpp"
 #include "CglCutGenerator.hpp"
 #include "CglConfig.h"
 #include "CglParam.hpp"
 
-#ifdef DO_STAT
-#include "CglLandPStats.hpp"
-#endif
 #include <iostream>
 class CoinWarmStartBasis;
 /** Performs one round of Lift & Project using CglLandPSimplex
@@ -31,12 +20,14 @@ class CoinWarmStartBasis;
 
 namespace LAP
 {
-enum LapMessagesTypes {
+enum LapMessagesTypes
+{
     BEGIN_ROUND,
     END_ROUND,
     DURING_SEP,
     CUT_REJECTED,
     CUT_FAILED,
+    CUT_GAP,
     LAP_CUT_FAILED_DO_MIG,
     LAP_MESSAGES_DUMMY_END
 };
@@ -47,7 +38,7 @@ public:
     /** Constructor */
     LapMessages( );
     /** destructor.*/
-    virtual ~LapMessages(){}
+    virtual ~LapMessages() {}
 };
 class CglLandPSimplex;
 }
@@ -61,13 +52,15 @@ class CglLandP : public CglCutGenerator
 
 public:
 
-    enum SelectionRules {
+    enum SelectionRules
+    {
         mostNegativeRc /** select most negative reduced cost */,
         bestPivot /** select best possible pivot.*/,
         initialReducedCosts/** Select only those rows which had initialy a 0 reduced cost.*/
     };
 
-    enum ExtraCutsMode {
+    enum ExtraCutsMode
+    {
         none/** Generate no extra cuts.*/,
         AtOptimalBasis /** Generate cuts from the optimal basis.*/,
         WhenEnteringBasis /** Generate cuts as soon as a structural enters the basis.*/,
@@ -75,36 +68,40 @@ public:
     };
 
     /** Space where cuts are optimized.*/
-    enum SeparationSpaces {
+    enum SeparationSpaces
+    {
         Fractional=0 /** True fractional space.*/,
         Fractional_rc/** Use fractional space only for computing reduced costs.*/,
         Full /** Work in full space.*/
     };
 
     /** Normalization */
-    enum Normalization{
+    enum Normalization
+    {
         Unweighted = 0,
         WeightRHS,
         WeightLHS,
         WeightBoth
     };
 
-    enum LHSnorm {
-       L1 = 0,
-       L2,
-       SupportSize,
-       Infinity,
-       Average,
-       Uniform
+    enum LHSnorm
+    {
+        L1 = 0,
+        L2,
+        SupportSize,
+        Infinity,
+        Average,
+        Uniform
     };
     /** RHS weight in normalization.*/
-    enum RhsWeightType {
+    enum RhsWeightType
+    {
         Fixed = 0 /** 2*initial number of constraints. */,
         Dynamic /** 2 * current number of constraints. */
     };
     /** Class storing parameters.
         \remark I take all parameters from Ionut's code */
-class Parameters : public CglParam
+    class Parameters : public CglParam
     {
     public:
         /** Default constructor (with default values)*/
@@ -186,12 +183,6 @@ class Parameters : public CglParam
     /** Clone function */
     CglCutGenerator * clone() const;
 
-#ifdef DO_STAT
-    void setIdString(const std::string &id) {
-        roundsStats_.setIdString(id);
-    }
-#endif
-
     /**@name Generate Cuts */
     //@{
 
@@ -200,11 +191,13 @@ class Parameters : public CglParam
 
     //@}
 
-    virtual bool needsOptimalBasis() const {
+    virtual bool needsOptimalBasis() const
+    {
         return true;
     }
 
-    LAP::Validator & validator() {
+    LAP::Validator & validator()
+    {
         return validator_;
     }
     /** set level of log for cut generation procedure :
@@ -214,22 +207,24 @@ class Parameters : public CglParam
     	<li> for log at every cut generated </li>
     	</ol>
     	*/
-    void setLogLevel(int level) {
+    void setLogLevel(int level)
+    {
         handler_->setLogLevel(level);
     }
 
-class NoBasisError : public CoinError
+    class NoBasisError : public CoinError
     {
     public:
         NoBasisError(): CoinError("No basis available","LandP","") {}
     };
 
-class SimplexInterfaceError : public CoinError
+    class SimplexInterfaceError : public CoinError
     {
     public:
         SimplexInterfaceError(): CoinError("Invalid conversion to simplex interface", "CglLandP","CglLandP") {}
     };
-    Parameters & parameter() {
+    Parameters & parameter()
+    {
         return params_;
     }
 private:
@@ -240,13 +235,17 @@ private:
     Parameters params_;
 
     /** Some informations that will be changed by the pivots and that we want to keep*/
-    struct CachedData {
+    struct CachedData
+    {
         CachedData(int nBasics = 0 , int nNonBasics = 0);
         CachedData(const CachedData & source);
 
         CachedData& operator=(const CachedData &source);
         /** Get the data from a problem */
         void getData(const OsiSolverInterface &si);
+
+        void clean();
+
         ~CachedData();
         /** Indices of basic variables in starting basis (ordered if variable basics_[i] s basic in row i)*/
         int * basics_;
@@ -295,11 +294,6 @@ private:
     mutable bool canLift_;
     /** Store some extra cut which could be cheaply generated but do not cut current incumbent.*/
     mutable OsiCuts extraCuts_;
-#ifdef DO_STAT
-public:
-    /** store statistics on separation */
-    mutable roundsStatistics roundsStats_;
-#endif
 };
 void CglLandPUnitTest(OsiSolverInterface *si, const std::string & mpsDir);
 

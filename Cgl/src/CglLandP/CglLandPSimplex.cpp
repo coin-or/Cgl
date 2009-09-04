@@ -1,4 +1,4 @@
-// Copyright (C) 2005, Pierre Bonami and others.  All Rights Reserved.
+// Copyright (C) 2005-2009, Pierre Bonami and others.  All Rights Reserved.
 // Author:   Pierre Bonami
 //           Tepper School of Business
 //           Carnegie Mellon University, Pittsburgh, PA 15213
@@ -11,31 +11,36 @@
 #endif
 #include "CoinIndexedVector.hpp"
 #include <cassert>
+#include <iterator>
+
+#include <list>
+#include <algorithm>
+
 #define REMOVE_LOG 0
 
 #define RED_COST_CHECK 1e-6
 
-#define OLD_COMPUTATION
 
-static double clp_time = 0;
-static double total_time = 0;
 //#define OUT_CGLP_PIVOTS
 #ifdef OUT_CGLP_PIVOTS
 #include "CglLandPOutput.hpp"
 #endif
-#ifndef NDEBUG
+#ifdef DEBUG_LAP
 
-#if 0
-static void MyAssertFunc(bool c, const std::string &s, const std::string&  file, unsigned int line){
-    if (c != true){
+static void MyAssertFunc(bool c, const std::string &s, const std::string&  file, unsigned int line)
+{
+    if (c != true)
+    {
         fprintf(stderr, "Failed MyAssertion: %s in %s line %i.\n", s.c_str(), file.c_str(), line);
         throw -1;
     }
 }
-#endif
+
 static void DblGtAssertFunc(const double& a, const std::string &a_s, const double&b, const std::string& b_s,
-                     const std::string&  file, unsigned int line){
-    if (a<b){
+                     const std::string&  file, unsigned int line)
+{
+    if (a<b)
+    {
         fprintf(stderr, "Failed comparison: %s = %f < %s =%f in  %s line %i.\n", a_s.c_str(),
                 a, b_s.c_str(), b, file.c_str(), line);
         throw -1;
@@ -43,23 +48,98 @@ static void DblGtAssertFunc(const double& a, const std::string &a_s, const doubl
 }
 
 static void DblEqAssertFunc(const double& a, const std::string &a_s, const double&b, const std::string& b_s,
-                     const std::string&  file, unsigned int line){
+                     const std::string&  file, unsigned int line)
+{
     CoinRelFltEq eq(1e-7);
-    if (!eq(a,b)){
+    if (!eq(a,b))
+    {
         fprintf(stderr, "Failed comparison: %s = %f != %s =%f in  %s line %i.\n", a_s.c_str(),
                 a, b_s.c_str(), b, file.c_str(), line);
         throw -1;
     }
 }
 
+static void VecModEqAssertFunc(const CoinIndexedVector& a, const std::string a_s,
+                        const CoinIndexedVector& b, const std::string b_s,
+                        const std::string file, unsigned int line)
+{
+    CoinRelFltEq eq(1e-7);
+    assert(a.capacity()==b.capacity());
+    int n = a.capacity();
+    const double * a_v = a.denseVector();
+    const double * b_v = b.denseVector();
+    bool failed=false;
+    for (int i = 0 ; i < n ; i++)
+    {
+        double a = a_v[i] - floor(a_v[i]);
+        double b = b_v[i] - floor(b_v[i]);
+        if (!eq(a,b) && !eq(a_v[i],b_v[i]))
+        {
+            fprintf(stderr, "Failed comparison: %s[%i] = %.15f != %s[%i] =%.15f in  %s line %i.\n", a_s.c_str(),i,
+                    a_v[i], b_s.c_str(), i, b_v[i], file.c_str(), line);
+            failed = true;
+        }
+    }
+    if (failed) throw -1;
+}
+
+static void VecEqAssertFunc(const CoinIndexedVector& a, const std::string a_s,
+                     const CoinIndexedVector& b, const std::string b_s,
+                     const std::string file, unsigned int line)
+{
+    CoinRelFltEq eq(1e-7);
+    assert(a.capacity()==b.capacity());
+    int n = a.capacity();
+    const double * a_v = a.denseVector();
+    const double * b_v = b.denseVector();
+    bool failed=false;
+    for (int i = 0 ; i < n ; i++)
+    {
+        if (!eq(a_v[i],b_v[i]))
+        {
+            fprintf(stderr, "Failed comparison: %s[%i] = %f != %s[%i] =%f in  %s line %i.\n", a_s.c_str(),i,
+                    a_v[i], b_s.c_str(), i, b_v[i], file.c_str(), line);
+            failed = true;
+        }
+    }
+    if (failed) throw -1;
+}
+
+
 #define MAKE_STRING(exp) std::string(#exp)
 #define MyAssert(exp)  MyAssertFunc(exp, MAKE_STRING(exp), __FILE__, __LINE__);
 #define DblEqAssert(a,b)  DblEqAssertFunc(a,MAKE_STRING(a),b,MAKE_STRING(b), __FILE__, __LINE__);
 #define DblGtAssert(a,b)  DblGtAssertFunc(a,MAKE_STRING(a),b,MAKE_STRING(b), __FILE__, __LINE__);
+
+#define VecEqAssert(a,b) VecEqAssertFunc(a, MAKE_STRING(a), b, MAKE_STRING(b), __FILE__, __LINE__);
+#define VecModEqAssert(a,b) VecModEqAssertFunc(a, MAKE_STRING(a), b, MAKE_STRING(b), __FILE__, __LINE__);
+
+void checkVecFunc(const CoinIndexedVector &v)
+{
+    CoinIndexedVector v2 = v;
+    double * x = v2.denseVector();
+    const int * idx = v2.getIndices();
+    int n = v2.getNumElements();
+    for (int i = 0 ; i < n ; i++)
+    {
+        x[idx[i]] = 0.;
+    }
+    n = v2.capacity();
+    for (int i = 0 ; i < n ; i++)
+    {
+        DblEqAssert(x[i],0.);
+    }
+}
+
+#define checkVec(a) checkVecFunc(a)
 #else
 #define MyAssert(exp)
 #define DblEqAssert(a,b)
 #define DblGtAssert(a,b)
+#define VecEqAssert(a,b)
+#define VecModEqAssert(a,b)
+
+#define checkVec(a)
 #endif
 
 #include <algorithm>
@@ -73,7 +153,8 @@ void CglLandPSimplex::printTableau(std::ostream & os)
     os<<"Tableau at current basis"<<std::endl;
     os<<"    ";
     //Head with non basics indices
-    for (int i = 0 ; i < ncols_orig_ ; i++) {
+    for (int i = 0 ; i < ncols_orig_ ; i++)
+    {
         os.width(width);
         os.setf(std::ios_base::right, std::ios_base::adjustfield);
         std::cout<<nonBasics_[i]<<" ";
@@ -86,7 +167,8 @@ void CglLandPSimplex::printTableau(std::ostream & os)
     os<<std::endl;
 
     //print row by row
-    for (int i = 0 ; i < nrows_ ; i++) {
+    for (int i = 0 ; i < nrows_ ; i++)
+    {
         //int ind = basics_[i];
         row_i_.num = i;
         pullTableauRow(row_i_);
@@ -95,54 +177,6 @@ void CglLandPSimplex::printTableau(std::ostream & os)
     }
 
 }
-
-#ifdef OUT_CGLP_PIVOTS
-void
-CglLandPSimplex::printTableauLateX(std::ostream &os){
-    os<<"Tableau at current basis"<<std::endl;
-    os<<"\\begin{align*}"<<std::endl;
-    for (int i = 0 ; i < nrows_ ; i++){
-        row_i_.num = i;
-        pullTableauRow(row_i_);
-        if (isGtConst(basics_[i])){
-            for (int j = 0; j < ncols_ ; j++){
-                row_i_[nonBasics_[j]] *= -1;
-            }
-            row_i_.rhs *= -1;
-        }
-        printLatex(os, *this, row_i_);
-    }
-    os<<"\\end{align*}"<<std::endl;
-}
-void
-CglLandPSimplex::printRowLateX(std::ostream &os, int i){
-   os<<"\\begin{align*}"<<std::endl;
-        new_row_.num = i;
-        pullTableauRow(new_row_);
-        if (isGtConst(basics_[i])){
-            for (int j = 0; j < ncols_ ; j++){
-                new_row_[nonBasics_[j]] *= -1;
-            }
-            new_row_.rhs *= -1;
-        }
-        printLatex(os, *this, new_row_);
-    os<<"\\end{align*}"<<std::endl;
-}
-
-void
-CglLandPSimplex::printCutLateX(std::ostream &os, int i){
-   os<<"\\begin{align*}"<<std::endl;
-        new_row_.num = i;
-        pullTableauRow(new_row_);
-        if (isGtConst(basics_[i])){
-            for (int j = 0; j < ncols_ ; j++){
-                new_row_[nonBasics_[j]] *= -1;
-            }
-            new_row_.rhs *= -1;
-        }
-        printCutLatex(os, *this, new_row_);
-}
-#endif
 
 bool
 CglLandPSimplex::checkBasis()
@@ -165,10 +199,9 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
         clp_(NULL),
 #endif
         row_k_(this),
+        original_row_k_(this),
         row_i_(this),
         new_row_(this),
-#ifndef NDEBUG
-#endif
         gammas_(false),
         rowFlags_(NULL),
         col_in_subspace(),
@@ -182,13 +215,11 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
         chosenReducedCostVal_(1e100),
         original_index_(),
         si_(NULL),
-        validator_(validator)
-#ifdef LandP_DEBUG
-        ,
-        debug_(si.getNumCols(),si.getNumRows())
-#endif
+        validator_(validator),
+        numPivots_(0),
+        numSourceRowEntered_(0),
+        numIncreased_(0)
 {
-    total_time -= CoinCpuTime();
     ncols_orig_ = si.getNumCols();
     nrows_orig_ = si.getNumRows();
     handler_ = new CoinMessageHandler();
@@ -199,10 +230,12 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
 
 #ifdef COIN_HAS_CLP
     OsiClpSolverInterface * clpSi = dynamic_cast<OsiClpSolverInterface *>(si_);
-    if (clpSi) {
+    if (clpSi)
+    {
         clp_ = clpSi;
     }
 #endif
+
     int rowsize = ncols_orig_ + nrows_orig_ + 1;
     row_k_.reserve(rowsize);
 #ifndef NDEBUG
@@ -218,13 +251,15 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
     const double * rowLower = si.getRowLower();
     double infty = si.getInfinity();
     int i=ncols_orig_;
-    for (int iRow = 0; iRow < nrows_orig_ ;iRow++, i++) {
+    for (int iRow = 0; iRow < nrows_orig_ ; iRow++, i++)
+    {
         if (rowUpper[iRow] < infty)
             lo_bounds_[i]=0.;
         else lo_bounds_[i]= - infty;
         if (rowLower[iRow] <= - infty)
             up_bounds_[i] = infty;
-        else if (rowUpper[iRow] < infty){
+        else if (rowUpper[iRow] < infty)
+        {
             lo_bounds_[i] = rowLower[iRow] - rowUpper[iRow];
             up_bounds_[i] = 0;
         }
@@ -232,9 +267,7 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
             up_bounds_[i] = 0.;
     }
     cuts_.resize(ncols_orig_);
-#ifndef DO_STAT
     if (params.pivotLimit != 0)
-#endif
     {
         own_ = true;
         rWk1_.resize(nrows_orig_);
@@ -255,25 +288,23 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
         original_index_.resize(ncols_orig_ + nrows_orig_);
         CoinIotaN(&original_index_[0],ncols_orig_ + nrows_orig_, 0);
 
-        
+
 
     }
-#ifndef DO_STAT
-    else {
+    else
+    {
         nrows_ = nrows_orig_;
         ncols_ = ncols_orig_;
         original_index_.resize(ncols_orig_ + nrows_orig_);
         CoinIotaN(&original_index_[0],ncols_orig_ + nrows_orig_, 0);
         own_ = false;
-        clp_time -= CoinCpuTime();
         si_->enableSimplexInterface(0);
-        clp_time += CoinCpuTime();
         basis_ = new CoinWarmStartBasis(*cached.basis_);
     }
-#endif
     cacheUpdate(cached,params.sepSpace != CglLandP::Full);
-    if (params.normalization){
-          computeWeights(params.lhs_norm, params.normalization, params.rhsWeightType);
+    if (params.normalization)
+    {
+        computeWeights(params.lhs_norm, params.normalization, params.rhsWeightType);
     }
     else rhs_weight_ = 1;
 }
@@ -281,182 +312,204 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
 CglLandPSimplex::~CglLandPSimplex()
 {
     delete handler_;
+    handler_ = NULL;
     delete basis_;
-    if (own_) {
+    basis_ = NULL;
+    if (own_)
+    {
         delete [] rowFlags_;
+        rowFlags_ = NULL;
         delete [] colCandidateToLeave_;
+        colCandidateToLeave_ = NULL;
         delete [] basics_;
+        basics_ = NULL;
         delete [] nonBasics_;
+        nonBasics_ = NULL;
         delete [] colsolToCut_;
+        colsolToCut_ = NULL;
         delete [] colsol_;
-    } else {
-        clp_time -= CoinCpuTime();
-        si_->disableSimplexInterface();
-        clp_time += CoinCpuTime();
+        colsol_ = NULL;
     }
-    total_time += CoinCpuTime();
-    //printf("Total time %g time in clp: %g\n", total_time, clp_time);
+    else
+    {
+        si_->disableSimplexInterface();
+    }
 }
 
 /** Compute normalization weights.*/
 void
-CglLandPSimplex::computeWeights(CglLandP::LHSnorm norm, CglLandP::Normalization type, 
-                                CglLandP::RhsWeightType rhs){
+CglLandPSimplex::computeWeights(CglLandP::LHSnorm norm, CglLandP::Normalization type,
+                                CglLandP::RhsWeightType rhs)
+{
     norm_weights_.clear();
     norm_weights_.resize(ncols_orig_ ,1.);
     norm_weights_.resize(ncols_orig_ + nrows_orig_, 0.);
 
     double * rows_weights = &norm_weights_[ncols_orig_];
     std::vector<int> nnz(nrows_orig_,0);
-    clp_time -= CoinCpuTime();
     const CoinPackedMatrix * m = si_->getMatrixByCol();
-    clp_time += CoinCpuTime();
     const double * val = m->getElements();
     const int * ind = m->getIndices();
     const int * length = m->getVectorLengths();
     const CoinBigIndex * start = m->getVectorStarts();
 
-    rhs_weight_ = 2;
+    rhs_weight_ = 1;
 
-    if(norm == CglLandP::Infinity){
-      for (int i = 0 ; i < ncols_orig_ ; i++){
-          CoinBigIndex begin = start[i];
-          CoinBigIndex end = begin + length[i];
-          for (CoinBigIndex k = begin ; k < end ; k++){
-              rows_weights[ind[k]] = CoinMax(fabs(val[k]), rows_weights[ind[k]]);
-              rhs_weight_ += fabs(val[k]);
-              nnz[ind[k]] ++;
-          }
-      }
-    }
-    else if(norm == CglLandP::L1 ||
-            norm == CglLandP::Average){
-      for (int i = 0 ; i < ncols_orig_ ; i++){
-          CoinBigIndex begin = start[i];
-          CoinBigIndex end = begin + length[i];
-          for (CoinBigIndex k = begin ; k < end ; k++){
-              rows_weights[ind[k]] += fabs(val[k]);
-              nnz[ind[k]] ++;
-              rhs_weight_ += fabs(val[k]);
-          }
-      }
-      if(norm == CglLandP::Average){
-        for(int i = 0 ; i < nrows_orig_ ; i++){
-          rows_weights[i] = static_cast<double> (nnz[i]);
-        }
-      }
-    }
-    else if(norm == CglLandP::L2){
-      for (int i = 0 ; i < ncols_orig_ ; i++){
-          CoinBigIndex begin = start[i];
-          CoinBigIndex end = begin + length[i];
-          for (CoinBigIndex k = begin ; k < end ; k++){
-              rows_weights[ind[k]] += (val[k])*(val[k]);
-              nnz[ind[k]] ++;
-              rhs_weight_ += fabs(val[k]);
-          }
-      }
-      for(int i = 0 ; i < nrows_orig_ ; i++){
-        rows_weights[i] = sqrt(rows_weights[i]);;
-      }
-    }
-   else if(norm == CglLandP::SupportSize){
-      for (int i = 0 ; i < ncols_orig_ ; i++){
-          CoinBigIndex begin = start[i];
-          CoinBigIndex end = begin + length[i];
-          for (CoinBigIndex k = begin ; k < end ; k++){
-              nnz[ind[k]] ++;
-          }
-      }
-      
-      for(int i = 0 ; i < nrows_orig_ ; i++){
-        rows_weights[i] = 1./ static_cast<double> (nnz[i]);
-      }
-   }
-   else if(norm ==CglLandP::Uniform){
-      for(int i = 0 ; i < nrows_orig_ ; i++){
-        rows_weights[i] = static_cast<double> (1);
-      }
-   }
-
-    double max_weight = 0;
-    double min_weight = DBL_MAX;
-    for (unsigned int i = 0 ; i < norm_weights_.size() ; i++){
-        max_weight = CoinMax(max_weight, norm_weights_[i]);
-        min_weight = CoinMin(min_weight, norm_weights_[i]);
-    }
-    if (type== CglLandP::WeightRHS ||
-            type == CglLandP::WeightBoth){
+    if (type== CglLandP::WeightRHS)
+    {
         if (rhs == CglLandP::Fixed)
             rhs_weight_ = (ncols_orig_ + 1);//params.rhsWeight;
-        else if(rhs == CglLandP::Dynamic){
-           int n = 0;
-           for(int i = 0 ; i < nrows_orig_ ; i++){
-             n += nnz[i];
-           }
-           rhs_weight_ /= n;
-       }
+        else if (rhs == CglLandP::Dynamic)
+        {
+            throw -1;
+        }
     }
-    else rhs_weight_ = 1;
-    handler_->message(WeightsStats, messages_)<<max_weight<<min_weight<<CoinMessageEol;
+
+    if (norm == CglLandP::Infinity)
+    {
+        for (int i = 0 ; i < ncols_orig_ ; i++)
+        {
+            CoinBigIndex begin = start[i];
+            CoinBigIndex end = begin + length[i];
+            for (CoinBigIndex k = begin ; k < end ; k++)
+            {
+                rows_weights[ind[k]] = CoinMax(fabs(val[k]), rows_weights[ind[k]]);
+                rhs_weight_ += fabs(val[k]);
+                nnz[ind[k]] ++;
+            }
+        }
+    }
+    else if (norm == CglLandP::L1 ||
+             norm == CglLandP::Average)
+    {
+        for (int i = 0 ; i < ncols_orig_ ; i++)
+        {
+            CoinBigIndex begin = start[i];
+            CoinBigIndex end = begin + length[i];
+            for (CoinBigIndex k = begin ; k < end ; k++)
+            {
+                rows_weights[ind[k]] += fabs(val[k]);
+                nnz[ind[k]] ++;
+            }
+        }
+        if (norm == CglLandP::Average)
+        {
+            for (int i = 0 ; i < nrows_orig_ ; i++)
+            {
+                rows_weights[i] = static_cast<double>(nnz[i]);
+            }
+        }
+        if (type== CglLandP::WeightBoth)
+        {
+           rhs_weight_ += (ncols_orig_ + 1);
+           std::cout<<"rhs_weight : "<<rhs_weight_<<std::endl;
+        }
+    }
+    else if (norm == CglLandP::L2)
+    {
+        for (int i = 0 ; i < ncols_orig_ ; i++)
+        {
+            CoinBigIndex begin = start[i];
+            CoinBigIndex end = begin + length[i];
+            for (CoinBigIndex k = begin ; k < end ; k++)
+            {
+                rows_weights[ind[k]] += (val[k])*(val[k]);
+                nnz[ind[k]] ++;
+                rhs_weight_ += fabs(val[k]);
+            }
+        }
+        for (int i = 0 ; i < nrows_orig_ ; i++)
+        {
+            rows_weights[i] = sqrt(rows_weights[i]);;
+        }
+        if (type== CglLandP::WeightBoth)
+        {
+          rhs_weight_ = (ncols_orig_ + 1);
+        }
+    }
+    else if (norm == CglLandP::SupportSize)
+    {
+        for (int i = 0 ; i < ncols_orig_ ; i++)
+        {
+            CoinBigIndex begin = start[i];
+            CoinBigIndex end = begin + length[i];
+            for (CoinBigIndex k = begin ; k < end ; k++)
+            {
+                nnz[ind[k]] ++;
+            }
+        }
+
+        for (int i = 0 ; i < nrows_orig_ ; i++)
+        {
+            rows_weights[i] = 1./ static_cast<double> (nnz[i]);
+        }
+
+       if (type== CglLandP::WeightBoth)
+        {
+          rhs_weight_ = (ncols_orig_ + 1);
+        }
+
+    }
+    else if (norm ==CglLandP::Uniform)
+    {
+        for (int i = 0 ; i < nrows_orig_ ; i++)
+        {
+            rows_weights[i] = static_cast<double> (1);
+        }
+       if (type== CglLandP::WeightBoth)
+        {
+          rhs_weight_ = (ncols_orig_ + 1);
+        }
+
+    }
+
 }
 void
 CglLandPSimplex::cacheUpdate(const CglLandP::CachedData &cached, bool reducedSpace)
 {
     integers_ = cached.integers_;
-    if (own_) {
+    if (own_)
+    {
         CoinCopyN(cached.basics_, nrows_orig_, basics_);
         CoinCopyN(cached.nonBasics_, ncols_orig_, nonBasics_);
         CoinCopyN(cached.colsol_, nrows_orig_ + ncols_orig_, colsol_);
-        for (int i = 0 ; i < ncols_orig_ ; i++) {
+        for (int i = 0 ; i < ncols_orig_ ; i++)
+        {
             colsol_[nonBasics_[i]] = 0;
         }
         CoinCopyN(cached.colsol_, nrows_orig_ + ncols_orig_, colsolToCut_);
-#if LandP_DEBUG > 1
-        CoinCopyN(cached.colsol_, nrows_orig_ + ncols_orig_, debug_.trueInitialSol_);
-#endif
         //Zero all non basics in colsol setup the reduced space
         col_in_subspace.resize(0);
         col_in_subspace.resize(ncols_orig_+nrows_orig_,true);
-        for (int i = 0 ; i < ncols_orig_ ; i++) {
+        for (int i = 0 ; i < ncols_orig_ ; i++)
+        {
             setColsolToCut(nonBasics_[i],0.);
             colsol_[nonBasics_[i]] = 0;
         }
         /** Mark the variables at zero in solution to cut so that we know that their contribution to reduced cost has to be computed*/
         int n_removed =0;
-        if (reducedSpace) {
-            for (int ii = 0; ii < ncols_orig_ ; ii++) {
-                //if(cached.basis_->getStructStatus(ii) == CoinWarmStartBasis::atLowerBound ||
-                //   cached.basis_->getStructStatus(ii) == CoinWarmStartBasis::atUpperBound) {
-                if (getColsolToCut(ii) - up_bounds_[ii] > 1e-08 || getColsolToCut(ii) - lo_bounds_[ii] < 1e-08) {
+        if (reducedSpace)
+        {
+            for (int ii = 0; ii < ncols_orig_ ; ii++)
+            {
+                if (getColsolToCut(ii) - up_bounds_[ii] > 1e-08 || getColsolToCut(ii) - lo_bounds_[ii] < 1e-08)
+                {
                     col_in_subspace[ii]=false;
                     n_removed++;
                 }
             }
         }
-        //printf("Number variables removed in subspace %i\n", n_removed);
-    } else {
+    }
+    else
+    {
         basics_ = cached.basics_;
         nonBasics_ = cached.nonBasics_;
     }
-#if LandP_DEBUG > 1
-    clp_time -= CoinCpuTime();
-    si_->enableSimplexInterface(0);
-    clp_time += CoinCpuTime();
-    delete basis_;
-    basis_ = new CoinWarmStartBasis(*cached.basis_);
-    debug_.getCurrentTableau(*si_,*this);
-    clp_time -= CoinCpuTime();
-    si_->disableSimplexInterface();
-    clp_time += CoinCpuTime();
-#endif
 }
 
 bool CglLandPSimplex::resetSolver(const CoinWarmStartBasis * /*basis*/)
 {
-    clp_time -= CoinCpuTime();
     si_->disableSimplexInterface();
-    clp_time += CoinCpuTime();
     return 0;
 }
 
@@ -465,7 +518,8 @@ CglLandPSimplex::generateExtraCuts(const CglLandP::CachedData & cached,
                                    const CglLandP::Parameters& params)
 {
     int ret_val = 0;
-    for (int i = 0 ; i < nrows_ && cuts_.numberCuts() < params.extraCutsLimit; i++) {
+    for (int i = 0 ; i < nrows_ && cuts_.numberCuts() < params.extraCutsLimit; i++)
+    {
         if (basics_[i] < ncols_)
             ret_val += generateExtraCut(i, cached, params);
     }
@@ -480,19 +534,31 @@ CglLandPSimplex::generateExtraCut(int i, const CglLandP::CachedData & cached,
     if (!isInteger(iCol) || int_val(colsol_[iCol], params.away) ||
             !int_val(getColsolToCut(iCol), params.away) ||
             colsol_[iCol] < getLoBound(iCol) || colsol_[iCol] > getUpBound(iCol) ||
-            (cuts_.rowCut(iCol) != NULL) ) {
+            (cuts_.rowCut(iCol) != NULL) )
+    {
         return false;
     }
 
+#ifdef DBG_OUT
+    printf("var: %i, basic in row %i. integer=%i, colsol_=%f, colsolToCut_=%f.\n",iCol, i,
+           isInteger(iCol), colsol_[iCol],
+           getColsolToCut(iCol));
+
+    printf("generating extra cut....\n");
+#endif
+
     OsiRowCut * cut = new OsiRowCut;
-    generateMig(i, *cut, cached, params);
+    generateMig(i, *cut, params);
     assert(fabs(row_k_.rhs - colsol_[iCol]) < 1e-10);
 
     int code = validator_(*cut, cached.colsol_, *si_, params, &lo_bounds_[0], &up_bounds_[0]);
-    if (code) {
+    if (code)
+    {
         delete cut;
         return false;
-    } else {
+    }
+    else
+    {
         cuts_.insert(iCol, cut);
         return true;
     }
@@ -503,23 +569,27 @@ void
 CglLandPSimplex::genThisBasisMigs(const CglLandP::CachedData &cached,
                                   const CglLandP::Parameters & params)
 {
-    for (int i = 0 ; i < cached.nBasics_ ; i++) {
+    for (int i = 0 ; i < cached.nBasics_ ; i++)
+    {
         const int iCol = basics_[i];
         if (iCol >= ncols_ ||
                 !cached.integers_[iCol] ||
                 int_val(colsol_[iCol], params.away))
             continue;
         OsiRowCut * cut = new OsiRowCut;
-        generateMig(i, *cut, cached, params);
+        generateMig(i, *cut, params);
         int code = validator_(*cut, cached.colsol_, *si_, params, &lo_bounds_[0], &up_bounds_[0]);
-        if (code) {
+        if (code)
+        {
             delete cut;
             continue;
         }
         cut->setEffectiveness(cut->violated(cached.colsol_));
-        if (cuts_.rowCut(iCol) == NULL || cut->effectiveness() > cuts_.rowCut(iCol)->effectiveness()) {
+        if (cuts_.rowCut(iCol) == NULL || cut->effectiveness() > cuts_.rowCut(iCol)->effectiveness())
+        {
             cuts_.insert(iCol,cut);
-        } else
+        }
+        else
             delete cut;
     }
 }
@@ -527,7 +597,6 @@ CglLandPSimplex::genThisBasisMigs(const CglLandP::CachedData &cached,
 
 bool
 CglLandPSimplex::generateMig(int row, OsiRowCut & cut,
-                             const CglLandP::CachedData &/*cached*/,
                              const CglLandP::Parameters & params) const
 {
     row_k_.num = row;
@@ -538,26 +607,6 @@ CglLandPSimplex::generateMig(int row, OsiRowCut & cut,
     else
         createIntersectionCut(row_k_, cut);
 
-
-#ifdef DO_STAT
-    double sigma = computeCglpObjective(row_k_);
-    extra.violation = -sigma;
-#endif
-
-#ifdef LANDP_DEBUG
-    CglLandPSimplex debug(*si_,cached, params.sepSpace!=CglLandP::Full, 1);
-    OsiSolverInterface * ncSi = si_->clone();
-    debug.setSi(ncSi);
-    // ncSi->disableSimplexInterface();
-    ncSi->setDblParam(OsiDualObjectiveLimit, DBL_MAX);
-    OsiRowCut cut2;
-    debug.findBestCut(row, cut2, cached, params);
-    if (cut!= cut2) {
-        cut.print();
-        cut2.print();
-    }
-    debug.freeSi();
-#endif
     return 1;//At this point nothing failed, always generate a cut
 }
 
@@ -582,53 +631,39 @@ CglLandPSimplex::optimize
     delete basis_;
     basis_ = new CoinWarmStartBasis(*cached.basis_);
 
-    for (int i = 0 ; i < ncols_; i++) {
+    si_->enableSimplexInterface(0);
+#ifdef APPEND_ROW
+    if (params.modularize)
+    {
+        append_row(row, params.modularize);
+        row_k_.modularize(integers_);
+    }
+#endif
+    for (int i = 0 ; i < ncols_; i++)
+    {
         setColsolToCut(nonBasics_[i], 0.);
         colsol_[nonBasics_[i]] = 0;
     }
 
-    clp_time -= CoinCpuTime();
-    si_->enableSimplexInterface(0);
-    clp_time += CoinCpuTime();
-
-#if 0
-#ifdef OUT_CGLP_PIVOTS
-    printBasisLatex(std::cout, *this);
-    printTableauLateX(std::cout);
+#ifdef APPEND_ROW
+    if (params.modularize)
+        row_k_.num = nrows_ - 1;
+    else
 #endif
-#endif
+        row_k_.num = row;
 
-#ifdef LandP_DEBUG
-    assert(checkBasis());
-#endif
-
-    row_k_.num = row;
     pullTableauRow(row_k_);
     row_k_.rhs = row_k_.rhs - floor(row_k_.rhs);
-    if (params.modularize)
-        modularizeRow(row_k_, integers_);
 
-    updateM1_M2_M3(row_k_, 0., (params.sepSpace!=CglLandP::Full), params.perturb);
+    if (params.modularize)
+        row_k_.modularize(integers_);
+
+    updateM1_M2_M3(row_k_, 0., params.perturb);
     sigma_ = computeCglpObjective(row_k_);
 
-    handler_->message(Separating,messages_)<<basics_[row_k_.num]<<sigma_<<CoinMessageEol<<CoinMessageEol;
+    handler_->message(Separating,messages_)<<basics_[row]<<sigma_<<CoinMessageEol<<CoinMessageEol;
     handler_->message(LogHead, messages_)<<CoinMessageEol<<CoinMessageEol;
 
-#if 0
-    extra.nNegativeRcRows = 0;
-    extra.bestRow = 0;
-    extra.maxBestRow = 0;
-    extra.bestRc = 0;
-    extra.maxRc = -DBL_MAX;
-#endif
-
-#ifdef OUT_CGLP_PIVOTS
-    printf("Initial row\n");
-    printWeights(std::cout, *this, norm_weights_, rhs_weight_);
-    printBasisLatex(std::cout, *this);
-    printRowLateX(std::cout,row_k_.num);
-    printCutLateX(std::cout,row_k_.num);
-#endif
     //Save the variable basic in this row
     //  int var_k = cached.basics_[k_];
 
@@ -639,37 +674,36 @@ CglLandPSimplex::optimize
     bool allowDegeneratePivot = numberConsecutiveDegenerate < params.degeneratePivotLimit;
     bool beObstinate = 0;
     int numPivots = 0;
+    int saveNumSourceEntered = numSourceRowEntered_;
+    int saveNumIncreased = numIncreased_;
+    int numCycle = 0;
     int numFailedPivots = 0;
     bool hasFlagedRow = false;
     int maxTryRow = 5;
-    while (  !optimal && numPivots < params.pivotLimit) {
+    while (  !optimal && numPivots < params.pivotLimit)
+    {
         if (timeLimit - CoinCpuTime() < 0.) break;
 
-#if LandP_DEBUG > 6
-        outputCurrentCut();
-#endif
-#ifdef OUT_CGLP_PIVOTS
-        // std::cout<<"source row:"<<std::endl;
-        // row_k_.print(std::cout, 7, nonBasics_, ncols_);
-        //printTableauLateX(std::cout);
-
-#endif
-
-        updateM1_M2_M3(row_k_, 0., (params.sepSpace!=CglLandP::Full), params.perturb);
+        updateM1_M2_M3(row_k_, 0., params.perturb);
         sigma_ = computeCglpObjective(row_k_);
         int direction = 0;
         int gammaSign = 0;
         int leaving = -1;
         int incoming = -1;
         double bestSigma;
-        if (params.pivotSelection != CglLandP::initialReducedCosts || numPivots == 0) {
+        if (params.pivotSelection != CglLandP::initialReducedCosts || numPivots == 0)
+        {
             leaving = fastFindCutImprovingPivotRow(direction, gammaSign, params.pivotTol,
                                                    params.pivotSelection == CglLandP::initialReducedCosts);
-            //plotCGLPobj(direction, params.pivotTol, params.pivotTol, true, true, false);
-            //exit(1);
-            if (leaving >= 0) {
+#if 0
+            plotCGLPobj(direction, params.pivotTol, params.pivotTol, true, true, false);
+            exit(1);
+#endif
+            if (leaving >= 0)
+            {
                 if (params.pivotSelection == CglLandP::mostNegativeRc ||
-                        (params.pivotSelection == CglLandP::initialReducedCosts && numPivots == 0)) {
+                        (params.pivotSelection == CglLandP::initialReducedCosts && numPivots == 0))
+                {
 
                     if (params.pivotSelection == CglLandP::initialReducedCosts)
                         rowFlags_[leaving] = false;
@@ -677,112 +711,133 @@ CglLandPSimplex::optimize
                                                        params.pivotTol, params.away,
                                                        (params.sepSpace==CglLandP::Fractional),
                                                        allowDegeneratePivot,
-                                                       bestSigma
+                                                       bestSigma, false//params.modularize
                                                       );
                     while (incoming < 0 && !optimal &&
-                            nRowFailed < maxTryRow) { // if no improving was found rescan the tables of reduced cost to find a good one
+                            nRowFailed < maxTryRow)   // if no improving was found rescan the tables of reduced cost to find a good one
+                    {
                         if (incoming == -1 || params.countMistakenRc) nRowFailed ++;
                         rowFlags_[leaving] = false;
                         hasFlagedRow = true;
                         leaving = rescanReducedCosts(direction, gammaSign, params.pivotTol);
-                        if (leaving >= 0) {
+                        if (leaving >= 0)
+                        {
                             incoming = fastFindBestPivotColumn(direction, gammaSign,
                                                                params.pivotTol,
                                                                params.away,
                                                                (params.sepSpace==CglLandP::Fractional),
                                                                allowDegeneratePivot,
-                                                               bestSigma
+                                                               bestSigma, false//params.modularize
                                                               );
-                        } else optimal = true;
+                        }
+                        else optimal = true;
                     }
-                } else if (params.pivotSelection == CglLandP::bestPivot) {
+                }
+                else if (params.pivotSelection == CglLandP::bestPivot)
+                {
                     incoming = findBestPivot(leaving, direction, params);
                 }
             }
-        } else if (params.pivotSelection == CglLandP::initialReducedCosts) {
+        }
+        else if (params.pivotSelection == CglLandP::initialReducedCosts)
+        {
             assert(numPivots > 0);
-            while (incoming < 0 && !optimal) { // if no improving was found rescan the tables of reduced cost to find a good one
+            while (incoming < 0 && !optimal)   // if no improving was found rescan the tables of reduced cost to find a good one
+            {
                 if (!hasFlagedRow)
                     hasFlagedRow = true;
                 leaving = rescanReducedCosts(direction, gammaSign, params.pivotTol);
                 rowFlags_[leaving] = false;
-                if (leaving >= 0) {
+                if (leaving >= 0)
+                {
                     incoming = fastFindBestPivotColumn(direction, gammaSign,
                                                        params.pivotTol,
                                                        params.away,
                                                        (params.sepSpace==CglLandP::Fractional),
                                                        allowDegeneratePivot,
-                                                       bestSigma
+                                                       bestSigma, false//params.modularize
                                                       );
-                } else optimal = true;
+                }
+                else optimal = true;
             }
         }
-        if (leaving >= 0) {
-            if ( incoming >= 0 && !optimal) {
-                if (inDegenerateSequence_) { //flag leaving row
+        if (leaving >= 0)
+        {
+            if ( incoming >= 0 && !optimal)
+            {
+                if (inDegenerateSequence_)   //flag leaving row
+                {
                     numberConsecutiveDegenerate++;
                     allowDegeneratePivot = numberConsecutiveDegenerate < params.degeneratePivotLimit;
                     rowFlags_[leaving] = false;
-                } else {
+                }
+                else
+                {
                     beObstinate = 0;
                     numberConsecutiveDegenerate = 0;
                     allowDegeneratePivot = numberConsecutiveDegenerate < params.degeneratePivotLimit;
                 }
                 double gamma = - row_k_[nonBasics_[incoming]] / row_i_[nonBasics_[incoming]];
-
-#ifdef LandP_DEBUG
-                debug.saveOutgoingStatus();
-#endif
-
 #ifdef COIN_HAS_CLP
-                if (numPivots && ( numPivots % 40 == 0 ) && clp_) {
+                if (numPivots && ( numPivots % 40 == 0 ) && clp_)
+                {
                     clp_->getModelPtr()->factorize();
                 }
 #endif
 
+#ifndef OLD_COMPUTATION
                 bool recompute_source_row = (numPivots && (numPivots % 10 == 0 ||
-                                             fabs(gamma) < 1e-05));
-                bool pivoted = changeBasis(incoming,leaving,direction, recompute_source_row);
+                                            fabs(gamma) < 1e-05));
+#endif
+
+                std::pair<int, int> cur_pivot(nonBasics_[incoming],basics_[leaving]);
+
+                bool pivoted = changeBasis(incoming,leaving,direction,
+#ifndef OLD_COMPUTATION
+                                           recompute_source_row, 
+#endif
+                                           false);//params.modularize);
+
+                if (leaving == row)
+                {
+                    numSourceRowEntered_++;
+                }
 
                 if (params.generateExtraCuts == CglLandP::WhenEnteringBasis &&
                         basics_[leaving] < ncols_ && cuts_.numberCuts() < params.extraCutsLimit)
                     generateExtraCut(leaving, cached, params);
-                if (pivoted) {
+                if (pivoted)
+                {
                     numPivots++;
 
-                    if (params.modularize)
-                        modularizeRow(row_k_, integers_);
                     double lastSigma = sigma_;
+                    if (params.modularize)
+                    {
+		      row_k_.modularize(integers_);
+                    }
                     sigma_ = computeCglpObjective(row_k_);
+
+                    if (sigma_ - lastSigma > -1e-4*(lastSigma))
+                    {
+                      if(sigma_ > 0) return 0;
+#if 0
+		      if (sigma_ > 0 || sigma_ - lastSigma > 1e1*(-lastSigma))
+			return 0;
+#endif
+                    }
+
+
                     handler_->message(PivotLog,messages_)<<numPivots<<sigma_<<
                     nonBasics_[incoming]<<basics_[leaving]<<direction<<gamma<<inDegenerateSequence_<<CoinMessageEol<<CoinMessageEol;
-                    if (sigma_ - lastSigma > -1e-4*(lastSigma)) {
-                        std::cout<<"Increasing"<<std::endl;
-                        if (sigma_ > 0 || sigma_ - lastSigma > 1e1*(-lastSigma))
-                            return 0;
-                    }
-#ifndef NDEBUG
-                    CoinRelFltEq eq(1e-05);
-                    if (!eq(sigma_, bestSigma_)){
-                        printf("gamma %g sigma %g bestSigma %g\n", gamma,sigma_, bestSigma_);
-//            row_k_.print(std::cout, 9, nonBasics_, ncols_);
-//            new_row_.print(std::cout, 9, nonBasics_, ncols_);
-                        if (gamma > 1e-7)
-                            DblEqAssert(bestSigma_,  sigma_);
-                    }
-#endif
-#ifdef OUT_CGLP_PIVOTS
-    printf("After pivot %i\n", numPivots);
-    printBasisLatex(std::cout, *this);
-    printRowLateX(std::cout,row_k_.num);
-    printCutLateX(std::cout,row_k_.num);
-#endif
-                } else { //pivot failed
+                }
+                else   //pivot failed
+                {
                     numFailedPivots++;
                     //check wether sigma has changed if it has exit cut generation if it has not continue
                     double lastSigma = sigma_;
                     sigma_ = computeCglpObjective(row_k_);
-                    if ( sigma_-lastSigma>1e-8) {
+                    if ( sigma_-lastSigma>1e-8)
+                    {
                         handler_->message(PivotFailedSigmaIncreased,messages_)<<CoinMessageEol<<CoinMessageEol;
                         //break;
                         return 0;
@@ -794,20 +849,28 @@ CglLandPSimplex::optimize
                         break;
 
                 }
-            } else { //attained max number of leaving vars tries with no improvement
+            }
+            else   //attained max number of leaving vars tries with no improvement
+            {
                 handler_->message(WarnGiveUpRow,messages_)<<nRowFailed<<CoinMessageEol<<CoinMessageEol;
                 break;
             }
-        } else {
-            if (hasFlagedRow && beObstinate) {
+        }
+        else
+        {
+            if (hasFlagedRow && beObstinate)
+            {
                 //Reset row flags
                 CoinFillN(rowFlags_,nrows_,true);
                 hasFlagedRow = false;
-                if (inDegenerateSequence_) {
+                if (inDegenerateSequence_)
+                {
                     allowDegeneratePivot = false;
                     beObstinate = false;
                 }
-            } else {
+            }
+            else
+            {
                 //could perturb but Ionut skipped that will see later
                 optimal = true;
                 handler_->message(FinishedOptimal, messages_)<<sigma_<<numPivots<<CoinMessageEol<<CoinMessageEol;
@@ -815,18 +878,20 @@ CglLandPSimplex::optimize
         }
     }
 
-    if (!optimal && numPivots >= params.pivotLimit) {
+    if (!optimal && numPivots >= params.pivotLimit)
+    {
         std::string limit="pivots";
         handler_->message(HitLimit, messages_)<<limit<<numPivots<<CoinMessageEol<<CoinMessageEol;
     }
-    if (!optimal && numFailedPivots >= params.failedPivotLimit) {
+    if (!optimal && numFailedPivots >= params.failedPivotLimit)
+    {
         std::string limit="failed pivots";
         handler_->message(HitLimit, messages_)<<limit<<numPivots<<CoinMessageEol<<CoinMessageEol;
     }
     //Create the cut
 
-    pullTableauRow(row_k_);
-    row_k_.rhs = row_k_.rhs - floor(row_k_.rhs);
+    //pullTableauRow(row_k_);
+    //row_k_.rhs = row_k_.rhs - floor(row_k_.rhs);
 
     //  double normalization = 100*normCoef(row_k_);
     {
@@ -836,259 +901,207 @@ CglLandPSimplex::optimize
             createIntersectionCut(row_k_, cut);
     }
 
-    if (params.generateExtraCuts == CglLandP::AtOptimalBasis) {
+    if (params.generateExtraCuts == CglLandP::AtOptimalBasis)
+    {
         generateExtraCuts(cached, params);
     }
-
-#if 0
-    extra.numPivots = numPivots;
-    extra.violation = - sigma_;
-    extra.numPivots = numPivots;
-    extra.violation = - sigma_;
-    extra.Nnz = cut.row().getNumElements();
-#endif
-
-#if LandP_DEBUG > 1
-    if (handler_->logLevel()>=3) { //Output optimal
-        OsiRowCut cut2(cut);
-        put_in_non_basic_init_space(cut2);
-        if (params.strengthen || params.modularize)
-            std::cout<<"MIG violation :"<<- cut.violated(debug_.trueInitialSol_)
-            <<std::endl;
-        else
-            std::cout<<"Intersection cut violation :"<<- cut.violated(debug_.trueInitialSol_)
-            <<std::endl;
-
-        CoinPackedVector row = cut2.row();
-        //    const int * inds = row.getIndices();
-        const double * elems = row.getElements();
-        int size = row.getNumElements();
-        int &nNegative = extra.Nneg = 0;
-        for (int k = 0 ; k < size ; k++) {
-            if (elems[k] < -1e-10) nNegative++;
-        }
-        extra.Nnz = size;
-        std::cout<<"Number of non zero coef in optimal cut "<<size
-        <<" Number of negative coefs"<<nNegative<<std::endl;
-        std::cout<<"Cos to obj " <<cosToObj
-        <<", Angle to objective "<<extra.AngleToObj<<std::endl;
-        std::cout<<"Number of pivots "<<extra.numPivots<<std::endl;
-        if (handler_->logLevel()>=5)
-            cut2.print();
-    }
-#endif
+    handler_->message(CutStat, messages_)<<row<<numPivots
+    <<numSourceRowEntered_ - saveNumSourceEntered
+    <<numIncreased_- saveNumIncreased
+    <<numCycle<<CoinMessageEol;
     return 1;//At this point nothing failed, always generate a cut
 }
 
 
 bool
 CglLandPSimplex::changeBasis(int incoming, int leaving, int leavingStatus,
-                             bool /*recompute_source_row*/)
+#ifndef OLD_COMPUTATION
+                             bool recompute_source_row,
+#endif
+                             bool modularize)
 {
     double infty = si_->getInfinity();
     int clpLeavingStatus = leavingStatus;
 
 #ifdef COIN_HAS_CLP
-    if (clp_) {
+    if (clp_)
+    {
         if (basics_[leaving] >= ncols_)
             clpLeavingStatus = - leavingStatus;
     }
 #endif
 
-    //row_k_.print(std::cout, 7, nonBasics_, ncols_);
-    //row_i_.print(std::cout, 7, nonBasics_, ncols_);
-#if 0
-    if ( leavingStatus > 0){
-        setColsolToCut(basics_[leaving], getUpBound(basics_[leaving])- getColsolToCut(basics_[leaving]));
-    }
-    else{
-        setColsolToCut(basics_[leaving], getColsolToCut(basics_[leaving]) + getLoBound(basics_[leaving]));
-    }
-#endif
     int code = 0;
-    try {
-        clp_time -= CoinCpuTime();
-        code = si_->pivot(nonBasics_[incoming],basics_[leaving], clpLeavingStatus);
-        clp_time += CoinCpuTime();
-    } catch (int i) {
-        if (i==-1)
-            pullTableauRow(row_i_);
-        throw i;
 
-    }
-    if (code) {
-        pullTableauRow(row_k_);
-        row_k_.rhs = row_k_.rhs - floor(row_k_.rhs);
+    code = si_->pivot(nonBasics_[incoming],basics_[leaving], clpLeavingStatus);
+    if (code)
+    {
+#ifdef OLD_COMPUTATION
+        if (!modularize)
+        {
+            pullTableauRow(row_k_);
+            row_k_.rhs = row_k_.rhs - floor(row_k_.rhs);
+        }
+	else{
+	  int & indexLeaving = basics_[leaving];
+	  if (leavingStatus==1)
+	  {
+	    setColsolToCut(indexLeaving, getUpBound(indexLeaving) - getColsolToCut(indexLeaving));
+	  }
+	else
+	  {
+	    setColsolToCut(indexLeaving, getColsolToCut(indexLeaving) + getLoBound(indexLeaving));
+	  }
+        }
+#endif
         return 0;
     }
-
-
-
-
-    //Update basics_, non-basics_ and basis
-
+    numPivots_ ++;
     //swap bounds
-    if (!code) {
-
-        int & indexLeaving = basics_[leaving];
+    int & indexLeaving = basics_[leaving];
 #ifdef OLD_COMPUTATION
-        if (leavingStatus==1) {
-            setColsolToCut(indexLeaving, getUpBound(indexLeaving) - getColsolToCut(indexLeaving));
-        } else {
-            setColsolToCut(indexLeaving, getColsolToCut(indexLeaving) - getLoBound(indexLeaving));
-        }
+    if (!modularize)
+      {
+	if (leavingStatus==1)
+	  {
+	    setColsolToCut(indexLeaving, getUpBound(indexLeaving) - getColsolToCut(indexLeaving));
+	  }
+	else
+	  {
+	    setColsolToCut(indexLeaving, getColsolToCut(indexLeaving) - getLoBound(indexLeaving));
+	  }
+      }
 #endif
-
-        if (indexLeaving < ncols_) {
-            basis_->setStructStatus(indexLeaving, leavingStatus==1 ? CoinWarmStartBasis::atUpperBound : CoinWarmStartBasis::atLowerBound);
-        } else {
-            int iRow = basics_[leaving] - ncols_;
-            basis_->setArtifStatus(iRow,  leavingStatus==1 ? CoinWarmStartBasis::atUpperBound : CoinWarmStartBasis::atLowerBound);
-            //    assert(leavingStatus==-1 || (rowLower_[iRow]>-1e50 && rowUpper_[iRow] < 1e50));
-        }
-
-        if (nonBasics_[incoming] < ncols_) {
-            int & indexIncoming = nonBasics_[incoming];
-            CoinWarmStartBasis::Status status = basis_->getStructStatus(indexIncoming);
-#if 1
-            if (status==CoinWarmStartBasis::atUpperBound)
-                setColsolToCut(indexIncoming, getUpBound(indexIncoming) - getColsolToCut(indexIncoming));
-            else
-                setColsolToCut(indexIncoming, getColsolToCut(indexIncoming) + getLoBound(indexIncoming));
-#endif
-            basis_->setStructStatus(indexIncoming, CoinWarmStartBasis::basic);
-        } else {
-            int iRow = nonBasics_[incoming] - ncols_;
-            int & indexIncoming = nonBasics_[incoming];
-#if 1
-            if (basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atUpperBound)
-                setColsolToCut(indexIncoming, getUpBound(indexIncoming) - getColsolToCut(indexIncoming));
-            else
-                setColsolToCut(indexIncoming, getColsolToCut(indexIncoming) + getLoBound(indexIncoming));
-#endif
-            basis_->setArtifStatus(iRow,  CoinWarmStartBasis::basic);
-        }
-
-        int swap = basics_[leaving];
-        basics_[leaving] = nonBasics_[incoming];
-        nonBasics_[incoming] = swap;
-        //update solution of leaving variable
-        colsol_[nonBasics_[incoming]] = 0;
-    }
+    
+    if (indexLeaving < ncols_)
+      {
+	basis_->setStructStatus(indexLeaving, leavingStatus==1 ? CoinWarmStartBasis::atUpperBound : CoinWarmStartBasis::atLowerBound);
+      }
+    else
+      {
+	int iRow = basics_[leaving] - ncols_;
+	basis_->setArtifStatus(iRow,  leavingStatus==1 ? CoinWarmStartBasis::atUpperBound : CoinWarmStartBasis::atLowerBound);
+	//    assert(leavingStatus==-1 || (rowLower_[iRow]>-1e50 && rowUpper_[iRow] < 1e50));
+      }
+    
+    if (nonBasics_[incoming] < ncols_)
+      {
+	int & indexIncoming = nonBasics_[incoming];
+	CoinWarmStartBasis::Status status = basis_->getStructStatus(indexIncoming);
+	if (status==CoinWarmStartBasis::atUpperBound)
+	  setColsolToCut(indexIncoming, getUpBound(indexIncoming) - getColsolToCut(indexIncoming));
+	else
+	  setColsolToCut(indexIncoming, getColsolToCut(indexIncoming) + getLoBound(indexIncoming));
+	basis_->setStructStatus(indexIncoming, CoinWarmStartBasis::basic);
+      }
+    else
+      {
+	int iRow = nonBasics_[incoming] - ncols_;
+	int & indexIncoming = nonBasics_[incoming];
+	
+	if (basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atUpperBound)
+	  setColsolToCut(indexIncoming, getUpBound(indexIncoming) - getColsolToCut(indexIncoming));
+	else
+	  setColsolToCut(indexIncoming, getColsolToCut(indexIncoming) + getLoBound(indexIncoming));
+	
+	basis_->setArtifStatus(iRow,  CoinWarmStartBasis::basic);
+      }
+    
+    int swap = basics_[leaving];
+    basics_[leaving] = nonBasics_[incoming];
+    nonBasics_[incoming] = swap;
+    //update solution of leaving variable
+    colsol_[nonBasics_[incoming]] = 0;
+    
     //update solution for basics
-    clp_time -= CoinCpuTime();
     const double * lpSol = si_->getColSolution();
     const double * rowAct = si_->getRowActivity();
     const double * rowLower = si_->getRowLower();
     const double * rowUpper = si_->getRowUpper();
-    clp_time += CoinCpuTime();
 
-    for (int i = 0 ; i < nrows_ ; i++) {
+    for (int i = 0 ; i < nrows_ ; i++)
+    {
         int& iCol = basics_[i];
         if (iCol<ncols_)
             colsol_[iCol] = lpSol[iCol];
-        else { // Osi does not give direct acces to the value of slacks
+        else   // Osi does not give direct acces to the value of slacks
+        {
             int iRow = iCol - ncols_;
             colsol_[iCol] = - rowAct[iRow];
-            if (rowLower[iRow]> -infty) {
+            if (rowLower[iRow]> -infty)
+            {
                 colsol_[iCol] += rowLower[iRow];
-            } else {
+            }
+            else
+            {
                 colsol_[iCol] += rowUpper[iRow];
             }
         }
     }
-#if 1
+
     // basics_ may unfortunately change reload
     int k = basics_[row_k_.num];
-    clp_time -= CoinCpuTime();
     si_->getBasics(basics_);
-    clp_time += CoinCpuTime();
-
-
-
-
-    if (basics_[row_k_.num] != k) {
-        for (int ii = 0 ; ii < nrows_ ; ii++) {
-            if (basics_[ii]==k) {
-                row_k_.num=ii;
+    if (basics_[row_k_.num] != k)
+    {
+        for (int ii = 0 ; ii < nrows_ ; ii++)
+        {
+            if (basics_[ii]==k)
+            {
+                row_k_.num= ii;
                 break;
             }
         }
     }
-#endif
 
 #ifndef OLD_COMPUTATION
-    if (recompute_source_row){
+    if (!modularize && recompute_source_row)
+    {
+#else
+    if (!modularize)
+    {
 #endif
         pullTableauRow(row_k_);
         row_k_.rhs =  row_k_.rhs - floor(row_k_.rhs);
-#ifndef OLD_COMPUTATION
     }
-    else{
-        double gamma = - row_k_[basics_[leaving]] / row_i_[basics_[leaving]];
-
-        row_k_[nonBasics_[incoming]] = gamma;
-        row_k_[basics_[leaving]] = 0;
-        int nnz = row_k_.getNumElements();
-        int * indices = row_k_.getIndices();
-        for (int i = 0 ; i < nnz ; i++){
-            if (indices[i]==basics_[leaving]){
-                indices[i] = nonBasics_[incoming];
-                break;
-            }
-        }
-
-
-        //Update row k
-        nnz = row_i_.getNumElements();
-        indices = row_i_.getIndices();
-        for (int i = 0 ; i < nnz; i++) {
-            if (indices[i] != nonBasics_[incoming] && indices[i] != basics_[leaving])
-                row_k_.quickAdd(indices[i], gamma * row_i_[indices[i]]);
-        }
-        row_k_.rhs += gamma * row_i_.rhs;
+#if 0
+}
+#endif
+else //Update row k by hand
+{
+    double gamma = - row_k_[basics_[leaving]] / row_i_[basics_[leaving]];
+    row_k_[basics_[leaving]] = 0;
+    row_k_.quickAdd(nonBasics_[incoming], gamma);
+    if(1 || fabs(gamma) > 1e-9){
+      int nnz = row_i_.getNumElements();
+      const int * indices = row_i_.getIndices();
+      for (int i = 0 ; i < nnz; i++)
+	{
+	  if(row_k_.getNumElements() > row_k_.capacity() - 2) row_k_.scan();
+	  if (indices[i] != nonBasics_[incoming] && indices[i] != basics_[leaving])
+	    row_k_.quickAdd(indices[i], gamma * row_i_[indices[i]]);
+	}
+      row_k_.rhs += gamma * row_i_.rhs;
     }
+    row_k_.scan();
+    row_k_.clean(1e-10);
+    checkVec(row_k_);
+#if 0
+    TabRow test_row(this);
+    int rowsize = ncols_orig_ + nrows_orig_ + 1;
+    test_row.reserve(rowsize);
+    test_row.num = row_k_.num;
+    pullTableauRow(test_row);
+    test_row.rhs =  test_row.rhs - floor(test_row.rhs);
+    VecModEqAssert(row_k_, test_row);
 #endif
-
-#ifndef NDEBUG
-    {
-#ifndef OLD_COMPUTATION
-        //Check that row_k_ is the same as what it should be
-        int rowsize = ncols_ + nrows_;
-        TabRow myrow;
-        myrow.reserve(rowsize + 1);
-
-        myrow.num = row_k_.num;
-        pullTableauRow(myrow);
-        myrow.rhs = myrow.rhs - floor(myrow.rhs);
-        CoinRelFltEq eq;
-        for (int ii = 0 ; ii < rowsize ; ii++) {
-            DblEqAssert(row_k_[ii],myrow[ii]);
-        }
-        DblEqAssert(row_k_.rhs,myrow.rhs);
-//    myrow.clean(1e-8);
-        DblEqAssert(computeCglpObjective(myrow), computeCglpObjective(row_k_));
-#else
-        int rowsize = ncols_ + nrows_;
-        CoinRelFltEq eq;
-        for (int ii = 0 ; ii < rowsize ; ii++) {
-            DblEqAssert(row_k_[ii],new_row_[ii]);
-        }
-        DblEqAssert(row_k_.rhs,new_row_.rhs);
-        DblEqAssert(computeCglpObjective(new_row_), computeCglpObjective(row_k_));
-        DblEqAssert(computeCglpObjective(new_row_), bestSigma_);
-#endif
-    }
-
-#endif
-
-    if (!code)
-        return true;
-    else return false;
+}
+    
+    return true;
 }
 
 /** Find a row which can be used to perform an improving pivot return index of the cut or -1 if none exists
-* (i.e., find the leaving variable).*/
+ * (i.e., find the leaving variable).*/
 int
 CglLandPSimplex::findCutImprovingPivotRow( int &direction, int &gammaSign, double tolerance)
 {
@@ -1098,11 +1111,14 @@ CglLandPSimplex::findCutImprovingPivotRow( int &direction, int &gammaSign, doubl
     int bestDirection = 0;
     int bestGamma = 0;
     double infty = si_->getInfinity();
-    for (row_i_.num = 0 ; row_i_.num < nrows_; row_i_.num++) {
-        if (row_i_.num != row_k_.num//obviously not necessary to combine row k with itself
+    for (row_i_.num = 0 ; row_i_.num < nrows_; row_i_.num++)
+    {
+        //if ( (row_k_.modularized_ || row_i_.num != row_k_.num)//obviously not necessary to combine row k with itself (unless modularized)
+        if ( (row_i_.num != row_k_.num)//obviously not necessary to combine row k with itself (unless modularized)
                 && rowFlags_[row_i_.num] //row has not been flaged
                 //   && fabs(getUpBound(basics_[row_i_.num]) - getLoBound(basics_[row_i_.num]))>1e-09 //variable is not fixed
-           ) {
+           )
+        {
             pullTableauRow(row_i_);
             double tau = computeRedCostConstantsInRow();
 
@@ -1114,23 +1130,29 @@ CglLandPSimplex::findCutImprovingPivotRow( int &direction, int &gammaSign, doubl
 
                 gammaSign = -1;
                 double redCost = computeCglpRedCost(direction, gammaSign, tau);
-                if (redCost<tolerance) {
-                    if (bestRed) {
+                if (redCost<tolerance)
+                {
+                    if (bestRed)
+                    {
                         tolerance = redCost;
                         bestRow = row_i_.num;
                         bestDirection = direction;
                         bestGamma = gammaSign;
-                    } else return row_i_.num;
+                    }
+                    else return row_i_.num;
                 }
                 gammaSign = 1;
                 redCost = computeCglpRedCost(direction, gammaSign, tau);
-                if (redCost<tolerance) {
-                    if (bestRed) {
+                if (redCost<tolerance)
+                {
+                    if (bestRed)
+                    {
                         tolerance = redCost;
                         bestRow = row_i_.num;
                         bestDirection = direction;
                         bestGamma = gammaSign;
-                    } else return row_i_.num;
+                    }
+                    else return row_i_.num;
                 }
             }
             if ( getUpBound(basics_[row_i_.num])<infty) // variable can leave at its upper bound
@@ -1140,23 +1162,29 @@ CglLandPSimplex::findCutImprovingPivotRow( int &direction, int &gammaSign, doubl
                 //         adjustTableauRow(i_, row_i_, rhs_i_, direction);
                 gammaSign = -1;
                 double redCost = computeCglpRedCost(direction, gammaSign, tau);
-                if (redCost<tolerance) {
-                    if (bestRed) {
+                if (redCost<tolerance)
+                {
+                    if (bestRed)
+                    {
                         tolerance = redCost;
                         bestRow = row_i_.num;
                         bestDirection = direction;
                         bestGamma = gammaSign;
-                    } else return row_i_.num;
+                    }
+                    else return row_i_.num;
                 }
                 gammaSign = 1;
                 redCost = computeCglpRedCost(direction, gammaSign, tau);
-                if (redCost<tolerance) {
-                    if (bestRed) {
+                if (redCost<tolerance)
+                {
+                    if (bestRed)
+                    {
                         tolerance = redCost;
                         bestRow = row_i_.num;
                         bestDirection = direction;
                         bestGamma = gammaSign;
-                    } else return row_i_.num;
+                    }
+                    else return row_i_.num;
                 }
             }
             rowFlags_[row_i_.num]=false;
@@ -1165,18 +1193,19 @@ CglLandPSimplex::findCutImprovingPivotRow( int &direction, int &gammaSign, doubl
     direction = bestDirection;
     gammaSign = bestGamma;
     row_i_.num=bestRow;
-    if (row_i_.num>=0 && row_i_.num!= bestRow) {
+    if (row_i_.num >=0 && row_i_.num != bestRow)
+    {
         row_i_.num=bestRow;
         pullTableauRow(row_i_);
     }
-    assert (bestRow<0||direction!=0);
+    assert (bestRow<0||direction!=0); 
     return bestRow;
 }
 
 
 /** Find a row which can be used to perform an improving pivot the fast way
-* (i.e., find the leaving variable).
-\return index of the cut or -1 if none exists. */
+ * (i.e., find the leaving variable).
+ \return index of the cut or -1 if none exists. */
 int
 CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
         double tolerance, bool flagPositiveRows)
@@ -1189,80 +1218,104 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
     double * rWk1bis_ =NULL;
     CoinFillN(&rWk1_[0],nrows_,static_cast<double> (0));
     if (modularize)
-      CoinFillN(rWk1bis_, nrows_, static_cast<double> (0));
+        CoinFillN(rWk1bis_, nrows_, static_cast<double> (0));
     int capacity = 0;
-    clp_time -= CoinCpuTime();
     const CoinPackedMatrix* mat = si_->getMatrixByCol();
-    clp_time += CoinCpuTime();
 
     const CoinBigIndex* starts = mat->getVectorStarts();
     const CoinBigIndex * lengths = mat->getVectorLengths();
     const int * indices = mat->getIndices();
     const double * elements = mat->getElements();
 
-    for (unsigned int i = 0 ;  i < M1_.size() ; i++) {
+    for (unsigned int i = 0 ;  i < M1_.size() ; i++)
+    {
         const int& ii = M1_[i];
-        if (ii < ncols_) {
+        if (ii < ncols_)
+        {
             const CoinBigIndex& begin = starts[ii];
             const CoinBigIndex end = begin + lengths[ii];
             bool swap = false;
             if (basis_->getStructStatus(ii)==CoinWarmStartBasis::atUpperBound) swap = true;
-            for (CoinBigIndex k = begin ; k < end ;  k++) {
-                if (swap) {
+            for (CoinBigIndex k = begin ; k < end ;  k++)
+            {
+                if (swap)
+                {
                     rWk1_[indices[k]] += normedCoef(elements[k] * sigma, ii);
-                    if (modularize){
+                    if (modularize)
+                    {
                         rWk1bis_[indices[k]] += elements[k] * (getColsolToCut(ii) - normedCoef(sigma, ii));
                     }
 
-                } else {
+                }
+                else
+                {
                     rWk1_[indices[k]] -= normedCoef(elements[k] * sigma, ii);
-                    if (modularize){
+                    if (modularize)
+                    {
                         rWk1bis_[indices[k]] -= elements[k] * (getColsolToCut(ii) - normedCoef(sigma, ii));
                     }
                 }
             }
-        } else {
+        }
+        else
+        {
             bool swap = false;
             if (basis_->getArtifStatus(ii - ncols_orig_)==CoinWarmStartBasis::atUpperBound) swap = true;
-            if (swap) {
+            if (swap)
+            {
                 rWk1_[ii - ncols_] += normedCoef(sigma, ii);
-                if (modularize){
+                if (modularize)
+                {
                     rWk1bis_[ii - ncols_] += (getColsolToCut(ii) - normedCoef(sigma, ii));
                 }
-            } else {
+            }
+            else
+            {
                 rWk1_[ii - ncols_] -= normedCoef(sigma, ii);
-                if (modularize){
+                if (modularize)
+                {
                     rWk1bis_[ii - ncols_] -= (getColsolToCut(ii) - normedCoef(sigma, ii));
                 }
             }
         }
     }
-    for (unsigned int i = 0 ;  i < M2_.size(); i++) {
+    for (unsigned int i = 0 ;  i < M2_.size(); i++)
+    {
         const int& ii = M2_[i];
-        if (ii<ncols_) {
+        if (ii<ncols_)
+        {
             const CoinBigIndex& begin = starts[ii];
             const CoinBigIndex end = begin + lengths[ii];
             bool swap = false;
             if (basis_->getStructStatus(ii)==CoinWarmStartBasis::atUpperBound) swap = true;
-            for (CoinBigIndex k = begin ; k < end ;  k++) {
-                if (swap) {
+            for (CoinBigIndex k = begin ; k < end ;  k++)
+            {
+                if (swap)
+                {
                     rWk1_[indices[k]] += elements[k] * (getColsolToCut(ii) - normedCoef(sigma, ii));
                     if (modularize)
                         rWk1bis_[indices[k]] += elements[k] * normedCoef(sigma, ii);
-                } else {
+                }
+                else
+                {
                     rWk1_[indices[k]] -= elements[k] * (getColsolToCut(ii) - normedCoef(sigma, ii));
                     if (modularize)
                         rWk1bis_[indices[k]] -= elements[k] * normedCoef(sigma, ii);
                 }
             }
-        } else {
+        }
+        else
+        {
             bool swap = false;
             if (basis_->getArtifStatus(M2_[i] - ncols_orig_)==CoinWarmStartBasis::atUpperBound) swap = true;
-            if (swap) {
+            if (swap)
+            {
                 rWk1_[ii - ncols_] += (getColsolToCut(ii) - normedCoef(sigma, ii));
                 if (modularize)
                     rWk1bis_[ii - ncols_] += normedCoef(sigma, ii);
-            } else {
+            }
+            else
+            {
                 rWk1_[ii - ncols_] -= (getColsolToCut(ii) - normedCoef(sigma, ii));
                 if (modularize)
                     rWk1bis_[ii - ncols_] -= normedCoef(sigma, ii);
@@ -1270,9 +1323,10 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
         }
     }
 
-    for (int i = 0 ; i < nrows_ ; i++) {
-      if (rWk1_[i])
-        rIntWork_[capacity++] = i;
+    for (int i = 0 ; i < nrows_ ; i++)
+    {
+        if (rWk1_[i])
+            rIntWork_[capacity++] = i;
     }
     CoinIndexedVector indexed;
     indexed.borrowVector(nrows_, capacity, &rIntWork_[0], &rWk1_[0]);
@@ -1285,9 +1339,11 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
         throw CoinError("Function not implemented in this OsiSolverInterface",
                         "getBInvACol","CglLandpSimplex");
     indexed.returnVector();
-    if (modularize) {
+    if (modularize)
+    {
         capacity = 0;
-        for (int i = 0 ; i < nrows_ ; i++) {
+        for (int i = 0 ; i < nrows_ ; i++)
+        {
             if (rWk1bis_[i])
                 rIntWork_[capacity++] = i;
         }
@@ -1304,58 +1360,44 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
     //Need to get the column of the tableau in rW3_ for each of these and
     //add up with correctly in storage for multiplier for negative gamma (named rW3_) and
     //for positive gamma (which is named rW4_)
-    if (!M3_.empty()) {
+    if (!M3_.empty())
+    {
         CoinFillN(&rWk3_[0],nrows_,0.);
         CoinFillN(&rWk4_[0],nrows_,0.);
-        if (modularize) {
+        if (modularize)
+        {
             double * rWk3bis_ = NULL;
             double * rWk4bis_ = NULL;
             CoinFillN(rWk3bis_,nrows_,0.);
             CoinFillN(rWk4bis_,nrows_,0.);
         }
     }
-    for (unsigned int i = 0 ; i < M3_.size() ;i++) {
+    for (unsigned int i = 0 ; i < M3_.size() ; i++)
+    {
         const int & ii = M3_[i];
-        clp_time -= CoinCpuTime();
         si_->getBInvACol(ii, &rWk2_[0]);
-        clp_time += CoinCpuTime();
         bool swap = false;
         if (ii < ncols_orig_ && basis_->getStructStatus(ii)==CoinWarmStartBasis::atUpperBound) swap = true;
         if (ii >= ncols_orig_ && basis_->getArtifStatus(ii - ncols_orig_)==CoinWarmStartBasis::atUpperBound) swap = true;
 
-        for (int j = 0 ; j < nrows_ ; j++) {
-#if LandP_DEBUG >1
-            if (fabs(rWk2_[j])>1e20)
-                throw -1;
-#endif
+        for (int j = 0 ; j < nrows_ ; j++)
+        {
             if (swap)
                 rWk2_[j] = - rWk2_[j];
-            if (rWk2_[j] > 0.) {
+            if (rWk2_[j] > 0.)
+            {
                 //is in M1 for multiplier with negative gamma
                 rWk3_[j] -= normedCoef(sigma*rWk2_[j], ii);
                 //is in M2 for multiplier with positive gamma
                 rWk4_[j] -= (getColsolToCut(ii) - normedCoef(sigma, ii))*rWk2_[j];
-
-#if LandP_DEBUG >1
-                if (fabs(rWk3_[j])>1e20)
-                    throw -1;
-                if (fabs(rWk4_[j])>1e20)
-                    throw -1;
-#endif
-
-            } else if (rWk2_[j] < 0.) {
+            }
+            else if (rWk2_[j] < 0.)
+            {
                 //is in M2 for multiplier with negative gamma
                 rWk3_[j] -=(getColsolToCut(ii) - normedCoef(sigma, ii))*rWk2_[j];
 
                 //is in M1 for multiplier with positive gamma
                 rWk4_[j] -= normedCoef(sigma, ii)*rWk2_[j];
-
-#if LandP_DEBUG >1
-                if (fabs(rWk3_[j])>1e20)
-                    throw -1;
-                if (fabs(rWk4_[j])>1e20)
-                    throw -1;
-#endif
             }
         }
 
@@ -1377,6 +1419,7 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
     nNegativeRcRows_ = 0;//counter
     int nZeroRc = 0;
     int nPositiveRc = 0;
+
     double fzero = getColsolToCut(basics_[row_k_.num]) - floor(getColsolToCut(basics_[row_k_.num]));
     //    fzero = row_k_.rhs;
     //for (int i = 0 ; i < ncols_orig_ ; i++) {
@@ -1384,11 +1427,14 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
     //}
 
     double bestReducedCost = -tolerance;
-    for (int i = 0 ; i < nrows_ ; i++) {
-        if (i == row_k_.num//obviously not necessary to combine row k with itself
+    for (int i = 0 ; i < nrows_ ; i++)
+    {
+      //if ((!row_k_.modularized_ && i == row_k_.num)//obviously not necessary to combine row k with itself
+        if ((i == row_k_.num)//obviously not necessary to combine row k with itself
                 //   && fabs(getUpBound(basics_[row_i_.num]) - getLoBound(basics_[row_i_.num]))>1e-09 //variable is not fixed
                 || col_in_subspace[basics_[i]] == false
-           ) {
+           )
+        {
             ul_i[i]=uu_i[i]=vl_i[i]=vu_i[i]=10.;
             rowFlags_[i] = false;
             continue;
@@ -1398,13 +1444,15 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
         double tau2 = rWk1_[i];
         double tau3 = rWk1_[i];
         double tau4 = rWk1_[i];
-        if (!M3_.empty()) {
+        if (!M3_.empty())
+        {
             tau1 += rWk3_[i];
             tau2 += rWk4_[i];
             tau3 += rWk4_[i];
             tau4 += rWk3_[i];
         }
-        if (modularize) {
+        if (modularize)
+        {
             tau1 = rWk1_[i] + rWk3_[i];
             tau2 = rWk1bis_[i] + rWk3_[i];
             tau3 = - rWk1_[i] - rWk4_[i];
@@ -1417,22 +1465,27 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
 
         double loBound = getLoBound(basics_[i]);
 
-        if (loBound > -1e50) {
+        if (loBound > -1e50)
+        {
             redCost = - normedCoef(sigma,basics_[i]) + (tau1)
                       + (1 - fzero) * ( colsol_[basics_[i]]
                                         - loBound);
 
 
-            if (redCost < -tolerance) {
+            if (redCost < -tolerance)
+            {
                 ul_i[i] = redCost;
                 hasNegativeRc = true;
-            } else {
+            }
+            else
+            {
                 if (fabs(redCost) < tolerance) nZeroRc++;
                 else nPositiveRc ++;
                 ul_i[i] = 10.;
             }
             if (redCost < bestReducedCost
-                    && rowFlags_[i] ) { //row has not been flaged
+                    && rowFlags_[i] )   //row has not been flaged
+            {
                 bestDirection = -1;
                 bestGammaSign = -1;
                 bestReducedCost = redCost;
@@ -1445,17 +1498,21 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
                                         - loBound)
                       - loBound + getColsolToCut(basics_[i]);
 
-            if (redCost < -tolerance) {
+            if (redCost < -tolerance)
+            {
                 vl_i[i] = redCost;
                 hasNegativeRc = true;
-            } else {
+            }
+            else
+            {
                 if (fabs(redCost) < tolerance) nZeroRc++;
                 else nPositiveRc ++;
                 vl_i[i]=10.;
             }
 
             if (redCost < bestReducedCost
-                    && rowFlags_[i]) { //row has not been flaged
+                    && rowFlags_[i])   //row has not been flaged
+            {
                 bestDirection = -1;
                 bestGammaSign = 1;
                 bestReducedCost = redCost;
@@ -1464,27 +1521,34 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
 
 
 
-        } else {
+        }
+        else
+        {
             ul_i[i] = 10.;
             vl_i[i] = 10.;
         }
         double upBound = getUpBound(basics_[i]);
-        if (getUpBound(basics_[i]) < 1e50) {
+        if (getUpBound(basics_[i]) < 1e50)
+        {
             redCost = - normedCoef(sigma,basics_[i]) - (tau3)
                       + (1 - fzero) * ( - colsol_[basics_[i]]
                                         + upBound);
 
-            if (redCost < -tolerance) {
+            if (redCost < -tolerance)
+            {
                 uu_i[i] = redCost;
                 hasNegativeRc = true;
-            } else{
+            }
+            else
+            {
                 if (fabs(redCost) < tolerance) nZeroRc++;
                 else nPositiveRc ++;
                 uu_i[i] = 10.;
             }
 
             if (redCost < bestReducedCost
-                    && rowFlags_[i]) { //row has not been flaged
+                    && rowFlags_[i])   //row has not been flaged
+            {
                 bestDirection = 1;
                 bestGammaSign = -1;
                 bestReducedCost = redCost;
@@ -1496,26 +1560,31 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
                                         + upBound)
                       + upBound - getColsolToCut(basics_[i]);
 
-            if (redCost < -tolerance) {
+            if (redCost < -tolerance)
+            {
                 vu_i[i] = redCost;
                 hasNegativeRc = true;
             }
 
 
-            else{
+            else
+            {
                 if (fabs(redCost) < tolerance) nZeroRc++;
                 else nPositiveRc ++;
                 vu_i[i] = 10.;
             }
 
             if (redCost < bestReducedCost
-                    && rowFlags_[i]) { //row has not been flaged
+                    && rowFlags_[i])   //row has not been flaged
+            {
                 bestDirection = 1;
                 bestGammaSign = 1;
                 bestReducedCost = redCost;
                 bestRow = i;
             }
-        } else {
+        }
+        else
+        {
             uu_i[i] = 10.;
             vu_i[i] = 10.;
         }
@@ -1529,7 +1598,8 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
     direction = bestDirection;
     gammaSign = bestGammaSign;
     //  row_i_.num=bestRow;
-    if (bestRow != -1) {
+    if (bestRow != -1)
+    {
         chosenReducedCostVal_ = bestReducedCost;
         row_i_.num=bestRow;
         pullTableauRow(row_i_);
@@ -1537,13 +1607,13 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
         bestRow<<basics_[bestRow]<<direction<<gammaSign<<bestReducedCost
         <<CoinMessageEol;
     }
-    assert (bestRow<0||direction!=0);
+    assert (bestRow<0||direction!=0); 
     return bestRow;
 }
 
 
 /** Find a row which can be used to perform an improving pivot tables are already filled.
-\return index of the cut or -1 if none exists. */
+ \return index of the cut or -1 if none exists. */
 int
 CglLandPSimplex::rescanReducedCosts( int &direction, int &gammaSign, double tolerance)
 {
@@ -1559,7 +1629,8 @@ CglLandPSimplex::rescanReducedCosts( int &direction, int &gammaSign, double tole
     int bestGammaSign = 0;
     // double infty = si_->getInfinity();
     double bestReducedCost = -tolerance;
-    for (int i = 0 ; i < nrows_ ; i++) {
+    for (int i = 0 ; i < nrows_ ; i++)
+    {
         if (i == row_k_.num//obviously not necessary to combine row k with itself
                 || !rowFlags_[i] //row has not been flaged
                 //   && fabs(getUpBound(basics_[row_i_.num]) - getLoBound(basics_[row_i_.num]))>1e-09 //variable is not fixed
@@ -1567,7 +1638,8 @@ CglLandPSimplex::rescanReducedCosts( int &direction, int &gammaSign, double tole
             continue;
 
         if (ul_i[i] < bestReducedCost
-                && rowFlags_[i]) { //row has not been flaged
+                && rowFlags_[i])   //row has not been flaged
+        {
             bestDirection = -1;
             bestGammaSign = -1;
             bestReducedCost = ul_i[i];
@@ -1575,7 +1647,8 @@ CglLandPSimplex::rescanReducedCosts( int &direction, int &gammaSign, double tole
         }
 
         if (vl_i[i] < bestReducedCost
-                && rowFlags_[i]) { //row has not been flaged
+                && rowFlags_[i])   //row has not been flaged
+        {
             bestDirection = -1;
             bestGammaSign = 1;
             bestReducedCost = vl_i[i];
@@ -1584,14 +1657,16 @@ CglLandPSimplex::rescanReducedCosts( int &direction, int &gammaSign, double tole
 
 
         if (uu_i[i] < bestReducedCost
-                && rowFlags_[i]) { //row has not been flaged
+                && rowFlags_[i])   //row has not been flaged
+        {
             bestDirection = 1;
             bestGammaSign = -1;
             bestReducedCost = uu_i[i];
             bestRow = i;
         }
         if (vu_i[i] < bestReducedCost
-                && rowFlags_[i]) { //row has not been flaged
+                && rowFlags_[i])   //row has not been flaged
+        {
             bestDirection = 1;
             bestGammaSign = 1;
             bestReducedCost = vu_i[i];
@@ -1602,7 +1677,8 @@ CglLandPSimplex::rescanReducedCosts( int &direction, int &gammaSign, double tole
     direction = bestDirection;
     gammaSign = bestGammaSign;
     //  row_i_.num=bestRow;
-    if (bestRow != -1) {
+    if (bestRow != -1)
+    {
         chosenReducedCostVal_ = bestReducedCost;
         row_i_.num=bestRow;
         pullTableauRow(row_i_);
@@ -1610,24 +1686,30 @@ CglLandPSimplex::rescanReducedCosts( int &direction, int &gammaSign, double tole
         bestRow<<basics_[bestRow]<<direction<<gammaSign<<bestReducedCost
         <<CoinMessageEol;
     }
-    assert (bestRow<0||direction!=0);
+    assert (bestRow<0||direction!=0); 
     return bestRow;
 }
 
 
 void
-CglLandPSimplex::compute_p_q_r_s(double gamma, int gammaSign, double &p, double & q, double & r , double &s){
-    for (int i = 0 ; i < ncols_ ; i++) {
+CglLandPSimplex::compute_p_q_r_s(double gamma, int gammaSign, double &p, double & q, double & r , double &s)
+{
+    for (int i = 0 ; i < ncols_ ; i++)
+    {
         const int &ii = nonBasics_[i];//True index
         if (colCandidateToLeave_[i]==false) continue;
         const double& val = getColsolToCut(ii); //value in solution to cut
         const double& row_k = row_k_[ii]; // coefficient in row k
         const double& row_i = row_i_[ii]; // coefficient in row i
         double coeff = row_k + gammaSign * gamma*row_i;
-        if (coeff>0.) {
-            if (gammaSign > 0) {
+        if (coeff>0.)
+        {
+            if (gammaSign > 0)
+            {
                 p += row_k * val;
-            } else {
+            }
+            else
+            {
                 //        if(fabs(getColsolToCut(nonBasics_[i])) > 0)
                 {
                     p += row_k * val;
@@ -1636,16 +1718,24 @@ CglLandPSimplex::compute_p_q_r_s(double gamma, int gammaSign, double &p, double 
             }
             r += normedCoef(row_k, ii) ;
             s += normedCoef(row_i, ii);
-        } else if (coeff< 0.) {
-            if (gammaSign > 0) {
+        }
+        else if (coeff< 0.)
+        {
+            if (gammaSign > 0)
+            {
                 q -= row_i * val;
             }
             r -= normedCoef(row_k,ii);
             s -= normedCoef(row_i,ii);
-        } else {
-            if (gammaSign > 0 && row_i < 0) {
+        }
+        else
+        {
+            if (gammaSign > 0 && row_i < 0)
+            {
                 q -= row_i * val;
-            } else if (gammaSign < 0 && row_i < 0) {
+            }
+            else if (gammaSign < 0 && row_i < 0)
+            {
                 q += row_i * val;
             }
             s += normedCoef(gammaSign*fabs(row_i),ii);
@@ -1662,74 +1752,70 @@ CglLandPSimplex::compute_p_q_r_s(double gamma, int gammaSign, double &p, double 
 /** Find the column which leads to the best cut (i.e., find incoming variable).*/
 int
 CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
-        double pivotTol, double rhsTol, bool reducedSpace, bool allowDegenerate, double & bestSigma)
+        double pivotTol, double rhsTol,
+        bool reducedSpace, bool allowDegenerate,
+        double & bestSigma, bool modularize)
 {
     gammas_.clear();
     pivotTol = 1e-05;
     adjustTableauRow(basics_[row_i_.num], row_i_, direction);
 
-#ifdef OUT_CGLP_PIVOTS
-    LpIdx2PaperIdx conv(nrows_, ncols_);
-#if 0
-    for (unsigned int i = 0 ; i < M3_.size() ; i++){
-        std::string isIn = "M1";
-        if ((gammaSign * row_i_[M3_[i]]) > 0.){
-            isIn = "M2";
-        }
-        std::cout<<"Variable "<<M3_[i]<<" of M3 is in "<<isIn<<"for this pivot."<<std::endl;
-    }
-#else
-    printM1_M2_M3_LateX(std::cout, *this, row_k_, &row_i_, gammaSign);
-#endif
-#endif
-
     double fzero = getColsolToCut(basics_[row_k_.num]) - floor(getColsolToCut(basics_[row_k_.num]));
-#if 0
-#ifndef NDEBUG
-    double fzero2 = row_k_.rhs;
-    for (int i = 0 ; i < ncols_ ; i++) {
-        if (reducedSpace && colCandidateToLeave_[i]==false) continue;
-        fzero2 -= getColsolToCut(nonBasics_[i]) * row_k_[nonBasics_[i]];
-    }
-    DblEqAssert(fzero,fzero2);
-#endif
-#endif
-    double p = -row_k_.rhs * (1 - fzero);
-    double q = row_i_.rhs * fzero;
 
-    if (gammaSign < 0)
-        q -= row_i_.rhs;
+ 
+
+    double p = 0;
+    double q = 0;
+    if(!modularize){//Take a shortcut
+      p = -row_k_.rhs * (1 - fzero);
+      q = row_i_.rhs * fzero;
+      
+      if (gammaSign < 0){
+	q -= row_i_.rhs;
+      }
+    }
     double r = 1.;
     double s = normedCoef( static_cast<double> (gammaSign), basics_[row_i_.num]);
-
-#ifdef OUT_CGLP_PIVOTS
-    std::vector<int> swaped;
-#endif
-
 
     bool haveSmallGammaPivot = false;
     double gammaTolerance = 0;
     if (allowDegenerate)
         gammaTolerance = 0;
     //fill the array with the gammas of correct sign
-    for (int i = 0 ; i < ncols_ ; i++) {
+    for (int i = 0 ; i < ncols_ ; i++)
+    {
         const int &ii = nonBasics_[i];//True index
-        if (reducedSpace && colCandidateToLeave_[i]==false) continue;
         const double& val = getColsolToCut(ii); //value in solution to cut
         const double& row_k = row_k_[ii]; // coefficient in row k
         const double& row_i = row_i_[ii]; // coefficient in row i
+        if(modularize){
+	  p-=row_k_.rhs*row_k*val;
+	  q-=row_i_.rhs*row_k*val;
+	}
+
+        if (reducedSpace && colCandidateToLeave_[i]==false)
+        {
+            assert(col_in_subspace[ii]==false);
+            continue;
+        }
         double gamma = 1;
-        if (fabs(row_i) > gammaTolerance && fabs(row_k) > gammaTolerance) {
+        if (fabs(row_i) > gammaTolerance && fabs(row_k) > gammaTolerance)
+        {
             gamma = - row_k/row_i;
-            if (gamma * gammaSign > gammaTolerance) {
+            if (gamma * gammaSign > gammaTolerance)
+            {
                 gammas_.insert(i,gamma*gammaSign);
             }
         }
         gamma = fabs(gamma); //  we already know the sign of gamma, its absolute value is more usefull
-        if (row_k>gammaTolerance) {
-            if (gammaSign > 0) {
+        if (row_k>gammaTolerance)
+        {
+            if (gammaSign > 0)
+            {
                 p += row_k * val;
-            } else {
+            }
+            else
+            {
                 {
                     p += row_k * val;
                     q += row_i * val;
@@ -1737,25 +1823,43 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
             }
             r += normedCoef(row_k, ii) ;
             s += normedCoef(row_i, ii);
-        } else if (row_k< gammaTolerance) {
-            if (gammaSign > 0) {
+        }
+        else if (row_k< gammaTolerance)
+        {
+            if (gammaSign > 0)
+            {
                 q -= row_i * val;
             }
             r -= normedCoef(row_k,ii);
             s -= normedCoef(row_i,ii);
-        } else {
+        }
+        else
+        {
             haveSmallGammaPivot |= true;
-            if (gammaSign > 0 && row_i < 0) {
+            if (gammaSign > 0 && row_i < 0)
+            {
                 q -= row_i * val;
-            } else if (gammaSign < 0 && row_i < 0) {
+            }
+            else if (gammaSign < 0 && row_i < 0)
+            {
                 q += row_i * val;
             }
             s += normedCoef(gammaSign*fabs(row_i),ii);
         }
     }
 
+
+    if(modularize){
+      p -= row_k_.rhs * (1 - row_k_.rhs);
+      q += row_i_.rhs * row_k_.rhs;
+      if (gammaSign < 0){
+	q -= row_i_.rhs;
+      }
+    }
+
     int n = gammas_.getNumElements();
-    if (n==0) {
+    if (n==0)
+    {
         resetOriginalTableauRow(basics_[row_i_.num], row_i_, direction);
         return -2;
     }
@@ -1769,19 +1873,21 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
     int lastValid = -1;
     bool rc_positive=false;
 #ifndef NDEBUG
-    if(M3_.size())
-    DblEqAssert( gammaSign*(q * r - p * s)/r, chosenReducedCostVal_);
+    if (M3_.size())
+        DblEqAssert( gammaSign*(q * r - p * s)/r, chosenReducedCostVal_);
 #endif
-    if ( gammaSign*(q * r - p * s) >= 0){
+    if ( gammaSign*(q * r - p * s) >= 0)
+    {
         // after recomputing reduced cost (using exact row) it is found to be >=0
-        //printf("Reduced cost turns out to be %g >= 0\n", gammaSign*(q * r - p * s));
         resetOriginalTableauRow(basics_[row_i_.num], row_i_, direction);
         return -2;
         rc_positive = true;
     }
-    for (int i = 0 ; i < n ; i++) {
+    for (int i = 0 ; i < n ; i++)
+    {
         double newRhs = row_k_.rhs + gammaSign * elements[i] * row_i_.rhs;
-        if (newRhs < rhsTol || newRhs > 1 - rhsTol) {
+        if (newRhs < rhsTol || newRhs > 1 - rhsTol)
+        {
             //	if(i == 0)
             break;
         }
@@ -1790,19 +1896,23 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
         double alt = computeCglpObjective(gammaSign*elements[i], false);
         DblEqAssert(newSigma, alt);
 #endif
-        if (newSigma > bestSigma - 1e-08*bestSigma) {
+        if (newSigma > bestSigma - 1e-08*bestSigma)
+        {
 #ifndef NDEBUG
 
-            assert(rc_positive);
+            if (!rc_positive)
+            {
+            }
 
 
-            if (0 && elements[i] <= 1e-05){
-                printf("Stopping on %i element %g increasing sigma %f\n",i, elements[i], newSigma - bestSigma);
+            if (0 && elements[i] <= 1e-05)
+            {
             }
 #endif
             break;
         }
-        else if (newSigma <= bestSigma){ // && colCandidateToLeave_[inds[i]])
+        else if (newSigma <= bestSigma)  // && colCandidateToLeave_[inds[i]])
+        {
             bestColumn = inds[i];
             bestSigma = newSigma;
             lastValid = i;
@@ -1810,136 +1920,84 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
 
 
 #ifndef NDEBUG
-        assert(!rc_positive);
+        if (rc_positive)
+        {
+            break;
+        }
 #endif
         int col = nonBasics_[inds[i]];
-        if (row_i_[col] *gammaSign > 0) {
+        if (row_i_[col] *gammaSign > 0)
+        {
             p += row_k_[col] * getColsolToCut(col);
             q += row_i_[col] * getColsolToCut(col);
             r += normedCoef(row_k_[col]*2,col);
             s += normedCoef(row_i_[col]*2,col);
-        } else {
+        }
+        else
+        {
             p -= row_k_[col] * getColsolToCut(col);
             q -= row_i_[col] * getColsolToCut(col);
             r -= normedCoef(row_k_[col]*2,col);
             s -= normedCoef(row_i_[col]*2,col);
         }
-        if (gammaSign*(q * r - p * s) >= 0) { /* function is starting to increase stop here*/
+        if (gammaSign*(q * r - p * s) >= 0)   /* function is starting to increase stop here*/
+        {
 #ifndef NDEBUG
-            if (0 && elements[i] <= 1e-5){
-                printf("Stopping on %i element %g positive rc\n",i, elements[i]);
+            if (0 && elements[i] <= 1e-5)
+            {
             }
             rc_positive = true;
 #endif
             break;
         }
 
-#ifdef OUT_CGLP_PIVOTS2
-        std::string goesTo="M2 to M1";
-        if (row_k_[nonBasics_[inds[i]]] < 0.){
-            goesTo="M1 to M2";
-            //  assert(row_i_[nonBasics_[inds[i]]] * gammaSign < 0);
-        }
-        else {
-            //  assert(row_i_[nonBasics_[inds[i]]] * gammaSign > 0);
-        }
-        std::string v_bound;
-        bool atUp= false;
-        if (nonBasics_[inds[i]] < ncols_) {
-            if (basis_->getStructStatus(nonBasics_[inds[i]]) == CoinWarmStartBasis::atLowerBound)
-                v_bound = " low bound";
-            else if (basis_->getStructStatus(nonBasics_[inds[i]]) == CoinWarmStartBasis::atUpperBound){
-                atUp = true;
-                v_bound = " up bound";
-            }
-            else assert(0);
-        }
-        std::cout<<"Variable "<<conv(nonBasics_[inds[i]],atUp, false)<<" goes from "<<goesTo<<" (tableau "<<row_k_[nonBasics_[inds[i]]] <<", violation "<<newSigma<<")";
-        std::cout<<std::endl;
-#endif
-
     }
 //Get the results did we find a valid pivot? is it degenerate?
-    if (bestColumn == -1) { // Apparently no pivot is within the tolerances
+    if (bestColumn == -1)   // Apparently no pivot is within the tolerances
+    {
         resetOriginalTableauRow(basics_[row_i_.num], row_i_, direction);
         handler_->message(WarnFailedPivotTol, messages_)<<CoinMessageEol<<CoinMessageEol;
         return -1;
     }
 
-    if (fabs(row_i_[nonBasics_[bestColumn]]) < 1e-05) { // Apparently no pivot is within the tolerances
+    if (fabs(row_i_[nonBasics_[bestColumn]]) < 1e-05)   // Apparently no pivot is within the tolerances
+    {
         resetOriginalTableauRow(basics_[row_i_.num], row_i_, direction);
         handler_->message(WarnFailedPivotTol, messages_)<<CoinMessageEol<<CoinMessageEol;
         return -2;
     }
 
-
-#ifdef OUT_CGLP_PIVOTS
-    else {
-        std::string v_bound;
-        bool atUp = false;
-        if (nonBasics_[bestColumn] < ncols_) {
-            if (basis_->getStructStatus(nonBasics_[bestColumn]) == CoinWarmStartBasis::atLowerBound)
-                v_bound = "at low bound";
-            else if (basis_->getStructStatus(nonBasics_[bestColumn]) == CoinWarmStartBasis::atUpperBound){
-                v_bound = "at up bound";
-                atUp = true;
-            }
-            else assert(0);
-        }
-        std::cout<<"Variable s_{"<<conv(nonBasics_[bestColumn], atUp, false)<<"} exits the basis";
-        std::cout<<std::endl;
-        int leaving = basics_[row_i_.num];
-        std::string goesTo="";
-        if (gammaSign<0) {
-            goesTo=" goes to M1";
-        }
-        else {
-            goesTo=" goes to M2";
-        }
-        v_bound = "";
-        if (leaving < ncols_) {
-            if (direction < 0){
-                atUp = false;
-                v_bound = "at low bound";
-            }
-            else if (direction > 0) {
-                v_bound = "at up bound";
-                atUp = true;
-            }
-            else assert(0);
-        }
-        std::cout<<"Variable s_{"<<conv(leaving, atUp, false)<<"} enters the basis"<<goesTo;
-        std::cout<<std::endl;
-
-    }
-#endif
-
     //std::cout<<"Minimum of f attained at breakpoint "<<lastValid<<std::endl;
     assert(bestSigma <= sigma_);
 #ifndef NDEBUG
     bestSigma_ = bestSigma;
-    double otherSigma= computeCglpObjective( gammaSign*elements[lastValid], false);
+    double otherSigma= computeCglpObjective(gammaSign*elements[lastValid], false);
     DblEqAssert(bestSigma, otherSigma);
     DblEqAssert(bestSigma, computeCglpObjective(gammaSign*elements[lastValid], false, new_row_));
     DblEqAssert(bestSigma, computeCglpObjective(new_row_));
+    assert(row_k_.modularized_ || row_i_.num != row_k_.num);
 #endif
 
 #ifdef OLD_COMPUTATION
-    resetOriginalTableauRow(basics_[row_i_.num], row_i_, direction);
+    if (!modularize)
+        resetOriginalTableauRow(basics_[row_i_.num], row_i_, direction);
 #endif
-    if (bestSigma < sigma_ - 1e-07) { //everything has gone ok
+    if (bestSigma < sigma_ - 1e-07)   //everything has gone ok
+    {
         handler_->message(FoundBestImprovingCol, messages_)<<nonBasics_[bestColumn]<<gammaSign * elements[lastValid]<<bestSigma<<CoinMessageEol<<CoinMessageEol;
         inDegenerateSequence_ = false;
-	assert (bestColumn<0||direction!=0);
+        assert (bestColumn<0||direction!=0); 
         return bestColumn;
     }
-    else if (allowDegenerate) { //Pivot is degenerate and we allow
+    else if (allowDegenerate)   //Pivot is degenerate and we allow
+    {
         inDegenerateSequence_ = true;
-	assert (bestColumn<0||direction!=0);
+        assert (bestColumn<0||direction!=0); 
         return bestColumn;
     }
-    else { //we don't accept a degenerate pivot
-        //handler_->message(WarnFailedBestImprovingCol, messages_)<<chosenReducedCostVal_<<sigma_<<bestSigma<<CoinMessageEol<<CoinMessageEol;
+    else   //we don't accept a degenerate pivot
+    {
+        handler_->message(WarnFailedBestImprovingCol, messages_)<<chosenReducedCostVal_<<sigma_<<bestSigma<<CoinMessageEol<<CoinMessageEol;
         return -1;
     }
 }
@@ -1961,22 +2019,27 @@ CglLandPSimplex::findBestPivotColumn(int direction,
     double gamma = 0.;
 
     bool rhsIIFail = true; // Failed to find a pivot because of integer infeasibility
-    for (;j< ncols_orig_ ; j++) {
+    for (; j< ncols_orig_ ; j++)
+    {
         if (reducedSpace &&
                 !colCandidateToLeave_[j]
            )
             continue;
-        if (fabs(row_i_[nonBasics_[j]])< pivotTol) {
+        if (fabs(row_i_[nonBasics_[j]])< pivotTol)
+        {
             continue;
         }
         gamma = - row_k_[nonBasics_[j]]/row_i_[nonBasics_[j]];
 
+
         newRow[basics_[row_k_.num]] = 1.;
         newRow.rhs = row_k_.rhs + gamma * row_i_.rhs;
-        if (newRow.rhs > 1e-5  && newRow.rhs < 1 - 1e-5 ) {
+        if (newRow.rhs > 1e-5  && newRow.rhs < 1 - 1e-5 )
+        {
             rhsIIFail = false;
             double m_j = computeCglpObjective(gamma, modularize, newRow);
-            if (m_j < m) {
+            if (m_j < m)
+            {
                 varOut = j;
                 m = m_j;
             }
@@ -1984,30 +2047,36 @@ CglLandPSimplex::findBestPivotColumn(int direction,
     }
     resetOriginalTableauRow(basics_[row_i_.num], row_i_, direction);
 
-    if (m < sigma_ ) {
+    if (m < sigma_ )
+    {
         handler_->message(FoundBestImprovingCol, messages_)<<nonBasics_[varOut]<<gamma<<m<<CoinMessageEol<<CoinMessageEol;
         inDegenerateSequence_ = false;
-	assert (varOut<0||direction!=0);
+         assert (varOut<0||direction!=0);
         return varOut;
-    } else if (allowDegenerate && m<=sigma_) {
+    }
+    else if (allowDegenerate && m<=sigma_)
+    {
         inDegenerateSequence_ = true;
-    } else {
+    }
+    else
+    {
         return -1;
     }
     return -1;
 }
 
-struct reducedCost {
+struct reducedCost
+{
     /** To avoid computing two times the same row direction will have strange
-    values, direction is -1 or 1 if for only one of the two direction
-    rc is <0 and is -2 or 2 if the two direction have one <0 rc with the sign
-    indicating which one of the two directions is the best.<br>
-    Note that by theory only one reduced cost (for u_i, or v_i)
-    maybe negative for each direction.
-    */
+     values, direction is -1 or 1 if for only one of the two direction
+     rc is <0 and is -2 or 2 if the two direction have one <0 rc with the sign
+     indicating which one of the two directions is the best.<br>
+     Note that by theory only one reduced cost (for u_i, or v_i)
+     maybe negative for each direction.
+     */
     int direction;
     /** gammSign is the sign of gamma (corresponding to taking rc for u_i or v_i)
-    for the best of the two rc for this row.*/
+     for the best of the two rc for this row.*/
     int gammaSign;
     /** gammaSign2 is the sign of gamma for the worst of the two rc for this row.*/
     int gammaSign2;
@@ -2017,22 +2086,23 @@ struct reducedCost {
     double value2;
     /** index of the row.*/
     int row;
-    bool operator<(const reducedCost & other) {
+    bool operator<(const reducedCost & other)
+    {
         return (value>other.value);
     }
 };
 
 /** Find incoming and leaving variables which lead to the most violated
-adjacent normalized lift-and-project cut.
-\remark At this point reduced costs should be already computed.
-\return incoming variable variable,
-\param leaving variable
-\param direction leaving direction
-\param numTryRows number rows tried
-\param pivotTol pivot tolerance
-\param reducedSpace separaration space (reduced or full)
-\param allowNonStrictlyImproving wether or not to allow non stricly improving pivots.
-*/
+ adjacent normalized lift-and-project cut.
+ \remark At this point reduced costs should be already computed.
+ \return incoming variable variable,
+ \param leaving variable
+ \param direction leaving direction
+ \param numTryRows number rows tried
+ \param pivotTol pivot tolerance
+ \param reducedSpace separaration space (reduced or full)
+ \param allowNonStrictlyImproving wether or not to allow non stricly improving pivots.
+ */
 int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
                                    const CglLandP::Parameters & params)
 {
@@ -2052,7 +2122,8 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
     int k = 0;
     rc[k].direction = 0;//initialize first rc
     int k2 = 0;
-    for (int i = 0 ; i < nrows_ ; i++) {
+    for (int i = 0 ; i < nrows_ ; i++)
+    {
         if (ul_i[i] < -params.pivotTol)
             //       && rowFlags_[i]) //row has not been flaged
         {
@@ -2077,19 +2148,25 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
         if (uu_i[i] < -params.pivotTol)
             //       && rowFlags_[i]) //row has not been flaged
         {
-            if (rc[k].direction == 0) {
+            if (rc[k].direction == 0)
+            {
                 rc[k].direction = 1;
                 rc[k].gammaSign = -1;
                 rc[k].value = uu_i[i];
                 rc[k].row = i;
-            } else {
-                if (uu_i[i] <rc[k].value) { //this one is better
+            }
+            else
+            {
+                if (uu_i[i] <rc[k].value)   //this one is better
+                {
                     rc[k].direction = 2;
                     rc[k].gammaSign2 = rc[k].gammaSign;
                     rc[k].gammaSign = -1;
                     rc[k].value2 = rc[k].value;
                     rc[k].value = uu_i[i];
-                } else {
+                }
+                else
+                {
                     rc[k].direction = -2;
                     rc[k].gammaSign2 = -1;
                     rc[k].value2 = uu_i[i];
@@ -2100,19 +2177,25 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
         if (vu_i[i] < -params.pivotTol)
             //&& rowFlags_[i]) //row has not been flaged
         {
-            if (rc[k].direction==0) {
+            if (rc[k].direction==0)
+            {
                 rc[k].direction = 1;
                 rc[k].gammaSign = 1;
                 rc[k].value = vu_i[i];
                 rc[k].row = i;
-            } else {
-                if (vu_i[i] < rc[k].value) { //this one is better
+            }
+            else
+            {
+                if (vu_i[i] < rc[k].value)   //this one is better
+                {
                     rc[k].direction = 2;
                     rc[k].gammaSign2 = rc[k].gammaSign;
                     rc[k].gammaSign = 1;
                     rc[k].value2 = rc[k].value;
                     rc[k].value = vu_i[i];
-                } else { //the other one is better
+                }
+                else   //the other one is better
+                {
                     rc[k].direction = -2;
                     rc[k].gammaSign2 = 1;
                     rc[k].value2 = vu_i[i];
@@ -2147,7 +2230,8 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
     //now scan the heap
     int best_l = 0;
     int notImproved = 0;
-    for (int l = 0; l < k && l < 10  ; l++, notImproved++) {
+    for (int l = 0; l < k && l < 10  ; l++, notImproved++)
+    {
         if (!rowFlags_[rc[l].row]) continue;//this row has been marked to be skipped
         //     if(bestLeaving != -1 && rc[l].value > -1e-02) break;
         if (rc[l].value > -1e-02) break;
@@ -2163,8 +2247,9 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
              params.pivotTol, params.away,
              (params.sepSpace==CglLandP::Fractional),
              0,
-             sigma);
-        if (incoming!=-1 && bestSigma > sigma) {
+             sigma, params.modularize);
+        if (incoming!=-1 && bestSigma > sigma)
+        {
             //          std::cout<<"I found a better pivot "<<sigma - sigma_<< " for indice number "<<l<<std::endl;
             best_l = l;
             bestSigma = sigma;
@@ -2177,7 +2262,8 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
         }
 
         //Now evenutally compute f+ or f- for the other negative rc (if if exists)
-        if (rc[l].direction == 2 || rc[l].direction == -2) {
+        if (rc[l].direction == 2 || rc[l].direction == -2)
+        {
             rc[l].direction/= -2;//Reverse the direction
             chosenReducedCostVal_ = rc[l].value2;//need to set this for debug double
             //checks
@@ -2186,8 +2272,9 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
                         params.pivotTol, params.away,
                         (params.sepSpace==CglLandP::Fractional),
                         0,
-                        sigma);
-            if (incoming!=-1 && bestSigma > sigma) {
+                        sigma, params.modularize);
+            if (incoming!=-1 && bestSigma > sigma)
+            {
                 // std::cout<<"I found a better pivot "<<sigma - sigma_<<std::endl;
                 best_l = l;
                 bestSigma = sigma;
@@ -2204,31 +2291,10 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
     row_i_.num = leaving = bestLeaving;
     chosenReducedCostVal_ = bestRc;
     assert(best_l <= nNegativeRcRows_);
-    if (bestLeaving!=-1) {
+    if (bestLeaving!=-1)
+    {
         //      std::cout<<"Best pivot pivot "<<best_l<<std::endl;
         pullTableauRow(row_i_);
-#if 0
-        extra.nNegativeRcRows += nNegativeRcRows_;
-#endif
-#if LandP_DEBUG > 10
-        //Recall findBestPivotColumn to have good debug information
-        double sigma=DBL_MAX;
-        assert(bestIncoming == fastFindBestPivotColumn
-               (bestDirection, bestGammaSign,
-                params.gammaTol,
-                params.pivotTol, params.rhsTol,
-                params.sepSpace == CglLandP::Fractional,
-                params.allowNonStrictlyImproving,
-                sigma));
-        assert(debug_.eq(sigma, bestSigma) || debug_.req(sigma, bestSigma));
-#endif
-
-#if 0
-        extra.bestRow += (best_l+1);
-        extra.maxBestRow = max (extra.maxBestRow, (best_l+1));
-        extra.bestRc += chosenReducedCostVal_;
-        extra.maxRc = max(extra.maxRc, chosenReducedCostVal_);
-#endif
     }
     direction = bestDirection;
     delete [] rc;
@@ -2238,7 +2304,7 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
 }
 
 double
-CglLandPSimplex::computeCglpObjective(const TabRow &row) const
+CglLandPSimplex::computeCglpObjective(const TabRow &row, bool modularize) const
 {
     double numerator = -row.rhs * (1 - row.rhs);
     double denominator = 1;
@@ -2246,13 +2312,17 @@ CglLandPSimplex::computeCglpObjective(const TabRow &row) const
     const int & n = row.getNumElements();
     const int * ind = row.getIndices();
     const double * val = row.denseVector();
-    for (int j = 0 ; j < n ; j++) {
+    for (int j = 0 ; j < n ; j++)
+    {
         const int& jj = ind[j];
         if (col_in_subspace[jj]==false) continue;
-        denominator += normedCoef(fabs(val[jj]), jj);
-        numerator += (val[jj] > 0. ?
-                      val[jj] *(1- row.rhs):
-                      - val[jj] * row.rhs)* getColsolToCut(jj);
+        double coeff = val[jj];
+        if (modularize && isInteger(jj))
+            coeff = modularizedCoef(coeff, row.rhs);
+        denominator += normedCoef(fabs(coeff), jj);
+        numerator += (coeff > 0 ?
+                      coeff *(1- row.rhs):
+                      - coeff * row.rhs)*getColsolToCut(jj);
     }
     return numerator*rhs_weight_/denominator;
 }
@@ -2265,19 +2335,21 @@ CglLandPSimplex::computeCglpObjective(double gamma, bool strengthen)
     double denominator = 1;
 
     double coeff = gamma;//newRowCoefficient(basics_[row_i_.num], gamma);
-    if (strengthen && row_i_.num < ncols_orig_ && isInteger(row_i_.num))
+    if (strengthen && isInteger(basics_[row_i_.num]))
         coeff = modularizedCoef(coeff, rhs);
     denominator += normedCoef(fabs(coeff), basics_[row_i_.num]);
     numerator += (coeff > 0 ?
                   coeff *(1- rhs):
                   - coeff * rhs)*
                  getColsolToCut(basics_[row_i_.num]);
-    for (int j = 0 ; j < ncols_ ; j++) {
-        if (col_in_subspace[nonBasics_[j]]==false) continue;
+    for (int j = 0 ; j < ncols_ ; j++)
+    {
+        if (col_in_subspace[nonBasics_[j]]==false) {
+          continue;
+        }
         coeff = newRowCoefficient(nonBasics_[j], gamma);
         if (strengthen && nonBasics_[j] < ncols_orig_ &&  isInteger(j))
             coeff = modularizedCoef(coeff, rhs);
-        //    if(colCandidateToLeave_[nonBasics_[j]] == false) continue;
         denominator += normedCoef(fabs(coeff), nonBasics_[j]);
         numerator += (coeff > 0 ?
                       coeff *(1- rhs):
@@ -2299,7 +2371,7 @@ CglLandPSimplex::computeCglpObjective(double gamma, bool strengthen, TabRow & ne
     int * indices = newRow.getIndices();
     int k = 0;
     {
-      if (col_in_subspace[basics_[row_i_.num]]==false) {DblEqAssert(0.,1.);}
+        if (col_in_subspace[basics_[row_i_.num]]==false) DblEqAssert(0.,1.);
         double & val = newRow[ basics_[row_i_.num]] = gamma;//newRowCoefficient(basics_[row_i_.num], gamma);
         indices[k++] = basics_[row_i_.num];
         if (strengthen && row_i_.num < ncols_orig_ && isInteger(row_i_.num))
@@ -2310,7 +2382,8 @@ CglLandPSimplex::computeCglpObjective(double gamma, bool strengthen, TabRow & ne
                       - val * newRow.rhs)*
                      getColsolToCut(basics_[row_i_.num]);
     }
-    for (int j = 0 ; j < ncols_ ; j++) {
+    for (int j = 0 ; j < ncols_ ; j++)
+    {
         double & val = newRow[nonBasics_[j]] = newRowCoefficient(nonBasics_[j], gamma);
         indices[k++] = nonBasics_[j];
         if (strengthen && nonBasics_[j] < ncols_orig_ &&  isInteger(j))
@@ -2340,11 +2413,15 @@ CglLandPSimplex::computeCglpRedCost(int direction, int gammaSign, double tau)
     int sign = gammaSign * direction;
     double tau1 = 0;
     double tau2 = 0;
-    for (unsigned int i = 0 ; i < M3_.size() ; i++) {
+    for (unsigned int i = 0 ; i < M3_.size() ; i++)
+    {
         tau1 += fabs(row_i_ [M3_[i]]);
-        if (sign == 1 && row_i_[M3_[i]] < 0) {
+        if (sign == 1 && row_i_[M3_[i]] < 0)
+        {
             tau2 += row_i_[M3_[i]] * getColsolToCut(M3_[i]);
-        } else if (sign == -1 && row_i_[M3_[i]] > 0) {
+        }
+        else if (sign == -1 && row_i_[M3_[i]] > 0)
+        {
             tau2 += row_i_[M3_[i]] * getColsolToCut(M3_[i]);
         }
     }
@@ -2365,10 +2442,12 @@ CglLandPSimplex::computeRedCostConstantsInRow()
     double tau1 = 0; //the part which will be multiplied by sigma
     double tau2 = 0;//the rest
 
-    for (unsigned int i = 0 ; i < M1_.size() ; i++) {
+    for (unsigned int i = 0 ; i < M1_.size() ; i++)
+    {
         tau1 += row_i_[M1_[i]];
     }
-    for (unsigned int i = 0 ; i < M2_.size() ; i++) {
+    for (unsigned int i = 0 ; i < M2_.size() ; i++)
+    {
         tau1 -= row_i_[M2_[i]];
         tau2 += row_i_[M2_[i]] * getColsolToCut(M2_[i]);
     }
@@ -2377,45 +2456,67 @@ CglLandPSimplex::computeRedCostConstantsInRow()
 }
 
 void
-CglLandPSimplex::updateM1_M2_M3(TabRow & row, double tolerance, 
-				bool /*reducedSpace*/, bool perturb)
+CglLandPSimplex::updateM1_M2_M3(TabRow & row, double tolerance, bool perturb)
 {
     M1_.clear();
     M2_.clear();
     M3_.clear();
     tolerance = 0;
-    for (int i = 0; i<ncols_ ; i++) {
-        if (row[nonBasics_[i]]< -tolerance) {
-            if (col_in_subspace[nonBasics_[i]]) {
-                M1_.push_back(nonBasics_[i]);
-                colCandidateToLeave_[i]=1;
-            } else {
-                colCandidateToLeave_[i]=0;
+    for (int i = 0; i<ncols_ ; i++)
+    {
+        const int &ii = nonBasics_[i];
+        const double &f = row[ii];
+        if (f< -tolerance)
+        {
+            if (col_in_subspace[ii])
+            {
+                M1_.push_back(ii);
+                colCandidateToLeave_[i]=true;
             }
-        } else if (row[nonBasics_[i]]>tolerance) {
-            if (col_in_subspace[nonBasics_[i]]) {
-                M2_.push_back(nonBasics_[i]);
-                colCandidateToLeave_[i]=1;
-            } else {
-                colCandidateToLeave_[i]=0;
+            else
+            {
+                colCandidateToLeave_[i]=false;
             }
-        } else {
-            if (col_in_subspace[nonBasics_[i]]) {
-                if (perturb) { //assign to M1 or M2 at random
+        }
+        else if (f>tolerance)
+        {
+            if (col_in_subspace[ii])
+            {
+                M2_.push_back(ii);
+                colCandidateToLeave_[i]=true;
+            }
+            else
+            {
+                colCandidateToLeave_[i]=false;
+            }
+        }
+        else
+        {
+            if (col_in_subspace[ii])
+            {
+                if (perturb)   //assign to M1 or M2 at random
+                {
                     int sign = CoinDrand48() > 0.5 ? 1 : -1;
-                    if (sign == -1) { //put into M1
-                        M1_.push_back(nonBasics_[i]);
-                        colCandidateToLeave_[i]=1;
-                    } else { //put into M2
-                        M2_.push_back(nonBasics_[i]);
-                        colCandidateToLeave_[i]=1;
+                    if (sign == -1)   //put into M1
+                    {
+                        M1_.push_back(ii);
+                        colCandidateToLeave_[i]=true;
                     }
-                } else {
-                    M3_.push_back(nonBasics_[i]);
-                    colCandidateToLeave_[i] = 1;
+                    else   //put into M2
+                    {
+                        M2_.push_back(ii);
+                        colCandidateToLeave_[i]=true;
+                    }
                 }
-            } else {
-                colCandidateToLeave_[i] = 0;
+                else
+                {
+                    M3_.push_back(ii);
+                    colCandidateToLeave_[i] = true;
+                }
+            }
+            else
+            {
+                colCandidateToLeave_[i] = false;
             }
         }
     }
@@ -2432,16 +2533,23 @@ CglLandPSimplex::createIntersectionCut(TabRow & row, OsiRowCut &cut) const
     const double * rowUpper = si_->getRowUpper();
     // double f_0 = row.rhs;
     //put the row back into original form
-    for (int j = 0; j < ncols_ ; j++) {
-        if ((nonBasics_[j] < ncols_)) {
+    for (int j = 0; j < ncols_ ; j++)
+    {
+        if ((nonBasics_[j] < ncols_))
+        {
             CoinWarmStartBasis::Status status = getStatus(nonBasics_[j]);
 
-            if (status==CoinWarmStartBasis::atLowerBound) {
+            if (status==CoinWarmStartBasis::atLowerBound)
+            {
                 //        row.rhs += getLoBound(nonBasics_[j]) * row[nonBasics_[j]];
-            } else if (status==CoinWarmStartBasis::atUpperBound) {
+            }
+            else if (status==CoinWarmStartBasis::atUpperBound)
+            {
                 row[nonBasics_[j]] = - row[nonBasics_[j]];
                 //        row.rhs += getUpBound(nonBasics_[j]) * row[nonBasics_[j]];
-            } else {
+            }
+            else
+            {
                 throw;
             }
         }
@@ -2457,28 +2565,38 @@ CglLandPSimplex::createIntersectionCut(TabRow & row, OsiRowCut &cut) const
     double infty = si_->getInfinity();
     double cutRhs = row.rhs;
     cutRhs = cutRhs ;//* (1 - cutRhs);
-    for (int j = 0; j < ncols_ ; j++) {
-        if (fabs(row[nonBasics_[j]])>1e-10) {
+    for (int j = 0; j < ncols_ ; j++)
+    {
+        if (fabs(row[nonBasics_[j]])>1e-10)
+        {
             double value = intersectionCutCoef(row[nonBasics_[j]], row.rhs);
 
-            if (nonBasics_[j]<ncols_) {
+            if (nonBasics_[j]<ncols_)
+            {
                 CoinWarmStartBasis::Status status = //CoinWarmStartBasis::basic;
                     basis_->getStructStatus(nonBasics_[j]);
-                if (status==CoinWarmStartBasis::atUpperBound) {
+                if (status==CoinWarmStartBasis::atUpperBound)
+                {
                     value = - intersectionCutCoef(- row[nonBasics_[j]], row.rhs) ;
                     cutRhs += value * colUpper[nonBasics_[j]];
-                } else
+                }
+                else
                     cutRhs += value * colLower[nonBasics_[j]];
                 vec[original_index_[nonBasics_[j]]] += value;
-            } else if (nonBasics_[j]>=ncols_) {
+            }
+            else if (nonBasics_[j]>=ncols_)
+            {
                 int iRow = nonBasics_[j] - ncols_;
 
-                if (rowLower[iRow] > -infty) {
+                if (rowLower[iRow] > -infty)
+                {
                     value = -value;
                     cutRhs -= value*rowLower[iRow];
                     assert(basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atUpperBound ||
                            (fabs(rowLower[iRow] - rowUpper[iRow]) < 1e-08));
-                } else {
+                }
+                else
+                {
                     cutRhs -= value*rowUpper[iRow];
                     assert(basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atLowerBound);
                 }
@@ -2493,10 +2611,12 @@ CglLandPSimplex::createIntersectionCut(TabRow & row, OsiRowCut &cut) const
     const int * lengths = mat->getVectorLengths();
     const double * values = mat->getElements();
     const CoinBigIndex * indices = mat->getIndices();
-    for (int j = 0 ; j < ncols_ ; j++) {
+    for (int j = 0 ; j < ncols_ ; j++)
+    {
         const int& start = starts[j];
         int end = start + lengths[j];
-        for (int k = start ; k < end ; k++) {
+        for (int k = start ; k < end ; k++)
+        {
             vec[original_index_[j]] -= vec[original_index_[ncols_ + indices[k]]] * values[k];
         }
 
@@ -2505,8 +2625,10 @@ CglLandPSimplex::createIntersectionCut(TabRow & row, OsiRowCut &cut) const
     //Pack vec into the cut
     int * inds = new int [ncols_orig_];
     int nelem = 0;
-    for (int i = 0 ; i < ncols_orig_ ; i++) {
-        if (fabs(vec[i]) > COIN_INDEXED_TINY_ELEMENT) {
+    for (int i = 0 ; i < ncols_orig_ ; i++)
+    {
+        if (fabs(vec[i]) > COIN_INDEXED_TINY_ELEMENT)
+        {
             vec[nelem] = vec[i];
             inds[nelem++] = i;
         }
@@ -2520,10 +2642,12 @@ CglLandPSimplex::createIntersectionCut(TabRow & row, OsiRowCut &cut) const
 
 /** Compute the normalization factor of the cut.*/
 double
-CglLandPSimplex::normalizationFactor(const TabRow & row) const{
+CglLandPSimplex::normalizationFactor(const TabRow & row) const
+{
     double numerator = rhs_weight_;
     double denominator = 1.;
-    for (int j = 0 ; j < ncols_ ; j++){
+    for (int j = 0 ; j < ncols_ ; j++)
+    {
         denominator += fabs(normedCoef(row[nonBasics_[j]], nonBasics_[j]));
     }
     return numerator/denominator;
@@ -2534,27 +2658,32 @@ CglLandPSimplex::normalizationFactor(const TabRow & row) const{
 void
 CglLandPSimplex::createMIG( TabRow &row, OsiRowCut &cut) const
 {
-    clp_time -= CoinCpuTime();
     const double * colLower = si_->getColLower();
     const double * rowLower = si_->getRowLower();
     const double * colUpper = si_->getColUpper();
     const double * rowUpper = si_->getRowUpper();
-    clp_time += CoinCpuTime();
 
-
-    if (1) {
+    if (1)
+    {
         double f_0 = row.rhs - floor(row.rhs);
         //put the row back into original form
-        for (int j = 0; j < ncols_ ; j++) {
-            if (nonBasics_[j] < ncols_) {
+        for (int j = 0; j < ncols_ ; j++)
+        {
+            if (nonBasics_[j] < ncols_)
+            {
                 const CoinWarmStartBasis::Status status = basis_->getStructStatus(nonBasics_[j]);
 
-                if (status==CoinWarmStartBasis::atLowerBound) {
+                if (status==CoinWarmStartBasis::atLowerBound)
+                {
                     //        row.rhs += getLoBound(nonBasics_[j]) * row[nonBasics_[j]];
-                } else if (status==CoinWarmStartBasis::atUpperBound) {
+                }
+                else if (status==CoinWarmStartBasis::atUpperBound)
+                {
                     row[nonBasics_[j]] = - row[nonBasics_[j]];
                     //        row.rhs += getUpBound(nonBasics_[j]) * row[nonBasics_[j]];
-                } else {
+                }
+                else
+                {
                     throw;
                 }
             }
@@ -2570,89 +2699,66 @@ CglLandPSimplex::createMIG( TabRow &row, OsiRowCut &cut) const
         double cutRhs = row.rhs - floor(row.rhs);
         cutRhs = cutRhs * (1 - cutRhs);
         assert(fabs(cutRhs)<1e100);
-        for (int j = 0; j < ncols_ ; j++) {
-            if (fabs(row[nonBasics_[j]])>0.) {
+        for (int j = 0; j < ncols_ ; j++)
+        {
+            if (fabs(row[nonBasics_[j]])>0.)
+            {
                 {
-                    if (nonBasics_[j]<ncols_orig_) {
+                    if (nonBasics_[j]<ncols_orig_)
+                    {
                         const CoinWarmStartBasis::Status status = basis_->getStructStatus(nonBasics_[j]);
                         double value;
-                        if (status==CoinWarmStartBasis::atUpperBound) {
+                        if (status==CoinWarmStartBasis::atUpperBound)
+                        {
                             value = - strengthenedIntersectionCutCoef(nonBasics_[j], - row[nonBasics_[j]], row.rhs) ;
                             cutRhs += value * colUpper[nonBasics_[j]];
-                        } else if (status==CoinWarmStartBasis::atLowerBound) {
+                        }
+                        else if (status==CoinWarmStartBasis::atLowerBound)
+                        {
                             value = strengthenedIntersectionCutCoef(nonBasics_[j], row[nonBasics_[j]], row.rhs);
                             cutRhs += value * colLower[nonBasics_[j]];
-                        } else {
+                        }
+                        else
+                        {
                             std::cerr<<"Invalid basis"<<std::endl;
                             throw -1;
                         }
 
                         assert(fabs(cutRhs)<1e100);
                         vec[original_index_[nonBasics_[j]]] = value;
-                    } else {
+                    }
+                    else
+                    {
                         int iRow = nonBasics_[j] - ncols_;
                         double value = strengthenedIntersectionCutCoef(nonBasics_[j], row[nonBasics_[j]], row.rhs);
-#if 0
-                        if (rowLower[iRow] > -infty) {
+                        if (rowUpper[iRow] < infty)
+                        {
+                            cutRhs -= value*rowUpper[iRow];
+                        }
+                        else
+                        {
                             value = -value;
                             cutRhs -= value*rowLower[iRow];
                             assert(basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atUpperBound ||
                                    (rowUpper[iRow] < infty));
-                        } else {
-                            cutRhs -= value*rowUpper[iRow];
-                            //      assert(basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atLowerBound);
                         }
-#else
-                        if(rowUpper[iRow] < infty){
-                            cutRhs -= value*rowUpper[iRow];
-                        }
-                        else {
-                            value = -value;
-                            cutRhs -= value*rowLower[iRow];
-                            assert(basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atUpperBound ||
-                                   (rowUpper[iRow] < infty));
-                        } 
-#endif
-
                         vec[original_index_[nonBasics_[j]]] = value;
                         assert(fabs(cutRhs)<1e100);
                     }
                 }
             }
         }
-#if 0
-        //Go through fixed basic variables
-        for (int i = 0 ; i < nrows_orig_ ; i++) {
-            if (basics_[i] < ncols_orig_ && colLower[basics_[i]] >= colUpper[basics_[i]] - 1e-8) {
-                double value = fabs(strengthenedIntersectionCutCoef(basics_[i], row[basics_[i]], row.rhs));
-                cutRhs -= value * si_->getColSolution()[basics_[i]];
-                vec[basics_[i]] = value;
-            }
-        }
-#endif
+
         //Eliminate slacks
-        clp_time -= CoinCpuTime();
-        const CoinPackedMatrix * mat = si_->getMatrixByCol();
-        const CoinBigIndex * starts = mat->getVectorStarts();
-        const int * lengths = mat->getVectorLengths();
-        const double * values = mat->getElements();
-        const CoinBigIndex * indices = mat->getIndices();
-        clp_time += CoinCpuTime();
-        const double * vecSlacks = vec + ncols_orig_;
-        for (int j = 0 ; j < ncols_ ; j++) {
-            const CoinBigIndex& start = starts[j];
-            CoinBigIndex end = start + lengths[j];
-            double & val = vec[original_index_[j]];
-            for (CoinBigIndex k = start ; k < end ; k++) {
-                val -= vecSlacks[indices[k]] * values[k];
-            }
-        }
+        eliminate_slacks(vec);
 
         //Pack vec into the cut
         int * inds = new int [ncols_orig_];
         int nelem = 0;
-        for (int i = 0 ; i < ncols_orig_ ; i++) {
-            if (fabs(vec[i]) > COIN_INDEXED_TINY_ELEMENT) {
+        for (int i = 0 ; i < ncols_orig_ ; i++)
+        {
+            if (fabs(vec[i]) > COIN_INDEXED_TINY_ELEMENT)
+            {
                 vec[nelem] = vec[i];
                 inds[nelem++] = i;
             }
@@ -2669,13 +2775,298 @@ CglLandPSimplex::createMIG( TabRow &row, OsiRowCut &cut) const
 }
 
 void
-CglLandPSimplex::scaleCut(OsiRowCut & cut, double factor) const{
+CglLandPSimplex::eliminate_slacks(double * vec) const
+{
+    const CoinPackedMatrix * mat = si_->getMatrixByCol();
+    const CoinBigIndex * starts = mat->getVectorStarts();
+    const int * lengths = mat->getVectorLengths();
+    const double * values = mat->getElements();
+    const CoinBigIndex * indices = mat->getIndices();
+    const double * vecSlacks = vec + ncols_orig_;
+    for (int j = 0 ; j < ncols_ ; j++)
+    {
+        const CoinBigIndex& start = starts[j];
+        CoinBigIndex end = start + lengths[j];
+        double & val = vec[original_index_[j]];
+        for (CoinBigIndex k = start ; k < end ; k++)
+        {
+            val -= vecSlacks[indices[k]] * values[k];
+        }
+    }
+}
+void
+CglLandPSimplex::scaleCut(OsiRowCut & cut, double factor) const
+{
     DblGtAssert(factor, 0.);
     cut *= factor;
     cut.setLb(cut.lb()*factor);
 }
 
+#ifdef APPEND_ROW
+void
+CglLandPSimplex::append_row(int row_num, bool modularize)
+{
+    int old_idx = basics_[row_num];
+    int r_idx = nrows_ - 1;
 
+    if (basis_->getArtifStatus(nrows_ - 1) == CoinWarmStartBasis::basic)
+    {
+        int i = 0;
+        for (; i < ncols_ ; i++)
+        {
+            if (nonBasics_[i] == ncols_ + nrows_ -1)
+                break;
+        }
+        if (i < ncols_)
+        {
+            nonBasics_[i] = ncols_ + nrows_ - 1;
+            assert(basics_[nrows_ - 1] == ncols_ + nrows_ - 1);
+            basics_[nrows_ - 1] = ncols_ - 1;
+        }
+    }
+#if 0
+    if (basis_->getStructStatus(ncols_ - 1) != CoinWarmStartBasis::basic)
+    {
+        basis_->setStructStatus(ncols_ - 1, CoinWarmStartBasis::basic);
+        assert(basis_->getArtifStatus(nrows_ - 1) == CoinWarmStartBasis::basic);
+        basis_->setArtifStatus(nrows_ - 1, CoinWarmStartBasis::atLowerBound);
+        si_->pivot(ncols_ - 1, ncols_ + nrows_ - 1, -1);
+    }
+#endif
+    TabRow row(this);
+    int rowsize = ncols_orig_ + nrows_orig_ + 1;
+    row.reserve(rowsize);
+    row.num = row_num;
+    pullTableauRow(row);
+    row.rhs -= floor(row.rhs);
+    if (basis_->getStructStatus(ncols_ - 1) != CoinWarmStartBasis::basic)
+    {
+        basis_->setStructStatus(ncols_ - 1, CoinWarmStartBasis::basic);
+        assert(basis_->getArtifStatus(nrows_ - 1) == CoinWarmStartBasis::basic);
+        basis_->setArtifStatus(nrows_ - 1, CoinWarmStartBasis::atLowerBound);
+        si_->pivot(ncols_ - 1, ncols_ + nrows_ - 1, -1);
+    }
+
+    int n = row.getNumElements();
+    const int* ind = row.getIndices();
+#ifdef COIN_HAS_CLP
+    CoinPackedMatrix * m = clp_->getMutableMatrixByCol();
+#endif
+
+#if 1
+    const double * rowLower = si_->getRowLower();
+    const double * rowUpper = si_->getRowUpper();
+    double infty = si_->getInfinity();
+    double rhs = floor (colsol_[old_idx]);//floor(row.rhs);
+    std::vector<double> vec(rowsize,0.);
+    for (int i = 0 ; i < n ; i++)
+    {
+        const int &ni = ind[i];
+        if (ni == old_idx) continue;
+        if (integers_[ni])
+        {
+            double f = modularizedCoef(row[ni],row.rhs);
+            f = floor(row[ni] - f + 0.5);
+            row[ni] -= f;
+            if (ni < ncols_)
+            {
+                if (basis_->getStructStatus(ni) == CoinWarmStartBasis::atUpperBound)
+                {
+                    f *= -1;
+                    rhs += f * getUpBound(ni);
+                }
+                if (basis_->getStructStatus(ni) == CoinWarmStartBasis::atLowerBound)
+                {
+                    //f *= -1;
+                    rhs -= f * getLoBound(ni);
+                }
+                vec[ni]=f;
+            }
+            else
+            {
+                int iRow = ind[i] - ncols_;
+                if (basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atLowerBound)
+                {
+                    rhs -= f*rowUpper[iRow];
+                }
+                else if (basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atUpperBound)
+                {
+                    f *= -1;
+                    rhs -= f*rowLower[iRow];
+                    assert(rowLower[iRow] < infty);
+                }
+                vec[ni] = f;
+            }
+        }
+    }
+    vec[old_idx] = 1;
+
+    eliminate_slacks(&vec[0]);
+
+    for (int i = 0 ; i < rowsize ; i++)
+    {
+        if (vec[i])
+            m->modifyCoefficient(r_idx, i, vec[i], true);
+    }
+    si_->setRowBounds(r_idx, rhs, rhs);
+#endif
+
+#if 1
+    si_->messageHandler()->setLogLevel(0);
+    si_->resolve();
+    assert(si_->getIterationCount() == 0);
+#endif
+    /* Update the cached info.*/
+#ifndef NDEBUG
+    int * basics = new int[nrows_];
+#else
+    int * basics = basics_;
+#endif
+    si_->getBasics(basics);
+#ifndef NDEBUG
+    for (int i = 0 ; i < r_idx ; i++)
+    {
+        assert(basics[i] == basics_[i]);
+    }
+    assert(basics[r_idx] == ncols_ - 1);
+    delete [] basics_;
+    basics_ = basics;
+#endif
+    assert(basis_->getStructStatus(old_idx) == CoinWarmStartBasis::basic);
+    assert(basis_->getStructStatus(ncols_ - 1) == CoinWarmStartBasis::basic);
+
+    n = 0;
+    for (int i = 0 ; i < ncols_ ; i++)
+    {
+        if (basis_->getStructStatus(i) != CoinWarmStartBasis::basic)
+        {
+            nonBasics_[n++] = i;
+        }
+    }
+    for (int i = 0 ; i < nrows_ ; i++)
+    {
+        if (basis_->getArtifStatus(i) != CoinWarmStartBasis::basic)
+        {
+            nonBasics_[n++] = i + ncols_;
+        }
+    }
+    assert (n == ncols_);
+    colsol_[ncols_ - 1] = si_->getColSolution()[ncols_-1];
+    colsolToCut_[ncols_ - 1] = si_->getColSolution()[ncols_-1];
+}
+
+void
+CglLandPSimplex::check_mod_row(TabRow & row)
+{
+    int rowsize = ncols_orig_ + nrows_orig_;
+    for (int i = 0 ; i < rowsize ; i++)
+    {
+        assert(! integers_[i] || ((row[i] <= row.rhs+1e-08) && (row[i] >= row.rhs - 1- 1e-08)));
+    }
+}
+
+void
+CglLandPSimplex::update_row(TabRow &row)
+{
+    int r_idx = nrows_ - 1;
+    int c_idx = ncols_ - 1;
+    assert(basics_[row.num] == ncols_ - 1);
+    assert(r_idx == row.num);
+    int rowsize = nrows_ + ncols_;
+    int n = row.getNumElements();
+    const int* ind = row.getIndices();
+#ifdef COIN_HAS_CLP
+    CoinPackedMatrix * m = clp_->getMutableMatrixByCol();
+#endif
+    //double * m_el = m->getMutableElements();
+    //const int * m_id = m->getIndices();
+    //const int * m_le = m->getVectorLengths();
+    //const CoinBigIndex * m_st = m->getVectorStarts();
+    const double * rowLower = si_->getRowLower();
+    const double * rowUpper = si_->getRowUpper();
+    double infty = si_->getInfinity();
+    double rhs = floor(row.rhs);
+    std::vector<double> vec(rowsize,0.);
+    for (int i = 0 ; i < n ; i++)
+    {
+        const int &ni = ind[i];
+        if (ni == c_idx) continue;
+        if (integers_[ni])
+        {
+            double f = modularizedCoef(row[ni],row.rhs);
+            f = floor(row[ni] - f + 0.5);
+            //row[ni] -= f;
+            if (ni < ncols_)
+            {
+                assert(basis_->getStructStatus(ni) != CoinWarmStartBasis::basic);
+                if (basis_->getStructStatus(ni) == CoinWarmStartBasis::atUpperBound)
+                {
+                    f *= -1;
+                    rhs += f * getUpBound(ni);
+                }
+                if (basis_->getStructStatus(ni) == CoinWarmStartBasis::atLowerBound)
+                {
+                    rhs -= f * getLoBound(ni);
+                }
+                vec[ni]=f;
+            }
+            else
+            {
+                //continue;
+                int iRow = ind[i] - ncols_;
+                if (iRow == r_idx) continue;
+                assert(basis_->getArtifStatus(iRow) != CoinWarmStartBasis::basic);
+                if (basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atLowerBound)
+                {
+                    rhs -= f*rowUpper[iRow];
+                }
+                else if (basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atUpperBound)
+                {
+                    f *= -1;
+                    rhs -= f*rowLower[iRow];
+                    assert(rowUpper[iRow] < infty);
+                }
+                vec[ni] = f;
+            }
+        }
+    }
+    std::copy(vec.begin(),vec.end(), std::ostream_iterator<double>(std::cout, "\t"));
+    std::cout<<std::endl;
+
+    //vec[c_idx] = 1;
+    eliminate_slacks(&vec[0]);
+    std::copy(vec.begin(),vec.end(), std::ostream_iterator<double>(std::cout, "\t"));
+    std::cout<<std::endl;
+//    assert(vec[c_idx] == 0);
+    for (int i = 0 ; i < ncols_ ; i++)
+    {
+        if (vec[i])
+        {
+            double f = m->getCoefficient(r_idx,i);
+            m->modifyCoefficient(r_idx, i, f + vec[i], true);
+        }
+    }
+    si_->setRowBounds(r_idx, rowLower[r_idx] + rhs, rowUpper[r_idx] + rhs);
+
+#ifdef COIN_HAS_CLP
+    clp_->getModelPtr()->factorize();
+#endif
+
+    pullTableauRow(row);
+    assert(row.rhs >= 0. && row.rhs <= 1.);
+    bool stop = false;
+    for (int i = 0 ; i < rowsize ; i++)
+    {
+        if (integers_[i] && (row[i] > row.rhs || row[i] < row.rhs - 1))
+        {
+            stop = true;
+        }
+        //assert(! integers_[i] || (row[i] <= row.rhs && row[i] > row.rhs - 1));
+    }
+    if (stop) exit(10);
+
+}
+#endif
 
 /** Get the row i of the tableau */
 void
@@ -2685,28 +3076,29 @@ CglLandPSimplex::pullTableauRow(TabRow &row) const
     const double * rowUpper = si_->getRowUpper();
 
     row.clear();
-
+    row.modularized_ = false;
     double infty = si_->getInfinity();
     /* Get the row */
 #ifdef COIN_HAS_CLP
-    if (clp_) {
+    if (clp_)
+    {
         CoinIndexedVector array2;
         array2.borrowVector(nrows_, 0, row.getIndices() + ncols_, row.denseVector() + ncols_);
-        clp_time -= CoinCpuTime();
         clp_->getBInvARow(row.num, &row, &array2);
-        clp_time += CoinCpuTime();
         {
             int n = array2.getNumElements();
             int * indices1 = row.getIndices() + row.getNumElements();
             int * indices2 = array2.getIndices();
-            for ( int i = 0 ; i < n ; i++) {
+            for ( int i = 0 ; i < n ; i++)
+            {
                 *indices1 = indices2[i] + ncols_;
                 indices1++;
             }
             row.setNumElements(n + row.getNumElements());
             array2.returnVector();
         }
-    } else
+    }
+    else
 #endif
     {
         si_->getBInvARow(row.num,row.denseVector(),row.denseVector() + ncols_);
@@ -2719,34 +3111,49 @@ CglLandPSimplex::pullTableauRow(TabRow &row) const
         int iCol = basics_[row.num];
         if (iCol<ncols_)
             row.rhs = si_->getColSolution()[iCol];
-        else { // Osi does not give direct acces to the value of slacks
+        else   // Osi does not give direct acces to the value of slacks
+        {
             iCol -= ncols_;
             row.rhs = - si_->getRowActivity()[iCol];
-            if (rowLower[iCol]> -infty) {
+            if (rowLower[iCol]> -infty)
+            {
                 row.rhs += rowLower[iCol];
-            } else {
+            }
+            else
+            {
                 row.rhs+= rowUpper[iCol];
             }
         }
     }
     //Now adjust the row of the tableau to reflect non-basic variables activity
-    for (int j = 0; j < ncols_ ; j++) {
-        if (nonBasics_[j]<ncols_) {
-            if (basis_->getStructStatus(nonBasics_[j])==CoinWarmStartBasis::atLowerBound) {
-            } else if (basis_->getStructStatus(nonBasics_[j])==CoinWarmStartBasis::atUpperBound) {
+    for (int j = 0; j < ncols_ ; j++)
+    {
+        if (nonBasics_[j]<ncols_)
+        {
+            if (basis_->getStructStatus(nonBasics_[j])==CoinWarmStartBasis::atLowerBound)
+            {
+            }
+            else if (basis_->getStructStatus(nonBasics_[j])==CoinWarmStartBasis::atUpperBound)
+            {
                 row[nonBasics_[j]] = -row[nonBasics_[j]];
-            } else {
+            }
+            else
+            {
+                std::cout<<(basis_->getStructStatus(nonBasics_[j])==CoinWarmStartBasis::isFree)<<std::endl;
                 throw CoinError("Invalid basis","CglLandPSimplex","pullTableauRow");
             }
-        } else {
+        }
+        else
+        {
             int iRow = nonBasics_[j] - ncols_;
 
-            if (basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atUpperBound) {
+            if (basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atUpperBound)
+            {
                 row[nonBasics_[j]] = -row[nonBasics_[j]];
             }
         }
     }
-//  row.clean(1e-30);
+    //  row.clean(1e-30);
 }
 
 /** Adjust the row of the tableau to reflect leaving variable direction */
@@ -2754,8 +3161,9 @@ void
 CglLandPSimplex::adjustTableauRow(int var, TabRow & row, int direction)
 {
     double bound = 0;
-    assert (direction!=0);
-    if (direction > 0) {
+    assert(direction != 0);
+    if (direction > 0)
+    {
         for (int j = 0 ; j < ncols_orig_ ; j++)
             row[nonBasics_[j]] = - row[nonBasics_[j]];
 
@@ -2763,7 +3171,9 @@ CglLandPSimplex::adjustTableauRow(int var, TabRow & row, int direction)
         bound = getUpBound(var);
         setColsolToCut(var, bound - getColsolToCut(var));
         row.rhs += bound;
-    } else if (direction < 0) {
+    }
+    else if (direction < 0)
+    {
         bound = getLoBound(var);
         setColsolToCut(var, getColsolToCut(var) - bound);
         row.rhs -= bound;
@@ -2776,9 +3186,12 @@ CglLandPSimplex::adjustTableauRow(int var, TabRow & row, int direction)
 void
 CglLandPSimplex::resetOriginalTableauRow(int var, TabRow & row, int direction)
 {
-    if (direction > 0) {
+    if (direction > 0)
+    {
         adjustTableauRow(var, row, direction);
-    } else {
+    }
+    else
+    {
         double bound = getLoBound(var);
         row.rhs += bound;
         setColsolToCut(var, getColsolToCut(var) + bound);
@@ -2786,11 +3199,13 @@ CglLandPSimplex::resetOriginalTableauRow(int var, TabRow & row, int direction)
 }
 
 template <class X>
-struct SortingOfArray {
+struct SortingOfArray
+{
     X * array;
     SortingOfArray(X* a): array(a) {}
 
-    bool operator()(const int i, const int j) {
+    bool operator()(const int i, const int j)
+    {
         return array[i] < array[j];
     }
 };
@@ -2805,10 +3220,14 @@ CglLandPSimplex::removeRows(int nDelete, const int * rowsIdx)
     si_->deleteRows(nDelete, rowsIdx);
     int k = 1;
     int l = sortedIdx[0];
-    for (int i = sortedIdx[0] + 1 ; k < nDelete ; i++) {
-        if (sortedIdx[k] == i) {
+    for (int i = sortedIdx[0] + 1 ; k < nDelete ; i++)
+    {
+        if (sortedIdx[k] == i)
+        {
             k++;
-        } else {
+        }
+        else
+        {
             original_index_[l] = original_index_[i];
             l++;
         }
@@ -2819,26 +3238,35 @@ CglLandPSimplex::removeRows(int nDelete, const int * rowsIdx)
 
     /* Update rowFlags_ */
     std::vector<int> order(nrows_);
-    for (unsigned int i = 0 ; i < order.size() ; i++) {
+    for (unsigned int i = 0 ; i < order.size() ; i++)
+    {
         order[i] = i;
     }
     std::sort(order.begin(), order.end(), SortingOfArray<int>(basics_));
     k = 0;
     l = 0;
-    for (int i = 0 ; k < nDelete ; i++) {
-        if (basics_[order[i]] == sortedIdx[k]) {
+    for (int i = 0 ; k < nDelete ; i++)
+    {
+        if (basics_[order[i]] == sortedIdx[k])
+        {
             basics_[order[i]] = -1;
             k++;
-        } else {
+        }
+        else
+        {
             order[l] = order[i];
             l++;
         }
     }
     k = 0;
-    for (int i = 0 ; i < nrows_ ; i++) {
-        if (basics_[i] == -1) {
+    for (int i = 0 ; i < nrows_ ; i++)
+    {
+        if (basics_[i] == -1)
+        {
             k++;
-        } else {
+        }
+        else
+        {
             basics_[l] = basics_[i];
             rowFlags_[l] = rowFlags_[i];
             rWk1_[l] = rWk1_[i];
@@ -2857,21 +3285,65 @@ CglLandPSimplex::removeRows(int nDelete, const int * rowsIdx)
     int numStructural = basis_->getNumStructural();
     assert(ncols_ = numStructural);
     int nNonBasics = 0;
-    for (int i = 0 ; i < numStructural ; i++) {
-        if (basis_->getStructStatus(i) != CoinWarmStartBasis::basic) {
+    for (int i = 0 ; i < numStructural ; i++)
+    {
+        if (basis_->getStructStatus(i) != CoinWarmStartBasis::basic)
+        {
             nonBasics_[nNonBasics++] = i;
         }
     }
 
     int numArtificial = basis_->getNumArtificial();
     assert(nrows_ = numArtificial);
-    for (int i = 0 ; i < numArtificial ; i++) {
-        if (basis_->getArtifStatus(i)!= CoinWarmStartBasis::basic) {
+    for (int i = 0 ; i < numArtificial ; i++)
+    {
+        if (basis_->getArtifStatus(i)!= CoinWarmStartBasis::basic)
+        {
             nonBasics_[nNonBasics++] = i + numStructural;
         }
     }
     assert (nNonBasics == ncols_);
 }
 
+  void
+  CglLandPSimplex::printEverything(){
+    row_k_.print(std::cout, 2, nonBasics_, ncols_);
+    printf("nonBasics_: ");
+    for(int i = 0 ; i < ncols_ ; i++){
+      printf("%5i ",nonBasics_[i]);
+    }
+    printf("\n");
+
+ printf("basics_: ");
+    for(int i = 0 ; i < nrows_ ; i++){
+      printf("%5i ",basics_[i]);
+    }
+    printf("\n");
+
+    printf("source row:");
+    for(int i = 0 ; i < ncols_ + nrows_ ; i++){
+      printf("%10.9g ", row_k_[i]);
+    }
+    printf("%10.9g", row_k_.rhs);
+    printf("\n");
+
+    printf(" source indices: ");
+    for(int i = 0 ; i < row_k_.getNumElements() ; i++){
+      printf("%5i %20.20g ", row_k_.getIndices()[i], row_k_[row_k_.getIndices()[i]]);
+    }
+    printf("\n");
+
+    printf("colsolToCut: ");
+    for(int i = 0 ; i < ncols_ + nrows_ ; i++){
+      printf("%10.6g ", colsolToCut_[i]);
+    }
+    printf("\n");
+
+    printf("colsol: ");
+    for(int i = 0 ; i < ncols_ + nrows_ ; i++){
+      printf("%10.6g ", colsol_[i]);
+    }
+    printf("\n");
+  }
 }/* Ends LAP namespace.*/
 

@@ -1,4 +1,4 @@
-// Copyright (C) 2005, Pierre Bonami and others.  All Rights Reserved.
+// Copyright (C) 2005-2009, Pierre Bonami and others.  All Rights Reserved.
 // Author:   Pierre Bonami
 //           Tepper School of Business
 //           Carnegie Mellon University, Pittsburgh, PA 15213
@@ -23,7 +23,8 @@ class Validator
 {
 public:
     /** Reasons for rejecting a cut */
-    enum RejectionsReasons {
+    enum RejectionsReasons
+    {
         NoneAccepted=0 /**Cut was accepted*/,
         SmallViolation /** Violation of the cut is too small */,
         SmallCoefficient /** There is a small coefficient we can not get rid off.*/,
@@ -48,48 +49,60 @@ public:
                   const double * colLower, const double * colUpper) const;
     /** Call the cut cleaner */
     int operator()(OsiRowCut & aCut, const double * solCut,const OsiSolverInterface &si, const CglParam & par,
-                   const double * colLower, const double * colUpper) const {
+                   const double * colLower, const double * colUpper) const
+    {
         return cleanCut(aCut, solCut, si, par, colLower, colUpper);
     }
     /** @name set functions */
     /** @{ */
-    void setMaxFillIn(double value) {
+    void setMaxFillIn(double value)
+    {
         maxFillIn_ = value;
     }
-    void setMaxRatio(double value) {
+    void setMaxRatio(double value)
+    {
         maxRatio_ = value;
     }
-    void setMinViolation(double value) {
+    void setMinViolation(double value)
+    {
         minViolation_ = value;
     }
 
-    void setRhsScale(double v){
-       rhsScale_ = v;
+    void setRhsScale(double v)
+    {
+        rhsScale_ = v;
     }
     /** @} */
     /** @name get functions */
     /** @{ */
-    double getMaxFillIn() {
+    double getMaxFillIn()
+    {
         return maxFillIn_;
     }
-    double getMaxRatio() {
+    double getMaxRatio()
+    {
         return maxRatio_;
     }
-    double getMinViolation() {
+    double getMinViolation()
+    {
         return minViolation_;
     }
     /** @} */
 
-    const std::string& failureString(RejectionsReasons code) const {
-      return rejections_[static_cast<int> (code)];
+    const std::string& failureString(RejectionsReasons code) const
+    {
+        return rejections_[static_cast<int> (code)];
     }
-    const std::string& failureString(int code) const {
+    const std::string& failureString(int code) const
+    {
         return rejections_[ code];
     }
-    int numRejected(RejectionsReasons code)const {
-      return numRejected_[static_cast<int> (code)];
+    int numRejected(RejectionsReasons code)const
+    {
+        return numRejected_[static_cast<int> (code)];
     }
-    int numRejected(int code)const {
+    int numRejected(int code)const
+    {
         return numRejected_[ code];
     }
 private:

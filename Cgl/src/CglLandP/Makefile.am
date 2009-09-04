@@ -17,17 +17,19 @@ AUTOMAKE_OPTIONS = foreign
 noinst_LTLIBRARIES = libCglLandP.la
 
 # List all source files for this library, including headers
-libCglLandP_la_SOURCES = 
+libCglLandP_la_SOURCES = \
+	CglLandPTabRow.hpp \
+	CglLandPUtils.cpp  CglLandPUtils.hpp
 if COIN_HAS_CLP
 libCglLandP_la_SOURCES += \
 	CglLandP.cpp  CglLandP.hpp \
-        CglLandPUtils.cpp  CglLandPUtils.hpp \
-        CglLandPTabRow.cpp CglLandPTabRow.hpp \
-        CglLandPMessages.hpp CglLandPMessages.cpp \
+	CglLandPTabRow.cpp \
+        CglLandPMessages.h CglLandPMessages.cpp \
         CglLandPSimplex.cpp CglLandPSimplex.hpp \
         CglLandPValidator.cpp CglLandPValidator.hpp \
         CglLandPTest.cpp
 endif
+
 
 # This is for libtool (on Windows)
 libCglLandP_la_LDFLAGS = $(LT_LDFLAGS)

@@ -1,4 +1,4 @@
-// Copyright (C) 2005-2008, Pierre Bonami and others.  All Rights Reserved.
+// Copyright (C) 2005-2009, Pierre Bonami and others.  All Rights Reserved.
 // Author:   Pierre Bonami
 //           LIF
 //           CNRS, Aix-Marseille Universites
@@ -8,7 +8,8 @@
 #include "CglLandPUtils.hpp"
 #include "OsiRowCut.hpp"
 #include "OsiCuts.hpp"
-namespace LAP {
+namespace LAP
+{
 double
 normCoef(TabRow &row, int ncols, const int * nonBasics)
 {
@@ -25,7 +26,8 @@ void scale(OsiRowCut &cut, double norma)
     assert(norma >0.);
     CoinPackedVector row;
     row.reserve(cut.row().getNumElements());
-    for (int i = 0 ; i < cut.row().getNumElements() ; i++) {
+    for (int i = 0 ; i < cut.row().getNumElements() ; i++)
+    {
         row.insert(cut.row().getIndices()[i], cut.row().getElements()[i]/norma);
     }
     cut.setLb(cut.lb()/norma);
@@ -38,7 +40,8 @@ void scale(OsiRowCut &cut)
     double rhs = fabs(cut.lb());
     CoinPackedVector row;
     row.reserve(cut.row().getNumElements());
-    for (int i = 0 ; i < cut.row().getNumElements() ; i++) {
+    for (int i = 0 ; i < cut.row().getNumElements() ; i++)
+    {
         row.insert(cut.row().getIndices()[i], cut.row().getElements()[i]/rhs);
     }
     cut.setLb(cut.lb()/rhs);
@@ -51,7 +54,8 @@ void modularizeRow(TabRow & row, const bool * integerVar)
 {
     const int& n = row.getNumElements();
     const int* ind = row.getIndices();
-    for (int i = 0 ; i < n ; i++) {
+    for (int i = 0 ; i < n ; i++)
+    {
         const int &ni = ind[i];
         if (integerVar[ni])
             row[ni] = modularizedCoef(row[ni],row.rhs);
@@ -63,8 +67,10 @@ int
 Cuts::insertAll(OsiCuts & cs, CoinRelFltEq eq)
 {
     int r_val = 0;
-    for (unsigned int i = 0 ; i < cuts_.size() ; i++) {
-        if (cuts_[i] != NULL) {
+    for (unsigned int i = 0 ; i < cuts_.size() ; i++)
+    {
+        if (cuts_[i] != NULL)
+        {
             cs.insertIfNotDuplicate(*cuts_[i], eq);
             delete cuts_[i];
             cuts_[i] = NULL;
@@ -76,24 +82,17 @@ Cuts::insertAll(OsiCuts & cs, CoinRelFltEq eq)
 
 /** insert a cut for variable i and count number of cuts.*/
 void
-Cuts::insert(int i, OsiRowCut * cut) {
+Cuts::insert(int i, OsiRowCut * cut)
+{
     if (cuts_[i] == NULL) numberCuts_++;
-    else {
-        printf("Replacing cut with violation %g with one from optimal basis with eviolation %g.\n",
+    else
+    {
+        printf("Replacing cut with violation %g with one from optimal basis with violation %g.\n",
                cuts_[i]->effectiveness(), cut->effectiveness());
         delete cuts_[i];
     }
     cuts_[i] = cut;
 }
-
-#if 0
-Cuts::~Cuts()
-{
-    for (unsigned int i = 0 ; i < cuts_.size() ; i++) {
-        delete cuts_[i];
-    }
-}
-#endif
 
 }
 
