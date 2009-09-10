@@ -98,7 +98,7 @@ enum CglFlowRowType {
 
 //=============================================================================
 
-/** Varibale upper bound class. */
+/** Variable upper bound class. */
 class CglFlowVUB
 {
 protected:
@@ -134,7 +134,7 @@ public:
 
 //=============================================================================
 
-/** Varibale lower bound class, which is the same as vub. */
+/** Variable lower bound class, which is the same as vub. */
 typedef CglFlowVUB CglFlowVLB;
 
 /** Overloaded operator<< for printing VUB and VLB.*/
@@ -360,7 +360,7 @@ private:
 };
 
 //#############################################################################
-/** A function that tests the methods in the CglProbing class. The
+/** A function that tests the methods in the CglFlowCover class. The
     only reason for it not to be a member method is that this way it doesn't
     have to be compiled into the library. And that's a gain, because the
     library should be compiled with optimization on, but this method should be
