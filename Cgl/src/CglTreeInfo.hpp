@@ -28,6 +28,7 @@ public:
       16 - set global cut flag and make cuts globally valid
       32 - last round of cuts did nothing - maybe be more aggressive
       64 - in preprocessing stage
+      128 - looks like solution
   */
   int options;
   /// Set true if in tree (to avoid ambiguity at first branch)

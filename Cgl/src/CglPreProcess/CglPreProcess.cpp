@@ -4051,17 +4051,35 @@ CglPreProcess::modified(OsiSolverInterface * model,
 		build.addRow(length,column+start,rowElements+start,
 			     rowLower[iRow],rowUpper[iRow]);
 	      } else {
-		assert (newValue);
 		double * els = CoinCopyOfArray(rowElements+start,length);
-		for ( int k = 0; k < length; ++k) {
-		  int j = column[k+start];
-		  if (j==kInt) {
-		    els[k] = newValue;
-		    break;
+		if (fabs(newValue)>1.0e-13) {
+		  for ( int k = 0; k < length; ++k) {
+		    int j = column[k+start];
+		    if (j==kInt) {
+		      els[k] = newValue;
+		      break;
+		    }
 		  }
+		  build.addRow(length,column+start,els,
+			       rowLower[iRow],rowUpper[iRow]);
+		} else {
+		  // strengthened to zero!
+#ifdef CLP_INVESTIGATE
+		  printf("CglPreProcess - element strenthened to zero!\n");
+#endif
+		  int * cols = CoinCopyOfArray(column+start,length);
+		  int n=0;
+		  for ( int k = 0; k < length; ++k) {
+		    int j = cols[k];
+		    if (j!=kInt) {
+		      els[n] = els[k];
+		      cols[n++]=j;
+		    }
+		  }
+		  build.addRow(n,cols,els,
+			       rowLower[iRow],rowUpper[iRow]);
+		  delete [] cols;
 		}
-		build.addRow(length,column+start,els,
-			     rowLower[iRow],rowUpper[iRow]);
 		delete [] els;
 	      }
 	      keepRow[iRow]=1;
