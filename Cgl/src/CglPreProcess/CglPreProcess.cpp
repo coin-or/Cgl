@@ -1007,14 +1007,22 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
     }
     numberIntegers=numberNonZero;
     if (allGood&&numberObj) {
+#ifdef COIN_DEVELOP
+      int numberPossible = 0;
+#endif
       for (iColumn=0;iColumn<numberColumns;iColumn++) {
 	if (upper[iColumn]>lower[iColumn]&&objective[iColumn]&&!model->isInteger(iColumn)) {
-	  model->setInteger(iColumn);
-	  numberIntegers++;
+#ifdef COIN_DEVELOP
+	  numberPossible++;
+#endif
+	  if (upper[iColumn]<=lower[iColumn]+10) {
+	    model->setInteger(iColumn);
+	    numberIntegers++;
+	  }
 	}
       }
 #ifdef COIN_DEVELOP
-      printf("ZZZZYY CglPreProcess analysis says all (%d) continuous with costs were made integer\n",numberIntegers);
+      printf("ZZZZYY CglPreProcess analysis says all (%d) continuous with costs could be made integer - %d were\n",numberPossible,numberIntegers-numberNonZero);
 #endif
     }
 #ifdef COIN_DEVELOP
