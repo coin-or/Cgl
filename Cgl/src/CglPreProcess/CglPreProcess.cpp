@@ -4038,7 +4038,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 		      if (fabs(exact-floor(exact+0.5))<1.0e-5)
 			interesting &= ~2;
 		      if (!smallestSum&&interesting==2&&!saveLo&&saveUp>1.0e20) {
-			double newValue = multiple*floor(exact);
+			newValue = multiple*floor(exact);
 			newValue *= multiplier;
 #ifdef CLP_INVESTIGATE
 			printf("New coefficient for %d will be %g\n",kInt,newValue);
