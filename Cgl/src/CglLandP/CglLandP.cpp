@@ -559,6 +559,17 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     int numrows = si.getNumRows();
 #endif
 
+#ifdef DO_STAT
+    //Get informations on current optimum
+    {
+        OsiSolverInterface * gapTester = si.clone();
+        gapTester->resolve();
+
+        roundsStats_.analyseOptimalBasis(gapTester,info.pass, numrows_);
+        delete gapTester;
+    }
+#endif
+
     params_.timeLimit += CoinCpuTime();
     CoinRelFltEq eq(1e-04);
 
