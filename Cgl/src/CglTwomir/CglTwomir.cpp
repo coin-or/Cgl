@@ -144,7 +144,8 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   
   if (do_form_)
     DGG_generateFormulationCuts( &cut_list, data, reinterpret_cast<const void *> (&si),
-				 info.formulation_rows );
+				 info.formulation_rows,
+				 randomNumberGenerator_);
   
 #ifdef CGL_DEBUG
   const OsiRowCutDebugger debugg(si,probname_.c_str()) ;
@@ -275,6 +276,7 @@ CglTwomir::CglTwomir () :
 //-------------------------------------------------------------------
 CglTwomir::CglTwomir (const CglTwomir & source) :
   CglCutGenerator(source),
+  randomNumberGenerator_(source.randomNumberGenerator_),
   away_(source.away_),
   awayAtRoot_(source.awayAtRoot_),
   do_mir_(source.do_mir_),
@@ -317,6 +319,7 @@ CglTwomir::operator=(const CglTwomir& rhs)
 {
   if (this != &rhs) {
     CglCutGenerator::operator=(rhs);
+    randomNumberGenerator_ = rhs.randomNumberGenerator_;
     away_=rhs.away_;
     awayAtRoot_=rhs.awayAtRoot_;
     do_mir_=rhs.do_mir_;
@@ -1199,7 +1202,8 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
 int DGG_generateFormulationCuts( DGG_list_t *cut_list,
 				 DGG_data_t *data,
 				 const void *solver_ptr,
-				 int nrows)
+				 int nrows,
+				 CoinThreadRandom & generator)
 {
   int k, rval = 0;
   DGG_constraint_t *base = NULL;
@@ -1217,7 +1221,8 @@ int DGG_generateFormulationCuts( DGG_list_t *cut_list,
 
     //printf ("generating formulation for row %d\n", k);
     rval = DGG_generateFormulationCutsFromBase(base, data->x[data->ncol+k],
-					       cut_list, data, solver_ptr);
+					       cut_list, data, solver_ptr,
+					       generator);
     DGG_CHECKRVAL1(rval, rval);
     if (base->nz == 0){
 #ifdef COIN_DEVELOP
@@ -1234,21 +1239,12 @@ int DGG_generateFormulationCuts( DGG_list_t *cut_list,
 }
 
 
-double random_01(long unsigned int *next){// uniform [0,1] 
-  unsigned int x;  double dx,r = 0;
-  
-  while (r<1e-18){
-    *next=(*next)*1103515245 + 12345;
-    x=(*next/65536) % 32768;
-    dx=x;    r=dx/32768;  }
-  return (r);
-}	
-
 int DGG_generateFormulationCutsFromBase( DGG_constraint_t *base,
 					 double slack,
 					 DGG_list_t *cut_list,
 					 DGG_data_t *data,
-					 const void *solver_ptr )
+					 const void *solver_ptr,
+					 CoinThreadRandom & generator)
 {
   int i, p, rval;
   int int_skala;
@@ -1258,7 +1254,6 @@ int DGG_generateFormulationCutsFromBase( DGG_constraint_t *base,
   char *isint = NULL;
   double *xout = NULL, *rcout = NULL;
   DGG_constraint_t *scaled_base = NULL;
-  static long unsigned int rand_seed = 1983747;
   int tot_int = 0;
   double prob_choose = 0.0;
   rval = DGG_transformConstraint(data, &xout, &rcout, &isint, base);
@@ -1270,7 +1265,7 @@ int DGG_generateFormulationCutsFromBase( DGG_constraint_t *base,
   prob_choose = 5.0/tot_int;
 
   for(p = 0; p < base->nz; p++) {
-    if(isint[p]) if(random_01(&rand_seed) < prob_choose){
+    if(isint[p]) if(generator.randomDouble() < prob_choose){
       if(xout[p]<0.01) continue;
 
       skala =fabs(base->coeff[p]);
