@@ -1920,7 +1920,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     oldModel->getStrParam(OsiSolverName,solverName);
     // Extend if you want other solvers to keep solution
     bool keepSolution=solverName=="clp";
-    presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-8,true,5,prohibited_,keepSolution,rowType_);
+    presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-7,true,5,prohibited_,keepSolution,rowType_);
     oldModel->messageHandler()->setLogLevel(saveLogLevel);
     if (presolvedModel) {
       presolvedModel->messageHandler()->setLogLevel(saveLogLevel);
@@ -2176,7 +2176,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       oldModel->getStrParam(OsiSolverName,solverName);
       // Extend if you want other solvers to keep solution
       bool keepSolution=solverName=="clp";
-      presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-8,true,5,
+      presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-7,true,5,
 					     prohibited_,keepSolution,rowType_);
       oldModel->messageHandler()->setLogLevel(saveLogLevel);
       if (!presolvedModel) {
