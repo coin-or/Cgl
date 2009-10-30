@@ -126,7 +126,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   if (!info.inTree) {
     //const CoinPackedMatrix * columnCopy = si.getMatrixByCol();
     //int numberColumns=columnCopy->getNumCols(); 
-    if (!info.pass) {
+    if (!info.pass||(info.options&32)!=0) {
       max_elements=si.getNumCols();
       //} else {
       //int numberRows=columnCopy.getNumRows();
@@ -220,17 +220,18 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	    }
 	  }
 	}
-	if (largest<1.0e9*smallest&&goodCut) {
+	if (largest<5.0e9*smallest&&goodCut) {
 	  rowcut.setRow(number, cutIndex, packed);
 	  rowcut.setUb(DBL_MAX);
 	  rowcut.setLb(rhs);
+	  cs.insert(rowcut);
 	}
 #else
 	rowcut.setRow(cut->nz, cut->index, cut->coeff);
 	rowcut.setUb(DBL_MAX);
 	rowcut.setLb(cut->rhs);
-#endif
 	cs.insert(rowcut);
+#endif
       }
     
 #ifdef CGL_DEBUG
@@ -266,6 +267,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 CglTwomir::CglTwomir () :
   CglCutGenerator(),
   probname_(),
+  randomNumberGenerator_(987654321), 
   away_(0.0005),awayAtRoot_(0.0005),
   do_mir_(true), do_2mir_(true), do_tab_(true), do_form_(true),
   t_min_(1), t_max_(1), q_min_(1), q_max_(1), a_max_(2),max_elements_(50000),
