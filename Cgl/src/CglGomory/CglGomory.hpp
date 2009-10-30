@@ -159,6 +159,8 @@ private:
   int limitAtRoot_;
   /// Dynamic limit in tree
   mutable int dynamicLimitInTree_;
+  /// Number of times stalled
+  mutable int numberTimesStalled_;
   /// nonzero to use alternative factorization
   int alternateFactorization_;
   //@}
