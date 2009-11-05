@@ -20,15 +20,30 @@
 #include "CoinIndexedVector.hpp"
 #include "OsiRowCutDebugger.hpp"
 #include "CoinFactorization.hpp"
+#undef CLP_OSL
+#if 1
+#define CLP_OSL 1
+#if CLP_OSL!=1&&CLP_OSL!=3
+#undef CLP_OSL
+#else
+#include "CoinOslFactorization.hpp"
+#endif
+#endif
 #include "CoinWarmStartBasis.hpp"
 #include "CglGomory.hpp"
 #include "CoinFinite.hpp"
+#ifdef CGL_DEBUG_GOMORY
+int gomory_try=CGL_DEBUG_GOMORY;
+#endif
 //-------------------------------------------------------------------
 // Generate Gomory cuts
 //------------------------------------------------------------------- 
 void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 			     const CglTreeInfo info) const
 {
+#ifdef CGL_DEBUG_GOMORY
+  gomory_try++;
+#endif
   // Get basic problem information
   int numberColumns=si.getNumCols(); 
 
@@ -40,6 +55,8 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     dynamic_cast<const CoinWarmStartBasis*>(warmstart);
   const double * colUpper = si.getColUpper();
   const double * colLower = si.getColLower();
+  if ((info.options&16)!=0)
+    printf("%d %d %d\n",info.inTree,info.options,info.pass);
   for (i=0;i<numberColumns;i++) {
     if (si.isInteger(i)) {
       if (colUpper[i]>colLower[i]+0.5) {
@@ -68,17 +85,22 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   int numberRowCutsBefore = cs.sizeRowCuts();
 
   generateCuts(debugger, cs, *si.getMatrixByCol(), *si.getMatrixByRow(),
-	   si.getObjCoefficients(), si.getColSolution(),
+	   si.getColSolution(),
 	   si.getColLower(), si.getColUpper(), 
 	   si.getRowLower(), si.getRowUpper(),
 	   intVar,warm,info);
 
   delete warmstart;
   delete [] intVar;
-  if (!info.inTree&&((info.options&4)==4||((info.options&8)&&!info.pass))) {
+  if ((!info.inTree&&((info.options&4)==4||((info.options&8)&&!info.pass)))
+      ||(info.options&16)!=0) {
+    int limit = maximumLengthOfCutInTree();
     int numberRowCutsAfter = cs.sizeRowCuts();
-    for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++)
-      cs.rowCutPtr(i)->setGloballyValid();
+    for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++) {
+      int length = cs.rowCutPtr(i)->row().getNumElements();
+      if (length<=limit)
+	cs.rowCutPtr(i)->setGloballyValid();
+    }
   }
 }
 
@@ -201,32 +223,44 @@ inline Rational nearestRational(double value, int maxDenominator)
     return tryA;
   }
 }
-
 // Does actual work - returns number of cuts
 int
-CglGomory::generateCuts( const OsiRowCutDebugger * debugger, 
+CglGomory::generateCuts( 
+#ifdef CGL_DEBUG
+			const OsiRowCutDebugger * debugger, 
+#else
+			const OsiRowCutDebugger * , 
+#endif
                          OsiCuts & cs,
                          const CoinPackedMatrix & columnCopy,
                          const CoinPackedMatrix & rowCopy,
-                         const double * objective, const double * colsol,
+                         const double * colsol,
                          const double * colLower, const double * colUpper,
                          const double * rowLower, const double * rowUpper,
 			 const char * intVar,
                          const CoinWarmStartBasis* warm,
                          const CglTreeInfo info) const
 {
-  // get limit on length of cut
-  int limit = info.inTree ? limit_ : CoinMax(limit_,limitAtRoot_);
+  int infoOptions=info.options;
+  bool globalCuts = (infoOptions&16)!=0;
+  double testFixed = (!globalCuts) ? 1.0e-8 : -1.0;
   // get what to look at
   double away = info.inTree ? away_ : CoinMin(away_,awayAtRoot_);
   int numberRows=columnCopy.getNumRows();
   int numberColumns=columnCopy.getNumCols(); 
+  int numberElements=columnCopy.getNumElements();
   // Allow bigger length on initial matrix (if special setting)
-  if (limit==512&&!info.inTree&&!info.pass)
-    limit=1024;
+  //if (limit==512&&!info.inTree&&!info.pass)
+  //limit=1024;
   // Start of code to create a factorization from warm start (A) ====
   // check factorization is okay
   CoinFactorization factorization;
+#ifdef CLP_OSL
+  CoinOslFactorization * factorization2=NULL;
+  if (alternateFactorization_) {
+    factorization2 = new CoinOslFactorization();
+  }
+#endif
   // We can either set increasing rows so ...IsBasic gives pivot row
   // or we can just increment iBasic one by one
   // for now let ...iBasic give pivot row
@@ -254,9 +288,20 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   }
   //returns 0 -okay, -1 singular, -2 too many in basis, -99 memory */
   while (status<-98) {
-    status=factorization.factorize(columnCopy,
-				   rowIsBasic, columnIsBasic);
-    if (status==-99) factorization.areaFactor(factorization.areaFactor() * 2.0);
+#ifdef CLP_OSL
+    if (!alternateFactorization_) {
+#endif
+      status=factorization.factorize(columnCopy,
+				     rowIsBasic, columnIsBasic);
+      if (status==-99) factorization.areaFactor(factorization.areaFactor() * 2.0);
+#ifdef CLP_OSL
+    } else {
+      double areaFactor=1.0;
+      status=factorization2->factorize(columnCopy,
+				      rowIsBasic, columnIsBasic,areaFactor);
+      if (status==-99) areaFactor *= 2.0;
+    }
+#endif
   } 
   if (status) {
 #ifdef COIN_DEVELOP
@@ -266,7 +311,12 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   }
   // End of creation of factorization (A) ====
   
+#ifdef CLP_OSL
+  double relaxation = !alternateFactorization_ ? factorization.conditionNumber() :
+    factorization2->conditionNumber();
+#else
   double relaxation = factorization.conditionNumber();
+#endif
 #ifdef COIN_DEVELOP_z
   if (relaxation>1.0e49)
     printf("condition %g\n",relaxation);
@@ -326,11 +376,15 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	type=2;
 	rhs=rowLower[iRow];
       } else {
-	// wrong - but probably large rhs
-	rowType[iRow]=type;
+	// probably large rhs
+	if (rowActivity[iRow]-rowLower[iRow]<
+	    rowUpper[iRow]-rowActivity[iRow])
+	  rowType[iRow]=2;
+	else
+	  rowType[iRow]=1;
 #ifdef CGL_DEBUG
 	assert (CoinMin(rowUpper[iRow]-rowActivity[iRow],
-		    rowActivity[iRow]-rowUpper[iRow])<1.0e-7);
+		    rowActivity[iRow]-rowUpper[iRow])<1.0e-5);
 	//abort();
         continue;
 #else
@@ -379,24 +433,130 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   int * cutIndex = cutVector.getIndices();
   double * cutElement = cutVector.denseVector(); 
   // and for packed form (as not necessarily in order)
-  double * packed = new double[numberColumns+1];
+  // also space for sort
+  bool doSorted = (infoOptions&256)!=0;
+  int lengthArray = numberColumns+1+((numberColumns+1)*sizeof(int))/sizeof(double);
+  if (doSorted)
+    lengthArray+=numberColumns;
+  double * packed = new double[lengthArray]; 
+  double * sort = packed+numberColumns+1;
+  int * which = reinterpret_cast<int *>(doSorted ? (sort+numberColumns): (sort));
   double tolerance1=1.0e-6;
   double tolerance2=0.9;
   double tolerance3=1.0e-4;
   double tolerance6=1.0e-6;
   double tolerance9=1.0e-4;
+#define MORE_GOMORY_CUTS 1
+#ifdef CLP_INVESTIGATE2
+  int saveLimit = info.inTree ? 50 : 1000;
+#else
+#if MORE_GOMORY_CUTS==2||MORE_GOMORY_CUTS==3
+  int saveLimit;
+#endif  
+#endif  
+  // get limit on length of cut
+  int limit = 0;
+  if (!limit_)
+    dynamicLimitInTree_ = CoinMax(50,numberColumns/40);
   if (!info.inTree) {
+    limit = limitAtRoot_;
     if (!info.pass) {
       tolerance1=1.0;
       tolerance2=1.0e-2;
       tolerance3=1.0e-6;
       tolerance6=1.0e-7;
       tolerance9=1.0e-5;
+      if (!limit||limit>=500)
+	limit=numberColumns;
     } else {
+      if((infoOptions&32)==0/*&&numberTimesStalled_<3*/) {
+	if (!limit) {
+	  if(numberElements>8*numberColumns)
+	    limit=numberColumns;
+	  else
+	    limit = CoinMax(1000,numberRows/4);
+	}
+      } else {
+	limit=numberColumns;
+	numberTimesStalled_++;
+      } 
     }
   } else {
+    limit = limit_;
+    if (!limit) {
+      if (!info.pass) 
+	limit = dynamicLimitInTree_;
+      else
+	limit=50;
+    }
   }
+  // If big - allow for rows
+  if (limit>=numberColumns)
+    limit += numberRows;
+#ifdef CLP_INVESTIGATE2
+  if (limit>saveLimit&&!info.inTree&&(infoOptions&512)==0) 
+    printf("Gomory limit changed from %d to %d, inTree %c, pass %d, r %d,c %d,e %d\n",
+	   saveLimit,limit,info.inTree ? 'Y' : 'N',info.pass,
+	   numberRows,numberColumns,numberElements);
+#endif
+  int nCandidates=0;
   for (iColumn=0;iColumn<numberColumns;iColumn++) {
+    // This returns pivot row for columns or -1 if not basic (C) ====
+    int iBasic=columnIsBasic[iColumn];
+    if (iBasic>=0&&intVar[iColumn]) {
+      double reducedValue=above_integer(colsol[iColumn]);
+      //printf("col %d bas %d val %.18g\n",iColumn,iBasic,colsol[iColumn]);
+      if(intVar[iColumn]&&reducedValue<1.0-away&&reducedValue>away) {
+	if (doSorted)
+	  sort[nCandidates]=fabs(0.5-reducedValue);
+	which[nCandidates++]=iColumn;
+      }
+    }
+  }
+  int nTotalEls=COIN_INT_MAX;
+  if (doSorted) {
+    CoinSort_2(sort,sort+nCandidates,which);
+    int nElsNow = columnCopy.getNumElements();
+    int nAdd;
+    int nAdd2;
+    int nReasonable;
+    int depth=info.level;
+    if (depth<2) {
+      nAdd=10000;
+      if (info.pass>0)
+	nAdd = CoinMin(nAdd,nElsNow+2*numberRows);
+      nAdd2 = 5*numberColumns;
+      nReasonable = CoinMax(nAdd2,nElsNow/8+nAdd);
+      if (!depth&&!info.pass) {
+	// allow more
+	nAdd += nElsNow/2;
+	nAdd2 += nElsNow/2;
+	nReasonable += nElsNow/2;
+	limit=numberRows+numberColumns;
+      }
+    } else {
+      nAdd = 200;
+      nAdd2 = 2*numberColumns;
+      nReasonable = CoinMax(nAdd2,nElsNow/8+nAdd);
+    }
+    nTotalEls=nReasonable;
+  }
+#ifdef MORE_GOMORY_CUTS
+  int saveTotalEls=nTotalEls;
+#endif
+#if MORE_GOMORY_CUTS==2||MORE_GOMORY_CUTS==3
+  saveLimit=limit;
+  if (doSorted)
+    limit=numberRows+numberColumns;
+  OsiCuts longCuts;
+#endif
+#if MORE_GOMORY_CUTS==1||MORE_GOMORY_CUTS==3
+  OsiCuts secondaryCuts;
+#endif
+  for (int kColumn=0;kColumn<nCandidates;kColumn++) {
+    if (nTotalEls<=0)
+      break;  // Got enough
+    iColumn=which[kColumn];
     double reducedValue=above_integer(colsol[iColumn]);;
     // This returns pivot row for columns or -1 if not basic (C) ====
     int iBasic=columnIsBasic[iColumn];
@@ -410,7 +570,14 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	array.setVector(columnLength[iColumn],row+columnStart[iColumn],
 			columnElements+columnStart[iColumn]);
 	// get column in tableau
-	factorization.updateColumn ( &work, &array );
+#ifdef CLP_OSL
+	if (!alternateFactorization_)
+#endif
+	  factorization.updateColumn ( &work, &array );
+#ifdef CLP_OSL
+	else
+	  factorization2->updateColumn ( &work, &array );
+#endif
 	int nn=0;
 	int numberInArray=array.getNumElements();
 	for (j=0;j<numberInArray;j++) {
@@ -428,7 +595,8 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
       }
 #endif
       array.clear();
-      if(intVar[iColumn]&&reducedValue<1.0-away&&reducedValue>away) {
+      assert(intVar[iColumn]&&reducedValue<1.0-away&&reducedValue>away);
+      {
 #ifdef CGL_DEBUG
 	cutVector.checkClear();
 #endif
@@ -438,7 +606,14 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	int numberNonInteger=0;
 	//Code below computes tableau row ====
 	// get pi
-	factorization.updateColumnTranspose ( &work, &array );
+#ifdef CLP_OSL
+	if (!alternateFactorization_)
+#endif
+	  factorization.updateColumnTranspose ( &work, &array );
+#ifdef CLP_OSL
+	else
+	  factorization2->updateColumnTranspose ( &work, &array );
+#endif
 	int numberInArray=array.getNumElements();
 #ifdef CGL_DEBUG
 	// check pivot on iColumn
@@ -466,11 +641,14 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	// adjustment to rhs
 	double rhs=0.0;
 	int number=0;
+#ifdef CGL_DEBUG_GOMORY
+	    if (!gomory_try)
+	      printf("start for basic column %d\n",iColumn);
+#endif
 	// columns
 	for (j=0;j<numberColumns;j++) {
-	  double value=0.0;
-	  if (columnIsBasic[j]<0&&
-	      colUpper[j]>colLower[j]+1.0e-8) {
+	  if (columnIsBasic[j]<0&&colUpper[j]>colLower[j]+testFixed) {
+	    double value=0.0;
 	    int k;
 	    // add in row of tableau
 	    for (k=columnStart[j];k<columnStart[j]+columnLength[j];k++) {
@@ -479,14 +657,23 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      largestFactor = CoinMax(largestFactor,fabs(value2));
 	      value += value2;
 	    }
+#ifdef CGL_DEBUG_GOMORY
+	    if (!gomory_try&&value)
+	      printf("col %d alpha %g colsol %g swap %c bounds %g %g\n",
+		     j,value,colsol[j],swap[j] ? 'Y' : 'N',
+		     colLower[j],colUpper[j]);
+#endif
 	    // value is entry in tableau row end (C) ====
 	    if (fabs(value)<1.0e-16) {
 	      // small value
 	      continue;
 	    } else {
+	      // left in to stop over compilation?
+	      //if (iColumn==-52) printf("for basic %d, column %d has alpha %g, colsol %g\n",
+	      //		      iColumn,j,value,colsol[j]);
 #if CGL_DEBUG>1
 	      if (iColumn==52) printf("for basic %d, column %d has alpha %g, colsol %g\n",
-		     iColumn,j,value,colsol[j]);
+				      iColumn,j,value,colsol[j]);
 #endif
 	      // deal with bounds
 	      if (swap[j]) {
@@ -498,7 +685,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      }
 #if CGL_DEBUG>1
 	      if (iColumn==52) printf("%d value %g reduced %g int %d rhs %g swap %d\n",
-		     j,value,reducedValue,intVar[j],rhs,swap[j]);
+				      j,value,reducedValue,intVar[j],rhs,swap[j]);
 #endif
 	      double coefficient;
 	      if (intVar[j]) {
@@ -525,11 +712,11 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		rhs += colLower[j]*coefficient;
 	      }
 	      if (fabs(coefficient)>= COIN_INDEXED_TINY_ELEMENT) {
-		 cutElement[j] = coefficient;
-		 cutIndex[number++]=j;
-		 // If too many - break from loop
-		 if (number>limit) 
-		   break;
+		cutElement[j] = coefficient;
+		cutIndex[number++]=j;
+		// If too many - break from loop
+		if (number>limit) 
+		  break;
 	      }
 	    }
 	  } else {
@@ -600,6 +787,9 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	double sum=0.0;
 	rhs = - rhs;
 	int n = cutVector.getNumElements();
+#if MORE_GOMORY_CUTS==1||MORE_GOMORY_CUTS==3
+	double violation2=violation;
+#endif
 	number=0;
 	for (j=0;j<n;j++) {
 	  int jColumn =cutIndex[j];
@@ -610,11 +800,20 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	    packed[number]=value;
 	    cutIndex[number++]=jColumn;
           } else {
+#define LARGE_BOUND 1.0e20
             // small - adjust rhs if rhs reasonable
-            if (value>0.0&&colLower[jColumn]>-1000.0) {
+            if (value>0.0&&colLower[jColumn]>-LARGE_BOUND) {
               rhs -= value*colLower[jColumn];
-            } else if (value<0.0&&colUpper[jColumn]<1000.0) {
+#if MORE_GOMORY_CUTS==1||MORE_GOMORY_CUTS==3
+	      // weaken violation
+	      violation2 -= fabs(value*(colsol[jColumn]-colLower[jColumn]));
+#endif
+            } else if (value<0.0&&colUpper[jColumn]<LARGE_BOUND) {
               rhs -= value*colUpper[jColumn];
+#if MORE_GOMORY_CUTS==1||MORE_GOMORY_CUTS==3
+	      // weaken violation
+	      violation2 -= fabs(value*(colsol[jColumn]-colUpper[jColumn]));
+#endif
             } else if (fabs(value)>1.0e-13) {
               // take anyway
               sum+=value*colsol[jColumn];
@@ -628,8 +827,28 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	//continue;
 	// say zeroed out
 	cutVector.setNumElements(0);
+	bool accurate2=false;
+	double difference=fabs((sum-rhs)-violation);
+	double useTolerance;
+	if (tolerance1>0.99) {
+	  // use absolute
+	  useTolerance = tolerance;
+	} else {
+	  double rhs2=CoinMax(fabs(rhs),10.0);
+	  useTolerance=rhs2*0.1*tolerance1;
+	}
+	bool accurate = (difference<useTolerance);
+#if MORE_GOMORY_CUTS==1||MORE_GOMORY_CUTS==3
+	double difference2=fabs((sum-rhs)-violation2);
+#if MORE_GOMORY_CUTS==1
+	if (difference2<useTolerance&&doSorted) 
+#else
+	if (difference2<useTolerance&&doSorted&&number<saveLimit) 
+#endif
+	  accurate2=true;
+#endif
 	if (sum >rhs+tolerance2*away&&
-	    fabs((sum-rhs)-violation)<tolerance1) {
+	    (accurate||accurate2)) {
 	  //#ifdef CGL_DEBUG
 #ifdef CGL_DEBUG
 #if CGL_DEBUG<=1
@@ -780,7 +999,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      double value=fabs(packed[i]);
 	      if (value<TINY_ELEMENT) {
 		int iColumn = cutIndex[i];
-		if (colUpper[iColumn]-colLower[iColumn]<10.0) {
+		if (colUpper[iColumn]-colLower[iColumn]<LARGE_BOUND) {
 		  // weaken cut
 		  if (packed[i]>0.0) 
 		    rhs -= value*colLower[iColumn];
@@ -794,7 +1013,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		}
 	      } else {
 		int iColumn = cutIndex[i];
-		if (colUpper[iColumn]!=colLower[iColumn]) {
+		if (colUpper[iColumn]!=colLower[iColumn]||globalCuts) {
 		  largest=CoinMax(largest,value);
 		  smallest=CoinMin(smallest,value);
 		  cutIndex[number]=cutIndex[i];
@@ -805,9 +1024,17 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 		}
 	      }
 	    }
-	    if (largest>1.0e9*smallest) {
+	    if (largest>1.0e10*smallest) {
 	      number=limit+1; //reject
 	      numberNonInteger=1;
+	    } else if (largest>1.0e9*smallest) {
+#ifdef CLP_INVESTIGATE2
+	      printf("WOuld reject %g %g ratio %g\n",smallest,largest,
+		     smallest/largest);
+#endif
+#if MORE_GOMORY_CUTS==1||MORE_GOMORY_CUTS==3
+	      accurate=false;
+#endif
 	    }
 	  }
 	  if (number<limit||!numberNonInteger) {
@@ -823,21 +1050,38 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	      //		  rhs+CoinMin(test*fabs(rhs),tolerance9)); // weaken
 	      bounds[1] = bounds[1]+CoinMin(test*fabs(rhs),tolerance9); // weaken
 	    }
+#ifdef MORE_GOMORY_CUTS
+	    if (accurate) {
+#else
 	    {
+#endif
 	      OsiRowCut rc;
 	      rc.setRow(number,cutIndex,packed,false);
 	      rc.setLb(bounds[0]);
 	      rc.setUb(bounds[1]);   
+#if MORE_GOMORY_CUTS<2
+	      nTotalEls -= number;
 	      cs.insert(rc);
-              //rc.print();
-#ifdef CGL_DEBUG
-	      if (!number)
-		std::cout<<"******* Empty cut - infeasible"<<std::endl;
-	      if (debugger) 
-		assert(!debugger->invalidCut(rc)); 
+#else
+	      if(number<saveLimit) {
+		nTotalEls -= number;
+		cs.insert(rc);
+	      } else {
+		longCuts.insert(rc);
+	      }
+#endif
+	      //printf("nTot %d kCol %d iCol %d ibasic %d\n",
+	      //     nTotalEls,kColumn,iColumn,iBasic);
+	      numberAdded++;
+#if MORE_GOMORY_CUTS==1||MORE_GOMORY_CUTS==3
+	    } else if (accurate2) {
+	      OsiRowCut rc;
+	      rc.setRow(number,cutIndex,packed,false);
+	      rc.setLb(bounds[0]);
+	      rc.setUb(bounds[1]);   
+	      secondaryCuts.insert(rc);
 #endif
 	    }
-	    numberAdded++;
 	  } else {
 #ifdef CGL_DEBUG
 	    std::cout<<"cut has "<<number<<" entries - skipped"
@@ -871,7 +1115,14 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 	array.setVector(columnLength[iColumn],row+columnStart[iColumn],
 			columnElements+columnStart[iColumn]);
 	// get column in tableau
-	factorization.updateColumn ( &work, &array );
+#ifdef CLP_OSL
+	if (!alternateFactorization_)
+#endif
+	  factorization.updateColumn ( &work, &array );
+#ifdef CLP_OSL
+	else
+	  factorization2->updateColumn ( &work, &array );
+#endif
 	int numberInArray=array.getNumElements();
 	printf("non-basic %d\n",iColumn);
 	for (int j=0;j<numberInArray;j++) {
@@ -885,6 +1136,9 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
 #endif
     }
   }
+#ifdef CLP_OSL
+  delete factorization2;
+#endif
 
   delete [] rowActivity;
   delete [] swap;
@@ -892,13 +1146,74 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   delete [] packed;
   delete [] rowIsBasic;
   delete [] columnIsBasic;
+#ifdef MORE_GOMORY_CUTS
+#if MORE_GOMORY_CUTS==1
+  int numberInaccurate = secondaryCuts.sizeRowCuts();
+#ifdef CLP_INVESTIGATE2
+  int numberOrdinary = numberAdded-numberInaccurate;
+  if (!info.inTree&&(infoOptions&512)==0) 
+    printf("Gomory has %d ordinary and %d less accurate cuts(%d els)\n",
+	   numberOrdinary,numberInaccurate,saveTotalEls-nTotalEls);
+#endif
+#elif MORE_GOMORY_CUTS==2
+  int numberLong = longCuts.sizeRowCuts();
+#ifdef CLP_INVESTIGATE2
+  int numberOrdinary = numberAdded-numberLong;
+  if (!info.inTree&&(infoOptions&512)==0) 
+    printf("Gomory has %d ordinary and %d long cuts(%d els)\n",
+	   numberOrdinary,numberLong,saveTotalEls-nTotalEls);
+#endif
+#elif MORE_GOMORY_CUTS==3
+  int numberLong = longCuts.sizeRowCuts();
+  int numberInaccurate = secondaryCuts.sizeRowCuts();
+#ifdef CLP_INVESTIGATE2
+  int numberOrdinary = numberAdded-numberLong-numberInaccurate;
+  if (!info.inTree&&(infoOptions&512)==0) 
+    printf("Gomory has %d ordinary, %d long and %d less accurate cuts(%d els)\n",
+	   numberOrdinary,numberLong,numberInaccurate,saveTotalEls-nTotalEls);
+#endif
+#endif
+  if (doSorted&&limit<numberColumns) {
+    // Just half
+    nTotalEls -= saveTotalEls/2;
+#if MORE_GOMORY_CUTS==2||MORE_GOMORY_CUTS==3
+    while (nTotalEls>0) {
+      for (int i=0;i<numberLong;i++) {
+	nTotalEls -= longCuts.rowCutPtr(i)->row().getNumElements();
+	cs.insert(longCuts.rowCut(i));
+	numberAdded ++;
+	if (nTotalEls<=0)
+	  break;
+      }
+      break;
+    }
+#endif
+#if MORE_GOMORY_CUTS==1||MORE_GOMORY_CUTS==3
+    while (nTotalEls>0) {
+      for (int i=0;i<numberInaccurate;i++) {
+	nTotalEls -= secondaryCuts.rowCutPtr(i)->row().getNumElements();
+	cs.insert(secondaryCuts.rowCut(i));
+	numberAdded ++;
+	if (nTotalEls<=0)
+	  break;
+      }
+      break;
+    }
+#endif
+  }
+#else
+#ifdef CLP_INVESTIGATE2
+  if (!info.inTree&&(infoOptions&512)==0) 
+    printf("Gomory added %d cuts(%d els)\n",numberAdded,saveTotalEls-nTotalEls);
+#endif
+#endif
   return numberAdded;
 }
 // Limit stuff
 void CglGomory::setLimit(int limit)
 {
-  if (limit>0)
-    limit_=limit;
+  if (limit>=0)
+    limit_=limit; 
 }
 int CglGomory::getLimit() const
 {
@@ -907,12 +1222,21 @@ int CglGomory::getLimit() const
 // Limit stuff at root
 void CglGomory::setLimitAtRoot(int limit)
 {
-  if (limit>0)
+  if (limit>=0)
     limitAtRoot_=limit;
 }
 int CglGomory::getLimitAtRoot() const
 {
   return limitAtRoot_;
+}
+// Return maximum length of cut in tree
+int 
+CglGomory::maximumLengthOfCutInTree() const
+{
+  if (limit_)
+    return limit_;
+  else
+    return dynamicLimitInTree_;
 }
 
 // Away stuff
@@ -970,7 +1294,9 @@ awayAtRoot_(0.05),
 conditionNumberMultiplier_(1.0e-18),
 largestFactorMultiplier_(1.0e-13),
 limit_(50),
-limitAtRoot_(0)
+limitAtRoot_(0),
+dynamicLimitInTree_(-1),
+alternateFactorization_(0)
 {
 
 }
@@ -985,7 +1311,9 @@ CglGomory::CglGomory (const CglGomory & source) :
   conditionNumberMultiplier_(source.conditionNumberMultiplier_),
   largestFactorMultiplier_(source.largestFactorMultiplier_),
   limit_(source.limit_),
-  limitAtRoot_(source.limitAtRoot_)
+  limitAtRoot_(source.limitAtRoot_),
+  dynamicLimitInTree_(source.dynamicLimitInTree_),
+  alternateFactorization_(source.alternateFactorization_)
 {  
 }
 
@@ -1019,6 +1347,8 @@ CglGomory::operator=(const CglGomory& rhs)
     largestFactorMultiplier_ = rhs.largestFactorMultiplier_;
     limit_=rhs.limit_;
     limitAtRoot_=rhs.limitAtRoot_;
+    dynamicLimitInTree_ = rhs.dynamicLimitInTree_;
+    alternateFactorization_=rhs.alternateFactorization_; 
   }
   return *this;
 }
@@ -1033,7 +1363,7 @@ int
 CglGomory::generateCuts( const OsiRowCutDebugger * debugger, 
                          OsiCuts & cs,
                          const CoinPackedMatrix & columnCopy,
-                         const double * objective, const double * colsol,
+                         const double * colsol,
                          const double * colLower, const double * colUpper,
                          const double * rowLower, const double * rowUpper,
 			 const char * intVar,
@@ -1043,7 +1373,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
   CoinPackedMatrix rowCopy;
   rowCopy.reverseOrderedCopyOf(columnCopy);
   return generateCuts( debugger, cs, columnCopy, rowCopy,
-		       objective, colsol, colLower, colUpper,
+		       colsol, colLower, colUpper,
 		       rowLower, rowUpper, intVar, warm, info);
 }
 // Create C++ lines to get to current state

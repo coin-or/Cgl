@@ -25,6 +25,10 @@ public:
       2 - switch off some stuff as variables semi-integer
       4 - set global cut flag if at root node
       8 - set global cut flag if at root node and first pass
+      16 - set global cut flag and make cuts globally valid
+      32 - last round of cuts did nothing - maybe be more aggressive
+      64 - in preprocessing stage
+      128 - looks like solution
   */
   int options;
   /// Set true if in tree (to avoid ambiguity at first branch)
@@ -59,18 +63,19 @@ public:
   virtual
     ~CglTreeInfo ();
   /// Take action if cut generator can fix a variable (toValue -1 for down, +1 for up)
-  virtual void fixes(int variable, int toValue, int fixedVariable,bool fixedToLower) {}
+  virtual bool fixes(int , int , int ,bool) {return false;}
   /** Initalizes fixing arrays etc - returns >0 if we want to save info
       0 if we don't and -1 if is to be used */
-  virtual int initializeFixing(const OsiSolverInterface * model) {return 0;}
+  virtual int initializeFixing(const OsiSolverInterface * ) {return 0;}
   
 };
 
 /** Derived class to pick up probing info. */
 typedef struct {
-  unsigned int oneFixed:1; //  nonzero if variable fixed to 1
-  unsigned int sequence:31; //  variable (in matrix)
-} fixEntry;
+  //unsigned int oneFixed:1; //  nonzero if variable to 1 fixes all
+  //unsigned int sequence:31; //  variable (in matrix) (but also see cliqueRow_)
+  unsigned int fixes;
+} cliqueEntry;
 
 class CglTreeProbingInfo : public CglTreeInfo {
 public:
@@ -94,8 +99,10 @@ public:
   virtual
     ~CglTreeProbingInfo ();
   OsiSolverInterface * analyze(const OsiSolverInterface & si, int createSolver=0);
-  /// Take action if cut generator can fix a variable (toValue -1 for down, +1 for up)
-  virtual void fixes(int variable, int toValue, int fixedVariable,bool fixedToLower);
+  /** Take action if cut generator can fix a variable 
+      (toValue -1 for down, +1 for up)
+      Returns true if still room, false if not  */
+  virtual bool fixes(int variable, int toValue, int fixedVariable,bool fixedToLower);
   /** Initalizes fixing arrays etc - returns >0 if we want to save info
       0 if we don't and -1 if is to be used */
   virtual int initializeFixing(const OsiSolverInterface * model) ;
@@ -109,7 +116,7 @@ public:
   void generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 		    const CglTreeInfo info) const;
   /// Entries for fixing variables
-  inline fixEntry * fixEntries() const
+  inline cliqueEntry * fixEntries() const
   { convert(); return fixEntry_;}
   /// Starts of integer variable going to zero
   inline int * toZero() const
@@ -134,7 +141,7 @@ private:
   void convert() const;
 protected:
   /// Entries for fixing variables
-  mutable fixEntry * fixEntry_;
+  mutable cliqueEntry * fixEntry_;
   /// Starts of integer variable going to zero
   mutable int * toZero_;
   /// Starts of integer variable going to one
@@ -154,5 +161,13 @@ protected:
   /// Number entries in fixingEntry_ (and fixEntry_) or -2 if correct style
   mutable int numberEntries_;
 };
+inline int sequenceInCliqueEntry(const cliqueEntry & cEntry)
+{ return cEntry.fixes&0x7fffffff;}
+inline void setSequenceInCliqueEntry(cliqueEntry & cEntry,int sequence)
+{ cEntry.fixes = sequence|(cEntry.fixes&0x80000000);}
+inline bool oneFixesInCliqueEntry(const cliqueEntry & cEntry)
+{ return (cEntry.fixes&0x80000000)!=0;}
+inline void setOneFixesInCliqueEntry(cliqueEntry & cEntry,bool oneFixes)
+{ cEntry.fixes = (oneFixes ? 0x80000000 : 0)|(cEntry.fixes&0x7fffffff);}
 
 #endif

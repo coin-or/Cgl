@@ -177,6 +177,9 @@ public:
   { return &cuts_;}
   /// Update prohibited and rowType
   void update(const OsiPresolve * pinfo,const OsiSolverInterface * solver);
+  /// Set options
+  inline void setOptions(int value)
+  { options_=value;}
   //@}
 
   ///@name Cut generator methods 
@@ -331,6 +334,10 @@ private:
   char * prohibited_;
   /// Number of rows in original row types
   int numberRowType_;
+  /** Options
+      1 - original model had integer bounds before tightening
+  */
+  int options_;
   /** Row types (may be NULL) 
       Carried around and corresponds to existing rows
       -1 added by preprocess e.g. x+y=1

@@ -37,7 +37,7 @@ public:
 		    OsiCuts & cs,
 		    const CoinPackedMatrix & columnCopy,
 		    const CoinPackedMatrix & rowCopy,
-		    const double * objective, const double * colsol,
+		    const double * colsol,
 		    const double * colLower, const double * colUpper,
 		    const double * rowLower, const double * rowUpper,
 		    const char * intVar ,
@@ -48,7 +48,7 @@ public:
   int generateCuts( const OsiRowCutDebugger * debugger, 
 		    OsiCuts & cs,
 		    const CoinPackedMatrix & columnCopy,
-		    const double * objective, const double * colsol,
+		    const double * colsol,
 		    const double * colLower, const double * colUpper,
 		    const double * rowLower, const double * rowUpper,
 		    const char * intVar ,
@@ -69,6 +69,8 @@ public:
   void setLimitAtRoot(int limit);
   /// Get at root
   int getLimitAtRoot() const;
+  /// Return maximum length of cut in tree
+  virtual int maximumLengthOfCutInTree() const;
   //@}
 
   /**@name Change criterion on which variables to look at.  All ones
@@ -102,6 +104,16 @@ public:
   void setLargestFactorMultiplier(double value);
   /// Get LargestFactorMultiplier
   double getLargestFactorMultiplier() const;
+  //@}
+
+  /**@name change factorization */
+  //@{
+  /// Set/unset alternative factorization
+  inline void useAlternativeFactorization(bool yes=true)
+  { alternateFactorization_= (yes) ? 1 : 0;} 
+  /// Get whether alternative factorization being used
+  inline bool alternativeFactorization() const
+  { return (alternateFactorization_);} 
   //@}
 
   /**@name Constructors and destructors */
@@ -148,6 +160,12 @@ private:
   int limit_;
   /// Limit - only generate if fewer than this in cut (at root)
   int limitAtRoot_;
+  /// Dynamic limit in tree
+  mutable int dynamicLimitInTree_;
+  /// Number of times stalled
+  mutable int numberTimesStalled_;
+  /// nonzero to use alternative factorization
+  int alternateFactorization_;
   //@}
 };
 

@@ -6,6 +6,17 @@
 #include <string>
 
 #include "CglCutGenerator.hpp"
+  /** Only useful type of disaggregation is most normal
+      For now just done for 0-1 variables
+      Can be used for building cliques
+   */
+  typedef struct {
+    //unsigned int zeroOne:1; // nonzero if affected variable is 0-1
+    //unsigned int whenAtUB:1; // nonzero if fixing happens when this variable at 1
+    //unsigned int affectedToUB:1; // nonzero if affected variable fixed to UB
+    //unsigned int affected:29; // If 0-1 then 0-1 sequence, otherwise true
+    unsigned int affected;
+  } disaggregationAction;
 
 /** Probing Cut Generator Class */
 class CglProbing : public CglCutGenerator {
@@ -109,7 +120,7 @@ public:
       Returns number of cliques found.
   */
   int createCliques( OsiSolverInterface & si, 
-		    int minimumSize=2, int maximumSize=100, bool extendCliques=false);
+		    int minimumSize=2, int maximumSize=100);
   /// Delete all clique information
   void deleteCliques();
   //@}
@@ -306,11 +317,11 @@ private:
   /// This just sets minima and maxima on rows
   void tighten2(double *colLower, double * colUpper,
                 const int *column, const double *rowElements, 
-                const CoinBigIndex *rowStart,const CoinBigIndex * rowStartPos,
+                const CoinBigIndex *rowStart,
 		const int * rowLength,
                 double *rowLower, double *rowUpper, 
                 double * minR, double * maxR, int * markR,
-                int nRows,int nCols) const;
+                int nRows) const;
   //@}
 
   // Private member data
@@ -329,9 +340,9 @@ private:
   /// Upper bounds on rows
   double * rowUpper_;
   /// Lower bounds on columns
-  double * colLower_;
+  mutable double * colLower_;
   /// Upper bounds on columns
-  double * colUpper_;
+  mutable double * colUpper_;
   /// Number of rows in snapshot (or when cliqueRow stuff computed)
   mutable int numberRows_;
   /// Number of columns in problem ( must == current)
@@ -377,16 +388,6 @@ private:
   mutable int totalTimesCalled_;
   /// Which ones looked at this time
   mutable int * lookedAt_;
-  /** Only useful type of disaggregation is most normal
-      For now just done for 0-1 variables
-      Can be used for building cliques
-   */
-  typedef struct {
-    unsigned int zeroOne:1; // nonzero if affected variable is 0-1
-    unsigned int whenAtUB:1; // nonzero if fixing happens when this variable at 1
-    unsigned int affectedToUB:1; // nonzero if affected variable fixed to UB
-    unsigned int affected:29; // If 0-1 then 0-1 sequence, otherwise true
-  } disaggregationAction;
   /// Disaggregation cuts and for building cliques
   typedef struct disaggregation_struct_tag {
     int sequence; // integer variable
@@ -406,10 +407,6 @@ private:
   /// Start of each clique
   int * cliqueStart_;
   /// Entries for clique
-  typedef struct {
-    unsigned int oneFixes:1; //  nonzero if variable to 1 fixes all
-    unsigned int sequence:31; //  variable (in matrix) (but also see cliqueRow_)
-  } cliqueEntry;
   cliqueEntry * cliqueEntry_;
   /** Start of oneFixes cliques for a column in matrix or -1 if not
       in any clique */
@@ -432,6 +429,29 @@ private:
   char * tightenBounds_;
   //@}
 };
+inline int affectedInDisaggregation(const disaggregationAction & dis)
+{ return dis.affected&0x1fffffff;}
+inline void setAffectedInDisaggregation(disaggregationAction & dis,
+					   int affected)
+{ dis.affected = affected|(dis.affected&0xe0000000);}
+#ifdef NDEBUG
+inline bool zeroOneInDisaggregation(const disaggregationAction & )
+{ return true;}
+#else
+inline bool zeroOneInDisaggregation(const disaggregationAction & dis)
+//{ return (dis.affected&0x80000000)!=0;}
+{ assert ((dis.affected&0x80000000)!=0); return true;}
+#endif
+inline void setZeroOneInDisaggregation(disaggregationAction & dis,bool zeroOne)
+{ dis.affected = (zeroOne ? 0x80000000 : 0)|(dis.affected&0x7fffffff);}
+inline bool whenAtUBInDisaggregation(const disaggregationAction & dis)
+{ return (dis.affected&0x40000000)!=0;}
+inline void setWhenAtUBInDisaggregation(disaggregationAction & dis,bool whenAtUB)
+{ dis.affected = (whenAtUB ? 0x40000000 : 0)|(dis.affected&0xbfffffff);}
+inline bool affectedToUBInDisaggregation(const disaggregationAction & dis)
+{ return (dis.affected&0x20000000)!=0;}
+inline void setAffectedToUBInDisaggregation(disaggregationAction & dis,bool affectedToUB)
+{ dis.affected = (affectedToUB ? 0x20000000 : 0)|(dis.affected&0xdfffffff);}
 
 //#############################################################################
 /** A function that tests the methods in the CglProbing class. The

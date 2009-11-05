@@ -65,7 +65,6 @@ CglGomoryUnitTest(
     CoinPackedMatrix matrix(true,3,5,8,elements,rows,start,length);
     
     // rim data (objective not used just yet)
-    double objective[7]={-4.0,1.0,0.0,0.0,0.0,0.0,0.0};
     double rowLower[5]={14.0,3.0,3.0,1.0e10,1.0e10};
     double rowUpper[5]={14.0,3.0,3.0,-1.0e10,-1.0e10};
     double colLower[7]={0.0,0.0,0.0,0.0,0.0,0.0,0.0};
@@ -97,7 +96,7 @@ CglGomoryUnitTest(
     // solution 1
     double colsol1[5]={20.0/7.0,3.0,0.0,0.0,23.0/7.0};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol1,
+		       /*objective,*/ colsol1,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -178,7 +177,7 @@ CglGomoryUnitTest(
     // solution 2
     double colsol2[6]={2.0,0.5,1.0,2.5,0.0,0.0};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol2,
+		       /*objective,*/ colsol2,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -259,7 +258,7 @@ CglGomoryUnitTest(
     // solution 3
     double colsol3[7]={2.0,1.0,2.0,2.0,1.0,0.0,0.0};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol3,
+		       /*objective,*/ colsol3,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -283,7 +282,6 @@ CglGomoryUnitTest(
     CoinPackedMatrix matrix(true,3,5,8,elements,rows,start,length);
     
     // rim data (objective not used just yet)
-    double objective[7]={-4.0,1.0,0.0,0.0,0.0,0.0,0.0};
     double rowLower[5]={14.0,-5.0,3.0,1.0e10,1.0e10};
     double rowUpper[5]={14.0,-5.0,3.0,-1.0e10,-1.0e10};
     double colLower[7]={0.0,0.0,0.0,0.0,0.0,0.0,0.0};
@@ -315,7 +313,7 @@ CglGomoryUnitTest(
     // solution 1
     double colsol1[5]={20.0/7.0,3.0,0.0,8.0,23.0/7.0};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol1,
+		       /*objective,*/ colsol1,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -396,7 +394,7 @@ CglGomoryUnitTest(
     // solution 2
     double colsol2[6]={2.0,0.5,1.0,5.5,0.0,0.0};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol2,
+		       /*objective,*/ colsol2,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -477,7 +475,7 @@ CglGomoryUnitTest(
     // solution 3
     double colsol3[7]={2.0,1.0,2.0,6.0,1.0,0.0,0.0};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol3,
+		       /*objective,*/ colsol3,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -501,7 +499,6 @@ CglGomoryUnitTest(
     CoinPackedMatrix matrix(true,3,2,5,elements,rows,start,length);
     
     // rim data (objective not used just yet)
-    double objective[2]={-4.0,1.0};
     double rowLower[5]={-1.0e10,-1.0e10,-1.0e10,1.0e10,1.0e10};
     double rowUpper[5]={14.0,3.0,3.0,-1.0e10,-1.0e10};
     double colLower[2]={0.0,0.0};
@@ -533,7 +530,7 @@ CglGomoryUnitTest(
     // solution 1
     double colsol1[2]={20.0/7.0,3.0};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol1,
+		       /* objective,*/ colsol1,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -611,7 +608,7 @@ CglGomoryUnitTest(
     // solution 2
     double colsol2[2]={2.0,0.5};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol2,
+		       /*objective,*/ colsol2,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -689,7 +686,7 @@ CglGomoryUnitTest(
     // solution 3
     double colsol3[2]={2.0,1.0};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol3,
+		       /*objective,*/ colsol3,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -713,7 +710,6 @@ CglGomoryUnitTest(
     CoinPackedMatrix matrix(true,3,2,5,elements,rows,start,length);
     
     // rim data (objective not used just yet)
-    double objective[2]={-4.0,1.0};
     double rowUpper[5]={1.0e10,3.0,1.0e10,-1.0e10,-1.0e10};
     double rowLower[5]={-14.0,-1.0e10,-3.0,1.0e10,1.0e10};
     double colLower[2]={0.0,0.0};
@@ -745,7 +741,7 @@ CglGomoryUnitTest(
     // solution 1
     double colsol1[2]={20.0/7.0,3.0};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol1,
+		 /*objective,*/ colsol1,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -823,7 +819,7 @@ CglGomoryUnitTest(
     // solution 2
     double colsol2[2]={2.0,0.5};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol2,
+		 /*objective,*/ colsol2,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -901,7 +897,7 @@ CglGomoryUnitTest(
     // solution 3
     double colsol3[2]={2.0,1.0};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol3,
+		 /*objective,*/ colsol3,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -930,7 +926,6 @@ CglGomoryUnitTest(
     CoinPackedMatrix matrix(true,3,5,8,elements,rows,start,length);
     
     // rim data (objective not used just yet)
-    double objective[7]={-4.0,1.0,0.0,0.0,0.0,0.0,0.0};
     double rowLower[5]={14.0,3.0,3.0,1.0e10,1.0e10};
     double rowUpper[5]={14.0,3.0,3.0,-1.0e10,-1.0e10};
     double colLower[7]={0.0,0.0,0.0,0.0,0.0,0.0,0.0};
@@ -962,7 +957,7 @@ CglGomoryUnitTest(
     // solution 1
     double colsol1[5]={20.0/7.0,3.0,0.0,0.0,23.0/7.0};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol1,
+		 /*objective,*/ colsol1,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -1043,7 +1038,7 @@ CglGomoryUnitTest(
     // solution 2
     double colsol2[6]={2.0,0.5,1.0,2.5,0.0,0.0};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol2,
+		 /*objective,*/ colsol2,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -1067,7 +1062,6 @@ CglGomoryUnitTest(
     CoinPackedMatrix matrix(true,3,5,8,elements,rows,start,length);
     
     // rim data (objective not used just yet)
-    double objective[7]={-4.0,1.0,0.0,0.0,0.0,0.0,0.0};
     double rowLower[5]={14.0,-5.0,3.0,1.0e10,1.0e10};
     double rowUpper[5]={14.0,-5.0,3.0,-1.0e10,-1.0e10};
     double colLower[7]={0.0,0.0,0.0,0.0,0.0,0.0,0.0};
@@ -1099,7 +1093,7 @@ CglGomoryUnitTest(
     // solution 1
     double colsol1[5]={20.0/7.0,3.0,0.0,8.0,23.0/7.0};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol1,
+		 /*objective,*/ colsol1,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -1180,7 +1174,7 @@ CglGomoryUnitTest(
     // solution 2
     double colsol2[6]={2.0,0.5,1.0,5.5,0.0,0.0};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol2,
+		 /*objective,*/ colsol2,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -1204,7 +1198,6 @@ CglGomoryUnitTest(
     CoinPackedMatrix matrix(true,3,2,5,elements,rows,start,length);
     
     // rim data (objective not used just yet)
-    double objective[2]={-4.0,1.0};
     double rowLower[5]={-1.0e10,-1.0e10,-1.0e10,1.0e10,1.0e10};
     double rowUpper[5]={14.0,3.0,3.0,-1.0e10,-1.0e10};
     double colLower[2]={0.0,0.0};
@@ -1236,7 +1229,7 @@ CglGomoryUnitTest(
     // solution 1
     double colsol1[2]={20.0/7.0,3.0};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol1,
+		 /*objective,*/ colsol1,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -1314,7 +1307,7 @@ CglGomoryUnitTest(
     // solution 2
     double colsol2[2]={2.0,0.5};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol2,
+		       /*objective,*/ colsol2,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -1338,7 +1331,6 @@ CglGomoryUnitTest(
     CoinPackedMatrix matrix(true,3,2,5,elements,rows,start,length);
     
     // rim data (objective not used just yet)
-    double objective[2]={-4.0,1.0};
     double rowUpper[5]={1.0e10,3.0,1.0e10,-1.0e10,-1.0e10};
     double rowLower[5]={-14.0,-1.0e10,-3.0,1.0e10,1.0e10};
     double colLower[2]={0.0,0.0};
@@ -1370,7 +1362,7 @@ CglGomoryUnitTest(
     // solution 1
     double colsol1[2]={20.0/7.0,3.0};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol1,
+		       /*objective,*/ colsol1,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
@@ -1448,7 +1440,7 @@ CglGomoryUnitTest(
     // solution 2
     double colsol2[2]={2.0,0.5};
     test1.generateCuts(NULL, osicuts, matrix,
-		 objective, colsol2,
+		 /*objective,*/ colsol2,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
     nRowCuts = osicuts.sizeRowCuts();
