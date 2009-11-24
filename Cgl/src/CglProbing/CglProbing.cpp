@@ -5139,7 +5139,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 if (istackC1>=0) {
                   if (CoinMin(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
                     saveL[istackC1]=CoinMin(lo0[istackC],colLower[icol]);
-                    if (intVar[icol]||!info->inTree) {
+                    if (intVar[icol]/*||!info->inTree*/) {
                       element[nFix]=saveL[istackC1];
                       index[nFix++]=icol;
                       nInt++;
@@ -5161,7 +5161,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 if (istackC1>=0) {
                   if (CoinMax(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
                     saveU[istackC1]=CoinMax(up0[istackC],colUpper[icol]);
-                    if (intVar[icol]||!info->inTree) {
+                    if (intVar[icol]/*||!info->inTree*/) {
                       element[nFix]=saveU[istackC1];
                       index[nFix++]=icol;
                       nInt++;

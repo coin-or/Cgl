@@ -3952,6 +3952,7 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
       }
     }
   }
+#if 0
   if (numberCliques_<0) {
     if (logLevel)
       printf("*** Problem infeasible\n");
@@ -3977,6 +3978,7 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
         printf("%d variables fixed\n",numberFixed);
     }
   }
+#endif
   if (numberCliques_>0) {
     cliqueType_ = new cliqueType [numberCliques_];
     cliqueStart_ = new int [numberCliques_+1];
