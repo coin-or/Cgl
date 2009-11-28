@@ -3761,6 +3761,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  info.options=64;
 	  probingCut->generateCutsAndModify(*newModel,cs,&info);
 	}
+	//#define CLIQUE_ANALYSIS
 #ifdef CLIQUE_ANALYSIS
 	if (probingCut) {
 	  printf("ordinary probing\n");
@@ -3789,7 +3790,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	}
 	// out for now - think about cliques
         if(!generator1.snapshot(*newModel,NULL,false)) {
-          generator1.createCliques(*newModel,2,1000,true);
+          generator1.createCliques(*newModel,2,1000/*,true*/);
           generator1.setMode(0);
           // To get special stuff
           info.pass=4;
