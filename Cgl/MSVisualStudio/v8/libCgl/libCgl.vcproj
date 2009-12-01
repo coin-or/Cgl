@@ -369,7 +369,19 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\..\src\CglLandP\CglLandPMessages.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\..\..\Cgl\src\CglLandP\CglLandPSimplex.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\src\CglLandP\CglLandPTabRow.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\src\CglLandP\CglLandPUtils.cpp"
 				>
 			</File>
 			<File
@@ -709,7 +721,19 @@
 				>
 			</File>
 			<File
+				RelativePath="..\..\..\src\CglLandP\CglLandPMessages.hpp"
+				>
+			</File>
+			<File
 				RelativePath="..\..\..\..\Cgl\src\CglLandP\CglLandPSimplex.hpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\src\CglLandP\CglLandPTabRow.hpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\src\CglLandP\CglLandPUtils.hpp"
 				>
 			</File>
 			<File
