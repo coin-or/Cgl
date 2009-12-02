@@ -113,7 +113,7 @@ public:
   { alternateFactorization_= (yes) ? 1 : 0;} 
   /// Get whether alternative factorization being used
   inline bool alternativeFactorization() const
-  { return (alternateFactorization_);} 
+  { return (alternateFactorization_!=0);} 
   //@}
 
   /**@name Constructors and destructors */

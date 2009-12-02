@@ -1028,7 +1028,7 @@ CglGomory::generateCuts(
 	      number=limit+1; //reject
 	      numberNonInteger=1;
 	    } else if (largest>1.0e9*smallest) {
-#ifdef CLP_INVESTIGATE2
+#ifdef CGL_INVESTIGATE
 	      printf("WOuld reject %g %g ratio %g\n",smallest,largest,
 		     smallest/largest);
 #endif

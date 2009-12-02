@@ -219,6 +219,48 @@ static int outDupsEtc(int numberIntegers, int & numberCliques, int & numberMatri
   int iClique;
   assert (sizeof(int)==4);
   assert (sizeof(cliqueEntry)==4);
+  // If lots then get rid of short ones
+#define KEEP_CLIQUES 10000
+  if (numberCliques-numberMatrixCliques>KEEP_CLIQUES) {
+    int * sort = new int [numberCliques];
+    for (iClique=numberMatrixCliques;iClique<numberCliques;iClique++) {
+      int j = cliqueStart[iClique];
+      int n = cliqueStart[iClique+1]-j;
+      sort[iClique]=n;
+    }
+    std::sort(sort+numberMatrixCliques,sort+numberCliques);
+    int allow = sort[numberCliques-KEEP_CLIQUES];
+    int nEqual=0;
+    for (iClique=numberCliques-KEEP_CLIQUES;iClique<numberCliques;iClique++) {
+      if (sort[iClique]>allow)
+	break;
+      else
+	nEqual++;
+    }
+    delete [] sort;
+    int j=cliqueStart[numberMatrixCliques];
+    int put=j;
+    int nClique=numberMatrixCliques;
+    for (iClique=numberMatrixCliques;iClique<numberCliques;iClique++) {
+      int end = cliqueStart[iClique+1];
+      int n = end-j;
+      bool copy=false;
+      if (n>allow) {
+	copy=true;
+      } else if (n==allow&&nEqual) {
+	copy=true;
+	nEqual--;
+      }
+      if (copy) {
+	cliqueType[nClique++]=cliqueType[iClique];
+	for (;j<end;j++)
+	  entry[put++]=entry[j];
+      }
+      j = cliqueStart[iClique+1];
+      cliqueStart[nClique]=put;
+    }
+    numberCliques = nClique;
+  }
   // sort
   for (iClique=0;iClique<numberCliques;iClique++) {
     int j = cliqueStart[iClique];
@@ -837,7 +879,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver)
   memset(mark,0,numberIntegers_);
   int nStrengthen=-1;
   int iPass=0;
-  while (nStrengthen&&iPass<2) {
+  while (nStrengthen&&iPass<20) {
     iPass++;
     int numberLastTime = numberCliques;
     int * count = new int [numberCliques];
@@ -1017,7 +1059,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver)
 	int jCount = count[jClique];
 	count[jClique]=0;
 	if (jCount==cliqueStart[jClique+1]-cliqueStart[jClique]) {
-#if 0
+#if 1
 		if (printit) {
 	    printf("One can extend %d [ ",jClique);
 	    for (int i=cliqueStart[jClique];i<cliqueStart[jClique+1];i++)
@@ -1071,7 +1113,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver)
     if (nStrengthen) {
       int numberDeleted = outDupsEtc(numberIntegers_, numberCliques, numberMatrixCliques,
 		 cliqueStart, cliqueType, entry, numberLastTime,printit ? 2 : 1);
-      if (numberDeleted<0)
+      if (numberDeleted<0||(iPass>1&&numberCliques-numberDeleted>5000))
 	nStrengthen=0;
     }
     delete [] count;
@@ -1186,7 +1228,7 @@ CglTreeProbingInfo::fixes(int variable, int toValue, int fixedVariable,bool fixe
   }
   cliqueEntry entry1;
   entry1.fixes=0;
-  setOneFixesInCliqueEntry(entry1,fixedTo);
+  setOneFixesInCliqueEntry(entry1,fixedTo!=0);
   setSequenceInCliqueEntry(entry1,intFix);
   fixEntry_[numberEntries_] = entry1;
   assert (toValue==-1||toValue==1);

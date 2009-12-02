@@ -847,13 +847,23 @@ CglFakeClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
     fakeSolver_->setColLower(si.getColLower());
     fakeSolver_->setColSolution(si.getColSolution());
     fakeSolver_->setColUpper(si.getColUpper());
+    int numberRowCutsBefore = cs.sizeRowCuts();
     CglClique::generateCuts(*fakeSolver_,cs,info);
+    int numberRowCutsAfter1 = cs.sizeRowCuts();
+    if (numberRowCutsAfter1>numberRowCutsBefore)
+      printf("fake clique generated %d cuts\n",
+	     numberRowCutsAfter1-numberRowCutsBefore);
     if (probing_) {
       // get and set branch and bound cutoff
-      double cutoff;
-      si.getDblParam(OsiDualObjectiveLimit,cutoff);
-      fakeSolver_->setDblParam(OsiDualObjectiveLimit,cutoff);
+      // No - as can't set djs correctly
+      //double cutoff;
+      //si.getDblParam(OsiDualObjectiveLimit,cutoff);
+      fakeSolver_->setDblParam(OsiDualObjectiveLimit,1.0e100/*cutoff*/);
       probing_->generateCuts(*fakeSolver_,cs,info);
+      int numberRowCutsAfter2 = cs.sizeRowCuts();
+      if (numberRowCutsAfter2>numberRowCutsAfter1)
+	printf("fake probe generated %d cuts\n",
+	       numberRowCutsAfter2-numberRowCutsAfter1);
     }
   } else {
     // just use real solver
