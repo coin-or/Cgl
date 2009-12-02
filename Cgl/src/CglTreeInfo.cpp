@@ -1228,7 +1228,7 @@ CglTreeProbingInfo::fixes(int variable, int toValue, int fixedVariable,bool fixe
   }
   cliqueEntry entry1;
   entry1.fixes=0;
-  setOneFixesInCliqueEntry(entry1,fixedTo);
+  setOneFixesInCliqueEntry(entry1,fixedTo!=0);
   setSequenceInCliqueEntry(entry1,intFix);
   fixEntry_[numberEntries_] = entry1;
   assert (toValue==-1||toValue==1);
