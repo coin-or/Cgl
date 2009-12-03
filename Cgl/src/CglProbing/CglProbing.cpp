@@ -2375,7 +2375,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                 setAffectedInDisaggregation(cutVector_[i].index[iput],other);
               setWhenAtUBInDisaggregation(cutVector_[i].index[iput],false);
               setAffectedToUBInDisaggregation(cutVector_[i].index[iput],false);
-			  setZeroOneInDisaggregation(cutVector_[i].index[iput],onList[other] ? true : false);
+			  setZeroOneInDisaggregation(cutVector_[i].index[iput],onList[other]!=0);
               cutVector_[i].length++;
             } else { 
               if (elements[1-which]<0.0&&fabs(elements[which]/elements[1-which]-
@@ -2388,7 +2388,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                   setAffectedInDisaggregation(cutVector_[i].index[iput],other);
                 setWhenAtUBInDisaggregation(cutVector_[i].index[iput],true);
                 setAffectedToUBInDisaggregation(cutVector_[i].index[iput],true);
-                setZeroOneInDisaggregation(cutVector_[i].index[iput],onList[other] ? true : false);
+                setZeroOneInDisaggregation(cutVector_[i].index[iput],onList[other]!=0);
                 cutVector_[i].length++;
               } else {
                 if (onList[other]) {
@@ -2461,7 +2461,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                 setAffectedInDisaggregation(cutVector_[i].index[iput],other);
               setWhenAtUBInDisaggregation(cutVector_[i].index[iput],false);
               setAffectedToUBInDisaggregation(cutVector_[i].index[iput],false);
-              setZeroOneInDisaggregation(cutVector_[i].index[iput],onList[other] ? true : false);
+              setZeroOneInDisaggregation(cutVector_[i].index[iput],onList[other]!=0);
               cutVector_[i].length++;
             } else { 
               if (elements[1-which]<0.0&&fabs(elements[which]/elements[1-which]-
@@ -2473,7 +2473,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                   setAffectedInDisaggregation(cutVector_[i].index[iput],other);
                 setWhenAtUBInDisaggregation(cutVector_[i].index[iput],true);
                 setAffectedToUBInDisaggregation(cutVector_[i].index[iput],true);
-                setZeroOneInDisaggregation(cutVector_[i].index[iput],onList[other] ? true : false);
+                setZeroOneInDisaggregation(cutVector_[i].index[iput],onList[other]!=0);
                 cutVector_[i].length++;
               } else {
                 if (onList[other]) {
@@ -2543,9 +2543,9 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
           disaggregationAction action;
 	  action.affected=0;
           setAffectedInDisaggregation(action,affected);
-          setZeroOneInDisaggregation(action,zeroOne ? true : false);
-          setWhenAtUBInDisaggregation(action,whenAtUB ? true : false);
-          setAffectedToUBInDisaggregation(action,affectedToUB ? true : false);
+          setZeroOneInDisaggregation(action,zeroOne!=0);
+          setWhenAtUBInDisaggregation(action,whenAtUB!=0);
+          setAffectedToUBInDisaggregation(action,affectedToUB!=0);
           if (affected!=affectedLast||zeroOne!=zeroOneLast) {
             // new variable
             thisOne.index[put++]=action;
