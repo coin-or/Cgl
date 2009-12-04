@@ -435,7 +435,7 @@ CglGomory::generateCuts(
   // and for packed form (as not necessarily in order)
   // also space for sort
   bool doSorted = (infoOptions&256)!=0;
-  int lengthArray = numberColumns+1+((numberColumns+1)*sizeof(int))/sizeof(double);
+  int lengthArray = static_cast<int>(numberColumns+1+((numberColumns+1)*sizeof(int))/sizeof(double));
   if (doSorted)
     lengthArray+=numberColumns;
   double * packed = new double[lengthArray]; 

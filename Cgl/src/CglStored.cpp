@@ -235,11 +235,14 @@ CglStored::addCut(double lb, double ub, int size, const int * colIndices, const 
 //-------------------------------------------------------------------
 // Default Constructor 
 //-------------------------------------------------------------------
-CglStored::CglStored ()
+CglStored::CglStored (int numberColumns)
 :
   CglCutGenerator(),
   requiredViolation_(1.0e-5),
-  probingInfo_(NULL)
+  probingInfo_(NULL),
+  numberColumns_(numberColumns),
+  bestSolution_(NULL),
+  bounds_(NULL)
 {
 }
 
@@ -250,10 +253,17 @@ CglStored::CglStored (const CglStored & source) :
   CglCutGenerator(source),
   requiredViolation_(source.requiredViolation_),
   probingInfo_(NULL),
-  cuts_(source.cuts_)
+  cuts_(source.cuts_),
+  numberColumns_(source.numberColumns_),
+  bestSolution_(NULL),
+  bounds_(NULL)
 {  
   if (source.probingInfo_)
     probingInfo_ = new CglTreeProbingInfo(*source.probingInfo_);
+  if (numberColumns_) {
+    bestSolution_ = CoinCopyOfArray(source.bestSolution_,numberColumns_+1);
+    bounds_ = CoinCopyOfArray(source.bounds_,2*numberColumns_);
+  }
 }
 //-------------------------------------------------------------------
 // Constructor from file
@@ -261,11 +271,14 @@ CglStored::CglStored (const CglStored & source) :
 CglStored::CglStored (const char * fileName) :
   CglCutGenerator(),
   requiredViolation_(1.0e-5),
-  probingInfo_(NULL)
+  probingInfo_(NULL),
+  numberColumns_(0),
+  bestSolution_(NULL),
+  bounds_(NULL)
 {  
   FILE * fp = fopen(fileName,"rb");
   if (fp) {
-    int numberRead;
+    size_t numberRead;
     int maxInCut=0;
     int * index = NULL;
     double * coefficient = NULL;
@@ -286,9 +299,9 @@ CglStored::CglStored (const char * fileName) :
       numberRead = fread(rhs,sizeof(double),2,fp);
       assert (numberRead==2);
       numberRead = fread(index,sizeof(int),n,fp);
-      assert (numberRead==n);
+      //assert (numberRead==n);
       numberRead = fread(coefficient,sizeof(double),n,fp);
-      assert (numberRead==n);
+      //assert (numberRead==n);
       OsiRowCut rc;
       rc.setRow(n,index,coefficient,false);
       rc.setLb(rhs[0]);
@@ -316,6 +329,8 @@ CglStored::clone() const
 CglStored::~CglStored ()
 {
   delete  probingInfo_;
+  delete [] bestSolution_;
+  delete [] bounds_;
 }
 
 //----------------------------------------------------------------
@@ -333,6 +348,43 @@ CglStored::operator=(const CglStored& rhs)
       probingInfo_ = new CglTreeProbingInfo(*rhs.probingInfo_);
     else
       probingInfo_ = NULL;
+    delete [] bestSolution_;
+    delete [] bounds_;
+    bestSolution_ = NULL;
+    bounds_ = NULL;
+    numberColumns_ = rhs.numberColumns_;
+    if (numberColumns_) {
+      bestSolution_ = CoinCopyOfArray(rhs.bestSolution_,numberColumns_+1);
+      bounds_ = CoinCopyOfArray(rhs.bounds_,2*numberColumns_);
+    }
   }
   return *this;
+}
+// Save stuff
+void 
+CglStored::saveStuff(double bestObjective, const double * bestSolution,
+		     const double * lower, const double * upper)
+{
+  assert (numberColumns_);
+  delete [] bestSolution_;
+  delete [] bounds_;
+  if (bestSolution) {
+    bestSolution_ = new double[numberColumns_+1];
+    memcpy(bestSolution_,bestSolution,numberColumns_*sizeof(double));
+    bestSolution_[numberColumns_]=bestObjective;
+  } else {
+    bestSolution_=NULL;
+  }
+  bounds_ = new double [2*numberColumns_];
+  memcpy(bounds_,lower,numberColumns_*sizeof(double));
+  memcpy(bounds_+numberColumns_,upper,numberColumns_*sizeof(double));
+}
+// Best objective
+double 
+CglStored::bestObjective() const
+{
+  if (bestSolution_)
+    return bestSolution_[numberColumns_];
+  else
+    return COIN_DBL_MAX;
 }
