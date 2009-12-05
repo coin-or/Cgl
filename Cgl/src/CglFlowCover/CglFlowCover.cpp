@@ -1025,7 +1025,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     double estY, estX;
     double movement = 0.0;
     double dPrimePrime = temp + cutRHS; 
-    int lifted = false;
+    bool lifted = false;
     for( i = 0; i < rowLen; ++i ) {
       if ( (label[i] != CGLFLOW_COL_INCUT) && (sign[i] > 0) ) {/* N+\C+*/
 	lifted = liftPlus(estY, estX,
@@ -1404,7 +1404,7 @@ CglFlowCover::liftMinus(double &movement, /* Output */
 
 /*===========================================================================*/
 
-int
+bool
 CglFlowCover::liftPlus(double &alpha, 
 		       double &beta,
 		       int r,
@@ -1416,7 +1416,7 @@ CglFlowCover::liftPlus(double &alpha,
 		       double *M) const
 {
   int i;
-  int status = false;  /* Defalut: fail to lift */
+  bool status = false;  /* Defalut: fail to lift */
   double value;
   alpha = 0.0;
   beta = 0.0;

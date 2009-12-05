@@ -251,7 +251,7 @@ private:
 		   double *M,
 		   double *rho) const;
 
-    int liftPlus(double &alpha, 
+    bool liftPlus(double &alpha, 
 		 double &beta,
 		 int r,
 		 double m_j, 
