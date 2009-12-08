@@ -65,28 +65,29 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
 
   // get matrix by row
   const CoinPackedMatrix & tempMatrixByRow = *si.getMatrixByRow();
-  CoinPackedMatrix matrixByRow(false,0.0,0.0);
-  // There are no duplicates but this is faster
-  matrixByRow.submatrixOfWithDuplicates(tempMatrixByRow, numRows_, indRows_);
+  CoinPackedMatrix matrixByRow;
+  matrixByRow.submatrixOf(tempMatrixByRow, numRows_, indRows_);
   CoinPackedMatrix matrixByCol(matrixByRow,0,0,true);
   //matrixByCol.reverseOrdering();
   //const CoinPackedMatrix & matrixByRow = *si.getMatrixByRow();
   const double* LHS        = si.getRowActivity();
-  //const double* coefByRow  = matrixByRow.getElements();
-  //const int* colInds       = matrixByRow.getIndices();
-  //const int* rowStarts     = matrixByRow.getVectorStarts();
+  const double* coefByRow  = matrixByRow.getElements();
+  const int* colInds       = matrixByRow.getIndices();
+  const int* rowStarts     = matrixByRow.getVectorStarts();
+  const int* rowLengths    = matrixByRow.getVectorLengths();
 
   // get matrix by column
   //const CoinPackedMatrix & matrixByCol = *si.getMatrixByCol();
   const double* coefByCol  = matrixByCol.getElements();
   const int* rowInds       = matrixByCol.getIndices();
   const int* colStarts     = matrixByCol.getVectorStarts();
+  const int* colLengths    = matrixByCol.getVectorLengths();
 
 
   generateMirCuts(si, xlp, colUpperBound, colLowerBound,
-		  matrixByRow,  LHS, //coefByRow,
-		  //colInds, rowStarts, //matrixByCol,
-		  coefByCol, rowInds, colStarts,
+		  matrixByRow,  LHS, coefByRow,
+		  colInds, rowStarts, rowLengths, matrixByCol,
+		  coefByCol, rowInds, colStarts, colLengths,
 		  cs);
   if (!info.inTree&&((info.options&4)==4||((info.options&8)&&!info.pass))) {
     int numberRowCutsAfter = cs.sizeRowCuts();
@@ -387,7 +388,7 @@ mixIntRoundPreprocess(const OsiSolverInterface& si) const
     }
     // get the type of a row
     const RowType rowType = 
-      determineRowType(/*si,*/ rowLengths[iRow], colInds+rowStarts[iRow],
+      determineRowType(si, rowLengths[iRow], colInds+rowStarts[iRow],
 		       coefByRow+rowStarts[iRow], sense_[iRow], RHS_[iRow]);
     // store the type of the current row
     rowTypes_[iRow] = rowType;
@@ -575,7 +576,7 @@ mixIntRoundPreprocess(const OsiSolverInterface& si) const
 // Determine the type of a given row 
 //-------------------------------------------------------------------
 CglMixedIntegerRounding2::RowType
-CglMixedIntegerRounding2::determineRowType(//const OsiSolverInterface& si,
+CglMixedIntegerRounding2::determineRowType(const OsiSolverInterface& si,
 				  const int rowLen, const int* ind, 
 				  const double* coef, const char sense, 
 				  const double rhs) const
@@ -675,13 +676,15 @@ CglMixedIntegerRounding2::generateMirCuts(
 			    const double* colLowerBound,
 			    const CoinPackedMatrix& matrixByRow,
 			    const double* LHS,
-			    //const double* coefByRow,
-			    //const int* colInds,
-			    //const int* rowStarts,
-			    //const CoinPackedMatrix& matrixByCol,
+			    const double* coefByRow,
+			    const int* colInds,
+			    const int* rowStarts,
+			    const int* rowLengths,
+			    const CoinPackedMatrix& matrixByCol,
 			    const double* coefByCol,
 			    const int* rowInds,
 			    const int* colStarts,
+			    const int* colLengths,
 			    OsiCuts& cs ) const
 {
 
@@ -754,10 +757,11 @@ CglMixedIntegerRounding2::generateMirCuts(
 
 	// search for a row to aggregate
 	bool foundRowToAggregate = selectRowToAggregate(
-							/*si,*/ rowAggregated,
+				        si, rowAggregated,
 					colUpperBound, colLowerBound, 
 					setRowsAggregated, xlp, 
 					coefByCol, rowInds, colStarts,
+					colLengths, 
 					rowSelected, colSelected);
 
 	// if finds row to aggregate, compute aggregated row
@@ -826,7 +830,7 @@ CglMixedIntegerRounding2::generateMirCuts(
 	// Find a c-MIR cut with the current mixed knapsack constraint
 	bool hasCut = cMirSeparation(si, matrixByRow, rowToUse,
 				     listRowsAggregated, sense_, RHS_,
-				     //coefByRow, colInds, rowStarts, 
+				     coefByRow, colInds, rowStarts, rowLengths,
 				     xlp, sStar, colUpperBound, colLowerBound, 
 				     mixedKnapsack,
 				     rhsMixedKnapsack, contVariablesInS,
@@ -911,13 +915,14 @@ CglMixedIntegerRounding2::copyRowSelected(
 //-------------------------------------------------------------------
 bool
 CglMixedIntegerRounding2::selectRowToAggregate( 
-					       //const OsiSolverInterface& si,
+			    const OsiSolverInterface& si,
 			    const CoinIndexedVector& rowAggregated,
 			    const double* colUpperBound,
 			    const double* colLowerBound,
 			    const CoinIndexedVector& setRowsAggregated,
 			    const double* xlp, const double* coefByCol,
 			    const int* rowInds, const int* colStarts,
+			    const int* colLengths,
 			    int& rowSelected,
 			    int& colSelected ) const
 {
@@ -956,7 +961,7 @@ CglMixedIntegerRounding2::selectRowToAggregate(
     if (delta > deltaMax) {
 
       int iStart = colStarts[indCol];
-      int iStop  = colStarts[indCol+1];
+      int iStop  = iStart + colLengths[indCol];
       //      int count = 0;
 
       //      std::vector<int> rowPossible;
@@ -1203,8 +1208,9 @@ CglMixedIntegerRounding2::cMirSeparation(
 			    const CoinIndexedVector& rowAggregated,
 			    const int* listRowsAggregated,
 			    const char* sense, const double* RHS,
-			    //const double* coefByRow,
-			    //const int* colInds, const int* rowStarts,
+			    const double* coefByRow,
+			    const int* colInds, const int* rowStarts,
+			    const int* rowLengths,
 			    const double* xlp, const double sStar,
 			    const double* colUpperBound,
 			    const double* colLowerBound,
@@ -1684,7 +1690,7 @@ CglMixedIntegerRounding2::printStats(
 }
 // This can be used to refresh any inforamtion
 void 
-CglMixedIntegerRounding2::refreshSolver(OsiSolverInterface * )
+CglMixedIntegerRounding2::refreshSolver(OsiSolverInterface * solver)
 {
   doneInitPre_ = false;
 }

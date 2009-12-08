@@ -58,26 +58,12 @@ public:
   { return cuts_.sizeRowCuts();}
   const OsiRowCut * rowCutPointer(int index) const
   { return cuts_.rowCutPtr(index);}
-  /// Save stuff
-  void saveStuff(double bestObjective, const double * bestSolution,
-		 const double * lower, const double * upper);
-  /// Best solution (or NULL)
-  inline const double * bestSolution() const
-  { return bestSolution_;}
-  /// Best objective
-  double bestObjective() const;
-  /// Tight lower bounds
-  const double * tightLower() const
-  { return bounds_;} 
-  /// Tight upper bounds
-  const double * tightUpper() const
-  { return bounds_+numberColumns_;} 
   //@}
 
   /**@name Constructors and destructors */
   //@{
   /// Default constructor 
-  CglStored (int numberColumns=0);
+  CglStored ();
  
   /// Copy constructor 
   CglStored (const CglStored & rhs);
@@ -111,12 +97,6 @@ protected:
   CglTreeProbingInfo * probingInfo_;
   /// Cuts
   mutable OsiCuts cuts_;
-  /// Number of columns in model
-  int numberColumns_;
-  /// Best solution (objective at end)
-  double * bestSolution_;
-  /// Tight bounds
-  double * bounds_;
   //@}
 };
 #endif

@@ -230,7 +230,7 @@ private:
   void mixIntRoundPreprocess(const OsiSolverInterface& si) const;
 
   // Determine the type of a given row.
-  RowType determineRowType(//const OsiSolverInterface& si,
+  RowType determineRowType(const OsiSolverInterface& si,
 			   const int rowLen, const int* ind, 
 			   const double* coef, const char sense, 
 			   const double rhs) const;
@@ -242,13 +242,15 @@ private:
 			const double* colLowerBound,
 			const CoinPackedMatrix& matrixByRow,
 			const double* LHS,
-			//const double* coefByRow,
-			//const int* colInds,
-			//const int* rowStarts,
-			//const CoinPackedMatrix& matrixByCol,
+			const double* coefByRow,
+			const int* colInds,
+			const int* rowStarts,
+			const int* rowLengths,
+			const CoinPackedMatrix& matrixByCol,
 			const double* coefByCol,
 			const int* rowInds,
 			const int* colStarts,
+			const int* colLengths,
 			OsiCuts& cs ) const;
 
   // Copy row selected to CoinIndexedVector
@@ -265,13 +267,14 @@ private:
 			double& rhsToAggregate) const;
 
   // Select a row to aggregate
-  bool selectRowToAggregate( //const OsiSolverInterface& si,
+  bool selectRowToAggregate( const OsiSolverInterface& si,
 			     const CoinIndexedVector& rowAggregated,
 			     const double* colUpperBound,
 			     const double* colLowerBound,
 			     const CoinIndexedVector& setRowsAggregated,
 			     const double* xlp, const double* coefByCol,
 			     const int* rowInds, const int* colStarts,
+			     const int* colLengths,
 			     int& rowSelected,
 			     int& colSelected ) const;
 
@@ -306,8 +309,9 @@ private:
 			const CoinIndexedVector& rowAggregated,
 			const int* listRowsAggregated,
 			const char* sense, const double* RHS,
-			//const double* coefByRow,
-			//const int* colInds, const int* rowStarts,
+			const double* coefByRow,
+			const int* colInds, const int* rowStarts,
+			const int* rowLengths,
 			const double* xlp, const double sStar,
 			const double* colUpperBound,
 			const double* colLowerBound,

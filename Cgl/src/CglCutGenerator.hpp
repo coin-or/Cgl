@@ -60,10 +60,10 @@ public:
       Keys 1, 2, 5, 6, 7, 8 are defined, but not applicable to 
       cut generators.
   */
-  virtual std::string generateCpp( FILE * ) {return "";}
+  virtual std::string generateCpp( FILE * fp) {return "";}
 
   /// This can be used to refresh any information
-  virtual void refreshSolver(OsiSolverInterface * ) {}
+  virtual void refreshSolver(OsiSolverInterface * solver) {}
   //@}
   
   /**@name Gets and Sets */
@@ -92,9 +92,6 @@ public:
   virtual bool mayGenerateRowCutsInTree() const;
   /// Return true if needs optimal basis to do cuts
   virtual bool needsOptimalBasis() const;
-  /// Return maximum length of cut in tree
-  virtual int maximumLengthOfCutInTree() const
-  { return COIN_INT_MAX;}
   //@}
   
   // test this class

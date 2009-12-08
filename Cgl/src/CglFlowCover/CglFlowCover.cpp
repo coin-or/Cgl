@@ -1037,7 +1037,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	xCoef[i] = -estX;
 	yCoef[i] = estY;
 	if(CGLFLOW_DEBUG) {
-	  if (lifted) {
+	  if (lifted == true) {
 	    printf("Success: Lifted col %i (up_i=%f,yCoef[i]=%f,xCoef[i]=%f) in N+\\C+\n", 
 		   ind[i], up[i], yCoef[i], xCoef[i]);
 	  }

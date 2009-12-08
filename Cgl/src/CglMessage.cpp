@@ -21,7 +21,7 @@ static Cgl_message us_english[]=
   {CGL_PROCESS_STATS2,4,1,"processed model has %d rows, %d columns (%d integer) and %d elements"},
   {CGL_PROCESS_SOS1,5,1,"%d SOS with %d members"},
   {CGL_PROCESS_SOS2,6,2,"%d SOS (%d members out of %d) with %d overlaps - too much overlap or too many others"},
-  {CGL_UNBOUNDED,7,1,"Continuous relaxation is unbounded!"},
+  {CGL_UNBOUNDED,0,7,"Continuous relaxation is unbounded!"},
   {CGL_ELEMENTS_CHANGED1,9,2,"%d elements changed"},
   {CGL_ELEMENTS_CHANGED2,10,3,"element in row %d for column %d changed from %g to %g"},
   {CGL_MADE_INTEGER,11,1,"%d variables made integer"},

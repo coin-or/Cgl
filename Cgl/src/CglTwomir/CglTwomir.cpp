@@ -123,18 +123,6 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   a_max = a_max_;
   max_elements = info.inTree ? max_elements_ : max_elements_root_;
   data->gomory_threshold = info.inTree ? away_ : awayAtRoot_;
-  if (!info.inTree) {
-    //const CoinPackedMatrix * columnCopy = si.getMatrixByCol();
-    //int numberColumns=columnCopy->getNumCols(); 
-    if (!info.pass||(info.options&32)!=0) {
-      max_elements=si.getNumCols();
-      //} else {
-      //int numberRows=columnCopy.getNumRows();
-      //int numberElements=columnCopy->getNumElements();
-      //if (max_elements>500&&numberElements>10*numberColumns)
-      //max_elements=numberColumns;
-    }
-  }
 
   if (!do_mir_) t_max = t_min - 1;
   if (!do_2mir_) q_max = q_min - 1;
@@ -144,8 +132,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   
   if (do_form_)
     DGG_generateFormulationCuts( &cut_list, data, reinterpret_cast<const void *> (&si),
-				 info.formulation_rows,
-				 randomNumberGenerator_);
+				 info.formulation_rows );
   
 #ifdef CGL_DEBUG
   const OsiRowCutDebugger debugg(si,probname_.c_str()) ;
@@ -205,6 +192,9 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	    } else {
 	      // throw away
 	      goodCut=false;
+#ifdef CLP_INVESTIGATE
+	      printf("Twomir thrown away on small value %g\n",value);
+#endif
 	      break;
 	    }
 	  } else {
@@ -220,18 +210,21 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	    }
 	  }
 	}
-	if (largest<5.0e9*smallest&&goodCut) {
+#ifdef CLP_INVESTIGATE
+	if (largest>=1.0e9*smallest)
+	  printf("Twomir thrown away on ratios %g %g\n",smallest,largest);
+#endif
+	if (largest<1.0e9*smallest&&goodCut) {
 	  rowcut.setRow(number, cutIndex, packed);
 	  rowcut.setUb(DBL_MAX);
 	  rowcut.setLb(rhs);
-	  cs.insert(rowcut);
 	}
 #else
 	rowcut.setRow(cut->nz, cut->index, cut->coeff);
 	rowcut.setUb(DBL_MAX);
 	rowcut.setLb(cut->rhs);
-	cs.insert(rowcut);
 #endif
+	cs.insert(rowcut);
       }
     
 #ifdef CGL_DEBUG
@@ -252,11 +245,8 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   DGG_freeData (data);
   if (!info.inTree&&((info.options&4)==4||((info.options&8)&&!info.pass))) {
     int numberRowCutsAfter = cs.sizeRowCuts();
-    for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++) {
-      int length = cs.rowCutPtr(i)->row().getNumElements();
-      if (length<=max_elements_)
-	cs.rowCutPtr(i)->setGloballyValid();
-    }
+    for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++)
+      cs.rowCutPtr(i)->setGloballyValid();
   }
 }
 
@@ -267,7 +257,6 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 CglTwomir::CglTwomir () :
   CglCutGenerator(),
   probname_(),
-  randomNumberGenerator_(987654321), 
   away_(0.0005),awayAtRoot_(0.0005),
   do_mir_(true), do_2mir_(true), do_tab_(true), do_form_(true),
   t_min_(1), t_max_(1), q_min_(1), q_max_(1), a_max_(2),max_elements_(50000),
@@ -278,7 +267,6 @@ CglTwomir::CglTwomir () :
 //-------------------------------------------------------------------
 CglTwomir::CglTwomir (const CglTwomir & source) :
   CglCutGenerator(source),
-  randomNumberGenerator_(source.randomNumberGenerator_),
   away_(source.away_),
   awayAtRoot_(source.awayAtRoot_),
   do_mir_(source.do_mir_),
@@ -321,7 +309,6 @@ CglTwomir::operator=(const CglTwomir& rhs)
 {
   if (this != &rhs) {
     CglCutGenerator::operator=(rhs);
-    randomNumberGenerator_ = rhs.randomNumberGenerator_;
     away_=rhs.away_;
     awayAtRoot_=rhs.awayAtRoot_;
     do_mir_=rhs.do_mir_;
@@ -618,7 +605,7 @@ int
 DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
                           DGG_constraint_t* tabrow, 
                           const int * colIsBasic,
-                          const int * /*rowIsBasic*/,
+                          const int * rowIsBasic,
                           CoinFactorization & factorization,
                           int mode )
 {
@@ -1064,7 +1051,7 @@ DGG_substituteSlacks( const void *solver_ptr,
   return 0; 
 }
 
-int DGG_nicefyConstraint( const void */*solver_ptr*/, 
+int DGG_nicefyConstraint( const void *solver_ptr, 
                           DGG_data_t *data,
 			  DGG_constraint_t *cut)
 													
@@ -1204,8 +1191,7 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
 int DGG_generateFormulationCuts( DGG_list_t *cut_list,
 				 DGG_data_t *data,
 				 const void *solver_ptr,
-				 int nrows,
-				 CoinThreadRandom & generator)
+				 int nrows)
 {
   int k, rval = 0;
   DGG_constraint_t *base = NULL;
@@ -1223,8 +1209,7 @@ int DGG_generateFormulationCuts( DGG_list_t *cut_list,
 
     //printf ("generating formulation for row %d\n", k);
     rval = DGG_generateFormulationCutsFromBase(base, data->x[data->ncol+k],
-					       cut_list, data, solver_ptr,
-					       generator);
+					       cut_list, data, solver_ptr);
     DGG_CHECKRVAL1(rval, rval);
     if (base->nz == 0){
 #ifdef COIN_DEVELOP
@@ -1241,12 +1226,21 @@ int DGG_generateFormulationCuts( DGG_list_t *cut_list,
 }
 
 
+double random_01(long unsigned int *next){// uniform [0,1] 
+  unsigned int x;  double dx,r = 0;
+  
+  while (r<1e-18){
+    *next=(*next)*1103515245 + 12345;
+    x=(*next/65536) % 32768;
+    dx=x;    r=dx/32768;  }
+  return (r);
+}	
+
 int DGG_generateFormulationCutsFromBase( DGG_constraint_t *base,
 					 double slack,
 					 DGG_list_t *cut_list,
 					 DGG_data_t *data,
-					 const void *solver_ptr,
-					 CoinThreadRandom & generator)
+					 const void *solver_ptr )
 {
   int i, p, rval;
   int int_skala;
@@ -1256,6 +1250,7 @@ int DGG_generateFormulationCutsFromBase( DGG_constraint_t *base,
   char *isint = NULL;
   double *xout = NULL, *rcout = NULL;
   DGG_constraint_t *scaled_base = NULL;
+  static long unsigned int rand_seed = 1983747;
   int tot_int = 0;
   double prob_choose = 0.0;
   rval = DGG_transformConstraint(data, &xout, &rcout, &isint, base);
@@ -1267,7 +1262,7 @@ int DGG_generateFormulationCutsFromBase( DGG_constraint_t *base,
   prob_choose = 5.0/tot_int;
 
   for(p = 0; p < base->nz; p++) {
-    if(isint[p]) if(generator.randomDouble() < prob_choose){
+    if(isint[p]) if(random_01(&rand_seed) < prob_choose){
       if(xout[p]<0.01) continue;
 
       skala =fabs(base->coeff[p]);
@@ -1444,9 +1439,9 @@ DGG_generateCutsFromBase( DGG_constraint_t *orig_base,
 }
 
 int
-DGG_addMirToList ( DGG_constraint_t *base, char *isint, double */*x*/,
-		   DGG_list_t *list, DGG_data_t */*data*/,
-		   DGG_constraint_t */*orig_base*/ )
+DGG_addMirToList ( DGG_constraint_t *base, char *isint, double *x,
+			      DGG_list_t *list, DGG_data_t *data,
+			      DGG_constraint_t *orig_base )
 {
   int rval = 0;
   DGG_constraint_t *cut = NULL;
@@ -1460,9 +1455,9 @@ DGG_addMirToList ( DGG_constraint_t *base, char *isint, double */*x*/,
 }
 
 int
-DGG_add2stepToList ( DGG_constraint_t *base, char *isint, double */*x*/,
+DGG_add2stepToList ( DGG_constraint_t *base, char *isint, double *x,
 				double *rc, DGG_list_t *list, DGG_data_t *data,
-		     DGG_constraint_t */*orig_base*/ )
+				DGG_constraint_t *orig_base )
 {
   int rval;
   DGG_constraint_t *cut = NULL;

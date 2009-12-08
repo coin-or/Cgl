@@ -55,7 +55,7 @@ public:
   virtual CglParam* clone() const;
 
   /// Assignment operator 
-  CglParam& operator=(const CglParam &rhs);
+  virtual CglParam& operator=(const CglParam &rhs);
 
   /// Destructor 
   virtual ~CglParam();

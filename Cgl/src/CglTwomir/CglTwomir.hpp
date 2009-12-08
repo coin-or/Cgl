@@ -144,9 +144,6 @@ public:
   void setAwayAtRoot(double value);
   /// Get away at root
   double getAwayAtRoot() const;
-  /// Return maximum length of cut in tree
-  virtual int maximumLengthOfCutInTree() const
-  { return max_elements_;}
   //@}
 
   /**@name Constructors and destructors */
@@ -173,8 +170,6 @@ private:
   // Private member data
   /**@name Private member data */
   //@{
-  /// Threadsafe random number generator
-  mutable CoinThreadRandom randomNumberGenerator_;
   /// Only investigate if more than this away from integrality
   double away_;
   /// Only investigate if more than this away from integrality (at root)
@@ -473,16 +468,14 @@ DGG_constraint_t* DGG_getSlackExpression(const void *solver_ptr, DGG_data_t* dat
   int DGG_generateFormulationCuts( DGG_list_t *list,
 				   DGG_data_t *data,
 				   const void *solver_ptr,
-				   int nrows,
-				   CoinThreadRandom & generator);
+				   int nrows);
 
 
   int DGG_generateFormulationCutsFromBase( DGG_constraint_t *base,
 					   double slack,
 					   DGG_list_t *list,
 					   DGG_data_t *data,
-					   const void *solver_ptr,
-					   CoinThreadRandom & generator);
+					   const void *solver_ptr );
 
   int DGG_generateCutsFromBase( DGG_constraint_t *base,
 				DGG_list_t *list,

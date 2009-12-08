@@ -245,13 +245,13 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
      toCheck = rowsToCheck_;
   }
   // Long row
-  int longRow =20; //15;
-  int longRow2 =20; //15;
+  int longRow =15;
+  int longRow2 =15;
   if (!info.inTree) {
+    //if (info.pass>1)
     longRow=25;
-    //longRow2=20;
-    if (!info.pass)
-      longRow=30;
+    //else
+    longRow2=20;
   }
 
   // Set up number of tries for each row
@@ -524,8 +524,7 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
       if (findPseudoJohnAndEllisCover(rowIndex, krow, b,
 				      xstar, cover, remainder) == 1){
 	int n = krow.getNumElements();
-	bool possible = (n<=longRow);
-	if (possible) {
+	if (n<=longRow) {
 	  // Calculate the sum of the knapsack coefficients of the cover variables 
 	  double sum = cover.sum();
 
@@ -540,13 +539,13 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
 	      abort();
 	    } else {
 #endif
-	      possible=false;
+	      n=longRow+1000000;
 #ifdef CGL_DEBUG
 	    }
 #endif
 	  }
 	}
-	if (possible) {
+	if (n<=longRow) {
 	  CoinPackedVector atOnes;
 	  CoinPackedVector fracCover; // different than cover
 	  int nInCover = cover.getNumElements();
@@ -563,7 +562,6 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
           liftUpDownAndUncomplementAndAdd(nCols, xstar, complement, rowIndex,
                                           n, b, fracCover,
                                           atOnes, remainder, cs);
-#if 0
 	} else {
 	  // (Sequence Independent) Lift cover inequality and add to cut set 
 	  if (!liftAndUncomplementAndAdd(rowUpper[rowIndex], krow, b,
@@ -580,8 +578,7 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
 	    }
 	    krow.setVector(0,NULL,NULL);
 	    continue;
-	  }
-#endif  
+	  }  
 	}
 	
 	// Skip experiment for now...
@@ -783,11 +780,11 @@ CglKnapsackCover::setTestedRowIndices(int num, const int* ind)
 //-------------------------------------------------------------------
 int 
 CglKnapsackCover::liftAndUncomplementAndAdd(
-					    double /*rowub*/,
+         double rowub,
          CoinPackedVector & krow,
          double & b,
          int * complement,
-         int /*row*/,
+         int row,
          CoinPackedVector & cover,
          CoinPackedVector & remainder,
          OsiCuts & cs ) const
@@ -883,7 +880,7 @@ CglKnapsackCover::deriveAKnapsack(
        double & b,
        int *  complement,
        double *  xstar,
-       int /*rowIndex*/,
+       int rowIndex,
        int numberElements,
        const int * index,
        const double * element) const
@@ -1144,7 +1141,7 @@ CglKnapsackCover::deriveAKnapsack(
 int 
 CglKnapsackCover::findLPMostViolatedMinCover(
       int nCols,
-      int /*row*/,
+      int row,
       CoinPackedVector & krow,
       double & b,
       double * xstar, 
@@ -1273,12 +1270,10 @@ CglKnapsackCover::findLPMostViolatedMinCover(
       remainder.insert(krow.getIndices()[i],krow.getElements()[i]);
     }
     
-    if (coverSum <= b+1.0e-8*(1.0+fabs(b))){
+    if (coverSum <= b){
 #ifdef PRINT_DEBUG
-      if (coverSum <= b) {
-	printf("The identified cover is NOT a cover\n");
-	abort();
-      }
+      printf("The identified cover is NOT a cover\n");
+      abort();
 #endif
       delete [] ratio;
       return -1;
@@ -1322,8 +1317,6 @@ Lp relax of most violated minimal cover: row %i has cover of size %i.\n",
 	     xstar[cover.getIndices()[i]]);
       //sumCover += cover.getElements()[i];
     }
-    printf("The b = %.18g, and the cover element sum is %.18g (%.18g)\n\n",
-	   b,cover.sum(),coverSum);
     printf("The b = %g, and the cover sum is %g\n\n", b, cover.sum());
 #endif
 
@@ -1356,7 +1349,7 @@ Lp relax of most violated minimal cover: row %i has cover of size %i.\n",
 int 
 CglKnapsackCover::findExactMostViolatedMinCover(
         int nCols,
-        int /*row*/,
+        int row,
         CoinPackedVector & krow,
         double b, 
         double *  xstar, 
@@ -1529,7 +1522,7 @@ CglKnapsackCover::findExactMostViolatedMinCover(
 //-------------------------------------------------------------------
 int
 CglKnapsackCover::findPseudoJohnAndEllisCover(
-					      int /*row*/,
+     int row,
      CoinPackedVector & krow,
      double & b,
      double * xstar, 
@@ -1740,8 +1733,7 @@ CglKnapsackCover::findPseudoJohnAndEllisCover(
 	       cover.getIndices()[i], cover.getElements()[i],
 	       xstar[cover.getIndices()[i]]);
       }
-      printf("The b = %.18g, and the cover element sum is %.18g (%.18g)\n\n",
-	     b,cover.sum(),coverElementSum);
+      printf("The b = %g, and the cover element sum is %g\n\n",b,cover.sum());
     }
 #endif
 
@@ -1776,7 +1768,7 @@ CglKnapsackCover::findPseudoJohnAndEllisCover(
 //-------------------------------------------------------------------
 int
 CglKnapsackCover::findJohnAndEllisCover(
-					int /*row*/,
+     int row,
      CoinPackedVector & krow,
      double & b,
      double * xstar, 
@@ -2022,7 +2014,7 @@ CglKnapsackCover::findJohnAndEllisCover(
 //-------------------------------------------------------------------
 int
 CglKnapsackCover::findGreedyCover(
-				  int /*row*/,
+     int row,
      CoinPackedVector & krow,
      double & b,
      double * xstar,
@@ -2113,7 +2105,7 @@ CglKnapsackCover::findGreedyCover(
 //    with a lifting heuristic.
 //
 //-------------------------------------------------------------------
-#if 0 //def CLP_INVESTIGATE
+#ifdef CLP_INVESTIGATE
 static int nTry=0;
 static int howMany[5]={0,0,0,0,0};
 #endif
@@ -2122,7 +2114,7 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
          int nCols,
          double * xstar, 
          int * complement,
-         int /*row*/,
+         int row,
          int nRowElem,
          double & b,
 
@@ -2880,10 +2872,10 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
 	  for (int j=oneFixStart_[iColumn];j<zeroFixStart_[iColumn];j++) {
 	    int iClique = whichClique_[j];
 	    for (int k=cliqueStart_[iClique];k<cliqueStart_[iClique+1];k++) {
-	      int jColumn = sequenceInCliqueEntry(cliqueEntry_[k]);
+	      int jColumn = cliqueEntry_[k].sequence;
 	      if (!els[jColumn]&&els2[jColumn]) {
 		assert (jColumn!=iColumn);
-		if (!complement_[jColumn]&&oneFixesInCliqueEntry(cliqueEntry_[k])) {
+		if (!complement_[jColumn]&&cliqueEntry_[k].oneFixes) {
 		  //if (els2[iColumn]<0.0||els2[jColumn]<0.0)
 		    //printf("true els %g (c%d) and %g (c%d)\n",
 		    //   els2[iColumn],complement_[iColumn],
@@ -2992,7 +2984,7 @@ CglKnapsackCover::seqLiftAndUncomplementAndAdd(
       int nCols,
       double * xstar, 
       int * complement,
-      int /*row*/,                       // row index number: used for debugging 
+      int row,                       // row index number: used for debugging 
                                      //     and to index into row bounds
       int nRowElem,                  // number of elements in the row, aka row
                                      //     size, row length. 
@@ -3154,10 +3146,10 @@ CglKnapsackCover::seqLiftAndUncomplementAndAdd(
 	  for (int j=oneFixStart_[iColumn];j<zeroFixStart_[iColumn];j++) {
 	    int iClique = whichClique_[j];
 	    for (int k=cliqueStart_[iClique];k<cliqueStart_[iClique+1];k++) {
-	      int jColumn = sequenceInCliqueEntry(cliqueEntry_[k]);
+	      int jColumn = cliqueEntry_[k].sequence;
 	      if (!els[jColumn]&&els2[jColumn]) {
 		assert (jColumn!=iColumn);
-		if (!complement_[jColumn]&&oneFixesInCliqueEntry(cliqueEntry_[k])) {
+		if (!complement_[jColumn]&&cliqueEntry_[k].oneFixes) {
 		  //if (els2[iColumn]<0.0||els2[jColumn]<0.0)
 		    //printf("true els %g (c%d) and %g (c%d)\n",
 		    //   els2[iColumn],complement_[iColumn],
@@ -3422,10 +3414,10 @@ CglKnapsackCover::liftCoverCut(
 	  for (int j=oneFixStart_[iColumn];j<zeroFixStart_[iColumn];j++) {
 	    int iClique = whichClique_[j];
 	    for (int k=cliqueStart_[iClique];k<cliqueStart_[iClique+1];k++) {
-	      int jColumn = sequenceInCliqueEntry(cliqueEntry_[k]);
+	      int jColumn = cliqueEntry_[k].sequence;
 	      if (!els[jColumn]&&els2[jColumn]) {
 		assert (jColumn!=iColumn);
-		if (!complement_[jColumn]&&oneFixesInCliqueEntry(cliqueEntry_[k])) {
+		if (!complement_[jColumn]&&cliqueEntry_[k].oneFixes) {
 		  //if (els2[iColumn]<0.0||els2[jColumn]<0.0)
 		    //printf("true els %g (c%d) and %g (c%d)\n",
 		    //   els2[iColumn],complement_[iColumn],
@@ -3446,7 +3438,7 @@ CglKnapsackCover::liftCoverCut(
 		    // recompute as may have changed
 		    ind3 = cut.getIndices();
 		  }
-		} else if (false&&complement_[jColumn]&&!oneFixesInCliqueEntry(cliqueEntry_[k])) {
+		} else if (false&&complement_[jColumn]&&!cliqueEntry_[k].oneFixes) {
 		  printf("COMP true els %g (c%d) and %g (c%d)\n",
 			 els2[iColumn],complement_[iColumn],
 			 els2[jColumn],complement_[jColumn]);
@@ -3810,8 +3802,7 @@ CglKnapsackCover::refreshSolver(OsiSolverInterface * solver)
 */
 int 
 CglKnapsackCover::createCliques( OsiSolverInterface & si, 
-			  int minimumSize, int maximumSize, 
-				 bool /*extendCliques*/)
+			  int minimumSize, int maximumSize, bool extendCliques)
 {
   int logLevel=1;
   // get rid of what is there
@@ -3952,7 +3943,6 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
       }
     }
   }
-#if 0
   if (numberCliques_<0) {
     if (logLevel)
       printf("*** Problem infeasible\n");
@@ -3978,7 +3968,6 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
         printf("%d variables fixed\n",numberFixed);
     }
   }
-#endif
   if (numberCliques_>0) {
     cliqueType_ = new cliqueType [numberCliques_];
     cliqueStart_ = new int [numberCliques_+1];
@@ -4041,8 +4030,8 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
 	for (i=0;i<numberP1;i++) {
 	  // 1 is strong branch
 	  int iColumn = which[i];
-	  setSequenceInCliqueEntry(cliqueEntry_[numberEntries],iColumn);
-	  setOneFixesInCliqueEntry(cliqueEntry_[numberEntries],true);
+	  cliqueEntry_[numberEntries].sequence=(iColumn)&0x7fffffff;
+	  cliqueEntry_[numberEntries].oneFixes=1;
 	  numberEntries++;
 	  // zero counts
 	  oneFixStart_[iColumn]=0;
@@ -4051,8 +4040,8 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
 	for (i=0;i<numberM1;i++) {
 	  // 0 is strong branch
 	  int iColumn = which[numberIntegers-i-1];
-	  setSequenceInCliqueEntry(cliqueEntry_[numberEntries],iColumn);
-	  setOneFixesInCliqueEntry(cliqueEntry_[numberEntries],false);
+	  cliqueEntry_[numberEntries].sequence=(iColumn)&0x7fffffff;
+	  cliqueEntry_[numberEntries].oneFixes=0;
 	  numberEntries++;
 	  // zero counts
 	  oneFixStart_[iColumn]=0;
@@ -4062,8 +4051,8 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
 	for (i=0;i<numberP1;i++) {
 	  // 0 is strong branch
 	  int iColumn = which[i];
-	  setSequenceInCliqueEntry(cliqueEntry_[numberEntries],iColumn);
-	  setOneFixesInCliqueEntry(cliqueEntry_[numberEntries],false);
+	  cliqueEntry_[numberEntries].sequence=(iColumn)&0x7fffffff;
+	  cliqueEntry_[numberEntries].oneFixes=0;
 	  numberEntries++;
 	  // zero counts
 	  oneFixStart_[iColumn]=0;
@@ -4072,8 +4061,8 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
 	for (i=0;i<numberM1;i++) {
 	  // 1 is strong branch
 	  int iColumn = which[numberIntegers-i-1];
-	  setSequenceInCliqueEntry(cliqueEntry_[numberEntries],iColumn);
-	  setOneFixesInCliqueEntry(cliqueEntry_[numberEntries],true);
+	  cliqueEntry_[numberEntries].sequence=iColumn&0x7fffffff;
+	  cliqueEntry_[numberEntries].oneFixes=1;
 	  numberEntries++;
 	  // zero counts
 	  oneFixStart_[iColumn]=0;
@@ -4087,8 +4076,8 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
     // First do counts
     for (iClique=0;iClique<numberCliques_;iClique++) {
       for (int j=cliqueStart_[iClique];j<cliqueStart_[iClique+1];j++) {
-	int iColumn = sequenceInCliqueEntry(cliqueEntry_[j]);
-	if (oneFixesInCliqueEntry(cliqueEntry_[j]))
+	int iColumn = cliqueEntry_[j].sequence;
+	if (cliqueEntry_[j].oneFixes)
 	  oneFixStart_[iColumn]++;
 	else
 	  zeroFixStart_[iColumn]++;
@@ -4111,8 +4100,8 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
     // now put in
     for (iClique=0;iClique<numberCliques_;iClique++) {
       for (int j=cliqueStart_[iClique];j<cliqueStart_[iClique+1];j++) {
-	int iColumn = sequenceInCliqueEntry(cliqueEntry_[j]);
-	if (oneFixesInCliqueEntry(cliqueEntry_[j])) {
+	int iColumn = cliqueEntry_[j].sequence;
+	if (cliqueEntry_[j].oneFixes) {
 	  int put = which[iColumn];
 	  which[iColumn]++;
 	  whichClique_[put]=iClique;

@@ -6,7 +6,6 @@
 #include <string>
 
 #include "CglCutGenerator.hpp"
-#include "CglTreeInfo.hpp"
 
 /** Knapsack Cover Cut Generator Class */
 class CglKnapsackCover : public CglCutGenerator {
@@ -269,6 +268,10 @@ void liftUpDownAndUncomplementAndAdd(
   /// Start of each clique
   int * cliqueStart_;
   /// Entries for clique
+  typedef struct {
+    unsigned int oneFixes:1; //  nonzero if variable to 1 fixes all
+    unsigned int sequence:31; //  variable (in matrix) (but also see cliqueRow_)
+  } cliqueEntry;
   cliqueEntry * cliqueEntry_;
   /** Start of oneFixes cliques for a column in matrix or -1 if not
       in any clique */
