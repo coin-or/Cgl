@@ -307,6 +307,8 @@ CglGomory::generateCuts(
 #ifdef COIN_DEVELOP
     std::cout<<"Bad factorization of basis - status "<<status<<std::endl;
 #endif
+    delete [] rowIsBasic;
+    delete [] columnIsBasic;
     return -1;
   }
   // End of creation of factorization (A) ====
