@@ -36,6 +36,17 @@ public:
   */
   virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
 			     const CglTreeInfo info = CglTreeInfo()) const;
+private:
+  /// Does work for modes 1,2
+  void generateCuts12( const OsiSolverInterface & si, OsiCuts & cs,
+		       const CglTreeInfo info = CglTreeInfo()) const;
+  /// Does work for mode 4
+  void generateCuts4( const OsiSolverInterface & si, OsiCuts & cs,
+		       const CglTreeInfo info = CglTreeInfo()) const;
+  /// Does work for mode 8
+  void generateCuts8( const OsiSolverInterface & si, OsiCuts & cs,
+		       const CglTreeInfo info = CglTreeInfo()) const;
+public:
   /** Fix variables and find duplicate/dominated rows for the model of the 
       solver interface, si.
 

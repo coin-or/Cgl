@@ -24,6 +24,7 @@
 
 #include "CglProbing.hpp"
 #include "CglDuplicateRow.hpp"
+#include "CglClique.hpp"
 
 OsiSolverInterface *
 CglPreProcess::preProcess(OsiSolverInterface & model, 
@@ -2023,15 +2024,27 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     //CglDuplicateRow dupCuts(oldModel);
     //dupCuts.setLogLevel(1);
     // If +1 try duplicate rows
-    if (allPlusOnes) {
-#if 0 
+    if (allPlusOnes||(tuning&128)!=0) {
+#if 1
       // put at beginning
+   int nAdd= ((tuning&64)!=0&&allPlusOnes) ? 2 : 1;
       CglCutGenerator ** temp = generator_;
-      generator_ = new CglCutGenerator * [numberCutGenerators_+1];
-      memcpy(generator_+1,temp,numberCutGenerators_*sizeof(CglCutGenerator *));
+      generator_ = new CglCutGenerator * [numberCutGenerators_+nAdd];
+      memcpy(generator_+nAdd,temp,numberCutGenerators_*sizeof(CglCutGenerator *));
       delete[] temp ;
-      numberCutGenerators_++;
-      generator_[0]=new CglDuplicateRow(oldModel);
+      numberCutGenerators_+=nAdd;
+      if (nAdd==2||(tuning&128)!=0) {
+	CglClique * cliqueGen=new CglClique(false,true);
+	cliqueGen->setStarCliqueReport(false);
+	cliqueGen->setRowCliqueReport(false);
+	if ((tuning&128)==0)
+	  cliqueGen->setMinViolation(-2.0);
+	else
+	  cliqueGen->setMinViolation(-3.0);
+	generator_[0]=cliqueGen;
+      }
+      if (allPlusOnes)
+	generator_[nAdd-1]=new CglDuplicateRow(oldModel);
 #else
       CglDuplicateRow dupCuts(oldModel);
       addCutGenerator(&dupCuts);
@@ -3744,6 +3757,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
       int numberFromCglDuplicate=0;
       const int * duplicate=NULL;
       CglDuplicateRow * dupRow = NULL;
+      CglClique * cliqueGen = NULL;
       if (iGenerator>=0) {
         //char name[20];
         //sprintf(name,"prex%2.2d.mps",iGenerator);
@@ -3752,7 +3766,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
         generator_[iGenerator]->refreshSolver(newModel);
         // skip duplicate rows except once
         dupRow = dynamic_cast<CglDuplicateRow *> (generator_[iGenerator]);
-        if (dupRow&&(iPass||iBigPass))
+	cliqueGen = dynamic_cast<CglClique *> (generator_[iGenerator]);
+        if ((dupRow||cliqueGen)&&(iPass||iBigPass))
             continue;
         probingCut = dynamic_cast<CglProbing *> (generator_[iGenerator]);
 	if (!probingCut) {
@@ -3761,10 +3776,9 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  info.options=64;
 	  probingCut->generateCutsAndModify(*newModel,cs,&info);
 	}
-	//#define CLIQUE_ANALYSIS
-#ifdef CLIQUE_ANALYSIS
+#if 1 //def CLIQUE_ANALYSIS
 	if (probingCut) {
-	  printf("ordinary probing\n");
+	  //printf("ordinary probing\n");
 	  info.analyze(*newModel);
 	} 
 #endif
@@ -3773,6 +3787,100 @@ CglPreProcess::modified(OsiSolverInterface * model,
           numberFromCglDuplicate = dupRow->numberOriginalRows();
           duplicate = dupRow->duplicate();
         }
+	if (cliqueGen&&cs.sizeRowCuts()) {
+	  int n = cs.sizeRowCuts();
+	  printf("%d clique cuts\n",n);
+	  OsiSolverInterface * copySolver = newModel->clone();
+	  numberRows=copySolver->getNumRows();
+	  copySolver->applyCuts(cs);
+	  //static int kk=0;
+	  //char name[20];
+	  //kk++;
+	  //sprintf(name,"matrix%d",kk);
+	  //printf("writing matrix %s\n",name);
+	  //copySolver->writeMps(name);
+	  CglDuplicateRow dupCuts(copySolver);
+	  dupCuts.setMode(8);
+	  OsiCuts cs2;
+	  dupCuts.generateCuts(*copySolver,cs2,info);
+	  // -1 not used, -2 delete, -3 not clique
+	  const int * duplicate = dupCuts.duplicate();
+	  // -1 not used, >=0 earliest row affected
+	  const int * used = duplicate+numberRows+n;
+	  int numberDrop=0;
+	  int * drop = new int[numberRows];
+	  for (int iRow=0;iRow<numberRows;iRow++) {
+	    if (duplicate[iRow]==-2) 
+	      drop[numberDrop++]=iRow;
+	  }
+	  int nOther=0;
+	  for (int iRow=numberRows+n-1;iRow>=numberRows;iRow--) {
+#if 1
+	    int earliest = used[iRow];
+	    while (earliest>=numberRows) {
+	      if (duplicate[earliest]==-2) 
+		earliest = used[earliest];
+	      else
+		break;
+	    }
+#else
+	    int earliest=0;
+#endif
+	    if (duplicate[iRow]==-2||earliest==-1||earliest>=numberRows) { 
+	      cs.eraseRowCut(iRow-numberRows);
+	      nOther++;
+	    }
+	  }
+	  n -= nOther;
+	  int newNumberRows = numberRows-numberDrop+n;
+	  bool special = (cliqueGen->getMinViolation()==-3.0);
+	  printf("could drop %d rows - current nrows %d other %d - new nrows %d\n",
+		 numberDrop,numberRows,nOther,newNumberRows);
+	  if (n<=numberDrop||special) {
+	    printf("Dropping rows current nrows %d - new nrows %d\n",
+		   numberRows,newNumberRows);
+	    if (newNumberRows>numberRows) {
+	      // need new array
+	      delete [] whichCut;
+	      whichCut = new OsiRowCut * [newNumberRows+1];
+	      CoinZeroN(whichCut,newNumberRows);
+	      info.strengthenRow= whichCut;
+	    }
+	    newModel->deleteRows(numberDrop,drop);
+	    // may be able to delete some added cliques
+	    newModel->applyCuts(cs);
+	    numberRows=newModel->getNumRows();
+	    newModel->resolve();
+#if 0
+	    int numberRows2=copySolver->getNumRows();
+	    const double * rowLower = copySolver->getRowLower();
+	    const double * rowUpper = copySolver->getRowUpper();
+	    const CoinPackedMatrix * matrixByRow = copySolver->getMatrixByRow();
+	    // Row copy
+	    const double * elementByRow = matrixByRow->getElements();
+	    const int * column = matrixByRow->getIndices();
+	    const CoinBigIndex * rowStart = matrixByRow->getVectorStarts();
+	    const int * rowLength = matrixByRow->getVectorLengths();
+	    const double * solution = newModel->getColSolution();
+	    for (int iRow=0;iRow<numberRows2;iRow++) {
+	      double sum=0.0;
+	      for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+		int iColumn = column[j];
+		double value = elementByRow[j];
+		sum += value*solution[iColumn];
+	      }
+	      assert (sum>rowLower[iRow]-1.0e-4&&sum<rowUpper[iRow]+1.0e-4);
+	    }
+#endif
+	  }
+	  delete copySolver;
+	  delete [] drop;
+	  continue;
+	  //for (int i=0;i<n;i++) {
+	  //OsiRowCut & thisCut = cs.rowCut(i);
+	  //thisCut.print();
+	  //}
+	}
       } else {
 #if 0
         // special probing
@@ -3790,7 +3898,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	}
 	// out for now - think about cliques
         if(!generator1.snapshot(*newModel,NULL,false)) {
-          generator1.createCliques(*newModel,2,1000/*,true*/);
+          generator1.createCliques(*newModel,2,1000,true);
           generator1.setMode(0);
           // To get special stuff
           info.pass=4;
