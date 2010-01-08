@@ -697,13 +697,13 @@ CglClique::recordClique(const int len, int* indices, OsiCuts& cs) const
    for (int j = len - 1; j >= 0; j--)
       indices[j] = sp_orig_col_ind[indices[j]];
    std::sort(indices, indices + len);
-   OsiRowCut* rowcut = new OsiRowCut();
+   OsiRowCut rowcut;
    double* coef = new double[len];
    std::fill(coef, coef + len, 1.0);
-   rowcut->setRow(len, indices, coef);
-   rowcut->setUb(1.0);
+   rowcut.setRow(len, indices, coef);
+   rowcut.setUb(1.0);
    CoinAbsFltEq equal(1.0e-12);
-   cs.insertIfNotDuplicate(*rowcut,equal);
+   cs.insertIfNotDuplicate(rowcut,equal);
    delete[] coef;
 }
 
