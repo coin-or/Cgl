@@ -108,9 +108,12 @@ public:
 
   /**@name change factorization */
   //@{
-  /// Use alternative factorization
-  inline void useAlternativeFactorization()
-  { alternateFactorization_=1;} 
+   /// Set/unset alternative factorization
+   inline void useAlternativeFactorization(bool yes=true)
+   { alternateFactorization_= (yes) ? 1 : 0;} 
+   /// Get whether alternative factorization being used
+   inline bool alternativeFactorization() const
+   { return (alternateFactorization_!=0);} 
   //@}
 
   /**@name Constructors and destructors */
