@@ -9,7 +9,8 @@
 
 #include "CglLandPValidator.hpp"
 #include "CglCutGenerator.hpp"
-#include "CglConfig.h"
+// JJF took this out as seems to stop Cbc compiling - can someone fix?
+//#include "CglConfig.h"
 #include "CglParam.hpp"
 
 #include <iostream>
