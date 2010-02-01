@@ -10,6 +10,7 @@
 #include <iostream>
 #include <vector>
 
+#include "CglConfig.h"
 #include "CglLandP.hpp"
 
 #include "OsiSolverInterface.hpp"
