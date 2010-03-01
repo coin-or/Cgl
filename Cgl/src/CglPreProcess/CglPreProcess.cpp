@@ -7,6 +7,8 @@
 #include <string>
 #include <cassert>
 #include <cmath>
+#include <vector>
+#include <algorithm>
 #include <cfloat>
 
 #include "CglPreProcess.hpp"
@@ -1891,11 +1893,12 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     makeIntegers2(startModel_,makeIntegers);
   }
   int infeas=0;
+  OsiSolverInterface * startModel2 = startModel_;
   // Do we want initial presolve
   if (doInitialPresolve) {
     assert (doInitialPresolve==1);
     OsiSolverInterface * presolvedModel;
-    OsiSolverInterface * oldModel = startModel_;
+    OsiSolverInterface * oldModel = startModel2;
     OsiPresolve * pinfo = new OsiPresolve();
     int presolveActions=0;
     // Allow dual stuff on integers
@@ -1935,6 +1938,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	model_[0]=presolvedModel;
 	presolve_[0]=pinfo;
 	modifiedModel_[0]=presolvedModel->clone();
+	startModel2 = modifiedModel_[0];
       }
     } else {
       infeas=1;
@@ -1952,10 +1956,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   constraint system. Safe as long as tightenPrimalBounds doesn't ask for
   the current solution.
 */
-  if (!infeas) {
-    //startModel_->writeMps("before-tighten");
-    infeas = tightenPrimalBounds(*startModel_);
-    //startModel_->writeMps("after-tighten");
+  if (!infeas&&true) {
+    // may be better to just do at end
+    //startModel2->writeMps("before-tighten");
+    infeas = tightenPrimalBounds(*startModel2);
+    //startModel2->writeMps("after-tighten");
   }
   if (infeas) {
     handler_->message(CGL_INFEASIBLE,messages_)
@@ -1964,87 +1969,108 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   }
   OsiSolverInterface * returnModel=NULL;
   int numberChanges;
+  if ((tuning&128)!=0) {
+    // take out cliques
+    OsiSolverInterface * newSolver=cliqueIt(*startModel2,0.0001);
+    if (newSolver) {
+      if (startModel2 == modifiedModel_[0])
+	modifiedModel_[0]=newSolver;
+      delete startModel2;
+      startModel2=newSolver;
+      newSolver->initialSolve();
+      assert (newSolver->isProvenOptimal());
+      //printf("new size %d rows, %d columns\n",
+      //     newSolver->getNumRows(),newSolver->getNumCols());
+    }
+  }
   {
     // Give a hint to do dual
     bool saveTakeHint;
     OsiHintStrength saveStrength;
-    startModel_->getHintParam(OsiDoDualInInitial,
+    startModel2->getHintParam(OsiDoDualInInitial,
 			      saveTakeHint,saveStrength);
-    startModel_->setHintParam(OsiDoDualInInitial,true,OsiHintTry);
-    startModel_->initialSolve();
-    numberIterationsPre_ += startModel_->getIterationCount();
+    startModel2->setHintParam(OsiDoDualInInitial,true,OsiHintTry);
+    startModel2->initialSolve();
+    numberIterationsPre_ += startModel2->getIterationCount();
     // double check
-    if (!startModel_->isProvenOptimal()) {
-      if (!startModel_->isProvenDualInfeasible()) {
+    if (!startModel2->isProvenOptimal()) {
+      if (!startModel2->isProvenDualInfeasible()) {
 	// Do presolves
 	bool saveHint;
 	OsiHintStrength saveStrength;
-	startModel_->getHintParam(OsiDoPresolveInInitial,saveHint,saveStrength);
-	startModel_->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
-	startModel_->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
-	startModel_->initialSolve();
-	numberIterationsPre_ += startModel_->getIterationCount();
-	if (!startModel_->isProvenDualInfeasible()) {
-	  CoinWarmStart * empty = startModel_->getEmptyWarmStart();
-	  startModel_->setWarmStart(empty);
+	startModel2->getHintParam(OsiDoPresolveInInitial,saveHint,saveStrength);
+	startModel2->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
+	startModel2->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
+	startModel2->initialSolve();
+	numberIterationsPre_ += startModel2->getIterationCount();
+	if (!startModel2->isProvenDualInfeasible()) {
+	  CoinWarmStart * empty = startModel2->getEmptyWarmStart();
+	  startModel2->setWarmStart(empty);
 	  delete empty;
-	  startModel_->setHintParam(OsiDoDualInInitial,true,OsiHintTry);
-	  startModel_->initialSolve();
-	  numberIterationsPre_ += startModel_->getIterationCount();
+	  startModel2->setHintParam(OsiDoDualInInitial,true,OsiHintTry);
+	  startModel2->initialSolve();
+	  numberIterationsPre_ += startModel2->getIterationCount();
 	}
-	startModel_->setHintParam(OsiDoPresolveInInitial,saveHint,saveStrength);
+	startModel2->setHintParam(OsiDoPresolveInInitial,saveHint,saveStrength);
       }
     }
-    startModel_->setHintParam(OsiDoDualInInitial,saveTakeHint,saveStrength);
+    startModel2->setHintParam(OsiDoDualInInitial,saveTakeHint,saveStrength);
   }
-  if (!startModel_->isProvenOptimal()) {
-    if (!startModel_->isProvenDualInfeasible()) {
+  if (!startModel2->isProvenOptimal()) {
+    if (!startModel2->isProvenDualInfeasible()) {
       handler_->message(CGL_INFEASIBLE,messages_)<< CoinMessageEol ;
 #ifdef COIN_DEVELOP
-      startModel_->writeMps("infeas");
+      startModel2->writeMps("infeas");
 #endif
     } else {
       handler_->message(CGL_UNBOUNDED,messages_)<< CoinMessageEol ;
     }
     return NULL;
   }
-  reducedCostFix(*startModel_);
+  reducedCostFix(*startModel2);
   if (!numberSolvers_) {
     // just fix
-    OsiSolverInterface * newModel = modified(startModel_,false,numberChanges,0,numberModifiedPasses);
+    OsiSolverInterface * newModel = modified(startModel2,false,numberChanges,0,numberModifiedPasses);
     if (startModel_!=originalModel_)
       delete startModel_;
+    if (startModel2!=startModel_)
+      delete startModel2;
     startModel_=newModel;
     returnModel=startModel_;
   } else {
     OsiSolverInterface * presolvedModel;
-    OsiSolverInterface * oldModel = startModel_;
+    OsiSolverInterface * oldModel = startModel2;
     if (doInitialPresolve)
       oldModel = modifiedModel_[0];
     //CglDuplicateRow dupCuts(oldModel);
     //dupCuts.setLogLevel(1);
     // If +1 try duplicate rows
-    if (allPlusOnes||(tuning&128)!=0) {
+#define USECGLCLIQUE 512
+    if (allPlusOnes||(tuning&USECGLCLIQUE)!=0) {
 #if 1
       // put at beginning
-      int nAdd= ((tuning&(64+128))==64+128&&allPlusOnes) ? 2 : 1;
+      int nAdd= ((tuning&(64+USECGLCLIQUE))==64+USECGLCLIQUE&&allPlusOnes) ? 2 : 1;
       CglCutGenerator ** temp = generator_;
       generator_ = new CglCutGenerator * [numberCutGenerators_+nAdd];
       memcpy(generator_+nAdd,temp,numberCutGenerators_*sizeof(CglCutGenerator *));
       delete[] temp ;
       numberCutGenerators_+=nAdd;
-      if (nAdd==2||(tuning&128)!=0) {
+      if (nAdd==2||(tuning&USECGLCLIQUE)!=0) {
 	CglClique * cliqueGen=new CglClique(false,true);
 	cliqueGen->setStarCliqueReport(false);
 	cliqueGen->setRowCliqueReport(false);
-	if ((tuning&128)==0)
+	if ((tuning&USECGLCLIQUE)==0)
 	  cliqueGen->setMinViolation(-2.0);
 	else
 	  cliqueGen->setMinViolation(-3.0);
 	generator_[0]=cliqueGen;
       }
-      if (allPlusOnes)
-	generator_[nAdd-1]=new CglDuplicateRow(oldModel);
+      if (allPlusOnes) {
+	CglDuplicateRow * dupCuts =new CglDuplicateRow(oldModel);
+	if ((tuning&256)!=0)
+	  dupCuts->setMaximumDominated(numberColumns);
+	generator_[nAdd-1]=dupCuts;
+      }
 #else
       CglDuplicateRow dupCuts(oldModel);
       addCutGenerator(&dupCuts);
@@ -2261,6 +2287,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	  if (returnModel==modifiedModel_[iPass])
 	    modifiedModel_[iPass]=NULL;
 	}
+	//printf("startModel_ %p startModel2 %p originalModel_ %p returnModel %p\n",
+	//     startModel_,startModel2,originalModel_,returnModel);
         if (returnModel==startModel_&&startModel_!=originalModel_)
           startModel_=NULL;
         returnModel=NULL;
@@ -3767,7 +3795,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
         // skip duplicate rows except once
         dupRow = dynamic_cast<CglDuplicateRow *> (generator_[iGenerator]);
 	cliqueGen = dynamic_cast<CglClique *> (generator_[iGenerator]);
-        if ((dupRow||cliqueGen)&&(iPass||iBigPass))
+        if ((dupRow||cliqueGen)&&(iPass/*||iBigPass*/))
             continue;
         probingCut = dynamic_cast<CglProbing *> (generator_[iGenerator]);
 	if (!probingCut) {
@@ -5477,4 +5505,445 @@ CglPreProcess::makeInteger()
   }
   delete solver;
   delete [] changed;
+}
+//#define BRON_TIMES
+#ifdef BRON_TIMES
+static int numberTimesX=0;
+#endif
+/* Replace cliques by more maximal cliques
+   Returns NULL if rows not reduced by greater than cliquesNeeded*rows
+   
+*/
+OsiSolverInterface * 
+CglPreProcess::cliqueIt(OsiSolverInterface & model,
+			double cliquesNeeded) const
+{
+  /*
+    Initial arrays
+    * Candidate nodes (columns)
+    First nIn already in
+    Next nCandidate are candidates
+    numberColumns-1 back to nNot are Nots
+    * Starts
+    * Other node
+    * Original row (paired with other node)
+    * CliqueIn expanded array with 1 in, 2 not, 3 out, 0 possible, -1 never
+    * Type (for original row)
+    */
+  const double *lower = model.getColLower() ;
+  const double *upper = model.getColUpper() ;
+  const double *rowLower = model.getRowLower() ;
+  const double *rowUpper = model.getRowUpper() ;
+  int numberRows = model.getNumRows() ;
+  //int numberColumns = model.getNumCols() ;
+  // Column copy of matrix
+  //const double * element = model.getMatrixByCol()->getElements();
+  //const int * row = model.getMatrixByCol()->getIndices();
+  //const CoinBigIndex * columnStart = model.getMatrixByCol()->getVectorStarts();
+  //const int * columnLength = model.getMatrixByCol()->getVectorLengths();
+  // Row copy
+  CoinPackedMatrix matrixByRow(*model.getMatrixByRow());
+  const double * elementByRow = matrixByRow.getElements();
+  const int * column = matrixByRow.getIndices();
+  const CoinBigIndex * rowStart = matrixByRow.getVectorStarts();
+  const int * rowLength = matrixByRow.getVectorLengths();
+  char * type = new char [numberRows];
+  int numberElements=0;
+  int numberCliques=0;
+  for (int i=0;i<numberRows;i++) {
+    type[i]=-1;
+    if (rowUpper[i]!=1.0||
+	(rowLower[i]>0.0&&rowLower[i]!=1.0))
+      continue;
+    bool possible = true;
+    CoinBigIndex start = rowStart[i];
+    CoinBigIndex end = start + rowLength[i];
+    int n=0;
+    for (CoinBigIndex j=start;j<end;j++) {
+      int iColumn = column[j];
+      if (upper[iColumn]==1.0&&lower[iColumn]==0.0&&
+	  model.isInteger(iColumn)&&elementByRow[j]==1.0) {
+	n++;
+      } else {
+	possible=false;
+	break;
+      }
+    }
+    // temp fix to get working faster for client
+    if (rowLower[i]>0.0||n!=2)
+      possible=false;
+    if (possible) {
+      numberElements+=n;
+      numberCliques++;
+      if (rowLower[i]>0.0)
+	type[i]=1;
+      else
+	type[i]=0;
+    }
+  }
+  OsiSolverInterface * newSolver = NULL;
+  if (numberCliques>CoinMax(1,static_cast<int>(cliquesNeeded*numberRows))) {
+#ifdef BRON_TIMES
+    double time1 = CoinCpuTime();
+#endif
+    CglBK bk(model,type,numberElements);
+    bk.bronKerbosch();
+    newSolver = bk.newSolver(model);
+#ifdef BRON_TIMES
+    printf("Time %g - bron called %d times\n",CoinCpuTime()-time1,numberTimesX);
+#endif
+  }
+  delete [] type;
+  return newSolver;
+}
+// Default constructor
+CglBK::CglBK()
+{
+  candidates_=NULL;
+  mark_=NULL;
+  start_=NULL;
+  otherColumn_=NULL;
+  originalRow_=NULL;
+  dominated_=NULL;
+  cliqueMatrix_=NULL;
+  rowType_=NULL;
+  numberColumns_=0;
+  numberRows_=0;
+  numberPossible_=0;
+  numberCandidates_=0;
+  firstNot_=0;
+  numberIn_=0;
+  left_=0;
+  lastColumn_=0;
+} 
+  
+// Useful constructor
+CglBK::CglBK(const OsiSolverInterface & model, const char * rowType,
+	     int numberElements)
+{
+  const double *lower = model.getColLower() ;
+  const double *upper = model.getColUpper() ;
+  //const double *rowLower = model.getRowLower() ;
+  //const double *rowUpper = model.getRowUpper() ;
+  numberRows_ = model.getNumRows() ;
+  numberColumns_ = model.getNumCols() ;
+  // Column copy of matrix
+  const double * element = model.getMatrixByCol()->getElements();
+  const int * row = model.getMatrixByCol()->getIndices();
+  const CoinBigIndex * columnStart = model.getMatrixByCol()->getVectorStarts();
+  const int * columnLength = model.getMatrixByCol()->getVectorLengths();
+  start_ = new CoinBigIndex[numberColumns_+1];
+  otherColumn_ = new int [numberElements];
+  candidates_ = new int [2*numberColumns_];
+  CoinZeroN(candidates_,2*numberColumns_); // for valgrind
+  originalRow_ = new int [numberElements];
+  dominated_ = new int [numberRows_];
+  CoinZeroN(dominated_,numberRows_);
+  numberElements=0;
+  numberPossible_=0;
+  rowType_=rowType;
+  // Row copy
+  CoinPackedMatrix matrixByRow(*model.getMatrixByRow());
+  //const double * elementByRow = matrixByRow.getElements();
+  const int * column = matrixByRow.getIndices();
+  const CoinBigIndex * rowStart = matrixByRow.getVectorStarts();
+  const int * rowLength = matrixByRow.getVectorLengths();
+  for (int iColumn=0;iColumn<numberColumns_;iColumn++) {
+    start_[iColumn]=numberElements;
+    CoinBigIndex start = columnStart[iColumn];
+    CoinBigIndex end = start + columnLength[iColumn];
+    if (upper[iColumn]==1.0&&lower[iColumn]==0.0&&
+	model.isInteger(iColumn)) {
+      for (CoinBigIndex j=start;j<end;j++) {
+	int iRow = row[j];
+	if (rowType[iRow]>=0) {
+	  assert(element[j]==1.0);
+	  CoinBigIndex r=rowStart[iRow];
+	  assert (rowLength[iRow]==2);
+	  int kColumn = column[r];
+	  if (kColumn==iColumn)
+	    kColumn=column[r+1];
+	  originalRow_[numberElements]=iRow;
+	  otherColumn_[numberElements++]=kColumn;
+	}
+      }
+      if (numberElements>start_[iColumn]) {
+	candidates_[numberPossible_++]=iColumn;
+      }
+    }
+  }
+  start_[numberColumns_]=numberElements;
+  numberCandidates_=numberPossible_;
+  numberIn_=0;
+  firstNot_ = numberPossible_;
+  left_=numberPossible_;
+  lastColumn_=-1;
+  mark_ = new char [numberColumns_];
+  memset(mark_,0,numberColumns_);
+  cliqueMatrix_=new CoinPackedMatrix(false,0.5,0.0);
+  int n=0;
+  for (int i=0;i<numberRows_;i++) {
+    if (rowType[i]>=0)
+      n++;
+  }
+  cliqueMatrix_->reserve(CoinMin(100,n),5*numberPossible_);
+} 
+  
+// Copy constructor .
+CglBK::CglBK(const CglBK & rhs)
+{
+  // This only copies data in candidates_
+  // rest just points
+  candidates_ = CoinCopyOfArray(rhs.candidates_,2*rhs.numberPossible_);
+  mark_=rhs.mark_;
+  start_=rhs.start_;
+  otherColumn_=rhs.otherColumn_;
+  originalRow_=rhs.originalRow_;
+  dominated_=rhs.dominated_;
+  cliqueMatrix_=rhs.cliqueMatrix_;
+  rowType_=rhs.rowType_;
+  numberColumns_=rhs.numberColumns_;
+  numberRows_=rhs.numberRows_;
+  numberPossible_=rhs.numberPossible_;
+  numberCandidates_=rhs.numberCandidates_;
+  firstNot_=rhs.firstNot_;
+  numberIn_=rhs.numberIn_;
+  left_=rhs.left_;
+  lastColumn_=rhs.lastColumn_;
+} 
+
+// Assignment operator 
+CglBK & CglBK::operator=(const CglBK& rhs)
+{
+  if (this!=&rhs) {
+    delete [] candidates_;
+    // This only copies data in candidates_
+    // rest just points
+    candidates_ = CoinCopyOfArray(rhs.candidates_,2*numberPossible_);
+    mark_=rhs.mark_;
+    start_=rhs.start_;
+    otherColumn_=rhs.otherColumn_;
+    originalRow_=rhs.originalRow_;
+    dominated_=rhs.dominated_;
+    cliqueMatrix_=rhs.cliqueMatrix_;
+    rowType_=rhs.rowType_;
+    numberColumns_=rhs.numberColumns_;
+    numberRows_=rhs.numberRows_;
+    numberPossible_=rhs.numberPossible_;
+    numberCandidates_=rhs.numberCandidates_;
+    firstNot_=rhs.firstNot_;
+    numberIn_=rhs.numberIn_;
+    left_=rhs.left_;
+    lastColumn_=rhs.lastColumn_;
+  }
+  return *this;
+} 
+
+// Destructor 
+CglBK::~CglBK ()
+{
+  delete [] candidates_;
+  // only deletes if left_==-1
+  if (left_==-1) {
+    delete [] mark_;
+    delete [] start_;
+    delete [] otherColumn_;
+    delete [] originalRow_;
+    delete [] dominated_;
+    delete cliqueMatrix_;
+  }
+}
+// For Bron-Kerbosch
+void 
+CglBK::bronKerbosch()
+{
+#ifdef BRON_TIMES
+  numberTimesX++;
+  if ((numberTimesX%1000000)==0)
+    printf("times %d\n",numberTimesX);
+#endif
+  if (!numberCandidates_&&firstNot_==numberPossible_) {
+    // mark original rows which are dominated
+    // save if clique size >2
+    if (numberIn_>2) {
+      double * elements = new double [numberIn_];
+      int * column = candidates_+numberPossible_;
+      // mark those in clique
+      for (int i=0;i<numberIn_;i++) {
+	int iColumn=column[i];
+	mark_[iColumn]=1;
+      }
+      for (int i=0;i<numberIn_;i++) {
+	elements[i]=1.0;
+	int iColumn=column[i];
+	for (int j=start_[iColumn];j<start_[iColumn+1];j++) {
+	  int jColumn = otherColumn_[j];
+	  if (mark_[jColumn]) {
+	    int iRow=originalRow_[j];
+	    dominated_[iRow]++;
+	  }
+	}
+      }
+      for (int i=0;i<numberIn_;i++) {
+	int iColumn=column[i];
+	mark_[iColumn]=0;
+      }
+      cliqueMatrix_->appendRow(numberIn_,column,elements);
+      delete [] elements;
+    }
+  } else {
+#if 0
+    int nCplusN=numberCandidates_; //+(numberPossible_-firstNot_);
+    int iChoose = CoinDrand48()*nCplusN;
+    iChoose=CoinMin(0,nCplusN-1);
+    if (iChoose>=numberCandidates_) {
+      iChoose -= numberCandidates_;
+      iChoose += firstNot_;
+    }
+#else
+    for (int i=0;i<numberCandidates_;i++) {
+      int jColumn = candidates_[i];
+      mark_[jColumn]=1;
+    }
+    int nMax=0;
+    int iChoose=0;
+    for (int i=0;i<numberCandidates_;i++) {
+      int iColumn = candidates_[i];
+      int n=0;
+      for (int j=start_[iColumn];j<start_[iColumn+1];j++) {
+	int jColumn = otherColumn_[j];
+	n += mark_[jColumn];
+      }
+      if (n>nMax) {
+	nMax=n;
+	iChoose=i;
+      }
+    }
+    for (int i=numberPossible_-1;i>=firstNot_;i--) {
+      int iColumn = candidates_[i];
+      int n=0;
+      for (int j=start_[iColumn];j<start_[iColumn+1];j++) {
+	int jColumn = otherColumn_[j];
+	n += mark_[jColumn];
+      }
+      if (n>nMax) {
+	nMax=n;
+	iChoose=i;
+      }
+    }
+    for (int i=0;i<numberCandidates_;i++) {
+      int jColumn = candidates_[i];
+      mark_[jColumn]=0;
+    }
+#endif
+    iChoose = candidates_[iChoose];
+    int * temp = candidates_+numberPossible_+numberIn_;
+    int nTemp=0;
+    // Neighborhood of iColumn
+    for (int j=start_[iChoose];j<start_[iChoose+1];j++) {
+      int jColumn = otherColumn_[j];
+      mark_[jColumn]=1;
+    }
+    for (int i=0;i<numberCandidates_;i++) {
+      int jColumn = candidates_[i];
+      if (!mark_[jColumn])
+	temp[nTemp++]=jColumn;
+    }
+    for (int j=start_[iChoose];j<start_[iChoose+1];j++) {
+      int jColumn = otherColumn_[j];
+      mark_[jColumn]=0;
+    }
+    for (int kk=0;kk<nTemp;kk++) {
+      int iColumn=temp[kk];
+      // move up
+      int put=0;
+      for (int i=0;i<numberCandidates_;i++) {
+	if (candidates_[i]!=iColumn)  
+	  candidates_[put++]=candidates_[i];
+      }
+      numberCandidates_--;
+      CglBK bk2(*this);
+      int * newCandidates=bk2.candidates_;
+#if 0
+      printf("%p (next %p) iColumn %d, %d candidates %d not %d in\n",
+	     this,&bk2,iColumn,numberCandidates_,
+	     numberPossible_-firstNot_,numberIn_);
+      for (int i=0;i<numberCandidates_;i++) {
+	printf(" %d",candidates_[i]);
+      }
+      printf("\n");
+#endif
+      newCandidates[numberPossible_+numberIn_]=iColumn;
+      bk2.numberIn_=numberIn_+1;
+      // Neighborhood of iColumn
+      for (int j=start_[iColumn];j<start_[iColumn+1];j++) {
+	int jColumn = otherColumn_[j];
+	mark_[jColumn]=1;
+      }
+      // Intersection of candidates with neighborhood
+      int numberCandidates=0;
+      for (int i=0;i<bk2.numberCandidates_;i++) {
+	int jColumn = newCandidates[i];
+	if (mark_[jColumn])
+	  newCandidates[numberCandidates++]=jColumn;
+      }
+      bk2.numberCandidates_=numberCandidates;
+      // Intersection of not with neighborhood
+      int firstNot=numberPossible_;
+      for (int i=numberPossible_-1;i>=bk2.firstNot_;i--) {
+	int jColumn = newCandidates[i];
+	if (mark_[jColumn])
+	  newCandidates[--firstNot]=jColumn;
+      }
+      bk2.firstNot_=firstNot;
+      for (int j=start_[iColumn];j<start_[iColumn+1];j++) {
+	int jColumn = otherColumn_[j];
+	mark_[jColumn]=0;
+      }
+      for (int i=0;i<numberColumns_;i++)
+	assert (!mark_[i]);
+      bk2.bronKerbosch();
+      candidates_[--firstNot_]=iColumn;
+    }
+  }
+}
+// Creates strengthened smaller model
+OsiSolverInterface * 
+CglBK::newSolver(const OsiSolverInterface & model)
+{
+  // See how many rows can be deleted
+  int nDelete=0;
+  int * deleted = new int [numberRows_];
+  for (int i=0;i<numberRows_;i++) {
+    if (dominated_[i]) {
+      deleted[nDelete++]=i;
+    }
+  }
+  int nAdd=cliqueMatrix_->getNumRows();
+  printf ("%d rows can be deleted with %d new cliques\n",
+	  nDelete,nAdd);
+
+  OsiSolverInterface * newSolver = NULL;
+  if (nDelete>nAdd) {
+    newSolver = model.clone();
+    newSolver->deleteRows(nDelete,deleted);
+    double * lower = new double [nAdd];
+    double * upper = new double [nAdd];
+    for (int i=0;i<nAdd;i++) {
+      lower[i]=-COIN_DBL_MAX;
+      upper[i]=1.0;
+    }
+    const double * elementByRow = cliqueMatrix_->getElements();
+    const int * column = cliqueMatrix_->getIndices();
+    const CoinBigIndex * rowStart = cliqueMatrix_->getVectorStarts();
+    //const int * rowLength = cliqueMatrix_->getVectorLengths();
+    assert (cliqueMatrix_->getNumElements()==rowStart[nAdd]);
+    newSolver->addRows(nAdd,rowStart,column,elementByRow,lower,upper);
+    delete [] lower;
+    delete [] upper;
+  }
+  delete [] deleted;
+  // mark so everything will be deleted
+  left_=-1;
+  return newSolver;
 }

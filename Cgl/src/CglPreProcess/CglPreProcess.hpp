@@ -83,6 +83,12 @@ public:
                                  double fractionToKeep=0.25,
                                  bool fixContinuousAsWell=false,
                                  char * keep=NULL) const;
+  /** Replace cliques by more maximal cliques
+      Returns NULL if rows not reduced by greater than cliquesNeeded*rows
+
+  */
+  OsiSolverInterface * cliqueIt(OsiSolverInterface & model,
+				double cliquesNeeded=0.0) const;
   /// If we have a cutoff - fix variables
   int reducedCostFix(OsiSolverInterface & model);
   //@}
@@ -347,6 +353,93 @@ private:
   char * rowType_;
   /// Cuts from dropped rows
   CglStored cuts_;
+ //@}
+};
+/// For Bron-Kerbosch
+class CglBK  {
+  
+public:
+
+  ///@name Main methods 
+  //@{
+  /// For recursive Bron-Kerbosch
+  void bronKerbosch();
+  /// Creates strengthened smaller model
+  OsiSolverInterface * newSolver(const OsiSolverInterface & model);
+  //@}
+
+  //---------------------------------------------------------------------------
+
+  /**@name Parameter set/get methods
+
+     The set methods return true if the parameter was set to the given value,
+     false if the value of the parameter is out of range.
+
+     The get methods return the value of the parameter.
+
+  */
+  //@{
+  //@}
+
+  //---------------------------------------------------------------------------
+
+
+  ///@name Constructors and destructors etc
+  //@{
+  /// Default constructor
+  CglBK(); 
+  
+  /// Useful constructor
+  CglBK(const OsiSolverInterface & model, const char * rowType,
+	int numberElements);
+  
+  /// Copy constructor .
+  CglBK(const CglBK & rhs);
+  
+  /// Assignment operator 
+  CglBK & operator=(const CglBK& rhs);
+
+  /// Destructor 
+  ~CglBK ();
+  
+  //@}
+
+//---------------------------------------------------------------------------
+
+private:
+  ///@name Private member data 
+  //@{
+  /// Current candidates (created at each level)
+  int * candidates_;
+  /// Array to mark stuff 
+  char * mark_;
+  /// Starts for graph (numberPossible+1)
+  int * start_;
+  /// Other column/node
+  int * otherColumn_;
+  /// Original row (in parallel with otherColumn_)
+  int * originalRow_;
+  /// How many times each original row dominated
+  int * dominated_;
+  /// Clique entries
+  CoinPackedMatrix * cliqueMatrix_;
+  /// points to row types
+  const char * rowType_;
+  /// Number of original columns
+  int numberColumns_;
+  /// Number of original rows
+  int numberRows_;
+  /// Number possible
+  int numberPossible_;
+  /// Current number of candidates
+  int numberCandidates_;
+  /// First not (stored backwards from numberPossible_)
+  int firstNot_;
+  /// Current number in clique
+  int numberIn_;
+  /// For acceleration
+  int left_;
+  int lastColumn_;
  //@}
 };
 

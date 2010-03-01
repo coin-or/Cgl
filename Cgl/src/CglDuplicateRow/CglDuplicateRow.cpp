@@ -73,19 +73,75 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
   const double * rowUpper = si.getRowUpper();
   int * effectiveRhs = CoinCopyOfArray(rhs_,numberRows);
   int * effectiveLower = CoinCopyOfArray(lower_,numberRows);
+  double * effectiveRhs2 = new double [numberRows];
+  /* For L or G rows - compute effective lower we have to raech */
   // mark bad rows - also used for domination
   for (i=0;i<numberRows;i++) {
-    duplicate_[i]=-1;
+    int duplicate=-1;
+    int LorG=0;
+    double rhs=0.0;
+    if (rowLower[i]<-1.0e20) {
+      LorG=1;
+      rhs=rowUpper[i];
+    } else if (rowUpper[i]>1.0e20) {
+      LorG=2;
+      rhs=rowLower[i];
+    }
     int j;
     for (j=rowStart[i];j<rowStart[i]+rowLength[i];j++) {
       int iColumn = column[j];
-      if (elementByRow[j]!=1.0) {
-        duplicate_[i]=-3;
-        rhs_[i]=-1000000;
-        break;
-      } else if (!si.isInteger(iColumn)) {
-        duplicate_[i]=-5;
+      double value=elementByRow[j];
+      if (LorG==1) {
+	// need lowest contribution
+	if (value>0.0) {
+	  double bound=columnLower[iColumn];
+	  if (bound>-1.0e20) 
+	    rhs -= bound*value;
+	  else
+	    LorG=-1;
+	} else {
+	  double bound=columnUpper[iColumn];
+	  if (bound<1.0e20) 
+	    rhs -= bound*value;
+	  else
+	    LorG=-1;
+	}
+      } else if (LorG==2) {
+	// need highest contribution
+	if (value<0.0) {
+	  double bound=columnLower[iColumn];
+	  if (bound>-1.0e20) 
+	    rhs -= bound*value;
+	  else
+	    LorG=-2;
+	} else {
+	  double bound=columnUpper[iColumn];
+	  if (bound<1.0e20) 
+	    rhs -= bound*value;
+	  else
+	    LorG=-2;
+	}
       }
+      if (duplicate!=-3) {
+	if (value!=1.0) {
+	  duplicate=-3;
+	  rhs_[i]=-1000000;
+	  //break;
+	} else if (!si.isInteger(iColumn)) {
+	  duplicate=-5;
+	}
+      }
+    }
+    duplicate_[i]=duplicate;
+    if (!LorG) {
+      effectiveRhs2[i]=0.0;
+    } else if (LorG<0) {
+      // weak
+      effectiveRhs2[i]=-COIN_DBL_MAX;
+    } else if (LorG==1) {
+      effectiveRhs2[i]=rhs;
+    } else {
+      effectiveRhs2[i]=rhs;
     }
   }
   double * colUpper2 = CoinCopyOfArray(columnUpper,numberColumns);
@@ -138,9 +194,10 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
     int * rowGeJ = rowEqualJ + numberRows;
     char * mark = new char[numberRows];
     CoinZeroN(mark,numberRows);
+#if 1
     for (i=0;i<nPossible+1;i++) {
       if (sort[i]>lastValue) {
-	if (i-last<=maximumDominated_) {
+	if (i-last<=maximumDominated_&&i>last+1) {
 	  // look to see if dominated
 	  for (int j=last;j<i;j++) {
 	    int jColumn = which[j];
@@ -150,6 +207,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
 	    int nGeJ=0;
 	    int nEqualJ=0;
 	    int jj;
+	    int nJ=columnLength[jColumn];
 	    for (jj=columnStart[jColumn];jj<columnStart[jColumn]+columnLength[jColumn];jj++) {
 	      int iRow = row[jj];
 	      if (random[iRow]) {
@@ -166,6 +224,10 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
 	      int kColumn = which[k];
 	      // skip if already fixed
 	      if (!colUpper2[kColumn])
+		continue;
+	      int nK=columnLength[kColumn];
+	      double objValueK = objective[kColumn]*direction;
+	      if ((nJ-nK)*(objValueK-objValueJ)>0.0)
 		continue;
 	      int nEqualK=0;
 	      // -2 no good, -1 J dominates K, 0 unknown or equal, 1 K dominates J
@@ -247,7 +309,6 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
 	      for (;kk<nGeJ;kk++)
 		mark[rowGeJ[kk]]=0;
 	      if (nEqualK==nEqualJ&&dominate!=-2) {
-		double objValueK = objective[kColumn]*direction;
 		if (objValueJ==objValueK) {
 		  if (dominate<=0) {
 		    // say J dominates
@@ -303,6 +364,28 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
 		    if (canFix)
 		      break;
 		  }
+		  if (!canFix) {
+		    for (kk=columnStart[kColumn];kk<columnStart[kColumn]+columnLength[kColumn];kk++) {
+		      int iRow = row[kk];
+		      if (!random[iRow]) {
+			if (rowUpper[iRow]<1.0e20) {
+			  // just <= row
+			  double valueK = element[kk] - elementGeJ[iRow];
+			  if (valueK>effectiveRhs2[iRow]+1.0e-4) {
+			    canFix=true;
+			    break;
+			  }
+			} else {
+			  // >= row
+			  double valueK = element[kk] + elementGeJ[iRow];
+			  if (valueK<effectiveRhs2[iRow]-1.0e-4) {
+			    canFix=true;
+			    break;
+			  }
+			}
+		      }
+		    }
+		  }
 		  if (canFix) {
 		    int iColumn = (dominate>0) ? jColumn : kColumn;
 		    nFixed++;
@@ -335,6 +418,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
 	lastValue = sort[i];
       }
     }
+#endif
     delete [] mark;
     delete [] elementEqualJ;
     delete [] rowEqualJ;
@@ -347,6 +431,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
       printf("** %d fixed and %d cuts from domination\n",nFixed,numberCuts);
 #endif
   }
+  delete [] effectiveRhs2;
   bool infeasible=false;
   // if we were just doing columns - mark all as bad
   if ((mode_&1)==0) {
@@ -3001,7 +3086,7 @@ void CglDuplicateRow::generateCuts8(const OsiSolverInterface & si, OsiCuts & cs,
     if (iClique>=0) {
       dup2[iRow] = dups[iClique];
       int which = used[iClique];
-      if (which>=0)
+      if (which>=0&&which<numberCliques)
 	which = fixed[which];
       used2[iRow]=which;
     }
