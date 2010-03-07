@@ -20,7 +20,7 @@ noinst_LTLIBRARIES = libCglLandP.la
 libCglLandP_la_SOURCES = \
 	CglLandPTabRow.hpp \
 	CglLandPUtils.cpp  CglLandPUtils.hpp
-if COIN_HAS_CLP
+if COIN_HAS_OSICLP
 libCglLandP_la_SOURCES += \
 	CglLandP.cpp  CglLandP.hpp \
 	CglLandPTabRow.cpp \
@@ -30,7 +30,6 @@ libCglLandP_la_SOURCES += \
         CglLandPTest.cpp
 endif
 
-
 # This is for libtool (on Windows)
 libCglLandP_la_LDFLAGS = $(LT_LDFLAGS)
 
@@ -38,16 +37,12 @@ libCglLandP_la_LDFLAGS = $(LT_LDFLAGS)
 # "cygpath" stuff is necessary to compile with native compilers on Windows.
 # "top_srcdir" refers to the basic directory for the main package that is
 # being compiled.
-AM_CPPFLAGS = \
+AM_CPPFLAGS = $(COINUTILS_CFLAGS) $(OSI_CFLAGS) \
 	-I`$(CYGPATH_W) $(srcdir)/..` \
-	-I`$(CYGPATH_W) $(srcdir)/../CglGomory` \
-	-I`$(CYGPATH_W) $(COINUTILSSRCDIR)/src` \
-	-I`$(CYGPATH_W) $(COINUTILSOBJDIR)/inc` \
-	-I`$(CYGPATH_W) $(OSISRCDIR)/src` \
-	-I`$(CYGPATH_W) $(OSISRCDIR)/src/OsiClp` \
-	-I`$(CYGPATH_W) $(CLPSRCDIR)/src` \
-	-I`$(CYGPATH_W) $(top_builddir)/../Clp/inc` 
-
+        -I`$(CYGPATH_W) $(srcdir)/../CglGomory`
+if COIN_HAS_OSICLP
+AM_CPPFLAGS += $(OSICLP_CFLAGS)
+endif
 
 # This line is necessary to allow VPATH compilation with MS compilers
 # on Cygwin
@@ -58,10 +53,8 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 ########################################################################
 
 # Here list all the header files that are required by a user of the library,
-# and that therefore should be installed in 'install'
+# and that therefore should be installed in 'include/coin'
 includecoindir = $(includedir)/coin
-if COIN_HAS_CLP
-includecoin_HEADERS = \
-	CglLandP.hpp CglLandPSimplex.hpp CglLandPValidator.hpp 
+if COIN_HAS_OSICLP
+includecoin_HEADERS = CglLandP.hpp CglLandPSimplex.hpp CglLandPValidator.hpp
 endif
-

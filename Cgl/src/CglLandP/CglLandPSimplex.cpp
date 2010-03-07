@@ -6,7 +6,7 @@
 //---------------------------------------------------------------------------
 #include "CglLandPSimplex.hpp"
 #include "CoinTime.hpp"
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
 #include "OsiClpSolverInterface.hpp"
 #endif
 #include "CoinIndexedVector.hpp"
@@ -195,7 +195,7 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
                                  const CglLandP::CachedData &cached,
                                  const CglLandP::Parameters &params,
                                  const Validator& validator):
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
         clp_(NULL),
 #endif
         row_k_(this),
@@ -228,7 +228,7 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
 
     si_ = const_cast<OsiSolverInterface *>(&si);
 
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
     OsiClpSolverInterface * clpSi = dynamic_cast<OsiClpSolverInterface *>(si_);
     if (clpSi)
     {
@@ -778,7 +778,7 @@ CglLandPSimplex::optimize
                     allowDegeneratePivot = numberConsecutiveDegenerate < params.degeneratePivotLimit;
                 }
                 double gamma = - row_k_[nonBasics_[incoming]] / row_i_[nonBasics_[incoming]];
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
                 if (numPivots && ( numPivots % 40 == 0 ) && clp_)
                 {
                     clp_->getModelPtr()->factorize();
@@ -923,7 +923,7 @@ CglLandPSimplex::changeBasis(int incoming, int leaving, int leavingStatus,
     double infty = si_->getInfinity();
     int clpLeavingStatus = leavingStatus;
 
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
     if (clp_)
     {
         if (basics_[leaving] >= ncols_)
@@ -1331,7 +1331,7 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
     CoinIndexedVector indexed;
     indexed.borrowVector(nrows_, capacity, &rIntWork_[0], &rWk1_[0]);
 
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
     if (clp_)
         clp_->getBInvACol(&indexed);
     else
@@ -1349,7 +1349,7 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
         }
 
         indexed.borrowVector(nrows_, capacity, &rIntWork_[0], rWk1bis_);
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
         if (clp_)
             clp_->getBInvACol(&indexed);
         else
@@ -2849,7 +2849,7 @@ CglLandPSimplex::append_row(int row_num, bool modularize)
 
     int n = row.getNumElements();
     const int* ind = row.getIndices();
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
     CoinPackedMatrix * m = clp_->getMutableMatrixByCol();
 #endif
 
@@ -2975,7 +2975,7 @@ CglLandPSimplex::update_row(TabRow &row)
     int rowsize = nrows_ + ncols_;
     int n = row.getNumElements();
     const int* ind = row.getIndices();
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
     CoinPackedMatrix * m = clp_->getMutableMatrixByCol();
 #endif
     //double * m_el = m->getMutableElements();
@@ -3048,7 +3048,7 @@ CglLandPSimplex::update_row(TabRow &row)
     }
     si_->setRowBounds(r_idx, rowLower[r_idx] + rhs, rowUpper[r_idx] + rhs);
 
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
     clp_->getModelPtr()->factorize();
 #endif
 
@@ -3079,7 +3079,7 @@ CglLandPSimplex::pullTableauRow(TabRow &row) const
     row.modularized_ = false;
     double infty = si_->getInfinity();
     /* Get the row */
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
     if (clp_)
     {
         CoinIndexedVector array2;

@@ -1,0 +1,10 @@
+prefix=@prefix@
+libdir=@ABSBUILDDIR@/src
+includedir=@abs_source_dir@/src
+
+Name: CGL
+Description: COIN-OR Cut Generation Library
+Version: @PACKAGE_VERSION@
+Libs: -L${libdir} -lCgl @ADDLIBS@
+Cflags: -I${includedir} -I${includedir}/CglAllDifferent -I${includedir}/CglClique -I${includedir}/CglDuplicateRow -I${includedir}/CglFlowCover -I${includedir}/CglGomory -I${includedir}/CglKnapsackCover -I${includedir}/CglLandP -I${includedir}/CglLiftAndProject -I${includedir}/CglMixedIntegerRounding -I${includedir}/CglMixedIntegerRounding2 -I${includedir}/CglOddHole -I${includedir}/CglPreProcess -I${includedir}/CglProbing -I${includedir}/CglRedSplit -I${includedir}/CglResidualCapacity -I${includedir}/CglSimpleRounding -I${includedir}/CglTwomir -I@ABSBUILDDIR@/inc
+Requires: @REQUIREDPACKAGES@

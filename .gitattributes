@@ -7,6 +7,8 @@ Cgl/MSVisualStudio/v7/libCgl/libCgl.vcproj -text
 Cgl/MSVisualStudio/v8/libCgl/libCgl.vcproj -text
 Cgl/MSVisualStudio/v9/libCgl/libCgl.vcproj -text
 Cgl/README -text
+Cgl/cgl-uninstalled.pc.in -text
+Cgl/cgl.pc.in -text
 Cgl/cgl_addlibs.txt.in -text
 Cgl/configure -text
 Cgl/configure.ac -text

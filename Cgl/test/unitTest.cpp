@@ -2,10 +2,7 @@
 // Corporation and others.  All Rights Reserved.
 // Test individual classes or groups of classes
 
-#if defined(_MSC_VER)
-// Turn off compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
+#include "CoinPragma.hpp"
 
 #include "CglConfig.h"
 
@@ -15,25 +12,22 @@
 #include <iostream>
 #include <cstdlib>
 
-#ifdef COIN_HAS_OSL
-#include <OsiOslSolverInterface.hpp>
-#endif
-#ifdef COIN_HAS_CPX
+#ifdef COIN_HAS_OSICPX
 #include <OsiCpxSolverInterface.hpp>
 #endif
-#ifdef COIN_HAS_XPR
+#ifdef COIN_HAS_OSIXPR
 #include <OsiXprSolverInterface.hpp>
 #endif
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
 #include <OsiClpSolverInterface.hpp>
 #endif
-#ifdef COIN_HAS_DYLP
+#ifdef COIN_HAS_OSIDYLP
 #include <OsiDylpSolverInterface.hpp>
 #endif
-#ifdef COIN_HAS_GLPK
+#ifdef COIN_HAS_OSIGLPK
 #include <OsiGlpkSolverInterface.hpp>
 #endif
-#ifdef COIN_HAS_VOL
+#ifdef COIN_HAS_OSIVOL
 #include <OsiVolSolverInterface.hpp>
 #endif
 
@@ -70,63 +64,23 @@ int main (int argc, const char *argv[])
   else {
     const char dirsep =  CoinFindDirSeparator();
     if (dirsep == '/') {
+#ifdef SAMPLEDIR
+      mpsDir = SAMPLEDIR "/" ;
+#else
       mpsDir = "../../Data/Sample/";
+#endif
       testDir = "CglTestData/";
     } else {
+#ifdef SAMPLEDIR
+      mpsDir = SAMPLEDIR "\\" ;
+#else
       mpsDir = "..\\..\\Data\\Sample\\";
+#endif
       testDir = "CglTestData\\";
     }
   }
 
-#ifdef COIN_HAS_OSL
-  {
-    OsiOslSolverInterface oslSi;
-    testingMessage( "Testing CglGomory with OsiOslSolverInterface\n" );
-    CglGomoryUnitTest(&oslSi,mpsDir);
-  }
-  {
-    OsiOslSolverInterface oslSi;
-    testingMessage( "Testing CglSimpleRounding with OsiOslSolverInterface\n" );
-    CglSimpleRoundingUnitTest(&oslSi,mpsDir);
-  }
-  {
-    OsiOslSolverInterface oslSi;
-    testingMessage( "Testing CglKnapsackCover with OsiOslSolverInterface\n" );
-    CglKnapsackCoverUnitTest(&oslSi,mpsDir);
-  }
-  {
-    OsiOslSolverInterface oslSi;
-    testingMessage( "Testing CglOddHole with OsiOslSolverInterface\n" );
-    CglOddHoleUnitTest(&oslSi,mpsDir);
-  }
-  {
-    OsiOslSolverInterface oslSi;
-    testingMessage( "Testing CglProbing with OsiOslSolverInterface\n" );
-    CglProbingUnitTest(&oslSi,mpsDir);
-  }
-  {
-    OsiOslSolverInterface oslSi;
-    testingMessage( "Testing CglMixedIntegerRounding with OsiOslSolverInterface\n" );
-    CglMixedIntegerRoundingUnitTest(&oslSi, testDir);
-  }
-  {
-    OsiOslSolverInterface oslSi;
-    testingMessage( "Testing CglMixedIntegerRounding2 with OsiOslSolverInterface\n" );
-    CglMixedIntegerRounding2UnitTest(&oslSi, testDir);
-  }
-  {
-    OsiOslSolverInterface oslSi;
-    testingMessage( "Testing CglResidualCapacity with OsiOslSolverInterface\n" );
-    CglResidualCapacityUnitTest(&oslSi, testDir);
-  }
-  {
-    OsiOslSolverInterface oslSi;
-    testingMessage( "Testing CglFlowCover with OsiOslSolverInterface\n" );
-    CglFlowCoverUnitTest(&oslSi,testDir);
-  }
-
-#endif
-#ifdef COIN_HAS_CPX
+#ifdef COIN_HAS_OSICPX
   {
     OsiCpxSolverInterface cpxSi;
     testingMessage( "Testing CglGomory with OsiCpxSolverInterface\n" );
@@ -191,7 +145,7 @@ int main (int argc, const char *argv[])
 
 #endif
 
-#ifdef COIN_HAS_XPR
+#ifdef COIN_HAS_OSIXPR
   {
     OsiXprSolverInterface xprSi;
     testingMessage( "Testing CglGomory with OsiXprSolverInterface\n" );
@@ -251,7 +205,7 @@ int main (int argc, const char *argv[])
   }
 
 #endif
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
   {
     OsiClpSolverInterface clpSi;
     testingMessage( "Testing CglGomory with OsiClpSolverInterface\n" );
@@ -319,7 +273,7 @@ int main (int argc, const char *argv[])
   }
 
 #endif
-#ifdef COIN_HAS_DYLP
+#ifdef COIN_HAS_OSIDYLP
   {
     OsiDylpSolverInterface dylpSi;
     testingMessage( "Testing CglGomory with OsiDylpSolverInterface\n" );
@@ -383,7 +337,7 @@ int main (int argc, const char *argv[])
   }
 
 #endif
-#ifdef COIN_HAS_GLPK
+#ifdef COIN_HAS_OSIGLPK
   {
     OsiGlpkSolverInterface glpkSi;
     testingMessage( "Testing CglGomory with OsiGlpkSolverInterface\n" );
@@ -448,7 +402,7 @@ int main (int argc, const char *argv[])
 
 #endif
 
-#ifdef COIN_HAS_VOL
+#ifdef COIN_HAS_OSIVOL
   if(0) // p0033: LP not solved to optimality: Finds 2142 versus 2520
   {
     OsiVolSolverInterface volSi;

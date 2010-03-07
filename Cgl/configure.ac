@@ -12,7 +12,7 @@
 
 AC_PREREQ(2.59)
 
-AC_INIT([Cgl],[0.1],[coin-cgl@list.coin-or.org])
+AC_INIT([Cgl],[split],[cgl@list.coin-or.org])
 
 AC_COPYRIGHT([
 Copyright 2006 International Business Machines and others.
@@ -56,45 +56,60 @@ AC_COIN_INIT_AUTO_TOOLS
 #                              COIN components                              #
 #############################################################################
 
-AC_COIN_HAS_PROJECT(Cbc)
-AC_COIN_HAS_PROJECT(Cgl)
-AC_COIN_HAS_PROJECT(Clp)
-AC_COIN_HAS_PROJECT(CoinUtils)
-AC_COIN_HAS_PROJECT(DyLP)
-AC_COIN_HAS_PROJECT(Osi)
-AC_COIN_HAS_PROJECT(SYMPHONY)
-AC_COIN_HAS_PROJECT(Vol)
+AC_COIN_HAS_MODULE(CoinUtils,  [coinutils = split])
+AC_COIN_HAS_MODULE(Osi,        [osi = split])
+AC_COIN_HAS_MODULE(Sample,     [coindatasample], [required=0])
+AC_COIN_HAS_MODULE(Netlib,     [coindatanetlib], [required=0])
+# Clp can be used by CglLandP
+AC_COIN_HAS_MODULE(OsiClp,     [clp osi-clp])
+
+# fallback if no pkg-config is available
+if test "$coin_has_coinutils" != yes ; then
+  AC_COIN_HAS_PROJECT(CoinUtils)
+  if test $coin_has_coinutils != notGiven && test $coin_has_coinutils != skipping ; then
+    COINUTILS_CFLAGS="-I`${CYGPATH_W} ${COINUTILSSRCDIR}/src` -I`${CYGPATH_W} ${COINUTILSOBJDIR}/inc`"
+    COINUTILS_LIBS="${COINUTILSOBJDIR}/src/libCoinUtils.la `cat ${COINUTILSOBJDIR}/coinutils_addlibs.txt`"
+  else
+    AC_MSG_ERROR("Required package CoinUtils unavailable.")
+  fi
+fi
+
+if test "$coin_has_osi" != yes ; then
+  AC_COIN_HAS_PROJECT(Osi)
+  if test $coin_has_osi != notGiven && test $coin_has_osi != skipping ; then
+    OSI_CFLAGS="-I`${CYGPATH_W} ${OSISRCDIR}/src` -I`${CYGPATH_W} ${OSIOBJDIR}/inc`"
+    OSI_LIBS="${OSIOBJDIR}/src/libOsi.la `cat ${OSIOBJDIR}/osi_addlibs.txt`"
+  else
+    AC_MSG_ERROR("Required package Osi unavailable.")
+  fi
+fi
 
 #############################################################################
-#                            Third party solvers                            #
+#                       Solvers for unittesting                             #
 #############################################################################
 
 # Those are not really required for the compilation of Cgl, but we
 # need to know which are available in order to compile the unitTest
-# correctly.  Therefore, we test those again, even though those tests
-# are done already for Osi (and the libraries are already listed in
-# osi_addlibs.txt)
+# correctly.
 
-# Check which third party solvers are available ToDo!
-AC_COIN_HAS_USER_LIBRARY([Cplex],[CPX],[cplex.h],[CPXgetstat])
-AC_COIN_HAS_USER_LIBRARY([FortMP],[FMP])  #ToDo! is Fortran?
-AC_COIN_HAS_USER_LIBRARY([Mosek],[MSK],[mosek.h],[MSK_makeenv])
-AC_COIN_HAS_USER_LIBRARY([Osl],[OSL],[ekk_c_api.h],[ekk_simplex])
-AC_COIN_HAS_USER_LIBRARY([Soplex],[SPX],[spxsolver.h]) # ToDo
-AC_COIN_HAS_USER_LIBRARY([Xpress],[XPR],[xprs.h],[XPRSinit])
-
-AC_COIN_HAS_GLPK(Glpk)
+AC_COIN_HAS_MODULE(OsiCpx,  [osi-cplex],    [required=0])
+AC_COIN_HAS_MODULE(OsiGlpk, [osi-glpk],     [required=0])
+#AC_COIN_HAS_MODULE(OsiGrb,  [osi-gurobi],   [required=0])
+AC_COIN_HAS_MODULE(OsiMsk,  [osi-mosek],    [required=0])
+AC_COIN_HAS_MODULE(OsiXpr,  [osi-xpress],   [required=0])
+AC_COIN_HAS_MODULE(OsiVol,  [osi-vol],      [required=0])
+AC_COIN_HAS_MODULE(OsiDyLP, [osi-dylp],     [required=0])
 
 #############################################################################
 #                   Determine list of all Cgl subprojects                   #
 #############################################################################
 
-# In order to avoid that one has to update this configure.as and the
+# In order to avoid that one has to update this configure.ac and the
 # Makefile.am whenever a new cut generator is added, we automatically
 # determine the list of all subdirectories of src with Makefile
 # (CGL_SUBDIRS), and also a list of all sublibraries relative to src
 # (CGL_SUBLIBS) that can be used in the src/Makefile.am.  (We still need
-# to manually add the Makefile in the AC_CONFIG_FILES list below)1
+# to manually add the Makefile in the AC_CONFIG_FILES list below)
 
 AC_SUBST(CGL_SUBDIRS)
 AC_SUBST(CGL_SUBLIBS)
@@ -140,7 +155,9 @@ AC_CONFIG_FILES([Makefile
 		 src/CglSimpleRounding/Makefile
 		 src/CglTwomir/Makefile
                  test/Makefile
-		 cgl_addlibs.txt])
+		 cgl_addlibs.txt
+		 cgl.pc
+		 cgl-uninstalled.pc])
 
 # Here put the location and name of the configuration header file
 AC_CONFIG_HEADER([inc/config_cgl.h])
