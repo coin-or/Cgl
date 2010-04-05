@@ -5623,8 +5623,8 @@ CglBK::CglBK(const OsiSolverInterface & model, const char * rowType,
 {
   const double *lower = model.getColLower() ;
   const double *upper = model.getColUpper() ;
-  //const double *rowLower = model.getRowLower() ;
-  //const double *rowUpper = model.getRowUpper() ;
+  const double *rowLower = model.getRowLower() ;
+  const double *rowUpper = model.getRowUpper() ;
   numberRows_ = model.getNumRows() ;
   numberColumns_ = model.getNumCols() ;
   // Column copy of matrix
@@ -5644,10 +5644,77 @@ CglBK::CglBK(const OsiSolverInterface & model, const char * rowType,
   rowType_=rowType;
   // Row copy
   CoinPackedMatrix matrixByRow(*model.getMatrixByRow());
-  //const double * elementByRow = matrixByRow.getElements();
+  const double * elementByRow = matrixByRow.getElements();
   const int * column = matrixByRow.getIndices();
   const CoinBigIndex * rowStart = matrixByRow.getVectorStarts();
   const int * rowLength = matrixByRow.getVectorLengths();
+#if 1
+  // take out duplicate doubleton rows
+  double * sort = new double[numberRows_];
+  int * which = new int [numberRows_];
+  double * randomValues = new double [numberColumns_];
+  // Initialize random seed
+  CoinThreadRandom randomGenerator(987654321);
+  for (int i=0;i<numberColumns_;i++)
+    randomValues[i]=randomGenerator.randomDouble();
+  int nSort=0;
+  for (int i=0;i<numberRows_;i++) {
+    if (rowLength[i]==2&&rowUpper[i]==1.0) {
+      int first = rowStart[i];
+      int last = first+1;
+      if (column[first]>column[last]) {
+	first=last;
+	last=rowStart[i];
+      }
+      int iColumn1 = column[first];
+      int iColumn2 = column[last];
+      double value = elementByRow[first]*randomValues[iColumn1]+
+	elementByRow[last]*randomValues[iColumn2];
+      sort[nSort]=value;
+      which[nSort++]=i;
+    }
+  }
+  CoinSort_2(sort,sort+nSort,which);
+  double value=sort[0];
+  int nDominated=0;
+  for (int i=1;i<nSort;i++) {
+    if (sort[i]==value) {
+      int i1=which[i-1];
+      int i2=which[i];
+      if (rowLower[i1]==rowLower[i2]) {
+	int first1 = rowStart[i1];
+	int last1 = first1+1;
+	if (column[first1]>column[last1]) {
+	  first1=last1;
+	  last1=rowStart[i1];
+	}
+	int iColumn11 = column[first1];
+	int iColumn12 = column[last1];
+	int first2 = rowStart[i2];
+	int last2 = first2+1;
+	if (column[first2]>column[last2]) {
+	  first2=last2;
+	  last2=rowStart[i2];
+	}
+	int iColumn21 = column[first2];
+	int iColumn22 = column[last2];
+	if (iColumn11==iColumn21&&
+	    iColumn12==iColumn22&&
+	    elementByRow[first1]==elementByRow[first2]&&
+	    elementByRow[last1]==elementByRow[last2]) {
+	  dominated_[i2]=1;
+	  nDominated++;
+	}
+      }
+    }
+    value=sort[i];
+  }
+  //if (nDominated)
+  //printf("%d duplicate doubleton rows!\n",nDominated);
+  delete [] randomValues;
+  delete [] sort;
+  delete [] which;
+#endif
   for (int iColumn=0;iColumn<numberColumns_;iColumn++) {
     start_[iColumn]=numberElements;
     CoinBigIndex start = columnStart[iColumn];
@@ -5656,7 +5723,7 @@ CglBK::CglBK(const OsiSolverInterface & model, const char * rowType,
 	model.isInteger(iColumn)) {
       for (CoinBigIndex j=start;j<end;j++) {
 	int iRow = row[j];
-	if (rowType[iRow]>=0) {
+	if (rowType[iRow]>=0&&!dominated_[iRow]) {
 	  assert(element[j]==1.0);
 	  CoinBigIndex r=rowStart[iRow];
 	  assert (rowLength[iRow]==2);
@@ -5759,8 +5826,8 @@ CglBK::bronKerbosch()
 {
 #ifdef BRON_TIMES
   numberTimesX++;
-  if ((numberTimesX%1000000)==0)
-    printf("times %d\n",numberTimesX);
+  if ((numberTimesX%1000)==0)
+    printf("times %d - %d candidates left\n",numberTimesX,numberCandidates_);
 #endif
   if (!numberCandidates_&&firstNot_==numberPossible_) {
     // mark original rows which are dominated
@@ -5793,7 +5860,7 @@ CglBK::bronKerbosch()
     }
   } else {
 #if 0
-    int nCplusN=numberCandidates_; //+(numberPossible_-firstNot_);
+    int nCplusN=numberCandidates_+(numberPossible_-firstNot_);
     int iChoose = CoinDrand48()*nCplusN;
     iChoose=CoinMin(0,nCplusN-1);
     if (iChoose>=numberCandidates_) {
@@ -5807,18 +5874,6 @@ CglBK::bronKerbosch()
     }
     int nMax=0;
     int iChoose=0;
-    for (int i=0;i<numberCandidates_;i++) {
-      int iColumn = candidates_[i];
-      int n=0;
-      for (int j=start_[iColumn];j<start_[iColumn+1];j++) {
-	int jColumn = otherColumn_[j];
-	n += mark_[jColumn];
-      }
-      if (n>nMax) {
-	nMax=n;
-	iChoose=i;
-      }
-    }
     for (int i=numberPossible_-1;i>=firstNot_;i--) {
       int iColumn = candidates_[i];
       int n=0;
@@ -5829,6 +5884,20 @@ CglBK::bronKerbosch()
       if (n>nMax) {
 	nMax=n;
 	iChoose=i;
+      } 
+    }
+    if (nMax<numberCandidates_-1||!nMax) {
+      for (int i=0;i<numberCandidates_;i++) {
+	int iColumn = candidates_[i];
+	int n=0;
+	for (int j=start_[iColumn];j<start_[iColumn+1];j++) {
+	  int jColumn = otherColumn_[j];
+	  n += mark_[jColumn];
+	}
+	if (n>nMax) {
+	  nMax=n;
+	  iChoose=i;
+	}
       }
     }
     for (int i=0;i<numberCandidates_;i++) {
@@ -5839,20 +5908,24 @@ CglBK::bronKerbosch()
     iChoose = candidates_[iChoose];
     int * temp = candidates_+numberPossible_+numberIn_;
     int nTemp=0;
-    // Neighborhood of iColumn
-    for (int j=start_[iChoose];j<start_[iChoose+1];j++) {
-      int jColumn = otherColumn_[j];
-      mark_[jColumn]=1;
+    if (nMax<numberCandidates_) {
+      // Neighborhood of iColumn
+      for (int j=start_[iChoose];j<start_[iChoose+1];j++) {
+	int jColumn = otherColumn_[j];
+	mark_[jColumn]=1;
+      }
+      for (int i=0;i<numberCandidates_;i++) {
+	int jColumn = candidates_[i];
+	if (!mark_[jColumn])
+	  temp[nTemp++]=jColumn;
+      }
+      for (int j=start_[iChoose];j<start_[iChoose+1];j++) {
+	int jColumn = otherColumn_[j];
+	mark_[jColumn]=0;
+      }
     }
-    for (int i=0;i<numberCandidates_;i++) {
-      int jColumn = candidates_[i];
-      if (!mark_[jColumn])
-	temp[nTemp++]=jColumn;
-    }
-    for (int j=start_[iChoose];j<start_[iChoose+1];j++) {
-      int jColumn = otherColumn_[j];
-      mark_[jColumn]=0;
-    }
+    //if (nMax==numberCandidates_)
+    //assert (!nTemp);
     for (int kk=0;kk<nTemp;kk++) {
       int iColumn=temp[kk];
       // move up
@@ -5900,8 +5973,8 @@ CglBK::bronKerbosch()
 	int jColumn = otherColumn_[j];
 	mark_[jColumn]=0;
       }
-      for (int i=0;i<numberColumns_;i++)
-	assert (!mark_[i]);
+      //for (int i=0;i<numberColumns_;i++)
+      //assert (!mark_[i]);
       bk2.bronKerbosch();
       candidates_[--firstNot_]=iColumn;
     }
