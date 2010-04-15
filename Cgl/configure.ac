@@ -61,7 +61,7 @@ AC_COIN_HAS_MODULE(Osi,        [osi = split])
 AC_COIN_HAS_MODULE(Sample,     [coindatasample], [required=0])
 AC_COIN_HAS_MODULE(Netlib,     [coindatanetlib], [required=0])
 # Clp can be used by CglLandP
-AC_COIN_HAS_MODULE(OsiClp,     [clp osi-clp])
+AC_COIN_HAS_MODULE(OsiClp,        [osi-clp])
 
 # fallback if no pkg-config is available
 if test "$coin_has_coinutils" != yes ; then
@@ -83,6 +83,20 @@ if test "$coin_has_osi" != yes ; then
     AC_MSG_ERROR("Required package Osi unavailable.")
   fi
 fi
+
+if test "$coin_has_clp" != yes ; then
+  AC_COIN_HAS_PROJECT(Clp)
+  if test $coin_has_clp != notGiven && test $coin_has_clp != skipping ; then
+    CLP_CFLAGS="-I`${CYGPATH_W} ${CLPSRCDIR}/src` -I`${CYGPATH_W} ${CLPSRCDIR}/src/OsiClp` -I`${CYGPATH_W} ${CLPOBJDIR}/inc`"
+    CLP_LIBS="${CLPOBJDIR}/src/libClp.la ${CLPOBJDIR}/src/OsiClp/libOsiClp.la `cat ${CLPOBJDIR}/clp_addlibs.txt`"
+  fi    
+  coin_has_osiclp=yes
+  AC_DEFINE(COIN_HAS_CLP,[1],[Define to 1 if the OsiClp module is available])
+else 
+  # to please configure
+  AM_CONDITIONAL(COIN_HAS_CLP, [test 0 = 1])
+fi
+
 
 #############################################################################
 #                       Solvers for unittesting                             #

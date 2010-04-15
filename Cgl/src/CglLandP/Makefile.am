@@ -20,7 +20,7 @@ noinst_LTLIBRARIES = libCglLandP.la
 libCglLandP_la_SOURCES = \
 	CglLandPTabRow.hpp \
 	CglLandPUtils.cpp  CglLandPUtils.hpp
-if COIN_HAS_OSICLP
+if COIN_HAS_CLP
 libCglLandP_la_SOURCES += \
 	CglLandP.cpp  CglLandP.hpp \
 	CglLandPTabRow.cpp \
@@ -40,8 +40,8 @@ libCglLandP_la_LDFLAGS = $(LT_LDFLAGS)
 AM_CPPFLAGS = $(COINUTILS_CFLAGS) $(OSI_CFLAGS) \
 	-I`$(CYGPATH_W) $(srcdir)/..` \
         -I`$(CYGPATH_W) $(srcdir)/../CglGomory`
-if COIN_HAS_OSICLP
-AM_CPPFLAGS += $(OSICLP_CFLAGS)
+if COIN_HAS_CLP
+AM_CPPFLAGS += $(CLP_CFLAGS)
 endif
 
 # This line is necessary to allow VPATH compilation with MS compilers
@@ -55,6 +55,6 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 # Here list all the header files that are required by a user of the library,
 # and that therefore should be installed in 'include/coin'
 includecoindir = $(includedir)/coin
-if COIN_HAS_OSICLP
+if COIN_HAS_CLP
 includecoin_HEADERS = CglLandP.hpp CglLandPSimplex.hpp CglLandPValidator.hpp
 endif

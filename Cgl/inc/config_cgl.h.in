@@ -6,6 +6,9 @@
 /* Define to the debug verbosity level (0 is no output) */
 #undef COIN_CGL_VERBOSITY
 
+/* Define to 1 if the OsiClp module is available */
+#undef COIN_HAS_CLP
+
 /* Define to 1 if the CoinUtils package is used */
 #undef COIN_HAS_COINUTILS
 
