@@ -53,50 +53,51 @@ AC_COIN_PROG_CXX
 AC_COIN_INIT_AUTO_TOOLS
 
 #############################################################################
-#                              COIN components                              #
+#                            COIN-OR components                             #
 #############################################################################
 
-AC_COIN_HAS_MODULE(CoinUtils,  [coinutils = split])
-AC_COIN_HAS_MODULE(Osi,        [osi = split])
-AC_COIN_HAS_MODULE(Sample,     [coindatasample], [required=0])
-AC_COIN_HAS_MODULE(Netlib,     [coindatanetlib], [required=0])
+AC_COIN_HAS_MODULE(CoinUtils,          [coinutils = split])
+if test $coin_has_coinutils != yes ; then
+  #if we have to use the fallback routines, then obviously it will not find CoinUtils dependencies
+  #thus, we check whether ThirdParty/Blas and ThirdParty/Lapack have been setup and
+  #assume that if present then they are dependencies of CoinUtils
+  AC_COIN_HAS_MODULE_FALLBACK(Blas,   [coinblas],   [../ThirdParty/Blas],   [required=0 dodefine=0 doconditional=0])
+  AC_COIN_HAS_MODULE_FALLBACK(Lapack, [coinlapack], [../ThirdParty/Lapack], [required=0 dodefine=0 doconditional=0])
+fi
+AC_COIN_HAS_MODULE_FALLBACK(CoinUtils, [coinutils], [../CoinUtils])
+if test $coin_has_coinutils != yes ; then
+  AC_MSG_ERROR([Required package CoinUtils not available.])
+fi
+#so if we had to do find Blas and Lapack separately, then add their linker flags to the CoinUtils flags
+#actually the libs may already be included in libCoinUtils, but we may still need the fortran library flags
+COINUTILS_LIBS="$COINUTILS_LIBS $BLAS_LIBS $LAPACK_LIBS"
+
+AC_COIN_HAS_MODULE(Osi,               [osi = split])
+AC_COIN_HAS_MODULE_FALLBACK(Osi,      [osi], [../Osi])
+if test $coin_has_osi != yes ; then
+  AC_MSG_ERROR([Required package Osi not available.])
+fi
+
+AC_COIN_HAS_MODULE(Sample,          [coindatasample],                   [required=0])
+AC_COIN_HAS_MODULE_FALLBACK(Sample, [coindatasample], [../Data/Sample], [required=0])
+
+AC_COIN_HAS_MODULE(Netlib,          [coindatanetlib],                   [required=0])
+AC_COIN_HAS_MODULE_FALLBACK(Netlib, [coindatanetlib], [../Data/Netlib], [required=0])
+
 # Clp can be used by CglLandP
-AC_COIN_HAS_MODULE(OsiClp,        [osi-clp])
-
-# fallback if no pkg-config is available
-if test "$coin_has_coinutils" != yes ; then
-  AC_COIN_HAS_PROJECT(CoinUtils)
-  if test $coin_has_coinutils != notGiven && test $coin_has_coinutils != skipping ; then
-    COINUTILS_CFLAGS="-I`${CYGPATH_W} ${COINUTILSSRCDIR}/src` -I`${CYGPATH_W} ${COINUTILSOBJDIR}/inc`"
-    COINUTILS_LIBS="${COINUTILSOBJDIR}/src/libCoinUtils.la `cat ${COINUTILSOBJDIR}/coinutils_addlibs.txt`"
+AC_COIN_HAS_MODULE(OsiClp, [clp osi-clp])
+if test $coin_has_osiclp != yes ; then
+  # in the fallback, we first check for OsiClp
+  # if it is there, then we also check for Clp and add the Clp flags to the OsiClp flags
+  AC_COIN_HAS_MODULE_FALLBACK(OsiClp, [osi-clp], [../Clp])
+  if test $coin_has_osiclp = yes ; then
+    AC_COIN_HAS_MODULE_FALLBACK(Clp, [clp], [../Clp], [dodefine=0 doconditional=0])
+    OSICLP_CFLAGS="$OSICLP_CFLAGS $CLP_CFLAGS"
+    OSICLP_LIBS="$OSICLP_LIBS $CLP_LIBS"
   else
-    AC_MSG_ERROR("Required package CoinUtils unavailable.")
+    coin_has_osiclp=no
   fi
 fi
-
-if test "$coin_has_osi" != yes ; then
-  AC_COIN_HAS_PROJECT(Osi)
-  if test $coin_has_osi != notGiven && test $coin_has_osi != skipping ; then
-    OSI_CFLAGS="-I`${CYGPATH_W} ${OSISRCDIR}/src` -I`${CYGPATH_W} ${OSIOBJDIR}/inc`"
-    OSI_LIBS="${OSIOBJDIR}/src/libOsi.la `cat ${OSIOBJDIR}/osi_addlibs.txt`"
-  else
-    AC_MSG_ERROR("Required package Osi unavailable.")
-  fi
-fi
-
-if test "$coin_has_clp" != yes ; then
-  AC_COIN_HAS_PROJECT(Clp)
-  if test $coin_has_clp != notGiven && test $coin_has_clp != skipping ; then
-    CLP_CFLAGS="-I`${CYGPATH_W} ${CLPSRCDIR}/src` -I`${CYGPATH_W} ${CLPSRCDIR}/src/OsiClp` -I`${CYGPATH_W} ${CLPOBJDIR}/inc`"
-    CLP_LIBS="${CLPOBJDIR}/src/libClp.la ${CLPOBJDIR}/src/OsiClp/libOsiClp.la `cat ${CLPOBJDIR}/clp_addlibs.txt`"
-  fi    
-  coin_has_osiclp=yes
-  AC_DEFINE(COIN_HAS_CLP,[1],[Define to 1 if the OsiClp module is available])
-else 
-  # to please configure
-  AM_CONDITIONAL(COIN_HAS_CLP, [test 0 = 1])
-fi
-
 
 #############################################################################
 #                       Solvers for unittesting                             #

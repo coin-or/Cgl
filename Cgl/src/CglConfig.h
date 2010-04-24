@@ -54,7 +54,7 @@
 /* #define COIN_HAS_CGL 1 */
 
 /* Define to 1 if the Clp package is used */
-#define COIN_HAS_CLP 1
+#define COIN_HAS_OSICLP 1
 
 /* Define to 1 if the CoinUtils package is used */
 #define COIN_HAS_COINUTILS 1

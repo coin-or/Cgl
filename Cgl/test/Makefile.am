@@ -50,9 +50,9 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 # Depending of what solvers are available, we add the corresponding files,
 # libraries and include dirs
 
-if COIN_HAS_CLP
-  AM_CPPFLAGS += $(CLP_CFLAGS)
-  unitTest_LDADD += $(CLP_LIBS)
+if COIN_HAS_OSICLP
+  AM_CPPFLAGS += $(OSICLP_CFLAGS)
+  unitTest_LDADD += $(OSICLP_LIBS)
 endif
 
 if COIN_HAS_OSICPX

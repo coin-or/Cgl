@@ -1,10 +1,9 @@
 prefix=@prefix@
 libdir=@ABSBUILDDIR@/src
-includedir=@abs_source_dir@/src
 
 Name: CGL
 Description: COIN-OR Cut Generation Library
 Version: @PACKAGE_VERSION@
 Libs: -L${libdir} -lCgl @ADDLIBS@
-Cflags: -I${includedir} -I${includedir}/CglAllDifferent -I${includedir}/CglClique -I${includedir}/CglDuplicateRow -I${includedir}/CglFlowCover -I${includedir}/CglGomory -I${includedir}/CglKnapsackCover -I${includedir}/CglLandP -I${includedir}/CglLiftAndProject -I${includedir}/CglMixedIntegerRounding -I${includedir}/CglMixedIntegerRounding2 -I${includedir}/CglOddHole -I${includedir}/CglPreProcess -I${includedir}/CglProbing -I${includedir}/CglRedSplit -I${includedir}/CglResidualCapacity -I${includedir}/CglSimpleRounding -I${includedir}/CglTwomir -I@ABSBUILDDIR@/inc
+Cflags: -I@abs_source_dir@/src -I@abs_source_dir@/src/CglAllDifferent -I@abs_source_dir@/src/CglClique -I@abs_source_dir@/src/CglDuplicateRow -I@abs_source_dir@/src/CglFlowCover -I@abs_source_dir@/src/CglGomory -I@abs_source_dir@/src/CglKnapsackCover -I@abs_source_dir@/src/CglLandP -I@abs_source_dir@/src/CglLiftAndProject -I@abs_source_dir@/src/CglMixedIntegerRounding -I@abs_source_dir@/src/CglMixedIntegerRounding2 -I@abs_source_dir@/src/CglOddHole -I@abs_source_dir@/src/CglPreProcess -I@abs_source_dir@/src/CglProbing -I@abs_source_dir@/src/CglRedSplit -I@abs_source_dir@/src/CglResidualCapacity -I@abs_source_dir@/src/CglSimpleRounding -I@abs_source_dir@/src/CglTwomir -I@ABSBUILDDIR@/inc
 Requires: @REQUIREDPACKAGES@
