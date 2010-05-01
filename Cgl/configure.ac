@@ -56,7 +56,7 @@ AC_COIN_INIT_AUTO_TOOLS
 #                            COIN-OR components                             #
 #############################################################################
 
-AC_COIN_HAS_MODULE(CoinUtils,          [coinutils = split])
+AC_COIN_HAS_MODULE(CoinUtils, [coinutils = split])
 if test $coin_has_coinutils != yes ; then
   #if we have to use the fallback routines, then obviously it will not find CoinUtils dependencies
   #thus, we check whether ThirdParty/Blas and ThirdParty/Lapack have been setup and
@@ -72,17 +72,13 @@ fi
 #actually the libs may already be included in libCoinUtils, but we may still need the fortran library flags
 COINUTILS_LIBS="$COINUTILS_LIBS $BLAS_LIBS $LAPACK_LIBS"
 
-AC_COIN_HAS_MODULE(Osi,               [osi = split])
-AC_COIN_HAS_MODULE_FALLBACK(Osi,      [osi], [../Osi])
+AC_COIN_HAS_MODULE(Osi, [osi = split], [required=0], [../Osi])
 if test $coin_has_osi != yes ; then
   AC_MSG_ERROR([Required package Osi not available.])
 fi
 
-AC_COIN_HAS_MODULE(Sample,          [coindatasample],                   [required=0])
-AC_COIN_HAS_MODULE_FALLBACK(Sample, [coindatasample], [../Data/Sample], [required=0])
-
-AC_COIN_HAS_MODULE(Netlib,          [coindatanetlib],                   [required=0])
-AC_COIN_HAS_MODULE_FALLBACK(Netlib, [coindatanetlib], [../Data/Netlib], [required=0])
+AC_COIN_HAS_MODULE(Sample, [coindatasample], [required=0], [../Data/Sample])
+AC_COIN_HAS_MODULE(Netlib, [coindatanetlib], [required=0], [../Data/Netlib])
 
 # Clp can be used by CglLandP
 AC_COIN_HAS_MODULE(OsiClp, [clp osi-clp])
@@ -170,7 +166,6 @@ AC_CONFIG_FILES([Makefile
 		 src/CglSimpleRounding/Makefile
 		 src/CglTwomir/Makefile
                  test/Makefile
-		 cgl_addlibs.txt
 		 cgl.pc
 		 cgl-uninstalled.pc])
 

@@ -63,8 +63,7 @@ DIST_COMMON = README $(am__configure_deps) \
 	$(srcdir)/../ltmain.sh $(srcdir)/../missing \
 	$(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/cgl-uninstalled.pc.in $(srcdir)/cgl.pc.in \
-	$(srcdir)/cgl_addlibs.txt.in $(top_srcdir)/configure \
-	$(top_srcdir)/examples/Makefile.in \
+	$(top_srcdir)/configure $(top_srcdir)/examples/Makefile.in \
 	$(top_srcdir)/inc/config_cgl.h.in AUTHORS
 @HAVE_EXTERNALS_TRUE@am__append_2 = Externals
 @HAVE_EXTERNALS_TRUE@am__append_3 = .Externals-stamp
@@ -78,8 +77,7 @@ am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
  configure.lineno configure.status.lineno
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/inc/config_cgl.h
-CONFIG_CLEAN_FILES = examples/Makefile cgl_addlibs.txt cgl.pc \
-	cgl-uninstalled.pc
+CONFIG_CLEAN_FILES = examples/Makefile cgl.pc cgl-uninstalled.pc
 SOURCES =
 DIST_SOURCES =
 RECURSIVE_TARGETS = all-recursive check-recursive dvi-recursive \
@@ -159,8 +157,11 @@ COIN_HAS_OSIXPR_FALSE = @COIN_HAS_OSIXPR_FALSE@
 COIN_HAS_OSIXPR_TRUE = @COIN_HAS_OSIXPR_TRUE@
 COIN_HAS_OSI_FALSE = @COIN_HAS_OSI_FALSE@
 COIN_HAS_OSI_TRUE = @COIN_HAS_OSI_TRUE@
+COIN_HAS_PKGCONFIG_FALSE = @COIN_HAS_PKGCONFIG_FALSE@
+COIN_HAS_PKGCONFIG_TRUE = @COIN_HAS_PKGCONFIG_TRUE@
 COIN_HAS_SAMPLE_FALSE = @COIN_HAS_SAMPLE_FALSE@
 COIN_HAS_SAMPLE_TRUE = @COIN_HAS_SAMPLE_TRUE@
+COIN_PKG_CONFIG_PATH = @COIN_PKG_CONFIG_PATH@
 CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CXX = @CXX@
@@ -324,8 +325,8 @@ EXTRA_DIST = examples/cgl1.cpp examples/cgl_data_test.cpp \
 ########################################################################
 #                  Installation of the addlibs file                    #
 ########################################################################
-addlibsdir = $(datadir)/coin/doc/Cgl
-addlibs_DATA = cgl_addlibs.txt
+@COIN_HAS_PKGCONFIG_TRUE@addlibsdir = $(datadir)/coin/doc/Cgl
+@COIN_HAS_PKGCONFIG_TRUE@addlibs_DATA = cgl_addlibs.txt
 pkgconfiglibdir = $(libdir)/pkgconfig
 pkgconfiglib_DATA = cgl.pc
 
@@ -391,8 +392,6 @@ $(top_srcdir)/inc/config_cgl.h.in: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 distclean-hdr:
 	-rm -f inc/config_cgl.h inc/stamp-h1
 examples/Makefile: $(top_builddir)/config.status $(top_srcdir)/examples/Makefile.in
-	cd $(top_builddir) && $(SHELL) ./config.status $@
-cgl_addlibs.txt: $(top_builddir)/config.status $(srcdir)/cgl_addlibs.txt.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
 cgl.pc: $(top_builddir)/config.status $(srcdir)/cgl.pc.in
 	cd $(top_builddir) && $(SHELL) ./config.status $@
@@ -842,6 +841,9 @@ install-exec-local: install-doc
 uninstall-local: uninstall-doc
 
 .PHONY: test unitTest
+
+@COIN_HAS_PKGCONFIG_TRUE@cgl_addlibs.txt : cgl.pc
+@COIN_HAS_PKGCONFIG_TRUE@	PKG_CONFIG_PATH=.:@COIN_PKG_CONFIG_PATH@ $(PKG_CONFIG) --libs cgl > cgl_addlibs.txt
 
 install-doc: $(DocFiles)
 	test -z "$(DocInstallDir)" || $(mkdir_p) "$(DESTDIR)$(DocInstallDir)"
