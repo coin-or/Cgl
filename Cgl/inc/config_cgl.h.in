@@ -1,5 +1,11 @@
 /* inc/config_cgl.h.in.  Generated from configure.ac by autoheader.  */
 
+/* SVN revision number of project */
+#undef CGL_SVN_REV
+
+/* Version number of project */
+#undef CGL_VERSION
+
 /* Define to the debug sanity check level (0 is no test) */
 #undef COIN_CGL_CHECKLEVEL
 
