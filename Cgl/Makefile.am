@@ -72,6 +72,8 @@ pkgconfiglib_DATA = cgl.pc
 #                         Maintainer Stuff                             #
 ########################################################################
 
+CLEANFILES = cgl_addlibs.txt
+
 # Files that are generated and should be cleaned with make distclean
 DISTCLEANFILES =
 
