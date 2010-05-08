@@ -37,7 +37,7 @@ AM_CPPFLAGS = $(COINUTILS_CFLAGS) $(OSI_CFLAGS) \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglClique` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglSimpleRounding`
 if COIN_HAS_SAMPLE
-AM_CPPFLAGS += -DSAMPLEDIR=\"@SAMPLE_DATA@\"
+AM_CPPFLAGS += -DSAMPLEDIR=\"`$(CYGPATH_W) @SAMPLE_DATA@`\"
 endif
 
 # This line is necessary to allow VPATH compilation with MS compilers
