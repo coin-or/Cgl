@@ -19,7 +19,7 @@
 #include "CoinWarmStartBasis.hpp"
 #include "CoinPackedMatrix.hpp"
 
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
 #include "OsiClpSolverInterface.hpp"
 #endif
 
@@ -75,7 +75,7 @@ public:
     void setSi(OsiSolverInterface *si)
     {
         si_ = si;
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
         OsiClpSolverInterface * clpSi = dynamic_cast<OsiClpSolverInterface *>(si_);
         if (clpSi)
         {
@@ -88,7 +88,7 @@ public:
         assert(si_ != NULL);
         delete si_;
         si_ = NULL;
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
         clp_ = NULL;
 #endif
     }
@@ -273,7 +273,7 @@ private:
     CglLandPSimplex(const CglLandPSimplex&);
     /// No assignment operator
     CglLandPSimplex& operator=(const CglLandPSimplex&);
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
     /** Pointer to OsiClpSolverInterface if used.*/
     OsiClpSolverInterface * clp_;
 #endif

@@ -41,7 +41,7 @@ VPATH = @srcdir@
 CXX = @CXX@
 
 # C++ Compiler options
-CXXFLAGS = @CXXFLAGS@
+CXXFLAGS = @CXXFLAGS@ -DSAMPLEDIR=\"@SAMPLE_DATA@\" -DNETLIBDIR=\"@NETLIB_DATA@\"
 
 # additional C++ Compiler options for linking
 CXXLINKFLAGS = @RPATH_FLAGS@
@@ -50,14 +50,10 @@ CXXLINKFLAGS = @RPATH_FLAGS@
 COININCDIR = @abs_include_dir@/coin
 
 # Directory with COIN libraries
-COINLIBDIR = @abs_lib_dir@
+COINLIBDIR = @abs_lib_dir@/coin
 
 # Libraries necessary to link with Clp
-LIBS = -L$(COINLIBDIR) -lCgl -lOsiClp -lOsi -lClp -lCoinUtils \
-	@ADDLIBS@ \
-	`cat @OSIDOCDIR@/osi_addlibs.txt` \
-	`cat @CLPDOCDIR@/clp_addlibs.txt` \
-	`cat @COINUTILSDOCDIR@/coinutils_addlibs.txt`
+LIBS = @OSICLP_LIBS@ -L$(COINLIBDIR) -lCgl @ADDLIBS@
 
 # Necessary Include dirs (we use the CYGPATH_W variables to allow
 # compilation with Windows compilers)

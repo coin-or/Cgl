@@ -11,7 +11,7 @@
 
 #include "CglConfig.h"
 
-#ifdef COIN_HAS_CLP
+#ifdef COIN_HAS_OSICLP
 #include "OsiClpSolverInterface.hpp"
 #endif
 

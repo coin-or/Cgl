@@ -12,7 +12,7 @@
 
 AC_PREREQ(2.59)
 
-AC_INIT([Cgl],[0.1],[coin-cgl@list.coin-or.org])
+AC_INIT([Cgl],[trunk],[cgl@list.coin-or.org])
 
 AC_COPYRIGHT([
 Copyright 2006 International Business Machines and others.
@@ -41,7 +41,7 @@ AC_CANONICAL_BUILD
 # the source root directory contains definition of where to find those
 # externals.  The following macro ensures that those externals are
 # retrieved by svn if they are not there yet.
-AC_COIN_PROJECTDIR_INIT
+AC_COIN_PROJECTDIR_INIT(Cgl)
 
 # Check if user wants to produce debugging code
 AC_COIN_DEBUG_COMPILE(Cgl)
@@ -53,48 +53,74 @@ AC_COIN_PROG_CXX
 AC_COIN_INIT_AUTO_TOOLS
 
 #############################################################################
-#                              COIN components                              #
+#                            COIN-OR components                             #
 #############################################################################
 
-AC_COIN_HAS_PROJECT(Cbc)
-AC_COIN_HAS_PROJECT(Cgl)
-AC_COIN_HAS_PROJECT(Clp)
-AC_COIN_HAS_PROJECT(CoinUtils)
-AC_COIN_HAS_PROJECT(DyLP)
-AC_COIN_HAS_PROJECT(Osi)
-AC_COIN_HAS_PROJECT(SYMPHONY)
-AC_COIN_HAS_PROJECT(Vol)
+AC_COIN_HAS_MODULE(CoinUtils, [coinutils = trunk])
+if test $coin_has_coinutils != yes ; then
+  #if we have to use the fallback routines, then obviously it will not find CoinUtils dependencies
+  #thus, we check whether ThirdParty/Blas and ThirdParty/Lapack have been setup and
+  #assume that if present then they are dependencies of CoinUtils
+  AC_COIN_HAS_MODULE_FALLBACK(Blas,   [coinblas],   [../ThirdParty/Blas],   [required=0 dodefine=0 doconditional=0])
+  AC_COIN_HAS_MODULE_FALLBACK(Lapack, [coinlapack], [../ThirdParty/Lapack], [required=0 dodefine=0 doconditional=0])
+fi
+AC_COIN_HAS_MODULE_FALLBACK(CoinUtils, [coinutils], [../CoinUtils])
+if test $coin_has_coinutils != yes ; then
+  AC_MSG_ERROR([Required package CoinUtils not available.])
+fi
+#so if we had to do find Blas and Lapack separately, then add their linker flags to the CoinUtils flags
+#actually the libs may already be included in libCoinUtils, but we may still need the fortran library flags
+COINUTILS_LIBS="$COINUTILS_LIBS $BLAS_LIBS $LAPACK_LIBS"
+
+AC_COIN_HAS_MODULE(Osi, [osi = trunk], [required=0], [../Osi])
+if test $coin_has_osi != yes ; then
+  AC_MSG_ERROR([Required package Osi not available.])
+fi
+
+AC_COIN_HAS_MODULE(Sample, [coindatasample], [required=0], [../Data/Sample])
+AC_COIN_HAS_MODULE(Netlib, [coindatanetlib], [required=0], [../Data/Netlib])
+
+# Clp can be used by CglLandP
+AC_COIN_HAS_MODULE(OsiClp, [clp osi-clp])
+if test $coin_has_osiclp != yes ; then
+  # in the fallback, we first check for OsiClp
+  # if it is there, then we also check for Clp and add the Clp flags to the OsiClp flags
+  AC_COIN_HAS_MODULE_FALLBACK(OsiClp, [osi-clp], [../Clp])
+  if test $coin_has_osiclp = yes ; then
+    AC_COIN_HAS_MODULE_FALLBACK(Clp, [clp], [../Clp], [dodefine=0 doconditional=0])
+    OSICLP_CFLAGS="$OSICLP_CFLAGS $CLP_CFLAGS"
+    OSICLP_LIBS="$OSICLP_LIBS $CLP_LIBS"
+  else
+    coin_has_osiclp=no
+  fi
+fi
 
 #############################################################################
-#                            Third party solvers                            #
+#                       Solvers for unittesting                             #
 #############################################################################
 
 # Those are not really required for the compilation of Cgl, but we
 # need to know which are available in order to compile the unitTest
-# correctly.  Therefore, we test those again, even though those tests
-# are done already for Osi (and the libraries are already listed in
-# osi_addlibs.txt)
+# correctly.
 
-# Check which third party solvers are available ToDo!
-AC_COIN_HAS_USER_LIBRARY([Cplex],[CPX],[cplex.h],[CPXgetstat])
-AC_COIN_HAS_USER_LIBRARY([FortMP],[FMP])  #ToDo! is Fortran?
-AC_COIN_HAS_USER_LIBRARY([Mosek],[MSK],[mosek.h],[MSK_makeenv])
-AC_COIN_HAS_USER_LIBRARY([Osl],[OSL],[ekk_c_api.h],[ekk_simplex])
-AC_COIN_HAS_USER_LIBRARY([Soplex],[SPX],[spxsolver.h]) # ToDo
-AC_COIN_HAS_USER_LIBRARY([Xpress],[XPR],[xprs.h],[XPRSinit])
-
-AC_COIN_HAS_GLPK(Glpk)
+AC_COIN_HAS_MODULE(OsiCpx,  [osi-cplex],    [required=0])
+AC_COIN_HAS_MODULE(OsiGlpk, [osi-glpk],     [required=0])
+#AC_COIN_HAS_MODULE(OsiGrb,  [osi-gurobi],   [required=0])
+AC_COIN_HAS_MODULE(OsiMsk,  [osi-mosek],    [required=0])
+AC_COIN_HAS_MODULE(OsiXpr,  [osi-xpress],   [required=0])
+AC_COIN_HAS_MODULE(OsiVol,  [osi-vol],      [required=0])
+AC_COIN_HAS_MODULE(OsiDyLP, [osi-dylp],     [required=0])
 
 #############################################################################
 #                   Determine list of all Cgl subprojects                   #
 #############################################################################
 
-# In order to avoid that one has to update this configure.as and the
+# In order to avoid that one has to update this configure.ac and the
 # Makefile.am whenever a new cut generator is added, we automatically
 # determine the list of all subdirectories of src with Makefile
 # (CGL_SUBDIRS), and also a list of all sublibraries relative to src
 # (CGL_SUBLIBS) that can be used in the src/Makefile.am.  (We still need
-# to manually add the Makefile in the AC_CONFIG_FILES list below)1
+# to manually add the Makefile in the AC_CONFIG_FILES list below)
 
 AC_SUBST(CGL_SUBDIRS)
 AC_SUBST(CGL_SUBLIBS)
@@ -140,7 +166,8 @@ AC_CONFIG_FILES([Makefile
 		 src/CglSimpleRounding/Makefile
 		 src/CglTwomir/Makefile
                  test/Makefile
-		 cgl_addlibs.txt])
+		 cgl.pc
+		 cgl-uninstalled.pc])
 
 # Here put the location and name of the configuration header file
 AC_CONFIG_HEADER([inc/config_cgl.h])
