@@ -110,6 +110,7 @@ AC_COIN_HAS_MODULE(OsiMsk,  [osi-mosek],    [required=0])
 AC_COIN_HAS_MODULE(OsiXpr,  [osi-xpress],   [required=0])
 AC_COIN_HAS_MODULE(OsiVol,  [osi-vol],      [required=0])
 AC_COIN_HAS_MODULE(OsiDyLP, [osi-dylp],     [required=0])
+#AC_COIN_HAS_MODULE(OsiSpx,  [osi-soplex],   [required=0])
 
 #############################################################################
 #                   Determine list of all Cgl subprojects                   #

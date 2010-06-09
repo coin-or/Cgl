@@ -20774,7 +20774,7 @@ if test -n "$PKG_CONFIG" ; then
      coin_has_coinutils=yes
         echo "$as_me:$LINENO: result: yes: $COINUTILS_VERSIONS" >&5
 echo "${ECHO_T}yes: $COINUTILS_VERSIONS" >&6
-        REQUIREDPACKAGES="$REQUIREDPACKAGES coinutils = trunk"
+        REQUIREDPACKAGES="coinutils = trunk $REQUIREDPACKAGES"
 
 
   else
@@ -21016,7 +21016,7 @@ if test $coin_has_coinutils != "skipping" ; then
     COINUTILS_DATA=`sed -n -e 's/datadir=//gp' ../CoinUtils/coinutils-uninstalled.pc`
 
     ADDLIBS="$ADDLIBS $COINUTILS_LIBS"
-       REQUIREDPACKAGES="$REQUIREDPACKAGES coinutils"
+       REQUIREDPACKAGES="coinutils $REQUIREDPACKAGES"
 
 
 
@@ -21833,7 +21833,7 @@ if test -n "$PKG_CONFIG" ; then
      coin_has_osiclp=yes
         echo "$as_me:$LINENO: result: yes: $OSICLP_VERSIONS" >&5
 echo "${ECHO_T}yes: $OSICLP_VERSIONS" >&6
-        REQUIREDPACKAGES="$REQUIREDPACKAGES clp osi-clp"
+        REQUIREDPACKAGES="clp osi-clp $REQUIREDPACKAGES"
 
 
   else
@@ -21949,7 +21949,7 @@ if test $coin_has_osiclp != "skipping" ; then
     OSICLP_DATA=`sed -n -e 's/datadir=//gp' ../Clp/osi-clp-uninstalled.pc`
 
     ADDLIBS="$ADDLIBS $OSICLP_LIBS"
-       REQUIREDPACKAGES="$REQUIREDPACKAGES osi-clp"
+       REQUIREDPACKAGES="osi-clp $REQUIREDPACKAGES"
 
 
 
@@ -22030,7 +22030,7 @@ if test $coin_has_clp != "skipping" ; then
     CLP_DATA=`sed -n -e 's/datadir=//gp' ../Clp/clp-uninstalled.pc`
 
     ADDLIBS="$ADDLIBS $CLP_LIBS"
-       REQUIREDPACKAGES="$REQUIREDPACKAGES clp"
+       REQUIREDPACKAGES="clp $REQUIREDPACKAGES"
 
 
 
@@ -22979,6 +22979,7 @@ fi
 
 
 
+#AC_COIN_HAS_MODULE(OsiSpx,  [osi-soplex],   [required=0])
 
 #############################################################################
 #                   Determine list of all Cgl subprojects                   #
