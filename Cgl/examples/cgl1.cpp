@@ -42,7 +42,7 @@ int main(int argc, const char *argv[])
 {
   // If no parms specified then use these
   string mpsFileName;
-#if defined(COIN_HAS_SAMPLE) && defined(SAMPLEDIR)
+#if defined(SAMPLEDIR)
   mpsFileName = SAMPLEDIR "/p0033.mps";
 #else
   if (argc == 1) {
