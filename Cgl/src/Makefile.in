@@ -68,7 +68,7 @@ am__DEPENDENCIES_1 =
 am_libCgl_la_OBJECTS = CglCutGenerator.lo CglMessage.lo CglStored.lo \
 	CglParam.lo CglTreeInfo.lo
 libCgl_la_OBJECTS = $(am_libCgl_la_OBJECTS)
-depcomp = $(SHELL) $(top_srcdir)/../depcomp
+depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)

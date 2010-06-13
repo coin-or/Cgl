@@ -9,11 +9,17 @@ Cgl/MSVisualStudio/v9/libCgl/libCgl.vcproj -text
 Cgl/README -text
 Cgl/cgl-uninstalled.pc.in -text
 Cgl/cgl.pc.in -text
+Cgl/config.guess -text
+Cgl/config.sub -text
 Cgl/configure -text
 Cgl/configure.ac -text
+Cgl/depcomp -text
 Cgl/examples/Makefile.in -text
 Cgl/examples/cgl1.cpp -text
 Cgl/inc/config_cgl.h.in -text
+Cgl/install-sh -text
+Cgl/ltmain.sh -text
+Cgl/missing -text
 Cgl/src/CglLandP/CglLandP.cpp -text
 Cgl/src/CglLandP/CglLandP.hpp -text
 Cgl/src/CglLandP/CglLandPMessages.cpp -text
