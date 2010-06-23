@@ -220,7 +220,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
       // reallocate if matrix reached size limit
       if (n+nCols>maxels) {
 	maxels*=2;
-	cost=reinterpret_cast<double *> (realloc(cost,maxels*sizeof(int)));
+	cost=reinterpret_cast<double *> (realloc(cost,maxels*sizeof(double)));
 	to=reinterpret_cast<int *> (realloc(to,maxels*sizeof(int)));
 	rowfound=reinterpret_cast<int *> (realloc(rowfound,maxels*sizeof(int)));
       }
