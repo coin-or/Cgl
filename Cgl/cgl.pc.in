@@ -6,6 +6,6 @@ includedir=@includedir@/coin
 Name: CGL
 Description: COIN-OR Cut Generation Library
 Version: @PACKAGE_VERSION@
-Libs: -L${libdir} -lCgl @ADDLIBS@
+Libs: -L${libdir} -lCgl @PCADDLIBS@
 Cflags: -I${includedir}
 Requires: @REQUIREDPACKAGES@
