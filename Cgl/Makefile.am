@@ -57,16 +57,17 @@ uninstall-local: uninstall-doc
 #                  Installation of the addlibs file                    #
 ########################################################################
 
-if COIN_HAS_PKGCONFIG
-addlibsdir = $(datadir)/coin/doc/Cgl
-addlibs_DATA = cgl_addlibs.txt
-
-cgl_addlibs.txt : cgl.pc
-	PKG_CONFIG_PATH=.:@COIN_PKG_CONFIG_PATH@ $(PKG_CONFIG) --libs cgl > cgl_addlibs.txt
-endif
-
 pkgconfiglibdir = $(libdir)/pkgconfig
 pkgconfiglib_DATA = cgl.pc
+
+if COIN_HAS_PKGCONFIG
+addlibsdir = $(DESTDIR)$(datadir)/coin/doc/Cgl
+	
+install-data-hook:
+	@$(mkdir_p) "$(addlibsdir)"
+	PKG_CONFIG_PATH=@COIN_PKG_CONFIG_PATH@ PKG_CONFIG_DISABLE_UNINSTALLED= \
+	$(PKG_CONFIG) --libs cgl > $(addlibsdir)/cgl_addlibs.txt
+endif
 
 ########################################################################
 #                         Maintainer Stuff                             #
