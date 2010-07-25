@@ -58,42 +58,19 @@ AC_COIN_INIT_AUTO_TOOLS
 
 AC_COIN_HAS_MODULE(CoinUtils, [coinutils = trunk])
 if test $coin_has_coinutils != yes ; then
-  #if we have to use the fallback routines, then obviously it will not find CoinUtils dependencies
-  #thus, we check whether ThirdParty/Blas and ThirdParty/Lapack have been setup and
-  #assume that if present then they are dependencies of CoinUtils
-  AC_COIN_HAS_MODULE_FALLBACK(Blas,   [coinblas],   [../ThirdParty/Blas],   [required=0 dodefine=0 doconditional=0])
-  AC_COIN_HAS_MODULE_FALLBACK(Lapack, [coinlapack], [../ThirdParty/Lapack], [required=0 dodefine=0 doconditional=0])
-fi
-AC_COIN_HAS_MODULE_FALLBACK(CoinUtils, [coinutils], [../CoinUtils])
-if test $coin_has_coinutils != yes ; then
   AC_MSG_ERROR([Required package CoinUtils not available.])
 fi
-#so if we had to do find Blas and Lapack separately, then add their linker flags to the CoinUtils flags
-#actually the libs may already be included in libCoinUtils, but we may still need the fortran library flags
-COINUTILS_LIBS="$COINUTILS_LIBS $BLAS_LIBS $LAPACK_LIBS"
 
-AC_COIN_HAS_MODULE(Osi, [osi = trunk], [required=0], [../Osi])
+AC_COIN_HAS_MODULE(Osi, [osi = trunk], [required=0])
 if test $coin_has_osi != yes ; then
   AC_MSG_ERROR([Required package Osi not available.])
 fi
 
-AC_COIN_HAS_MODULE(Sample, [coindatasample], [required=0], [../Data/Sample])
-AC_COIN_HAS_MODULE(Netlib, [coindatanetlib], [required=0], [../Data/Netlib])
+AC_COIN_HAS_MODULE(Sample, [coindatasample], [required=0])
+AC_COIN_HAS_MODULE(Netlib, [coindatanetlib], [required=0])
 
 # Clp can be used by CglLandP
-AC_COIN_HAS_MODULE(OsiClp, [clp osi-clp])
-if test $coin_has_osiclp != yes ; then
-  # in the fallback, we first check for OsiClp
-  # if it is there, then we also check for Clp and add the Clp flags to the OsiClp flags
-  AC_COIN_HAS_MODULE_FALLBACK(OsiClp, [osi-clp], [../Clp])
-  if test $coin_has_osiclp = yes ; then
-    AC_COIN_HAS_MODULE_FALLBACK(Clp, [clp], [../Clp], [dodefine=0 doconditional=0])
-    OSICLP_CFLAGS="$OSICLP_CFLAGS $CLP_CFLAGS"
-    OSICLP_LIBS="$OSICLP_LIBS $CLP_LIBS"
-  else
-    coin_has_osiclp=no
-  fi
-fi
+AC_COIN_HAS_MODULE(OsiClp, [osi-clp])
 
 #############################################################################
 #                       Solvers for unittesting                             #
