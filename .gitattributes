@@ -45,6 +45,6 @@ Cgl/test/CglTestData/l152lav.mps -text
 /configure -text
 /configure.ac -text
 /depcomp -text
-doxydoc/doxygen.conf -text
+doxydoc/doxygen.conf.in -text
 /install-sh -text
 /missing -text

@@ -114,6 +114,12 @@ for file in `find . -name Makefile.in`; do
 done
 cd $curr_dir
 
+#############################################################################
+#                  Check for doxygen                                        #
+#############################################################################
+
+AC_COIN_DOXYGEN(CoinUtils)
+
 ##############################################################################
 #                   Finishing up by writing all the output                   #
 ##############################################################################
@@ -146,6 +152,7 @@ AC_CONFIG_FILES([Makefile
                  test/Makefile
 		 cgl.pc
 		 cgl-uninstalled.pc])
+AC_CONFIG_FILES([doxydoc/doxygen.conf])
 
 # Here put the location and name of the configuration header file
 AC_CONFIG_HEADER([inc/config_cgl.h])
