@@ -14,6 +14,7 @@ Cgl/config.sub -text
 Cgl/configure -text
 Cgl/configure.ac -text
 Cgl/depcomp -text
+Cgl/doxydoc/doxygen.conf.in -text
 Cgl/examples/Makefile.in -text
 Cgl/examples/cgl1.cpp -text
 Cgl/inc/config_cgl.h.in -text
