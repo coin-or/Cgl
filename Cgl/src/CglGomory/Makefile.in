@@ -43,6 +43,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@COIN_HAS_OSICLP_TRUE@am__append_2 = $(OSICLP_CFLAGS)
 subdir = src/CglGomory
 DIST_COMMON = $(includecoin_HEADERS) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
@@ -320,7 +321,8 @@ libCglGomory_la_LDFLAGS = $(LT_LDFLAGS)
 # "top_srcdir" refers to the basic directory for the main package that is
 # being compiled.
 AM_CPPFLAGS = $(COINUTILS_CFLAGS) $(OSI_CFLAGS) \
-	-I`$(CYGPATH_W) $(srcdir)/..`
+	-I`$(CYGPATH_W) $(srcdir)/..` \
+	$(am__append_2)
 
 
 # This line is necessary to allow VPATH compilation with MS compilers

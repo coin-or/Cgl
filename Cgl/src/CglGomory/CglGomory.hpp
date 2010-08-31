@@ -59,6 +59,21 @@ public:
   virtual bool needsOptimalBasis() const;
   //@}
 
+  /**@name Change way Gomory works */
+  //@{
+  /// Pass in a copy of original solver (clone it)
+  void passInOriginalSolver(OsiSolverInterface * solver);
+  /// Returns original solver
+  inline OsiSolverInterface * originalSolver() const
+  { return originalSolver_;}
+  /// Set type - 0 normal, 1 add original matrix one, 2 replace
+  inline void setGomoryType(int type)
+  { gomoryType_=type;}
+  /// Return type
+  inline int gomoryType() const
+  { return gomoryType_;}
+  //@}
+
   /**@name Change limit on how many variables in cut (default 50) */
   //@{
   /// Set
@@ -156,6 +171,8 @@ private:
   double conditionNumberMultiplier_;
   /// Multiplier for largest factor cut relaxation
   double largestFactorMultiplier_;
+  /// Original solver
+  mutable OsiSolverInterface * originalSolver_;
   /// Limit - only generate if fewer than this in cut
   int limit_;
   /// Limit - only generate if fewer than this in cut (at root)
@@ -166,6 +183,8 @@ private:
   mutable int numberTimesStalled_;
   /// nonzero to use alternative factorization
   int alternateFactorization_;
+  /// Type - 0 normal, 1 add original matrix one, 2 replace
+  int gomoryType_;
   //@}
 };
 

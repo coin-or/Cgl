@@ -19,7 +19,7 @@ noinst_LTLIBRARIES = libCglGomory.la
 # List all source files for this library, including headers
 libCglGomory_la_SOURCES = \
 	CglGomory.cpp  CglGomory.hpp \
-	CglGomoryTest.cpp
+	CglGomoryTest.cpp 
 
 # This is for libtool (on Windows)
 libCglGomory_la_LDFLAGS = $(LT_LDFLAGS)
@@ -30,6 +30,9 @@ libCglGomory_la_LDFLAGS = $(LT_LDFLAGS)
 # being compiled.
 AM_CPPFLAGS = $(COINUTILS_CFLAGS) $(OSI_CFLAGS) \
 	-I`$(CYGPATH_W) $(srcdir)/..`
+if COIN_HAS_OSICLP
+AM_CPPFLAGS += $(OSICLP_CFLAGS)
+endif
 
 # This line is necessary to allow VPATH compilation with MS compilers
 # on Cygwin

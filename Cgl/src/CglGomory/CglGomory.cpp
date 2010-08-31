@@ -19,6 +19,10 @@
 #include "CoinPackedMatrix.hpp"
 #include "CoinIndexedVector.hpp"
 #include "OsiRowCutDebugger.hpp"
+#define COIN_HAS_CLP_GOMORY
+#ifdef COIN_HAS_CLP_GOMORY
+#include "OsiClpSolverInterface.hpp"
+#endif
 #include "CoinFactorization.hpp"
 #undef CLP_OSL
 #if 1
@@ -46,13 +50,13 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 #endif
   // Get basic problem information
   int numberColumns=si.getNumCols(); 
-
+  
   // get integer variables and basis
   char * intVar = new char[numberColumns];
   int i;
   CoinWarmStart * warmstart = si.getWarmStart();
-  const CoinWarmStartBasis* warm =
-    dynamic_cast<const CoinWarmStartBasis*>(warmstart);
+  CoinWarmStartBasis* warm =
+    dynamic_cast<CoinWarmStartBasis*>(warmstart);
   const double * colUpper = si.getColUpper();
   const double * colLower = si.getColLower();
   if ((info.options&16)!=0)
@@ -75,6 +79,79 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       intVar[i]=0;
     }
   }
+  const OsiSolverInterface * useSolver=&si;
+#ifdef COIN_HAS_CLP_GOMORY
+  double * objective = NULL;
+  OsiClpSolverInterface * clpSolver = dynamic_cast<OsiClpSolverInterface *>(originalSolver_);
+  if (clpSolver) {
+    useSolver = originalSolver_;
+    ClpSimplex * simplex = clpSolver->getModelPtr();
+    assert (gomoryType_);
+    // check simplex is plausible
+    if (!simplex->numberRows()||numberColumns!=simplex->numberColumns()) {
+      delete originalSolver_;
+      originalSolver_=si.clone();
+      clpSolver = dynamic_cast<OsiClpSolverInterface *>(originalSolver_);
+      assert (clpSolver);
+      useSolver = originalSolver_;
+      simplex = clpSolver->getModelPtr();
+    }
+    int numberOriginalRows = simplex->numberRows();
+    int numberRows = si.getNumRows();
+    // only do if different (unless type 2)
+    if (numberRows>numberOriginalRows||gomoryType_>1) {
+      // bounds
+      memcpy(simplex->columnLower(),colLower,numberColumns*sizeof(double));
+      memcpy(simplex->columnUpper(),colUpper,numberColumns*sizeof(double));
+      double * obj = simplex->objective();
+      objective = CoinCopyOfArray(obj,numberColumns);
+      const double * pi = si.getRowPrice();
+      const CoinPackedMatrix * rowCopy = si.getMatrixByRow();
+      const int * column = rowCopy->getIndices();
+      const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
+      const int * rowLength = rowCopy->getVectorLengths(); 
+      const double * rowElements = rowCopy->getElements();
+      for (int iRow=numberOriginalRows;iRow<numberRows;iRow++) {
+	double value = pi[iRow];
+	for (int k=rowStart[iRow];
+	     k<rowStart[iRow]+rowLength[iRow];k++) {
+	  int iColumn=column[k];
+	  obj[iColumn] -= value*rowElements[k];
+	}
+      }
+#if 0
+      CoinThreadRandom randomNumberGenerator;
+      const double * solution = si.getColSolution();
+      for (int i=0;i<numberColumns;i++) {
+	if (intVar[i]==1) {
+	  double randomNumber = randomNumberGenerator.randomDouble();
+	  //randomNumber = 0.001*floor(randomNumber*1000.0);
+	  if (solution[i]>0.5)
+	    obj[i] -= randomNumber*0.001*fabs(obj[i]);
+	  else
+	    obj[i] += randomNumber*0.001*fabs(obj[i]);
+	}
+      }
+#endif
+      memcpy(simplex->primalColumnSolution(),si.getColSolution(),
+	     numberColumns*sizeof(double));
+      warm->resize(numberOriginalRows,numberColumns);
+      clpSolver->setBasis(*warm);
+      delete warm;
+      simplex->setDualObjectiveLimit(COIN_DBL_MAX);
+      simplex->setLogLevel(0);
+      simplex->primal(1);
+      //simplex->setLogLevel(0);
+      warm=simplex->getBasis();
+      warmstart=warm;
+      assert (!simplex->status());
+    } else {
+      // don't do
+      delete warmstart;
+      warmstart=NULL;
+    }
+  }
+#endif
 #ifdef CGL_DEBUG
   const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
   if (debugger&&!debugger->onOptimalPath(si))
@@ -84,11 +161,51 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 #endif
   int numberRowCutsBefore = cs.sizeRowCuts();
 
-  generateCuts(debugger, cs, *si.getMatrixByCol(), *si.getMatrixByRow(),
-	   si.getColSolution(),
-	   si.getColLower(), si.getColUpper(), 
-	   si.getRowLower(), si.getRowUpper(),
-	   intVar,warm,info);
+  if (warmstart)
+    generateCuts(debugger, cs, *useSolver->getMatrixByCol(), 
+		 *useSolver->getMatrixByRow(),
+		 useSolver->getColSolution(),
+		 useSolver->getColLower(), useSolver->getColUpper(), 
+		 useSolver->getRowLower(), useSolver->getRowUpper(),
+		 intVar,warm,info);
+#ifdef COIN_HAS_CLP_GOMORY
+  if (objective) {
+    ClpSimplex * simplex = clpSolver->getModelPtr();
+    memcpy(simplex->objective(),objective,numberColumns*sizeof(double));
+    delete [] objective;
+    // take out locally useless cuts
+    const double * solution = si.getColSolution();
+    double primalTolerance = 1.0e-7;
+    int numberRowCutsAfter = cs.sizeRowCuts();
+    for (int k = numberRowCutsAfter - 1; k >= numberRowCutsBefore; k--) {
+      const OsiRowCut * thisCut = cs.rowCutPtr(k) ;
+      double sum = 0.0;
+      int n = thisCut->row().getNumElements();
+      const int * column = thisCut->row().getIndices();
+      const double * element = thisCut->row().getElements();
+      assert (n);
+      for (int i = 0; i < n; i++) {
+	double value = element[i];
+	sum += value * solution[column[i]];
+      }
+      if (sum > thisCut->ub() + primalTolerance) {
+	sum = sum - thisCut->ub();
+      } else if (sum < thisCut->lb() - primalTolerance) {
+	sum = thisCut->lb() - sum;
+      } else {
+	sum = 0.0;
+      }
+      if (!sum) {
+	// take out
+	cs.eraseRowCut(k);
+      }
+    }
+    //printf("OR %p pass %d inTree %c - %d cuts (but %d deleted)\n",
+    //   originalSolver_,info.pass,info.inTree?'Y':'N',
+    //   numberRowCutsAfter-numberRowCutsBefore,
+    //   numberRowCutsAfter-cs.sizeRowCuts());
+  }
+#endif
 
   delete warmstart;
   delete [] intVar;
@@ -1295,10 +1412,12 @@ away_(0.05),
 awayAtRoot_(0.05),
 conditionNumberMultiplier_(1.0e-18),
 largestFactorMultiplier_(1.0e-13),
+originalSolver_(NULL),
 limit_(50),
 limitAtRoot_(0),
 dynamicLimitInTree_(-1),
-alternateFactorization_(0)
+alternateFactorization_(0),
+gomoryType_(0)
 {
 
 }
@@ -1312,11 +1431,15 @@ CglGomory::CglGomory (const CglGomory & source) :
   awayAtRoot_(source.awayAtRoot_),
   conditionNumberMultiplier_(source.conditionNumberMultiplier_),
   largestFactorMultiplier_(source.largestFactorMultiplier_),
+  originalSolver_(NULL),
   limit_(source.limit_),
   limitAtRoot_(source.limitAtRoot_),
   dynamicLimitInTree_(source.dynamicLimitInTree_),
-  alternateFactorization_(source.alternateFactorization_)
-{  
+  alternateFactorization_(source.alternateFactorization_),
+  gomoryType_(source.gomoryType_)
+{ 
+  if (source.originalSolver_)
+    originalSolver_ = source.originalSolver_->clone();
 }
 
 //-------------------------------------------------------------------
@@ -1333,6 +1456,7 @@ CglGomory::clone() const
 //-------------------------------------------------------------------
 CglGomory::~CglGomory ()
 {
+  delete originalSolver_;
 }
 
 //----------------------------------------------------------------
@@ -1351,8 +1475,27 @@ CglGomory::operator=(const CglGomory& rhs)
     limitAtRoot_=rhs.limitAtRoot_;
     dynamicLimitInTree_ = rhs.dynamicLimitInTree_;
     alternateFactorization_=rhs.alternateFactorization_; 
+    gomoryType_ = rhs.gomoryType_;
+    delete originalSolver_;
+    if (rhs.originalSolver_)
+      originalSolver_ = rhs.originalSolver_->clone();
+    else
+      originalSolver_=NULL;
   }
   return *this;
+}
+// Pass in a copy of original solver (clone it)
+void 
+CglGomory::passInOriginalSolver(OsiSolverInterface * solver)
+{
+  delete originalSolver_;
+  if (solver) {
+    gomoryType_=1;
+    originalSolver_ = solver->clone();
+  } else {
+    gomoryType_=0;
+    originalSolver_=NULL;
+  }
 }
 // Returns true if needs optimal basis to do cuts
 bool 
