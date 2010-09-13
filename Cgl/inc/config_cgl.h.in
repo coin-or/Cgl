@@ -12,37 +12,37 @@
 /* Define to the debug verbosity level (0 is no output) */
 #undef COIN_CGL_VERBOSITY
 
-/* Define to 1 if the CoinUtils module is available */
+/* Define to 1 if the CoinUtils package is available */
 #undef COIN_HAS_COINUTILS
 
-/* Define to 1 if the Netlib module is available */
+/* Define to 1 if the Netlib package is available */
 #undef COIN_HAS_NETLIB
 
-/* Define to 1 if the Osi module is available */
+/* Define to 1 if the Osi package is available */
 #undef COIN_HAS_OSI
 
-/* Define to 1 if the OsiClp module is available */
+/* Define to 1 if the OsiClp package is available */
 #undef COIN_HAS_OSICLP
 
-/* Define to 1 if the OsiCpx module is available */
+/* Define to 1 if the OsiCpx package is available */
 #undef COIN_HAS_OSICPX
 
-/* Define to 1 if the OsiDyLP module is available */
+/* Define to 1 if the OsiDyLP package is available */
 #undef COIN_HAS_OSIDYLP
 
-/* Define to 1 if the OsiGlpk module is available */
+/* Define to 1 if the OsiGlpk package is available */
 #undef COIN_HAS_OSIGLPK
 
-/* Define to 1 if the OsiMsk module is available */
+/* Define to 1 if the OsiMsk package is available */
 #undef COIN_HAS_OSIMSK
 
-/* Define to 1 if the OsiVol module is available */
+/* Define to 1 if the OsiVol package is available */
 #undef COIN_HAS_OSIVOL
 
-/* Define to 1 if the OsiXpr module is available */
+/* Define to 1 if the OsiXpr package is available */
 #undef COIN_HAS_OSIXPR
 
-/* Define to 1 if the Sample module is available */
+/* Define to 1 if the Sample package is available */
 #undef COIN_HAS_SAMPLE
 
 /* Define to 1 if you have the <dlfcn.h> header file. */

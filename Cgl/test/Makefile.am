@@ -90,8 +90,8 @@ if COIN_HAS_OSIXPR
   unitTest_LDADD += $(OSIXPR_LIBS)
 endif
 
-# Finally the Coin library (many of the above need it)
-unitTest_LDADD += $(OSI_LIBS) $(COINUTILS_LIBS)
+# Finally the dependencies of the Cgl library
+unitTest_LDADD += $(CGLLIB_LIBS)
 
 test: unitTest$(EXEEXT)
 	./unitTest$(EXEEXT)

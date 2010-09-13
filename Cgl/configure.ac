@@ -56,21 +56,21 @@ AC_COIN_INIT_AUTO_TOOLS
 #                            COIN-OR components                             #
 #############################################################################
 
-AC_COIN_HAS_MODULE(CoinUtils, [coinutils = trunk])
+AC_COIN_HAS_PACKAGE(CoinUtils, [coinutils = trunk], [CglLib])
 if test $coin_has_coinutils != yes ; then
   AC_MSG_ERROR([Required package CoinUtils not available.])
 fi
 
-AC_COIN_HAS_MODULE(Osi, [osi = trunk], [required=0])
+AC_COIN_HAS_PACKAGE(Osi, [osi = trunk], [CglLib])
 if test $coin_has_osi != yes ; then
   AC_MSG_ERROR([Required package Osi not available.])
 fi
 
-AC_COIN_HAS_MODULE(Sample, [coindatasample], [required=0])
-AC_COIN_HAS_MODULE(Netlib, [coindatanetlib], [required=0])
+AC_COIN_HAS_PACKAGE(Sample, [coindatasample])
+AC_COIN_HAS_PACKAGE(Netlib, [coindatanetlib])
 
 # Clp can be used by CglLandP
-AC_COIN_HAS_MODULE(OsiClp, [osi-clp])
+AC_COIN_HAS_PACKAGE(OsiClp, [osi-clp], [CglLib])
 
 #############################################################################
 #                       Solvers for unittesting                             #
@@ -80,14 +80,14 @@ AC_COIN_HAS_MODULE(OsiClp, [osi-clp])
 # need to know which are available in order to compile the unitTest
 # correctly.
 
-AC_COIN_HAS_MODULE(OsiCpx,  [osi-cplex],    [required=0])
-AC_COIN_HAS_MODULE(OsiGlpk, [osi-glpk],     [required=0])
-#AC_COIN_HAS_MODULE(OsiGrb,  [osi-gurobi],   [required=0])
-AC_COIN_HAS_MODULE(OsiMsk,  [osi-mosek],    [required=0])
-AC_COIN_HAS_MODULE(OsiXpr,  [osi-xpress],   [required=0])
-AC_COIN_HAS_MODULE(OsiVol,  [osi-vol],      [required=0])
-AC_COIN_HAS_MODULE(OsiDyLP, [osi-dylp],     [required=0])
-#AC_COIN_HAS_MODULE(OsiSpx,  [osi-soplex],   [required=0])
+AC_COIN_HAS_PACKAGE(OsiCpx,  [osi-cplex])
+AC_COIN_HAS_PACKAGE(OsiGlpk, [osi-glpk])
+#AC_COIN_HAS_PACKAGE(OsiGrb,  [osi-gurobi])
+AC_COIN_HAS_PACKAGE(OsiMsk,  [osi-mosek])
+AC_COIN_HAS_PACKAGE(OsiXpr,  [osi-xpress])
+AC_COIN_HAS_PACKAGE(OsiVol,  [osi-vol])
+AC_COIN_HAS_PACKAGE(OsiDyLP, [osi-dylp])
+#AC_COIN_HAS_PACKAGE(OsiSpx,  [osi-soplex])
 
 #############################################################################
 #                   Determine list of all Cgl subprojects                   #
