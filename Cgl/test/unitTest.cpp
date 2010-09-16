@@ -48,36 +48,49 @@
 // Function Prototypes. Function definitions is in this file.
 void testingMessage( const char * const msg );
 
-// Command line parameter is directory containing data files.
+// Command line parameters are directories containing data files.
+// You must specify both mpsDir and testDir, in order.
 // If not specified, then "../../Data/Sample/" and
 // "CglTestData/" are used
 
 int main (int argc, const char *argv[])
 {
-  // Set directory containing data files.
+  // Initialise directories containing data files.
   std::string mpsDir;
   std::string testDir;
+  
+  const char dirsep =  CoinFindDirSeparator();
+  if (dirsep == '/') {
+#ifdef SAMPLEDIR
+    mpsDir = SAMPLEDIR "/" ;
+#else
+    mpsDir = "../../Data/Sample/";
+#endif
+#ifdef TESTDIR
+	testDir = TESTDIR "/" ;
+#else
+    testDir = "CglTestData/";
+#endif
+  } else {
+#ifdef SAMPLEDIR
+    mpsDir = SAMPLEDIR "\\" ;
+#else
+    mpsDir = "..\\..\\Data\\Sample\\";
+#endif
+#ifdef TESTDIR
+	testDir = TESTDIR "\\";
+#else
+    testDir = "CglTestData\\";
+#endif
+  }
+  // Check for command line override
   if (argc >= 2) {
     mpsDir = argv[1];
-    testDir = argv[1];
-  }
-  else {
-    const char dirsep =  CoinFindDirSeparator();
-    if (dirsep == '/') {
-#ifdef SAMPLEDIR
-      mpsDir = SAMPLEDIR "/" ;
-#else
-      mpsDir = "../../Data/Sample/";
-#endif
-      testDir = "CglTestData/";
-    } else {
-#ifdef SAMPLEDIR
-      mpsDir = SAMPLEDIR "\\" ;
-#else
-      mpsDir = "..\\..\\Data\\Sample\\";
-#endif
-      testDir = "CglTestData\\";
-    }
+	mpsDir += dirsep;
+    if (argc >= 3) {
+      testDir = argv[2];
+	  testDir += dirsep;
+	}
   }
 
 #ifdef COIN_HAS_OSICPX
