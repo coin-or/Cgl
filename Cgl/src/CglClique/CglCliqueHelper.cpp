@@ -36,7 +36,7 @@ CglClique::selectFractionalBinaries(const OsiSolverInterface& si) const
       if (si.isBinary(i) && x[i] > lclPetol && x[i] < 1-petol)
 	 fracind.push_back(i);
    }
-   sp_numcols = fracind.size();
+   sp_numcols = static_cast<int>(fracind.size());
    sp_orig_col_ind = new int[sp_numcols];
    sp_colsol = new double[sp_numcols];
    for (i = 0; i < sp_numcols; ++i) {
@@ -67,7 +67,7 @@ CglClique::selectFractionals(const OsiSolverInterface& si) const
       if (x[i] > lclPetol && x[i] < 1-lclPetol)
 	 fracind.push_back(i);
    }
-   sp_numcols = fracind.size();
+   sp_numcols = static_cast<int>(fracind.size());
    sp_orig_col_ind = new int[sp_numcols];
    sp_colsol = new double[sp_numcols];
    for (i = 0; i < sp_numcols; ++i) {

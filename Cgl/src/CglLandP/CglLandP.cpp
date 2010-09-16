@@ -735,7 +735,7 @@ CglLandP::getSortedFractionalIndices(std::vector<int> &frac_indices,
         const double value = INT_INFEAS(data.colsol_[iCol]);
 
         frac_indices.push_back(i);
-        indices.push_back(values.size());
+        indices.push_back(static_cast<int>(values.size()));
         values.push_back(- value);
         colIndices.push_back(iCol);
     }

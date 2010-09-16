@@ -1064,7 +1064,7 @@ DGG_substituteSlacks( const void *solver_ptr,
   return 0; 
 }
 
-int DGG_nicefyConstraint( const void */*solver_ptr*/, 
+int DGG_nicefyConstraint( const void * /*solver_ptr*/, 
                           DGG_data_t *data,
 			  DGG_constraint_t *cut)
 													
@@ -1444,9 +1444,9 @@ DGG_generateCutsFromBase( DGG_constraint_t *orig_base,
 }
 
 int
-DGG_addMirToList ( DGG_constraint_t *base, char *isint, double */*x*/,
-		   DGG_list_t *list, DGG_data_t */*data*/,
-		   DGG_constraint_t */*orig_base*/ )
+DGG_addMirToList ( DGG_constraint_t *base, char *isint, double * /*x*/,
+		   DGG_list_t *list, DGG_data_t * /*data*/,
+		   DGG_constraint_t * /*orig_base*/ )
 {
   int rval = 0;
   DGG_constraint_t *cut = NULL;
@@ -1460,9 +1460,9 @@ DGG_addMirToList ( DGG_constraint_t *base, char *isint, double */*x*/,
 }
 
 int
-DGG_add2stepToList ( DGG_constraint_t *base, char *isint, double */*x*/,
+DGG_add2stepToList ( DGG_constraint_t *base, char *isint, double * /*x*/,
 				double *rc, DGG_list_t *list, DGG_data_t *data,
-		     DGG_constraint_t */*orig_base*/ )
+		     DGG_constraint_t * /*orig_base*/ )
 {
   int rval;
   DGG_constraint_t *cut = NULL;

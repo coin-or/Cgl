@@ -1023,7 +1023,7 @@ void CglRedSplit::check_optsol(const int calling_place,
 
 /************************************************************************/
 void CglRedSplit::check_optsol(const int calling_place,
-			       const double */*lclXlp*/, const double *slack_val,
+			       const double * /*lclXlp*/, const double *slack_val,
 			       const double *ck_row, const double ck_rhs,
 			       const int cut_number, const int do_flip) {
 

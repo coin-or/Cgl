@@ -589,14 +589,14 @@ CglResidualCapacity::resCapSeparation(const OsiSolverInterface& si,
 	    setSbar.push_back(i);
 	    sumCoef+=newRowCoef[i];
 	}
-    const int sSize=setSbar.size();
+    const int sSize = static_cast<int>(setSbar.size());
     bool generated;
     if ( sSize == 0 ) generated=false; // no cut
     else {
 	// generate cut
 	const double mu= ceil( (sumCoef - newRowRHS)/intCoef );
 	double r = sumCoef - newRowRHS - intCoef * floor( (sumCoef - newRowRHS)/intCoef );
-	const int numInt = positionIntVar.size();
+	const int numInt = static_cast<int>(positionIntVar.size());
 	const int cutLen = sSize + numInt;
 	int* cutInd = new int [cutLen];
 	double* cutCoef = new double [cutLen];
