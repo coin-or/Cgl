@@ -56,21 +56,21 @@ AC_COIN_INIT_AUTO_TOOLS
 #                            COIN-OR components                             #
 #############################################################################
 
-AC_COIN_HAS_PACKAGE(CoinUtils, [coinutils = trunk], [CglLib])
+AC_COIN_CHECK_PACKAGE(CoinUtils, [coinutils = trunk], [CglLib])
 if test $coin_has_coinutils != yes ; then
   AC_MSG_ERROR([Required package CoinUtils not available.])
 fi
 
-AC_COIN_HAS_PACKAGE(Osi, [osi = trunk], [CglLib])
+AC_COIN_CHECK_PACKAGE(Osi, [osi = trunk], [CglLib])
 if test $coin_has_osi != yes ; then
   AC_MSG_ERROR([Required package Osi not available.])
 fi
 
-AC_COIN_HAS_PACKAGE(Sample, [coindatasample])
-AC_COIN_HAS_PACKAGE(Netlib, [coindatanetlib])
+AC_COIN_CHECK_PACKAGE(Sample, [coindatasample])
+AC_COIN_CHECK_PACKAGE(Netlib, [coindatanetlib])
 
 # Clp can be used by CglLandP
-AC_COIN_HAS_PACKAGE(OsiClp, [osi-clp], [CglLib])
+AC_COIN_CHECK_PACKAGE(OsiClp, [osi-clp], [CglLib])
 
 #############################################################################
 #                       Solvers for unittesting                             #
@@ -80,14 +80,14 @@ AC_COIN_HAS_PACKAGE(OsiClp, [osi-clp], [CglLib])
 # need to know which are available in order to compile the unitTest
 # correctly.
 
-AC_COIN_HAS_PACKAGE(OsiCpx,  [osi-cplex])
-AC_COIN_HAS_PACKAGE(OsiGlpk, [osi-glpk])
-#AC_COIN_HAS_PACKAGE(OsiGrb,  [osi-gurobi])
-AC_COIN_HAS_PACKAGE(OsiMsk,  [osi-mosek])
-AC_COIN_HAS_PACKAGE(OsiXpr,  [osi-xpress])
-AC_COIN_HAS_PACKAGE(OsiVol,  [osi-vol])
-AC_COIN_HAS_PACKAGE(OsiDyLP, [osi-dylp])
-#AC_COIN_HAS_PACKAGE(OsiSpx,  [osi-soplex])
+AC_COIN_CHECK_PACKAGE(OsiCpx,  [osi-cplex])
+AC_COIN_CHECK_PACKAGE(OsiGlpk, [osi-glpk])
+#AC_COIN_CHECK_PACKAGE(OsiGrb,  [osi-gurobi])
+AC_COIN_CHECK_PACKAGE(OsiMsk,  [osi-mosek])
+AC_COIN_CHECK_PACKAGE(OsiXpr,  [osi-xpress])
+AC_COIN_CHECK_PACKAGE(OsiVol,  [osi-vol])
+AC_COIN_CHECK_PACKAGE(OsiDyLP, [osi-dylp])
+#AC_COIN_CHECK_PACKAGE(OsiSpx,  [osi-soplex])
 
 #############################################################################
 #                   Determine list of all Cgl subprojects                   #
