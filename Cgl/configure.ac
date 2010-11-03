@@ -56,12 +56,12 @@ AC_COIN_INIT_AUTO_TOOLS
 #                            COIN-OR components                             #
 #############################################################################
 
-AC_COIN_CHECK_PACKAGE(CoinUtils, [coinutils = trunk], [CglLib])
+AC_COIN_CHECK_PACKAGE(CoinUtils, [coinutils], [CglLib])
 if test $coin_has_coinutils != yes ; then
   AC_MSG_ERROR([Required package CoinUtils not available.])
 fi
 
-AC_COIN_CHECK_PACKAGE(Osi, [osi = trunk], [CglLib])
+AC_COIN_CHECK_PACKAGE(Osi, [osi], [CglLib])
 if test $coin_has_osi != yes ; then
   AC_MSG_ERROR([Required package Osi not available.])
 fi
@@ -76,7 +76,7 @@ AC_COIN_CHECK_PACKAGE(OsiClp, [osi-clp], [CglLib])
 #                       Solvers for unittesting                             #
 #############################################################################
 
-# Those are not really required for the compilation of Cgl, but we
+# These are not really required for the compilation of Cgl, but we
 # need to know which are available in order to compile the unitTest
 # correctly.
 
