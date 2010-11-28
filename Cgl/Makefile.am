@@ -69,17 +69,19 @@ uninstall-local: uninstall-doc
 pkgconfiglibdir = $(libdir)/pkgconfig
 pkgconfiglib_DATA = cgl.pc
 
-if COIN_HAS_PKGCONFIG
 addlibsdir = $(DESTDIR)$(datadir)/coin/doc/Cgl
 	
 install-data-hook:
 	@$(mkdir_p) "$(addlibsdir)"
+if COIN_HAS_PKGCONFIG
 	PKG_CONFIG_PATH=@COIN_PKG_CONFIG_PATH@ \
 	$(PKG_CONFIG) --libs cgl > $(addlibsdir)/cgl_addlibs.txt
+else
+	echo -L@abs_lib_dir@ -lCgl @CGLLIB_LIBS_INSTALLED@ > $(addlibsdir)/cgl_addlibs.txt
+endif
 
 uninstall-hook:
 	rm -f $(addlibsdir)/cgl_addlibs.txt
-endif
 
 ########################################################################
 #                         Maintainer Stuff                             #
