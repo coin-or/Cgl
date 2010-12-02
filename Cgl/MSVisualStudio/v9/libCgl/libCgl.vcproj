@@ -11,6 +11,9 @@
 		<Platform
 			Name="Win32"
 		/>
+		<Platform
+			Name="x64"
+		/>
 	</Platforms>
 	<ToolFiles>
 	</ToolFiles>
@@ -44,10 +47,10 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="..\..\..\..\Cgl\src\CglDuplicateRow;..\..\..\..\Cgl\src\CglMixedIntegerRounding;..\..\..\..\Cgl\src\CglMixedIntegerRounding2;..\..\..\..\Cgl\src\CglFlowCover;..\..\..\..\Cgl\src\CglClique;..\..\..\..\Cgl\src\CglOddHole;..\..\..\..\Cgl\src\CglKnapsackCover;..\..\..\..\Cgl\src\CglGomory;..\..\..\..\Cgl\src\CglPreProcess;..\..\..\..\Cgl\src\CglRedSplit;..\..\..\..\Cgl\src\CglResidualCapacity;..\..\..\..\Cgl\src\CglProbing;..\..\..\..\Cgl\src;..\..\..\..\Osi\src;..\..\..\..\Osi\src\OsiClp;..\..\..\..\Clp\src;..\..\..\..\CoinUtils\src;..\..\..\..\BuildTools\headers"
+				AdditionalIncludeDirectories="..\..\..\src\CglDuplicateRow;..\..\..\src\CglMixedIntegerRounding;..\..\..\src\CglMixedIntegerRounding2;..\..\..\src\CglFlowCover;..\..\..\src\CglClique;..\..\..\src\CglOddHole;..\..\..\src\CglKnapsackCover;..\..\..\src\CglGomory;..\..\..\src\CglPreProcess;..\..\..\src\CglRedSplit;..\..\..\src\CglResidualCapacity;..\..\..\src\CglProbing;..\..\..\src;..\..\..\..\Osi\src\Osi;..\..\..\..\Clp\src\OsiClp;..\..\..\..\Clp\src;..\..\..\..\CoinUtils\src;..\..\..\..\BuildTools\headers"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE"
 				StringPooling="true"
-				RuntimeLibrary="0"
+				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				RuntimeTypeInfo="true"
 				UsePrecompiledHeader="0"
@@ -114,16 +117,160 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\..\..\Cgl\src\CglDuplicateRow;..\..\..\..\Cgl\src\CglMixedIntegerRounding;..\..\..\..\Cgl\src\CglMixedIntegerRounding2;..\..\..\..\Cgl\src\CglFlowCover;..\..\..\..\Cgl\src\CglClique;..\..\..\..\Cgl\src\CglOddHole;..\..\..\..\Cgl\src\CglKnapsackCover;..\..\..\..\Cgl\src\CglGomory;..\..\..\..\Cgl\src\CglPreProcess;..\..\..\..\Cgl\src\CglRedSplit;..\..\..\..\Cgl\src\CglResidualCapacity;..\..\..\..\Cgl\src\CglProbing;..\..\..\..\Cgl\src;..\..\..\..\Osi\src;..\..\..\..\Osi\src\OsiClp;..\..\..\..\Clp\src;..\..\..\..\CoinUtils\src;..\..\..\..\BuildTools\headers"
+				AdditionalIncludeDirectories="..\..\..\src\CglDuplicateRow;..\..\..\src\CglMixedIntegerRounding;..\..\..\src\CglMixedIntegerRounding2;..\..\..\src\CglFlowCover;..\..\..\src\CglClique;..\..\..\src\CglOddHole;..\..\..\src\CglKnapsackCover;..\..\..\src\CglGomory;..\..\..\src\CglPreProcess;..\..\..\src\CglRedSplit;..\..\..\src\CglResidualCapacity;..\..\..\src\CglProbing;..\..\..\src;..\..\..\..\Osi\src\Osi;..\..\..\..\Clp\src\OsiClp;..\..\..\..\Clp\src;..\..\..\..\CoinUtils\src;..\..\..\..\BuildTools\headers"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="1"
+				RuntimeLibrary="3"
 				RuntimeTypeInfo="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
+				CompileAs="0"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_DEBUG"
+				Culture="1033"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLibrarianTool"
+				SuppressStartupBanner="true"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
+			Name="Release|x64"
+			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
+			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
+			ConfigurationType="4"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
+			UseOfMFC="0"
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				TargetEnvironment="3"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				Optimization="2"
+				InlineFunctionExpansion="1"
+				AdditionalIncludeDirectories="..\..\..\src\CglDuplicateRow;..\..\..\src\CglMixedIntegerRounding;..\..\..\src\CglMixedIntegerRounding2;..\..\..\src\CglFlowCover;..\..\..\src\CglClique;..\..\..\src\CglOddHole;..\..\..\src\CglKnapsackCover;..\..\..\src\CglGomory;..\..\..\src\CglPreProcess;..\..\..\src\CglRedSplit;..\..\..\src\CglResidualCapacity;..\..\..\src\CglProbing;..\..\..\src;..\..\..\..\Osi\src\Osi;..\..\..\..\Clp\src\OsiClp;..\..\..\..\Clp\src;..\..\..\..\CoinUtils\src;..\..\..\..\BuildTools\headers"
+				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE"
+				StringPooling="true"
+				RuntimeLibrary="2"
+				EnableFunctionLevelLinking="true"
+				RuntimeTypeInfo="true"
+				UsePrecompiledHeader="0"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+				CompileAs="0"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="NDEBUG"
+				Culture="1033"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLibrarianTool"
+				SuppressStartupBanner="true"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
+			Name="Debug|x64"
+			OutputDirectory="$(SolutionDir)$(PlatformName)\$(ConfigurationName)"
+			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
+			ConfigurationType="4"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
+			UseOfMFC="0"
+			ATLMinimizesCRunTimeLibraryUsage="false"
+			CharacterSet="2"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				TargetEnvironment="3"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				Optimization="0"
+				AdditionalIncludeDirectories="..\..\..\src\CglDuplicateRow;..\..\..\src\CglMixedIntegerRounding;..\..\..\src\CglMixedIntegerRounding2;..\..\..\src\CglFlowCover;..\..\..\src\CglClique;..\..\..\src\CglOddHole;..\..\..\src\CglKnapsackCover;..\..\..\src\CglGomory;..\..\..\src\CglPreProcess;..\..\..\src\CglRedSplit;..\..\..\src\CglResidualCapacity;..\..\..\src\CglProbing;..\..\..\src;..\..\..\..\Osi\src\Osi;..\..\..\..\Clp\src\OsiClp;..\..\..\..\Clp\src;..\..\..\..\CoinUtils\src;..\..\..\..\BuildTools\headers"
+				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE"
+				MinimalRebuild="true"
+				BasicRuntimeChecks="3"
+				RuntimeLibrary="3"
+				RuntimeTypeInfo="true"
+				UsePrecompiledHeader="0"
+				WarningLevel="3"
+				SuppressStartupBanner="true"
+				DebugInformationFormat="3"
 				CompileAs="0"
 			/>
 			<Tool
@@ -166,7 +313,7 @@
 			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 			>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglAllDifferent\CglAllDifferent.cpp"
+				RelativePath="..\..\..\src\CglAllDifferent\CglAllDifferent.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -189,9 +336,30 @@
 						BasicRuntimeChecks="3"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglClique\CglClique.cpp"
+				RelativePath="..\..\..\src\CglClique\CglClique.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -214,9 +382,30 @@
 						BasicRuntimeChecks="3"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglClique\CglCliqueHelper.cpp"
+				RelativePath="..\..\..\src\CglClique\CglCliqueHelper.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -239,9 +428,30 @@
 						BasicRuntimeChecks="3"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglCutGenerator.cpp"
+				RelativePath="..\..\..\src\CglCutGenerator.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -264,9 +474,30 @@
 						BasicRuntimeChecks="3"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglDuplicateRow\CglDuplicateRow.cpp"
+				RelativePath="..\..\..\src\CglDuplicateRow\CglDuplicateRow.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -289,9 +520,30 @@
 						BasicRuntimeChecks="3"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglFlowCover\CglFlowCover.cpp"
+				RelativePath="..\..\..\src\CglFlowCover\CglFlowCover.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -314,9 +566,30 @@
 						BasicRuntimeChecks="3"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglGomory\CglGomory.cpp"
+				RelativePath="..\..\..\src\CglGomory\CglGomory.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -339,9 +612,30 @@
 						BasicRuntimeChecks="3"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglKnapsackCover\CglKnapsackCover.cpp"
+				RelativePath="..\..\..\src\CglKnapsackCover\CglKnapsackCover.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -364,9 +658,30 @@
 						BasicRuntimeChecks="3"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglLandP\CglLandP.cpp"
+				RelativePath="..\..\..\src\CglLandP\CglLandP.cpp"
 				>
 			</File>
 			<File
@@ -374,7 +689,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglLandP\CglLandPSimplex.cpp"
+				RelativePath="..\..\..\src\CglLandP\CglLandPSimplex.cpp"
 				>
 			</File>
 			<File
@@ -386,36 +701,11 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglLandP\CglLandPValidator.cpp"
+				RelativePath="..\..\..\src\CglLandP\CglLandPValidator.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglLiftAndProject\CglLiftAndProject.cpp"
-				>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="2"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="0"
-						AdditionalIncludeDirectories=""
-						PreprocessorDefinitions=""
-						BasicRuntimeChecks="3"
-					/>
-				</FileConfiguration>
-			</File>
-			<File
-				RelativePath="..\..\..\..\Cgl\src\CglMessage.cpp"
+				RelativePath="..\..\..\src\CglLiftAndProject\CglLiftAndProject.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -438,9 +728,30 @@
 						BasicRuntimeChecks="3"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglMixedIntegerRounding\CglMixedIntegerRounding.cpp"
+				RelativePath="..\..\..\src\CglMessage.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -463,9 +774,30 @@
 						BasicRuntimeChecks="3"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglMixedIntegerRounding2\CglMixedIntegerRounding2.cpp"
+				RelativePath="..\..\..\src\CglMixedIntegerRounding\CglMixedIntegerRounding.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -488,9 +820,30 @@
 						BasicRuntimeChecks="3"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglOddHole\CglOddHole.cpp"
+				RelativePath="..\..\..\src\CglMixedIntegerRounding2\CglMixedIntegerRounding2.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -513,13 +866,30 @@
 						BasicRuntimeChecks="3"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglParam.cpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\Cgl\src\CglPreProcess\CglPreProcess.cpp"
+				RelativePath="..\..\..\src\CglOddHole\CglOddHole.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -542,9 +912,34 @@
 						BasicRuntimeChecks="3"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglProbing\CglProbing.cpp"
+				RelativePath="..\..\..\src\CglParam.cpp"
+				>
+			</File>
+			<File
+				RelativePath="..\..\..\src\CglPreProcess\CglPreProcess.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -567,9 +962,30 @@
 						BasicRuntimeChecks="3"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglRedSplit\CglRedSplit.cpp"
+				RelativePath="..\..\..\src\CglProbing\CglProbing.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -592,9 +1008,76 @@
 						BasicRuntimeChecks="3"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglRedSplit\CglRedSplitParam.cpp"
+				RelativePath="..\..\..\src\CglRedSplit\CglRedSplit.cpp"
+				>
+				<FileConfiguration
+					Name="Release|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
+			</File>
+			<File
+				RelativePath="..\..\..\src\CglRedSplit\CglRedSplitParam.cpp"
 				>
 			</File>
 			<File
@@ -602,7 +1085,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglSimpleRounding\CglSimpleRounding.cpp"
+				RelativePath="..\..\..\src\CglSimpleRounding\CglSimpleRounding.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -625,9 +1108,30 @@
 						BasicRuntimeChecks="3"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglStored.cpp"
+				RelativePath="..\..\..\src\CglStored.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -650,13 +1154,34 @@
 						BasicRuntimeChecks="3"
 					/>
 				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglTreeInfo.cpp"
+				RelativePath="..\..\..\src\CglTreeInfo.cpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglTwomir\CglTwomir.cpp"
+				RelativePath="..\..\..\src\CglTwomir\CglTwomir.cpp"
 				>
 				<FileConfiguration
 					Name="Release|Win32"
@@ -670,6 +1195,27 @@
 				</FileConfiguration>
 				<FileConfiguration
 					Name="Debug|Win32"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="0"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+						BasicRuntimeChecks="3"
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Release|x64"
+					>
+					<Tool
+						Name="VCCLCompilerTool"
+						Optimization="2"
+						AdditionalIncludeDirectories=""
+						PreprocessorDefinitions=""
+					/>
+				</FileConfiguration>
+				<FileConfiguration
+					Name="Debug|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -686,39 +1232,39 @@
 			Filter="h;hpp;hxx;hm;inl"
 			>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglAllDifferent\CglAllDifferent.hpp"
+				RelativePath="..\..\..\src\CglAllDifferent\CglAllDifferent.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglClique\CglClique.hpp"
+				RelativePath="..\..\..\src\CglClique\CglClique.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglConfig.h"
+				RelativePath="..\..\..\src\CglConfig.h"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglCutGenerator.hpp"
+				RelativePath="..\..\..\src\CglCutGenerator.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglDuplicateRow\CglDuplicateRow.hpp"
+				RelativePath="..\..\..\src\CglDuplicateRow\CglDuplicateRow.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglFlowCover\CglFlowCover.hpp"
+				RelativePath="..\..\..\src\CglFlowCover\CglFlowCover.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglGomory\CglGomory.hpp"
+				RelativePath="..\..\..\src\CglGomory\CglGomory.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglKnapsackCover\CglKnapsackCover.hpp"
+				RelativePath="..\..\..\src\CglKnapsackCover\CglKnapsackCover.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglLandP\CglLandP.hpp"
+				RelativePath="..\..\..\src\CglLandP\CglLandP.hpp"
 				>
 			</File>
 			<File
@@ -726,7 +1272,7 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglLandP\CglLandPSimplex.hpp"
+				RelativePath="..\..\..\src\CglLandP\CglLandPSimplex.hpp"
 				>
 			</File>
 			<File
@@ -738,47 +1284,47 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglLandP\CglLandPValidator.hpp"
+				RelativePath="..\..\..\src\CglLandP\CglLandPValidator.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglLiftAndProject\CglLiftAndProject.hpp"
+				RelativePath="..\..\..\src\CglLiftAndProject\CglLiftAndProject.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglMessage.hpp"
+				RelativePath="..\..\..\src\CglMessage.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglMixedIntegerRounding\CglMixedIntegerRounding.hpp"
+				RelativePath="..\..\..\src\CglMixedIntegerRounding\CglMixedIntegerRounding.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglMixedIntegerRounding2\CglMixedIntegerRounding2.hpp"
+				RelativePath="..\..\..\src\CglMixedIntegerRounding2\CglMixedIntegerRounding2.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglOddHole\CglOddHole.hpp"
+				RelativePath="..\..\..\src\CglOddHole\CglOddHole.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglParam.hpp"
+				RelativePath="..\..\..\src\CglParam.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglPreProcess\CglPreProcess.hpp"
+				RelativePath="..\..\..\src\CglPreProcess\CglPreProcess.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglProbing\CglProbing.hpp"
+				RelativePath="..\..\..\src\CglProbing\CglProbing.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglRedSplit\CglRedSplit.hpp"
+				RelativePath="..\..\..\src\CglRedSplit\CglRedSplit.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglRedSplit\CglRedSplitParam.hpp"
+				RelativePath="..\..\..\src\CglRedSplit\CglRedSplitParam.hpp"
 				>
 			</File>
 			<File
@@ -786,135 +1332,19 @@
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglSimpleRounding\CglSimpleRounding.hpp"
+				RelativePath="..\..\..\src\CglSimpleRounding\CglSimpleRounding.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglStored.hpp"
+				RelativePath="..\..\..\src\CglStored.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglTreeInfo.hpp"
+				RelativePath="..\..\..\src\CglTreeInfo.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\..\..\..\Cgl\src\CglTwomir\CglTwomir.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinBuild.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinDistance.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinError.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinFactorization.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinFinite.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinFloatEqual.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinHelperFunctions.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinIndexedVector.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinMessage.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinMessageHandler.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinPackedMatrix.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinPackedVector.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinPackedVectorBase.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinPragma.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinPresolveMatrix.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinShallowPackedVector.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinSort.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinTime.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinWarmStart.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\CoinUtils\src\CoinWarmStartBasis.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\Osi\src\OsiColCut.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\Osi\src\OsiCollections.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\Osi\src\OsiCut.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\Osi\src\OsiCuts.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\Osi\src\OsiPresolve.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\Osi\src\OsiRowCut.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\Osi\src\OsiRowCutDebugger.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\Osi\src\OsiSolverInterface.hpp"
-				>
-			</File>
-			<File
-				RelativePath="..\..\..\..\Osi\src\OsiSolverParameters.hpp"
+				RelativePath="..\..\..\src\CglTwomir\CglTwomir.hpp"
 				>
 			</File>
 		</Filter>
