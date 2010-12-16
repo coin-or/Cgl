@@ -8,75 +8,123 @@
 #include "OsiSolverInterface.hpp"
 #include "CoinHelperFunctions.hpp"
 class CglStored;
-/** Information about where the cut generator is invoked from. */
+/*! \brief Context for an invocation of a cut generator
+
+  This class is intended to provide the cut generator with some information
+  about the context in which it is invoked (<i>e.g.</i>, preprocessing,
+  evaluation of the root node, or evaluation of a non-root node). It provides
+  an assortment of other information of general utility.
+
+  Where a cut generator requires additional specialised information, a derived
+  class may be appropriate (<i>cf.</i> CglTreeProbingInfo).
+*/
 
 class CglTreeInfo {
 public:
   /// The level of the search tree node 
-  int level;
-  /** How many times the cut generator was already invoked in this search tree
-      node */
-  int pass;
-  /** The number of rows in the original formulation. Some generators may not
-      want to consider already generated rows when generating new ones. */
-  int formulation_rows;
-  /** Options 
-      1 - treat costed integers as important
-      2 - switch off some stuff as variables semi-integer
-      4 - set global cut flag if at root node
-      8 - set global cut flag if at root node and first pass
-      16 - set global cut flag and make cuts globally valid
-      32 - last round of cuts did nothing - maybe be more aggressive
-      64 - in preprocessing stage
-      128 - looks like solution
+  int level ;
+
+  /*! \brief Number of times the cut generator has been invoked at this
+  	     search tree node
   */
-  int options;
+  int pass ;
+
+  /*! \brief Number of rows in the original formulation.
+  
+    Some generators may not want to consider already generated rows when
+    generating new ones.
+  */
+  int formulation_rows ;
+
+  /*! \brief Generic options.
+
+      -  0x01 - treat costed integers as important
+      -  0x02 - switch off some stuff as variables semi-integer
+      -  0x04 - set global cut flag if at root node
+      -  0x08 - set global cut flag if at root node and first pass
+      -  0x10 - set global cut flag and make cuts globally valid
+      -  0x20 - last round of cuts did nothing - maybe be more aggressive
+      -  0x40 - in preprocessing stage
+      -  0x80 - looks like solution
+  */
+  int options ;
+
   /// Set true if in tree (to avoid ambiguity at first branch)
-  bool inTree;
-  /** Replacement array.  Before Branch and Cut it may be beneficial to strengthen rows
-      rather than adding cuts.  If this array is not NULL then the cut generator can
-      place a pointer to the stronger cut in this array which is number of rows in size.
+  bool inTree ;
 
-      A null (i.e. zero elements and free rhs) cut indicates that the row is useless 
-      and can be removed.
+  /*! \brief Row replacement array.
+  
+    Before Branch and Cut it may be beneficial to strengthen (replace) rows
+    rather than adding cuts. If this array is not NULL then the cut generator
+    can place a pointer to the stronger cut in this array which is number of
+    rows in size.  The calling function can then replace those rows.
 
-      The calling function can then replace those rows.
+    A null cut (i.e. zero elements and free rhs) indicates that the row is
+    useless and can be removed.
   */
   OsiRowCut ** strengthenRow;
+
   /// Optional pointer to thread specific random number generator
   CoinThreadRandom * randomNumberGenerator;
+
   /// Default constructor 
   CglTreeInfo ();
  
   /// Copy constructor 
-  CglTreeInfo (
-    const CglTreeInfo &);
+  CglTreeInfo (const CglTreeInfo &);
+
   /// Clone
-  virtual CglTreeInfo * clone() const;
+  virtual CglTreeInfo *clone() const;
 
   /// Assignment operator 
-  CglTreeInfo &
-    operator=(
-    const CglTreeInfo& rhs);
+  CglTreeInfo &operator=(const CglTreeInfo& rhs);
   
   /// Destructor 
-  virtual
-    ~CglTreeInfo ();
-  /// Take action if cut generator can fix a variable (toValue -1 for down, +1 for up)
+  virtual ~CglTreeInfo ();
+
+  /*! \brief Take action if the cut generator can fix a variable
+
+    jjf: (toValue -1 for down, +1 for up)
+
+    It's unclear why this is here, except that it conveniently solves some
+    coding issues related to nonuse of CglTreeProbingInfo. Really should be
+    removed. -- lh, 101127 --
+  */
   virtual bool fixes(int , int , int ,bool) {return false;}
-  /** Initalizes fixing arrays etc - returns >0 if we want to save info
-      0 if we don't and -1 if is to be used */
+  
+  /*! \brief Initializes fixing arrays
+  
+    jjf: Returns > 0 if we want to save info, 0 if we don't, and -1 if is to be
+    used (?)
+
+    It's unclear why this is here, except that it conveniently solves some
+    coding issues related to nonuse of CglTreeProbingInfo. Really should be
+    removed. -- lh, 101127 --
+  */
   virtual int initializeFixing(const OsiSolverInterface * ) {return 0;}
   
 };
 
-/** Derived class to pick up probing info. */
+/*! \brief Utility structure to encode clique information.
+
+  The only purpose is to hide the details of the encoding. The msb of the word
+  is set to 1 if setting the variable to 1 fixes all other variables in the
+  clique, 0 if setting the variable to 0 fixes all other variables in the
+  clique. The remaining 31 bits are the index of the variable.
+*/
 typedef struct {
   //unsigned int oneFixed:1; //  nonzero if variable to 1 fixes all
   //unsigned int sequence:31; //  variable (in matrix) (but also see cliqueRow_)
   unsigned int fixes;
 } cliqueEntry;
 
+/*! \brief Specialisation of CglTreeInfo for the CglProbing cut generator.
+
+  It's unclear that this is actually in use. The relevant guard symbol in
+  CglProging, PROBING100, has been set to a disabling value since 080722. In
+  cbc, code relevant to CglTreeProbingInfo is also mostly disabled.
+  -- lh, 101127 --
+*/
 class CglTreeProbingInfo : public CglTreeInfo {
 public:
   /// Default constructor 
@@ -103,8 +151,23 @@ public:
       (toValue -1 for down, +1 for up)
       Returns true if still room, false if not  */
   virtual bool fixes(int variable, int toValue, int fixedVariable,bool fixedToLower);
-  /** Initalizes fixing arrays etc - returns >0 if we want to save info
-      0 if we don't and -1 if is to be used */
+  /*! \brief Initializes fixing arrays
+  
+    Erases existing implication information, if any, and initialises the
+    object with binary variable information.
+
+    jjf: Returns > 0 if we want to save info, 0 if we don't, and -1 if is to be
+    used (?)
+
+    The above doesn't seem to match reality. The method returns these values:
+    -  2: arrays already initialised
+    -  1: arrays initialised by this call.
+    -  0: unused
+    - -1: unused
+    - -2: `correct style'? Whatever it is, it's apparently imposed by
+          executing #convert() and indicates that the object was not
+	  reinitialised.
+  */
   virtual int initializeFixing(const OsiSolverInterface * model) ;
   /// Fix entries in a solver using implications
   int fixColumns(OsiSolverInterface & si) const;

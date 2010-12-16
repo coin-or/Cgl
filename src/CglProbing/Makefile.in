@@ -44,7 +44,7 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 subdir = src/CglProbing
-DIST_COMMON = $(includecoin_HEADERS) $(srcdir)/Makefile.am \
+DIST_COMMON = README $(includecoin_HEADERS) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
@@ -56,7 +56,9 @@ CONFIG_HEADER = $(top_builddir)/inc/config_cgl.h
 CONFIG_CLEAN_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libCglProbing_la_LIBADD =
-am_libCglProbing_la_OBJECTS = CglProbing.lo CglProbingTest.lo
+am_libCglProbing_la_OBJECTS = CglProbing.lo CglProbingDebug.lo \
+	CglProbingProbe.lo CglProbingRowCut.lo CglProbingSnapshot.lo \
+	CglProbingTighten.lo CglImplication.lo CglProbingTest.lo
 libCglProbing_la_OBJECTS = $(am_libCglProbing_la_OBJECTS)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -363,6 +365,12 @@ noinst_LTLIBRARIES = libCglProbing.la
 # List all source files for this library, including headers
 libCglProbing_la_SOURCES = \
 	CglProbing.cpp  CglProbing.hpp \
+	CglProbingDebug.cpp CglProbingDebug.hpp \
+	CglProbingProbe.cpp \
+	CglProbingRowCut.cpp CglProbingRowCut.hpp \
+	CglProbingSnapshot.cpp \
+	CglProbingTighten.cpp \
+	CglImplication.cpp CglImplication.hpp \
 	CglProbingTest.cpp
 
 
@@ -388,7 +396,9 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 # Here list all the header files that are required by a user of the library,
 # and that therefore should be installed in 'include/coin'
 includecoindir = $(includedir)/coin
-includecoin_HEADERS = CglProbing.hpp
+includecoin_HEADERS = CglProbing.hpp \
+		      CglImplication.hpp
+
 all: all-am
 
 .SUFFIXES:
@@ -440,8 +450,14 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglImplication.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbing.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbingDebug.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbingProbe.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbingRowCut.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbingSnapshot.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbingTest.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbingTighten.Plo@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \

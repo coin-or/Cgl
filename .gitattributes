@@ -60,6 +60,15 @@ src/CglLandP/CglLandPValidator.cpp -text
 src/CglLandP/CglLandPValidator.hpp -text
 src/CglLandP/Makefile.am -text
 src/CglLandP/Makefile.in -text
+src/CglProbing/CglImplication.cpp -text
+src/CglProbing/CglImplication.hpp -text
+src/CglProbing/CglProbingDebug.cpp -text
+src/CglProbing/CglProbingDebug.hpp -text
+src/CglProbing/CglProbingProbe.cpp -text
+src/CglProbing/CglProbingRowCut.cpp -text
+src/CglProbing/CglProbingRowCut.hpp -text
+src/CglProbing/CglProbingSnapshot.cpp -text
+src/CglProbing/CglProbingTighten.cpp -text
 test/CglTestData/capPlan1.mps -text
 test/CglTestData/egout.mps -text
 test/CglTestData/l152lav.mps -text
