@@ -9,19 +9,21 @@
 AUTOMAKE_OPTIONS = foreign
 
 ########################################################################
-#                         unitTest for Coin                            #
+#                          unitTest for Cgl                            #
 ########################################################################
 
 noinst_PROGRAMS = unitTest
 
 unitTest_SOURCES = unitTest.cpp
 
-# List libraries of COIN projects
-unitTest_LDADD = ../src/libCgl.la
+# List libraries we need to link in
+unitTest_LDADD = ../src/libCgl.la $(CGLLIB_LIBS)
+
+unitTest_DEPENDENCIES = ../src/libCgl.la $(CGLLIB_DEPENDENCIES)
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows
-AM_CPPFLAGS = $(COINUTILS_CFLAGS) $(OSI_CFLAGS) \
+AM_CPPFLAGS = $(CGLLIB_CFLAGS) \
 	-I`$(CYGPATH_W) $(srcdir)/../src` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglFlowCover` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglGomory` \
@@ -46,52 +48,12 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 
 # Depending of what solvers are available, we add the corresponding files,
 # libraries and include dirs
+# For solvers not available, the variables should just resolve to an empty string,
+# so it's no harm to list them all
 
-# Depending of what solvers are available, we add the corresponding files,
-# libraries and include dirs
-
-if COIN_HAS_OSICLP
-  AM_CPPFLAGS += $(OSICLP_CFLAGS)
-  unitTest_LDADD += $(OSICLP_LIBS)
-endif
-
-if COIN_HAS_OSICPX
-  AM_CPPFLAGS += $(OSICPX_CFLAGS)
-  unitTest_LDADD += $(OSICPX_LIBS)
-endif
-
-if COIN_HAS_OSIDYLP
-  AM_CPPFLAGS += $(OSIDYLP_CFLAGS)
-  unitTest_LDADD += $(OSIDYLP_LIBS)
-endif
-
-if COIN_HAS_OSIGLPK
-  AM_CPPFLAGS += $(OSIGLPK_CFLAGS)
-  unitTest_LDADD += $(OSIGLPK_LIBS)
-endif
-
-if COIN_HAS_OSIMSK
-  AM_CPPFLAGS += $(OSIMSK_CFLAGS)
-  unitTest_LDADD += $(OSIMSK_LIBS)
-endif
-
-# if COIN_HAS_SPX
-#   AM_CPPFLAGS += $(OSISPX_CFLAGS)
-#   unitTest_LDADD += $(OSISPX_LIBS)
-# endif
-
-if COIN_HAS_OSIVOL
-  AM_CPPFLAGS += $(OSIVOL_CFLAGS)
-  unitTest_LDADD += $(OSIVOL_LIBS)
-endif
-
-if COIN_HAS_OSIXPR
-  AM_CPPFLAGS += $(OSIXPR_CFLAGS)
-  unitTest_LDADD += $(OSIXPR_LIBS)
-endif
-
-# Finally the dependencies of the Cgl library
-unitTest_LDADD += $(CGLLIB_LIBS)
+AM_CPPFLAGS           += $(OSICLP_CFLAGS)       $(OSICPX_CFLAGS)       $(OSIDYLP_CFLAGS)       $(OSIGLPK_CFLAGS)       $(OSIMSK_CFLAGS)       $(OSIVOL_CFLAGS)       $(OSIXPR_CFLAGS)
+unitTest_LDADD        += $(OSICLP_LIBS)         $(OSICPX_LIBS)         $(OSIDYLP_LIBS)         $(OSIGLPK_LIBS)         $(OSIMSK_LIBS)         $(OSIVOL_LIBS)         $(OSIXPR_LIBS)
+unitTest_DEPENDENCIES += $(OSICLP_DEPENDENCIES) $(OSICPX_DEPENDENCIES) $(OSIDYLP_DEPENDENCIES) $(OSIGLPK_DEPENDENCIES) $(OSIMSK_DEPENDENCIES) $(OSIVOL_DEPENDENCIES) $(OSIXPR_DEPENDENCIES)
 
 test: unitTest$(EXEEXT)
 	./unitTest$(EXEEXT)
