@@ -7,7 +7,7 @@
 //-----------------------------------------------------------------------------
 // Copyright (C) 2004, International Business Machines Corporation and others. 
 // All Rights Reserved.
-// This code is published under the Common Public License.
+// This code is published under the Eclipse Public License.
 
 #ifndef CglMixedIntegerRounding2_H
 #define CglMixedIntegerRounding2_H
