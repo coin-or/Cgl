@@ -16,9 +16,8 @@ SUBDIRS = $(CGL_SUBDIRS)
 ########################################################################
 
 # Name of the library compiled in this directory.  We want it to be installed
-# in the 'lib/coin' directory
-libcoindir = $(libdir)/coin
-libcoin_LTLIBRARIES = libCgl.la
+# in the $libdir directory
+lib_LTLIBRARIES = libCgl.la
 
 # List all source files for this library, including headers
 libCgl_la_SOURCES = \
