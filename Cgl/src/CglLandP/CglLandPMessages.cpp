@@ -3,6 +3,10 @@
 //           Tepper School of Business
 //           Carnegie Mellon University, Pittsburgh, PA 15213
 // Date:     21/07/05
+//
+// $Id$
+//
+// This code is licensed under the terms of the Eclipse Public License (EPL).
 //---------------------------------------------------------------------------
 #include "CglLandPMessages.hpp"
 #include <cstring>
