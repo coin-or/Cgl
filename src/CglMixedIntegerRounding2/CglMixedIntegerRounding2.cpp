@@ -7,7 +7,7 @@
 //-----------------------------------------------------------------------------
 // Copyright (C) 2004, International Business Machines Corporation and others. 
 // All Rights Reserved.
-// This code is published under the Common Public License.
+// This code is published under the Eclipse Public License.
 
 #if defined(_MSC_VER)
 // Turn off MS VS compiler warning about long names
