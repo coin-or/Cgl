@@ -5,8 +5,11 @@
 //           Tepper School of Business
 //           Carnegie Mellon University, Pittsburgh, PA 15213
 // Date:     2/6/05
+//
+// $Id$
 //---------------------------------------------------------------------------
 // Copyright (C) 2005, Francois Margot and others.  All Rights Reserved.
+// This code is licensed under the terms of the Eclipse Public License (EPL).
 
 #if defined(_MSC_VER)
 // Turn off compiler warning about long names
