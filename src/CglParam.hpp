@@ -4,6 +4,10 @@
 //           Carnegie Mellon University, Pittsburgh, PA 15213
 //           email: fmargot@andrew.cmu.edu
 // Date:     11/24/06
+//
+// $Id$
+//
+// This code is licensed under the terms of the Eclipse Public License (EPL).
 //-----------------------------------------------------------------------------
 // Copyright (C) 2006, Francois Margot and others.  All Rights Reserved.
 

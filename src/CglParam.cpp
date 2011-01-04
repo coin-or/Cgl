@@ -3,8 +3,10 @@
 //           Tepper School of Business
 //           Carnegie Mellon University, Pittsburgh, PA 15213
 // Date:     11/24/06
-//---------------------------------------------------------------------------
+//
+// This code is licensed under the terms of the Eclipse Public License (EPL).
 // Copyright (C) 2006, Francois Margot and others.  All Rights Reserved.
+//---------------------------------------------------------------------------
 
 #if defined(_MSC_VER)
 // Turn off compiler warning about long names
