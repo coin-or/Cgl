@@ -1203,6 +1203,12 @@ int CglProbing::probe( const OsiSolverInterface & si,
       assert (up <= colUpper[j]) ;
       assert (down >= colLower[j]) ;
       assert (up > down) ;
+#     if CGL_DEBUG > 0
+      const double lj = colLower[j] ;
+      const double uj = colUpper[j] ;
+      const bool downIsLower = (fabs(down-colLower[j]) < 1.0e-7) ;
+      const bool upIsUpper = (fabs(up-colUpper[j]) < 1.0e-7) ;
+#     endif
 /*
   Set up to probe each variable down (1), up (2), down (1).
 
@@ -1246,10 +1252,23 @@ int CglProbing::probe( const OsiSolverInterface & si,
   TODO: Notice we reset up or down yet again. Really, this shouldn't be
   	necessary. For that matter, why did we bother with awayFromBound
 	immediately above? -- lh, 101127 --
+
+  TODO: The more I think about this, the less happy I am. Seems to me that
+  	neither colUpper or colLower can change during iterations of this
+	loop. If we discover monotone, we save bounds and break. If we
+	don't discover monotone, we restore. Let's test that.
+	-- lh, 110105 --
 */
         double solMovement ;
         double movement ;
         int goingToTrueBound = 0 ;
+
+#	if CGL_DEBUG > 0
+	assert(lj == colLower[j]) ;
+	assert(uj == colUpper[j]) ;
+	assert(downIsLower == (fabs(down-colLower[j]) < 1.0e-7)) ;
+	assert(upIsUpper == (fabs(up-colUpper[j]) < 1.0e-7)) ;
+#	endif
 
         if (way[iway] == probeDown) {
           movement = down-colUpper[j] ;
@@ -1273,9 +1292,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
     0: We're somewhere in the interior of a general integer.
     1: We're heading for one of the bounds on a general integer.
     2: We're processing a binary variable (u<j>-l<j> = 1 and l<j> = 0).
-
-  TODO: Shouldn't we also be checking for colUpper[j] != 1?  -- lh, 101213 --
-  	No, I think it's implied by the two existing tests.  -- lh, 101214 --
+  You can view this next test as correcting for the fact that the previous
+  code assumes binary variables are all there is.
 
   TODO: Now that I've figured out the math for the constraints generated
 	by disaggCuts (see typeset documentation), I see what's wrong
@@ -1286,6 +1304,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	and then the tests are equivalent. Before I willy-nilly change this, I
 	need to sort out a couple of other places where goingToTrueBound
 	controls behaviour.  -- lh, 101214 --
+
+  TODO: Apropos the above, for example, the test for coefficient strengthening
+  	cuts includes goingToTrueBound != 0  -- lh, 110105 --
 */
         if (goingToTrueBound && (colUpper[j]-colLower[j] > 1.5 || colLower[j]))
           goingToTrueBound = 1 ;
@@ -1294,8 +1315,11 @@ int CglProbing::probe( const OsiSolverInterface & si,
   of a general integer variable.
 
   TODO: Why is row strengthening limited to binary variables? If we can
-  	figure out what to do, the limitation seems artificial
+  	figure out what to do, the limitation seems artificial.
 	-- lh, 101127 --
+	The test here also says that we can't have coefficient strengthening
+	without disaggregation. I don't see any reason for this dominance.
+	-- lh, 110105 --
 */
         if ((rowCuts&1) == 0)
           goingToTrueBound = 0 ;
@@ -2598,6 +2622,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
   TODO: Figure out why goingToTrueBound is relevant here, other than it's
 	set to zero if we're infeasible.  -- lh, 101127 --
 	I think that might be all there is to it.   -- lh, 101128 --
+	Well, maybe not. Check the math for the contained cuts to see if
+	it's valid only for binary variables; when within distance 1 of
+	the upper or lower bound of a general integer; or more generally.
+	GoingToTrueBound indicates the first of these two. -- lh, 110105 --
 
   TODO: Figure out what the third and fourth comment lines below (`Taken out
 	...') mean. Because MOVE_SINGLETONS is active. If I were to hazard
@@ -2767,7 +2795,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		    // If strengthenRow point to row
 		    //if(info->strengthenRow)
 		    //printf("a point to row %d\n",irow) ;
-		    //#define STRENGTHEN_PRINT
+#define STRENGTHEN_PRINT
 #ifdef STRENGTHEN_PRINT
 /*
 Replace this code with the debugging print method from CglProbingAnn.
@@ -3418,6 +3446,10 @@ TODO: This condition differs from the pass 0 condition. canReplace replaces
 			  printf("x%d ",iColumn) ;
 		      }
 		      printf("<= %g\n",rc.ub()) ;
+		      dump_row(irow,rc.lb(),rc.ub(),
+		      	       nan(""),nan(""),&si,true,false,4,
+			       n,index,element,
+			       1.0e-10,colLower,colUpper) ;
 		      printf("Row %g <= ",rowLower[irow]) ;
 		      for (k=rowStart[irow];k<rowStart[irow+1];k++) {
 			int iColumn = column[k] ;
@@ -3428,6 +3460,11 @@ TODO: This condition differs from the pass 0 condition. canReplace replaces
 			  printf("x%d ",iColumn) ;
 		      }
 		      printf("<= %g\n",rowUpper[irow]) ;
+		      k = rowStart[irow] ;
+		      dump_row(irow,rowLower[irow],rowUpper[irow],
+		      	       minR[irow],maxR[irow],&si,true,false,4,
+			       rowStart[irow+1]-k,&column[k],&rowElements[k],
+			       1.0e-10,colLower,colUpper) ;
 		    }
 #endif
 		    int realRow = (canReplace&&rowLower[irow]<-1.0e20) ? irow : -1 ;

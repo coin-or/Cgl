@@ -181,6 +181,9 @@ int CglProbingUnitTest (const OsiSolverInterface *baseSiP,
 
 /*
   Now try again, probing all variables.
+
+  Looks like this was (perhaps) intended to exercise the code for row cuts,
+  but it'll only work partially.
 */
     osicuts = OsiCuts() ;
     test1.setMode(2) ;
@@ -192,6 +195,49 @@ int CglProbingUnitTest (const OsiSolverInterface *baseSiP,
 
     assert (nRowCuts >= 4) ;
     delete siP ;
+  }
+/*
+  Let's try it one more time, using generateCutsAndModify. This will activate
+  the row strengthening code.
+*/
+  {
+    OsiCuts osicuts ;
+    CglProbing test1 ;
+    OsiSolverInterface  *siP = baseSiP->clone() ;
+    int nColCuts = -1 ;
+    int nRowCuts = -1 ;
+
+    siP->setIntParam(OsiNameDiscipline,1) ;
+
+    std::string localDir = "/devel/Coin/Split/Data/Sample/" ;
+    std::string probName = "p0033" ;
+    std::string fn = localDir+probName ;
+
+    siP->readMps(fn.c_str(),"mps") ;
+    siP->initialSolve() ;
+
+    int n = siP->getNumRows() ;
+
+#   if CGL_DEBUG > 0
+    // Activate row cut debugger, if we're doing serious debugging
+    siP->activateRowCutDebugger(probName.c_str()) ;
+    const OsiRowCutDebugger *debugger = siP->getRowCutDebugger() ;
+    if (debugger == 0)
+    { std::cout
+	<< "ERROR: Could not activate row cut debugger for "
+	<< probName << "." << std::endl ;
+    }
+#   endif
+    
+    CglTreeInfo treeInfo ;
+    treeInfo.level = 0 ;
+    treeInfo.pass = 0 ;
+    treeInfo.inTree = false ;
+    treeInfo.strengthenRow = new OsiRowCut* [n] ;
+
+    test1.setMode(2) ;
+    test1.setRowCuts(3) ;
+    test1.generateCutsAndModify(*siP,osicuts,&treeInfo) ;
   }
 
   return (0) ;
