@@ -2796,38 +2796,21 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		    //if(info->strengthenRow)
 		    //printf("a point to row %d\n",irow) ;
 #define STRENGTHEN_PRINT
-#ifdef STRENGTHEN_PRINT
-/*
-Replace this code with the debugging print method from CglProbingAnn.
-*/
+#		    ifdef STRENGTHEN_PRINT
 		    if (canReplace && rowLower[irow] < -1.0e20) {
-		      printf("1Cut %g <= ",rc.lb()) ;
-		      int k ;
-		      //printf("original row %d - %g <= <= %g - j = %d\n",iow,rowLower[irow],rowUpper[irow],j) ;
-		      //for (int kk=rowStart[irow];kk<rowStart[irow+1];kk++) 
-		      //printf("(%d,%g) ",column[kk],rowElements[kk]) ;
-		      //printf("\n") ;
-		      for ( k=0;k<n;k++) {
-			int iColumn = index[k] ;
-			printf("%g*",element[k]) ;
-			if (si.isInteger(iColumn))
-			  printf("i%d ",iColumn) ;
-			else
-			  printf("x%d ",iColumn) ;
-		      }
-		      printf("<= %g\n",rc.ub()) ;
-		      printf("Row %g <= ",rowLower[irow]) ;
-		      for (k=rowStart[irow];k<rowStart[irow+1];k++) {
-			int iColumn = column[k] ;
-			printf("%g*",rowElements[k]) ;
-			if (si.isInteger(iColumn))
-			  printf("i%d ",iColumn) ;
-			else
-			  printf("x%d ",iColumn) ;
-		      }
-		      printf("<= %g\n",rowUpper[irow]) ;
+		      printf("Strengthen Cut (1):\n") ;
+		      dump_row(irow,rc.lb(),rc.ub(),
+		      	       nan(""),nan(""),&si,true,false,4,
+			       n,index,element,
+			       1.0e-10,colLower,colUpper) ;
+		      printf("Original Row:\n") ;
+		      int k = rowStart[irow] ;
+		      dump_row(irow,rowLower[irow],rowUpper[irow],
+		      	       minR[irow],maxR[irow],&si,true,false,4,
+			       rowStart[irow+1]-k,&column[k],&rowElements[k],
+			       1.0e-10,colLower,colUpper) ;
 		    }
-#endif
+#		    endif
 /*
 Can we simply replace the existing constraint?
 
@@ -2968,31 +2951,22 @@ distinguish the L(i) math from the U(i) math.
 #endif
 		    //if(info->strengthenRow)
 		    //printf("b point to row %d\n",irow) ;
-#ifdef STRENGTHEN_PRINT
-		    if (canReplace&&rowUpper[irow]>1.0e20) {
-		      printf("2Cut %g <= ",rc.lb()) ;
-		      int k ;
-		      for ( k=0;k<n;k++) {
-			int iColumn = index[k] ;
-			printf("%g*",element[k]) ;
-			if (si.isInteger(iColumn))
-			  printf("i%d ",iColumn) ;
-			else
-			  printf("x%d ",iColumn) ;
-		      }
-		      printf("<= %g\n",rc.ub()) ;
-		      printf("Row %g <= ",rowLower[irow]) ;
-		      for (k=rowStart[irow];k<rowStart[irow+1];k++) {
-			int iColumn = column[k] ;
-			printf("%g*",rowElements[k]) ;
-			if (si.isInteger(iColumn))
-			  printf("i%d ",iColumn) ;
-			else
-			  printf("x%d ",iColumn) ;
-		      }
-		      printf("<= %g\n",rowUpper[irow]) ;
+#		    ifdef STRENGTHEN_PRINT
+		    if (canReplace && rowUpper[irow] > 1.0e20) {
+		      printf("Strengthen Cut (2):\n") ;
+		      dump_row(irow,rc.lb(),rc.ub(),
+		      	       nan(""),nan(""),&si,true,false,4,
+			       n,index,element,
+			       1.0e-10,colLower,colUpper) ;
+		      printf("Original Row:\n") ;
+		      int k = rowStart[irow] ;
+		      dump_row(irow,rowLower[irow],rowUpper[irow],
+		      	       minR[irow],maxR[irow],&si,true,false,4,
+			       rowStart[irow+1]-k,&column[k],&rowElements[k],
+			       1.0e-10,colLower,colUpper) ;
 		    }
-#endif
+#		    endif
+
 		    int realRow = (canReplace&&rowUpper[irow]>1.0e20) ? irow : -1 ;
 		    if (realRows&&realRow>=0)
 		      realRow=realRows[realRow] ;
@@ -3433,40 +3407,21 @@ TODO: This condition differs from the pass 0 condition. canReplace replaces
 #endif
 		    //if(canReplace)
 		    //printf("c point to row %d\n",irow) ;
-#ifdef STRENGTHEN_PRINT
-		    if (canReplace&&rowLower[irow]<-1.0e20) {
-		      printf("3Cut %g <= ",rc.lb()) ;
-		      int k ;
-		      for ( k=0;k<n;k++) {
-			int iColumn = index[k] ;
-			printf("%g*",element[k]) ;
-			if (si.isInteger(iColumn))
-			  printf("i%d ",iColumn) ;
-			else
-			  printf("x%d ",iColumn) ;
-		      }
-		      printf("<= %g\n",rc.ub()) ;
+#		    ifdef STRENGTHEN_PRINT
+		    if (canReplace && rowLower[irow] < -1.0e20) {
+		      printf("Strengthen Cut (3):\n") ;
 		      dump_row(irow,rc.lb(),rc.ub(),
 		      	       nan(""),nan(""),&si,true,false,4,
 			       n,index,element,
 			       1.0e-10,colLower,colUpper) ;
-		      printf("Row %g <= ",rowLower[irow]) ;
-		      for (k=rowStart[irow];k<rowStart[irow+1];k++) {
-			int iColumn = column[k] ;
-			printf("%g*",rowElements[k]) ;
-			if (si.isInteger(iColumn))
-			  printf("i%d ",iColumn) ;
-			else
-			  printf("x%d ",iColumn) ;
-		      }
-		      printf("<= %g\n",rowUpper[irow]) ;
-		      k = rowStart[irow] ;
+		      printf("Original Row:\n") ;
+		      int k = rowStart[irow] ;
 		      dump_row(irow,rowLower[irow],rowUpper[irow],
 		      	       minR[irow],maxR[irow],&si,true,false,4,
 			       rowStart[irow+1]-k,&column[k],&rowElements[k],
 			       1.0e-10,colLower,colUpper) ;
 		    }
-#endif
+#		    endif
 		    int realRow = (canReplace&&rowLower[irow]<-1.0e20) ? irow : -1 ;
 		    if (realRows&&realRow>=0)
 		      realRow=realRows[realRow] ;
@@ -3547,31 +3502,21 @@ As with pass 0 code, repeat working against row lower bound.
 #endif
 		    //if(canReplace)
 		    //printf("d point to row %d\n",irow) ;
-#ifdef STRENGTHEN_PRINT
-		    if (canReplace&&rowUpper[irow]>1.0e20) {
-		      printf("4Cut %g <= ",rc.lb()) ;
-		      int k ;
-		      for ( k=0;k<n;k++) {
-			int iColumn = index[k] ;
-			printf("%g*",element[k]) ;
-			if (si.isInteger(iColumn))
-			  printf("i%d ",iColumn) ;
-			else
-			  printf("x%d ",iColumn) ;
-		      }
-		      printf("<= %g\n",rc.ub()) ;
-		      printf("Row %g <= ",rowLower[irow]) ;
-		      for (k=rowStart[irow];k<rowStart[irow+1];k++) {
-			int iColumn = column[k] ;
-			printf("%g*",rowElements[k]) ;
-			if (si.isInteger(iColumn))
-			  printf("i%d ",iColumn) ;
-			else
-			  printf("x%d ",iColumn) ;
-		      }
-		      printf("<= %g\n",rowUpper[irow]) ;
+#		    ifdef STRENGTHEN_PRINT
+		    if (canReplace && rowUpper[irow] > 1.0e20) {
+		      printf("Strengthen Cut (4):\n") ;
+		      dump_row(irow,rc.lb(),rc.ub(),
+		      	       nan(""),nan(""),&si,true,false,4,
+			       n,index,element,
+			       1.0e-10,colLower,colUpper) ;
+		      printf("Original Row:\n") ;
+		      int k = rowStart[irow] ;
+		      dump_row(irow,rowLower[irow],rowUpper[irow],
+		      	       minR[irow],maxR[irow],&si,true,false,4,
+			       rowStart[irow+1]-k,&column[k],&rowElements[k],
+			       1.0e-10,colLower,colUpper) ;
 		    }
-#endif
+#		    endif
 		    int realRow = (canReplace&&rowUpper[irow]>1.0e20) ? irow : -1 ;
 		    if (realRows&&realRow>=0)
 		      realRow=realRows[realRow] ;
