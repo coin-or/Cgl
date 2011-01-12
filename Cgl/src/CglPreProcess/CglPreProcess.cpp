@@ -2048,6 +2048,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     //dupCuts.setLogLevel(1);
     // If +1 try duplicate rows
 #define USECGLCLIQUE 512
+    if ((options_&8)!=0)
+      tuning &= ~USECGLCLIQUE;
+    if ((options_&4)!=0)
+      allPlusOnes=false;
     if (allPlusOnes||(tuning&USECGLCLIQUE)!=0) {
 #if 1
       // put at beginning
