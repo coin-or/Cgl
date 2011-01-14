@@ -120,7 +120,7 @@ const unsigned int downProbe2Feas = 0x4 ;
 
   probeDir should be coded using probeDown, probeUp.
 */
-void disaggCuts (int nstackC, int probeDir,
+void disaggCuts (int nstackC, unsigned int probeDir,
 		 double primalTolerance_, double disaggEffectiveness,
 		 const OsiSolverInterface &si,
 		 CglProbingRowCut &rowCut, const int *const stackC,
@@ -362,7 +362,6 @@ bool updateRowBounds (int j, double movement,
 }
 
 
-
 /*
   jjf: clean up djs and solution
 
@@ -574,6 +573,514 @@ void clearStacks (double primalTolerance_,
 }
 
 
+
+/*
+  This method examines the rows on stackR looking for redundant rows that
+  consist solely of singleton variables (i.e., variables that appear in just
+  this constraint). It then looks to see if any of the variables in the row
+  can be fixed at bound.
+
+  Consider the case where U<i> < b<i> and all unfixed variables in the row
+  are singletons (occur in no other constraint). Given x<j> is a singleton,
+  the reduced cost is c<j> - ya<j> = c<j> - ye<i> = c<j> - y<i>.  But if
+  U<i> < b<i>, the constraint is loose by definition, hence y<i> = 0 and
+  the reduced cost is c<j>. If a<ij> > 0, x<j> should be u<j> in U<i>. If
+  c<j> < 0, minimising will tend to drive x<j> to u<j>. This cannot violate
+  constraint i (U<i> < b<i>) and (since x<j> is a singleton) will have no
+  effect elsewhere. Hence we can fix x<j> at u<j>.
+
+  Do the case analysis, and what you find is that against U<i> we want
+    a<ij> > 0  ==>  c<j> < 0  ==>  push x<j> to u<j>
+    a<ij> < 0  ==>  c<j> > 0  ==>  push x<j> to l<j>
+  and against L<i> we want
+    a<ij> > 0  ==>  c<j> > 0  ==>  push x<j> to l<j>
+    a<ij> < 0  ==>  c<j> < 0  ==>  push x<j> to u<j>
+
+  Extend it one more time by taking the objective direction (max/min) into
+  account (dir = 1.0 for min, -1.0 for max) and you have
+    against U<i> ==> a<ij>*c<j>*dir < 0
+    against L<i> ==> a<ij>*c<j>*dir > 0
+
+  John's original comment for this code was
+    // also see if singletons can go to good objective
+    // Taken out as should be found elsewhere
+    // and has to be original column length
+  but he reinstated it. Apparently there were cases where fixing the probing
+  variable was required to satisfy the condition that all unfixed variables be
+  singletons. Enough of them to justify reinstating this code.
+*/
+
+void singletonRows (int jProbe, double primalTolerance_,
+		    const OsiSolverInterface &si,
+		    const CoinPackedMatrix *rowCopy,
+		    int *const markC,
+		    int &nstackC, int *const stackC,
+		    double *const saveL, double *const saveU,
+		    double *const colUpper, double *const colLower,
+		    double *const colGap,
+		    const int nstackR, const int *const stackR,
+		    const double *const rowUpper,
+		    const double *const rowLower,
+		    const double *const maxR, const double *const minR)
+{
+/*
+  Unpack a few vectors from the row-major matrix.
+*/
+  const CoinBigIndex *rowStart = rowCopy->getVectorStarts() ;
+  const int *column = rowCopy->getIndices() ;
+  const double *rowElements = rowCopy->getElements() ;
+  const int nCols = rowCopy->getNumCols() ;
+/*
+  `Singleton' must be based on the column length in the original system.
+*/
+  const double *objective = si.getObjCoefficients() ;
+  const int *columnLengths = si.getMatrixByCol()->getVectorLengths() ;
+  const double objSense = si.getObjSense() ;
+/*
+  Open a loop to work through the rows on stackR.
+*/
+  for (int istackR = 0 ; istackR < nstackR ; istackR++) {
+    int i = stackR[istackR] ;
+/*
+  Check the gaps. If the constraint is potentially tight in both directions,
+  there's nothing more to do here.
+*/
+    const double uGap = rowUpper[i]-maxR[i] ;
+    const double lGap = minR[i]-rowLower[i] ;
+    if (uGap < primalTolerance_ && lGap < primalTolerance_) continue ;
+/*
+  Scan the row to see if it meets the `all singletons' condition. Again,
+  if this fails, there's nothing more to be done.
+
+  Note that the original code didn't check the probing variable x<p>,
+  because if you're probing a binary variable it's fixed. But for general
+  integer variables a probe does not in general fix the variable.  So we
+  check all variables.
+
+  We should not be executing this method if we have prima facie infeasibility.
+*/
+    bool canFix = true ;
+    for (int kk = rowStart[i] ; kk < rowStart[i+1] ; kk++) {
+      int j = column[kk] ;
+      assert(colUpper[j]-colLower[j] > -primalTolerance_) ;
+      if (colUpper[j] > colLower[j] && columnLengths[j] != 1) {
+	canFix = false ;
+	break ;
+      }
+    }
+    if (!canFix) continue ;
+/*
+  If we've passed the tests, we can look for variables suitable to drive to
+  bound. Work against U<i> first. We're looking for variables with a<ij> > 0
+  that will be naturally driven to u<j>, or variables with a<ij> < 0 that will
+  be naturally driven to l<j>.
+  
+  Don't overwrite the saved bounds if we've
+  tightened this variable already!
+*/
+    if (uGap > primalTolerance_) {
+      for (int kk = rowStart[i] ; kk < rowStart[i+1] ; kk++) {
+	int j = column[kk] ;
+	const double lj = colLower[j] ;
+	const double uj = colUpper[j] ;
+	if (uj > lj) {
+	  double value = rowElements[kk] ;
+	  if (objSense*objective[j]*value < 0.0)
+	  { assert(jProbe != j) ;
+	    if (!(markC[j]&(tightenLower|tightenUpper))) {
+	      stackC[nstackC] = j ;
+	      saveL[nstackC] = lj ;
+	      saveU[nstackC] = uj ;
+	    }
+	    assert(saveU[nstackC] > saveL[nstackC]) ;
+	    if (value > 0.0) {
+	      colLower[j] = uj ;
+	    } else {
+	      colUpper[j] = lj ;
+	    }
+	    markC[j] |= tightenLower|tightenUpper ;
+	    colGap[j] = -primalTolerance_ ;
+	    assert(nstackC < nCols) ;
+	    nstackC++ ;
+	  }
+	}
+      }
+    }
+/*
+  And now the identical code, except that we're working against L<i>, hence
+  the sense of the elibigility test is reversed and we want variables with
+  a<ij> > 0 that will be naturally driven to l<j>, or variables with
+  a<ij> < 0 that will be naturally driven to u<j>.
+*/
+    if (lGap > primalTolerance_) {
+      for (int kk = rowStart[i] ; kk < rowStart[i+1] ; kk++) {
+	int j = column[kk] ;
+	const double lj = colLower[j] ;
+	const double uj = colUpper[j] ;
+	if (uj > lj) {
+	  double value = rowElements[kk] ;
+	  if (objSense*objective[j]*value > 0.0)
+	  { assert(jProbe != j) ;
+	    if (!(markC[j]&(tightenLower|tightenUpper))) {
+	      stackC[nstackC] = j ;
+	      saveL[nstackC] = lj ;
+	      saveU[nstackC] = uj ;
+	    }
+	    assert(saveU[nstackC] > saveL[nstackC]) ;
+	    if (value < 0.0) {
+	      colLower[j] = uj ;
+	    } else {
+	      colUpper[j] = lj ;
+	    }
+	    markC[j] |= tightenLower|tightenUpper ;
+	    colGap[j] = -primalTolerance_ ;
+	    assert(nstackC < nCols) ;
+	    nstackC++ ;
+	  }
+	}
+      }
+    }
+  }
+  return ;
+}
+
+
+/*
+  Generate coefficient strengthening cuts.
+  
+  Assume we have a binary probe variable x<p> with a<ip> > 0. This will
+  be a down probe, so assume that U<i> > b<i> before the probe, but now
+  U'<i> < b<i> (i.e., the constraint is redundant against b<i> after the
+  down probe forces x<p> to 0 and reduces U<i> to U'<i>). We would like to
+  have the following:
+    * When x<p> = 0, b'<i> = U'<i>  (after all, the lhs can't be any larger)
+    * When x<p> = 1, b'<i> = b<i>   (the original value)
+  Define delta<i> = b<i> - U'<i>. Let b'<i> = b<i>-delta<i> and let
+  a'<ip> = a<ip>-delta<i>. Then when x<p> = 1, the delta<i> on each side
+  cancels and we're left with the original constraint. When x<p> = 0, the rhs
+  becomes b'<i> = b<i>+delta<i> = U'<i>.
+
+  The usual case analysis applies; see the typeset documentation. It's not
+  necessarily true that U'<i> = U<i> - a<ip>u<p>; additional propagation could
+  have reduced it even further. That doesn't alter the reasoning above.
+
+  TODO: Figure out why goingToTrueBound is relevant here, other than it's
+	set to zero if we're infeasible.  -- lh, 101127 --
+
+	I think that might be all there is to it.   -- lh, 101128 --
+
+	Well, maybe not. Check the math for the contained cuts to see if
+	it's valid only for binary variables; when within distance 1 of
+	the upper or lower bound of a general integer; or more generally.
+	GoingToTrueBound indicates the first of these two. -- lh, 110105 --
+
+	After working the math a few times, it looks to me like the important
+	aspect is that goingToTrueBound = 2 indicates binary variables. I
+	can't get the math to agree with the code otherwise. See the problem
+	noted below. I'm going to restrict this method to binary variables
+	until I can resolve questions about general integers.  -- lh, 110113 --
+*/
+
+#define STRENGTHEN_PRINT
+void strengthenCoeff (
+		      int jProbe,
+		      double primalTolerance_,
+		      bool justReplace, bool canReplace,
+		      double needEffectiveness,
+		      const OsiSolverInterface &si,
+		      CglProbingRowCut &rowCut,
+		      const CoinPackedMatrix *rowCopy,
+		      double *const colUpper, double *const colLower,
+		      const double *const colsol,
+		      const int nstackR, const int *const stackR,
+		      const double *const rowUpper,
+		      const double *const rowLower,
+		      const double *const maxR,
+		      const double *const minR,
+		      const int *const realRows,
+		      double *const element,
+		      int *const index,
+		      CglTreeInfo *const info
+		     )
+{
+# if CGL_DEBUG > 0
+  std::cout
+    << "Entering strengthenCoeff, probed variable "
+    << si.getColName(jProbe) << "(" << jProbe << ")." << std::endl ;
+  const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
+# endif
+/*
+  Unpack a few vectors from the row-major matrix.
+*/
+  const CoinBigIndex *rowStart = rowCopy->getVectorStarts() ;
+  const int *column = rowCopy->getIndices() ;
+  const double *rowElements = rowCopy->getElements() ;
+/*
+  Open up an outer loop to walk stackR and look for interesting constraints.
+*/
+  for (int istackR = 0 ; istackR < nstackR ; istackR++) {
+    int irow = stackR[istackR] ;
+/*
+  We can't get anywhere unless probing has made one end or the other of the
+  constraint redundant.
+
+  Really, we shouldn't be here if b<i> or blow<i> are not finite. Check with
+  an assert.
+*/
+    double uGap = rowUpper[irow]-maxR[irow] ;
+    assert(uGap < 1.0e8) ;
+    double lGap = minR[irow]-rowLower[irow] ;
+    assert(lGap < 1.0e8) ;
+    if (uGap < primalTolerance_ && lGap < primalTolerance_) continue ;
+/*
+  We'll need the lhs activity to evaluate the effectiveness of the cut. Do a
+  base calculation which we'll correct later.
+  
+  TODO: Sort out why anyColumnCuts is an obstacle. Theoretical or practical?
+	Could we use the new bound instead?  -- lh, 101128 --
+
+	After working the math, looks to me like the only effect will be where
+	a column cut cuts off the current solution, in which case the lhs
+	value (sum) may be incorrect, affecting the calculation of
+	effectiveness. We could correct for this, if it was worth the effort
+	(a max or min when calculating the sum below). -- lh, 110113 --
+*/
+    double sum = 0.0 ;
+    for (int kk = rowStart[irow] ; kk < rowStart[irow+1] ; kk++) {
+      sum += rowElements[kk]*colsol[column[kk]] ;
+    }
+/*
+  Start out by working against the row upper bound U(i).  We've calculated
+  sum using the current a<ik>, so reduce it by (-a<ip>+a'<ip>)x*<p> =
+  (-uGap)(x*<p>) to do the check.
+
+  We're not willing to generate a cut if it doesn't cut off the current
+  solution, but we are willing to strengthen the existing constraint in place.
+  Can't hurt, eh? Excluding range constraints in this case avoids the issue
+  of conflicting a'<ij> if it turns out we can strengthen against b<i>
+  and blow<i> in the same constraint.
+*/
+    if (uGap > primalTolerance_ &&
+        (sum-uGap*colsol[jProbe] > maxR[irow]+primalTolerance_ ||
+	 (info->strengthenRow && rowLower[irow] < -1.0e20))) {
+/*
+  Generate the coefficients. For all except the probing variable, we just copy
+  the coefficient. The probing variable becomes a'<ij> = (a<ij> - uGap). Allow
+  for the possibility that a<ij> starts or ends as 0.
+
+  TODO: The value of sum2 calculated here should be precisely
+	sum-uGap*colsol[j], unless my math is way wrong.  -- lh, 110107 --
+*/
+      int n = 0 ;
+      bool saw_aip = false ;
+      double sum2 = 0.0 ;
+      for (int kk = rowStart[irow] ; kk < rowStart[irow+1] ; kk++) {
+	int kColumn = column[kk] ;
+	double el = rowElements[kk] ;
+	if (kColumn != jProbe) {
+	  index[n] = kColumn ;
+	  element[n++] = el ;
+	} else {
+	  el = el-uGap ;
+	  if (fabs(el) > 1.0e-12) {
+	    index[n] = kColumn ;
+	    element[n++] = el ;
+	  }
+	  saw_aip = true ;
+	}
+	sum2 += colsol[kColumn]*el ;
+      }
+      if (!saw_aip) {
+	index[n] = jProbe ;
+	element[n++] = -uGap ;
+	sum2 -= colsol[jProbe]*uGap ;
+      }
+      assert(sum == sum2) ;
+/*
+  Check effectiveness. Add the cut only if it's sufficiently effective. (If
+  we're strengthening existing constraints, needEffectiveness is quite low.)
+
+  TODO: (*) I can't justify colLower in uGap*(l<p>+1.0). When I work
+        the math, b'<i> = b<i> - (b<i> - U'<i>) = b<i> - uGap. I'll keep
+	trying, on the theory that it's some attempt at general integers, but
+	I'm thinking it's wrong. Note that for binary variables, l<p> = 0 and
+	there's no problem.   -- lh, 110113 --
+
+  TODO: I don't understand what's going on with the first two calculations
+	for effectiveness. First off, sum2 and sum-uGap*colsol[j] should be
+	exactly the same value (see notes with previous calculations). Then
+	there's the question `Why divide by (b<i>-U<i>)?' in the second
+	calculation. This inflates the effectiveness for a tiny uGap. A
+	normalisation, perhaps?  -- lh, 110107 --
+
+  TODO: And why go through the effort of setting the row bounds and
+	effectiveness in the OsiRowCut, before we've decided that the cut will
+	be used?  -- lh, 110107 --
+*/
+      OsiRowCut rc ;
+      rc.setLb(-DBL_MAX) ;
+      // (*) double ub = rowUpper[irow]-uGap*(colLower[jProbe]+1.0) ;
+      double ub = rowUpper[irow]-uGap ;
+      rc.setUb(ub) ;
+      double effectiveness = sum2-ub ;
+      effectiveness =
+	  CoinMax(effectiveness,
+		  (sum-uGap*colsol[jProbe]-maxR[irow])/uGap) ;
+      if (!saw_aip)
+	effectiveness = CoinMax(1.0e-7,effectiveness) ;
+      rc.setEffectiveness(effectiveness) ;
+      // rc.setEffectiveness((sum-uGap*colsol[jProbe]-maxR[irow])/uGap) ;
+      if (rc.effectiveness() > needEffectiveness) {
+	rc.setRow(n,index,element,false) ;
+#       if CGL_DEBUG > 0
+	if (debugger) assert(!debugger->invalidCut(rc)); 
+#       endif
+#	ifdef STRENGTHEN_PRINT
+	if (canReplace && rowLower[irow] < -1.0e20) {
+	  printf("Strengthen Cut (1):\n") ;
+	  dump_row(irow,rc.lb(),rc.ub(),
+		   nan(""),nan(""),&si,true,false,4,
+		   n,index,element,
+		   1.0e-10,colLower,colUpper) ;
+	  printf("Original Row:\n") ;
+	  int k = rowStart[irow] ;
+	  dump_row(irow,rowLower[irow],rowUpper[irow],
+		   minR[irow],maxR[irow],&si,true,false,4,
+		   rowStart[irow+1]-k,&column[k],&rowElements[k],
+		   1.0e-10,colLower,colUpper) ;
+	}
+#	endif
+/*
+  If we're in preprocessing, we might try to simply replace the existing
+  constraint (justReplace = true; preprocessing is the only place this will
+  happen). Otherwise, drop the cut into the cut set.
+
+  realRows comes in as a parameter. This is the translation array created if
+  we modified the constraint system during preprocessing in gutsOfGenerateCuts.
+
+  TODO: Seems a bit disingenuous to fail at replacement now, given that
+	effectiveness is artificially low. Notice again the inconsistent use
+	of finite infinities on the row lb.  -- lh, 101128 --
+
+  TODO: To elaborate on the above, it seems to me that we can get here with
+	justReplace = true and canReplace = false, and this condition is
+	constant over an iteration of the way loop. In other words, we've done
+	all the work to generate this cut and we knew before we started that
+	we would discard it here.  -- lh, 110107 --
+*/
+	int realRow = (canReplace && rowLower[irow] < -1.0e20)?(irow):(-1) ;
+	if (realRows && realRow >= 0)
+	  realRow = realRows[realRow] ;
+	if (!justReplace) {
+	  rowCut.addCutIfNotDuplicate(rc,realRow) ;
+	} else if (realRow >= 0) {
+	  double effectiveness = 0.0 ;
+	  for (int i = 0 ; i < n ; i++)
+	    effectiveness += fabs(element[i]) ;
+	  if (!info->strengthenRow[realRow] ||
+	      info->strengthenRow[realRow]->effectiveness() > effectiveness) {
+	    delete info->strengthenRow[realRow] ;
+	    rc.setEffectiveness(effectiveness) ;
+	    info->strengthenRow[realRow]=rc.clone() ;
+	  }
+	}
+      }
+    }
+/*
+  And repeat working against the lower bound L(i). As in so many other places
+  in this code, it's the identical functionality, with some subtle edits that
+  distinguish the L(i) math from the U(i) math.
+*/
+    if (lGap > primalTolerance_ &&
+        (sum+lGap*colsol[jProbe] < minR[irow]-primalTolerance_ ||
+	 (info->strengthenRow && rowUpper[irow] > -1.0e20))) {
+      int n = 0 ;
+      bool saw_aip = false ;
+      double sum2 = 0.0 ;
+      for (int kk = rowStart[irow] ; kk < rowStart[irow+1] ; kk++) {
+	int kColumn = column[kk] ;
+	double el = rowElements[kk] ;
+	if (kColumn != jProbe) {
+	  index[n] = kColumn ;
+	  element[n++] = el ;
+	} else {
+	  el = el+lGap ;
+	  if (fabs(el) > 1.0e-12) {
+	    index[n] = kColumn ;
+	    element[n++] = el ;
+	  }
+	  saw_aip = true ;
+	}
+	sum2 += colsol[kColumn]*el ;
+      }
+      if (!saw_aip) {
+	index[n] = jProbe ;
+	element[n++] = lGap ;
+	sum2 += colsol[jProbe]*lGap ;
+      }
+      OsiRowCut rc ;
+      double lb = rowLower[irow]+lGap*(colLower[jProbe]+1.0) ;
+      rc.setLb(lb) ;
+      rc.setUb(DBL_MAX) ;
+      // effectiveness
+      double effectiveness = lb-sum2 ;
+      effectiveness = CoinMax(effectiveness,
+			      (minR[irow]-sum-lGap*colsol[jProbe])/lGap) ;
+      if (!saw_aip)
+	effectiveness = CoinMax(1.0e-7,effectiveness) ;
+      rc.setEffectiveness(effectiveness) ;
+      if (rc.effectiveness() > needEffectiveness) {
+	rc.setRow(n,index,element,false) ;
+#       if CGL_DEBUG > 0
+	if (debugger) assert(!debugger->invalidCut(rc)); 
+#       endif
+#       ifdef STRENGTHEN_PRINT
+	if (canReplace && rowUpper[irow] > 1.0e20) {
+	  printf("Strengthen Cut (2):\n") ;
+	  dump_row(irow,rc.lb(),rc.ub(),
+		   nan(""),nan(""),&si,true,false,4,
+		   n,index,element,
+		   1.0e-10,colLower,colUpper) ;
+	  printf("Original Row:\n") ;
+	  int k = rowStart[irow] ;
+	  dump_row(irow,rowLower[irow],rowUpper[irow],
+		   minR[irow],maxR[irow],&si,true,false,4,
+		   rowStart[irow+1]-k,&column[k],&rowElements[k],
+		   1.0e-10,colLower,colUpper) ;
+	}
+#	endif
+
+	int realRow = (canReplace&&rowUpper[irow]>1.0e20) ? irow : -1 ;
+	if (realRows && realRow >= 0)
+	  realRow = realRows[realRow] ;
+	if (!justReplace) {
+	  rowCut.addCutIfNotDuplicate(rc,realRow) ;
+	} else if (realRow >= 0) {
+	  double effectiveness = 0.0 ;
+	  for (int i = 0 ; i < n ; i++)
+	    effectiveness += fabs(element[i]) ;
+	  if (!info->strengthenRow[realRow] ||
+	      info->strengthenRow[realRow]->effectiveness() > effectiveness) {
+	    delete info->strengthenRow[realRow] ;
+	    rc.setEffectiveness(effectiveness) ;
+	    info->strengthenRow[realRow] = rc.clone() ;
+	  }
+	}
+      }
+    }
+  }
+
+# if CGL_DEBUG > 0
+  std::cout
+    << "Leaving strengthenCoeff, "
+    << rowCut.numberCuts() << " cuts." << std::endl ;
+# endif
+  return ;
+}
+
+
+
+
 // =========================================================
 
 
@@ -704,28 +1211,20 @@ void clearStacks (double primalTolerance_,
   system during preprocessing in gutsOfGenerateCuts.
 
 */
-/*
-  The #ifdef around the formal parameter apparently satisfies the method
-  signature while clearly indicating the parameter is unused in the body of
-  the method.
-*/
-
-int CglProbing::probe( const OsiSolverInterface & si, 
-		       OsiCuts & cs, 
-		       double * colLower, double * colUpper, 
+int CglProbing::probe( const OsiSolverInterface &si, 
+		       OsiCuts &cs, 
+		       double *colLower, double *colUpper, 
 		       CoinPackedMatrix *rowCopy,
 		       CoinPackedMatrix *columnCopy,
-		       const CoinBigIndex * rowStartPos,const int * realRows, 
-		       const double * rowLower, const double * rowUpper,
-		       const char * intVar, double * minR, double * maxR, 
-		       int * markR, 
-                       CglTreeInfo * info) const
+		       const CoinBigIndex *rowStartPos, const int *realRows, 
+		       const double *rowLower, const double *rowUpper,
+		       const char *intVar, double *minR, double *maxR, 
+		       int *markR, 
+                       CglTreeInfo *info) const
 
 {
 # if CGL_DEBUG > 0
   std::cout << "Entering CglProbing::probe." << std::endl ;
-
-  const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
 # endif
 /*
   PREPARATION
@@ -837,16 +1336,6 @@ int CglProbing::probe( const OsiSolverInterface & si,
   const int * columnLength = columnCopy->getVectorLengths(); 
   const double * columnElements = columnCopy->getElements() ;
 
-/*
-  This won't be used until we're sorting out the results of propagating a probe
-  (look for the next occurrence of columnLength2). We need to make sure the
-  column we're looking at is a singleton in the original system.
-*/
-#define MOVE_SINGLETONS
-#ifdef MOVE_SINGLETONS
-  const double * objective = si.getObjCoefficients() ;
-  const int * columnLength2 = si.getMatrixByCol()->getVectorLengths(); 
-#endif
 /*
   Grab the column solution and reduced costs and groom them.
 */
@@ -967,6 +1456,12 @@ int CglProbing::probe( const OsiSolverInterface & si,
   PASS LOOP: HEAD
 
   Major block #2: Main pass loop.
+
+  From CglProbingAnn: anyColumnCuts is set only in the case that we've
+  fixed a variable by probing (i.e., one of the up or down probe resulted
+  in infeasibility) and that probe entailed column cuts. Once set, it is
+  never rescinded. In the reworked code, it's set as the return value of
+  monotoneActions().
 */
   bool anyColumnCuts = false ;
   int ninfeas = 0 ;
@@ -1091,10 +1586,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
   If we're generating row cuts, but haven't fixed any variables or we're in
   the tree, break from probing.
 
-  JustFix < 0 says this is the first pass at the root, or (??). If it is the
-  first pass at the root, turn off row cuts, keep on fixing variables, and
-  stop at the end of this pass. If (??) and we haven't fixed any variables,
-  break.
+  JustFix < 0 says this is the first pass at the root; for any other
+  iteration of the pass loop, it'll be initialised to 0.  If it is the first
+  pass at the root, turn off row cuts, keep on fixing variables, and stop
+  at the end of this pass. Otherwise, if we haven't fixed any variables, break.
 
   TODO: Otherwise keep going with no changes? That doesn't seem right. The
   	logic here does not cover all situations.  -- lh, 101126 --
@@ -1143,7 +1638,6 @@ int CglProbing::probe( const OsiSolverInterface & si,
       up = ceil(solval-tolerance) ;
       if (columnGap[j] < 0.0) markC[j] = tightenUpper|tightenLower ;
       if ((markC[j]&(tightenUpper|tightenLower)) != 0 || !intVar[j]) continue ;
-      double saveSolval = solval ;
 /*
   `Normalize' variables that are near (or past) their bounds.
 
@@ -2447,7 +2941,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 
   TODO: I'm coming to think forcing goingToTrueBound = 0 is really an overload
 	to suppress various post-probe activities (cut generation, singleton
-	motion, etc). It might be that this is not the best approach.
+	motion, etc) that should not be performed when the probe shows
+	infeasible. It might be that this is not the best approach.
 	-- lh, 101216 --
 */
 	if (notFeasible || (objVal > cutoff)) {
@@ -2534,7 +3029,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 /*
   PROBE LOOP: ITERATE
 
-  If we reach here, we will iterate the probe loop.
+  If we reach here, we may iterate the probe loop.
 
   Cases remaining include
 
@@ -2544,10 +3039,6 @@ int CglProbing::probe( const OsiSolverInterface & si,
      iterate (we're done, cannot prove monotonicity).
   c) End of the up probe, down feasible, up infeasible; in this case we will
      iterate to restore the down feasible state.
-
-  The next block deals with preparing to iterate at the end of the first down
-  probe.  Whatever the result, we'll need to go to the up probe. If the down
-  probe was feasible, save stackC and the new bounds.
 
   TODO: Unless I miss my guess, large chunks of this block of code will be
 	replicated in the code that handles case b), as we generate cuts
@@ -2559,36 +3050,60 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	calling monotoneActions with lo0 = colLower, up0 = colUpper, and
 	stackC0 = stackC should do the trick.  -- lh, 101216 --
 
-  jjf: is it worth seeing if can increase coefficients or maybe better see
-       if it is a cut
+  TODO: As I get the control flow sorted out a bit better, I should try to
+  	separate b) (which does not iterate) from a) and c).
 
+  The next block deals with the end of the first down probe. If the probe
+  is feasible, attempt to tighten column bounds with singletonRows, process
+  stackC to generate disaggregation cuts, and copy the tightened bounds
+  to stackC0, lo0, and up0 for use after the up probe.  Feasible or not,
+  we'll need to go on to the up probe, so restore the original bounds.
+
+  Note that GoingToTrueBound was set to 0 way back in initial setup unless
+  the user requested disaggregation cuts (rowCuts&0x01).
+
+  I've rearranged the control flow here, moving the call to singletonRows
+  ahead of the code that captures column bound changes to stackC0, et al.
+  This makes it possible to use the same code at the end of case b) (down and
+  up probe both feasible). Also, singletonRows is just another way to tighten
+  column bounds. In its original position, it was subject to the same
+  restrictions as coefficient strengthening (coefficient strengthening enabled
+  and goingToTrueBound for the probing variable). I don't see any reason to
+  keep them (but it might be good to add a separate control bit precisely for
+  singletonRows).  -- lh, 110113 --
 */
 	if (iway == downProbe) {
-	  nstackC0 = CoinMin(nstackC,maxStack) ;
-	  if (notFeasible) {
-	    nstackC0 = 0 ;
-	  } else {
+          if (!notFeasible) {
+/*
+  Attempt to tighten singleton bounds and generate disaggregation cuts.
+*/
+	    singletonRows(j,primalTolerance_,si,rowCopy,markC,
+			  nstackC,stackC,saveL,saveU,
+			  colUpper,colLower,columnGap,
+			  nstackR,stackR,rowUpper,rowLower,maxR,minR) ;
+	    if (goingToTrueBound == 2 && !justReplace) {
+	      disaggCuts(nstackC,probeDown,primalTolerance_,
+			 disaggEffectiveness,si,rowCut,stackC,colsol,
+			 colUpper,colLower,saveU,saveL,index,element) ;
+	    }
+/*
+  Copy off the bound changes from the down probe -- we'll need them after the
+  up probe.
+*/
+	    nstackC0 = CoinMin(nstackC,maxStack) ;
 	    for (istackC = 0 ; istackC < nstackC0 ; istackC++) {
 	      int icol = stackC[istackC] ;
 	      stackC0[istackC] = icol ;
 	      lo0[istackC] = colLower[icol] ;
 	      up0[istackC] = colUpper[icol] ;
 	    }
+	  } else {
+	    nstackC0 = 0 ;
 	  }
 /*
-  Run through stackC and make disaggregation cuts, if possible. At the end of
-  each iteration, restore the bounds for the variable and reset markC.
-
-  goingToTrueBound was set to 0 way back in initial setup unless the user
-  requested disagg cuts (rowCuts&0x01).
+  Now reset column bounds to their original values in preparation for the
+  up probe.
 */
-	  assert (iway == downProbe) ;
-	  if (goingToTrueBound == 2 && !justReplace) {
-	    disaggCuts(nstackC,probeDown,primalTolerance_,
-		       disaggEffectiveness,si,
-		       rowCut,stackC,colsol,colUpper,colLower,saveU,saveL,
-		       index,element) ;
-	  }
 	  for (istackC = nstackC-1 ; istackC >= 0 ; istackC--) {
 	    int icol = stackC[istackC] ;
 	    double oldU = saveU[istackC] ;
@@ -2607,540 +3122,87 @@ int CglProbing::probe( const OsiSolverInterface & si,
   probe and readying for the next iteration (up probe). The final three lines
   (of about 300) actually restore the row bounds. The rest is cut generation.
 */
+	  if ((rowCuts&0x02) != 0 && goingToTrueBound && !anyColumnCuts)
+	    strengthenCoeff(j,primalTolerance_,justReplace,canReplace,
+	    		    needEffectiveness,si,rowCut,
+	    		    rowCopy,colUpper,colLower,colsol,nstackR,stackR,
+			    rowUpper,rowLower,maxR,minR,realRows,
+			    element,index,info) ;
+/*
+  Restore row bounds.
+*/
 	  for (istackR = 0 ; istackR < nstackR ; istackR++) {
 	    int irow = stackR[istackR] ;
-/*
-  Generate coefficient strengthening cuts if the user has asked for them,
-  and move singletons if possible.
-
-  TODO: It looks like `move singletons' amounts to this: If all variables
-	in the row except the probing variable are column singletons, we
-	should be able to simply transfer them into the objective and let
-	them bang against their implicit bounds. And now that I write that,
-	I'm suspicious. More investigation is required.  -- lh, 101127 --
-
-  TODO: Figure out why goingToTrueBound is relevant here, other than it's
-	set to zero if we're infeasible.  -- lh, 101127 --
-	I think that might be all there is to it.   -- lh, 101128 --
-	Well, maybe not. Check the math for the contained cuts to see if
-	it's valid only for binary variables; when within distance 1 of
-	the upper or lower bound of a general integer; or more generally.
-	GoingToTrueBound indicates the first of these two. -- lh, 110105 --
-
-  TODO: Figure out what the third and fourth comment lines below (`Taken out
-	...') mean. Because MOVE_SINGLETONS is active. If I were to hazard
-	a guess, the problem would be that the constraint system being probed
-	may have been preprocessed from the original and a column that looks
-	like a singleton here may not be a singleton on the original system.
-	Which would explain columnLength2, and why this code is again active.
-
-	But in the end, I'm inclined towards `should be found elsewhere', as
-	in `do this as a preprocessing step.'
-	-- lh, 101127 --
-
-  generate coefficient strengthening cuts (1)
-*/
-	    if ((rowCuts&2) != 0 && goingToTrueBound) {
-	      bool ifCut = anyColumnCuts ;
-/*
-  Start out by working against the row upper bound U(i). Note that we're
-  calculating row activity (sum) and will use it to decide on the viability of
-  generating a cut. So if we've generated column cuts (colsol now violates a
-  bound for some x<j>) then the calculation of row activity will be incorrect.
-
-  TODO: Sort out why anyColumnCuts is an obstacle. Theoretical or practical?
-	Could we use the new bound instead? The guard predates the singleton
-	business.   -- lh, 101128 --
-*/
-	      double gap = rowUpper[irow]-maxR[irow] ;
-	      double sum = 0.0 ;
-	      if (!ifCut && (gap > primalTolerance_ && gap < 1.0e8)) {
-		// see if the strengthened row is a cut
-		// also see if singletons can go to good objective
-		// Taken out as should be found elsewhere
-		// and has to be original column length
-#ifdef MOVE_SINGLETONS
-		bool moveSingletons = true ;
-#endif
-		for (int kk = rowStart[irow] ; kk < rowStart[irow+1] ; kk++) {
-		  int iColumn = column[kk] ;
-		  double value = rowElements[kk] ;
-		  sum += value*colsol[iColumn] ;
-#ifdef MOVE_SINGLETONS
-		  if (moveSingletons && j != iColumn) {
-		    if (colUpper[iColumn] > colLower[iColumn]) {
-		      if (columnLength2[iColumn] != 1) {
-			moveSingletons = false ;
-		      }
-		    }
-		  }
-#endif
-		}
-#ifdef MOVE_SINGLETONS
-/*
-  jjf: can fix any with good costs.
-
-  And room on stackC0. Comparing with similar code in the segment where down
-  and up probes both show feasible, we're pretending that this was already
-  on stackC and hence was copied to stackC0 above.
-
-  TODO: Seems to me that the checks here for column length and bounds are
-	unnecessary. If they passed above, they'll pass here. -- lh, 101127 --
-
-  TODO: Work out the math for this. In my previous passes over this bit of
-	code, I keep coming to the same conclusion: the math is wrong. I
-	need to take a serious run at it. See notes in CglProbingAnn.
-	-- lh, 101128 --
-*/
-		if (moveSingletons) {
-		  for (int kk = rowStart[irow] ;
-		       kk < rowStart[irow+1] ; kk++) {
-		    int iColumn = column[kk] ;
-		    if (j != iColumn) {
-		      if (colUpper[iColumn] > colLower[iColumn]) {
-			if (columnLength2[iColumn] == 1) {
-			  double value = rowElements[kk] ;
-			  if (direction*objective[iColumn]*value < 0.0 &&
-			      !(markC[iColumn]&(tightenLower|tightenUpper))) {
-			    if (nstackC0+1 < maxStack) {
-			      stackC0[nstackC0] = iColumn ;
-			      if (value > 0.0) {
-				lo0[nstackC0] = colUpper[iColumn] ;
-				up0[nstackC0] = colUpper[iColumn] ;
-			      } else {
-				lo0[nstackC0] = colLower[iColumn] ;
-				up0[nstackC0] = colLower[iColumn] ;
-			      }
-			      nstackC0++ ;
-			    }
-			  }
-			}
-		      }
-		    }
-		  }
-		}
-#endif
-/*
-  jjf: can be a cut
-       subtract gap from upper and integer coefficient
-       saveU and saveL spare
-
-  Given b<i> - U<i> > 0 as a result of probing x<j>, we can reduce the
-  coefficient of x<j> and reduce b<i>.
-
-  Borrow saveU and saveL as working arrays; their usefulness ended when stackC
-  processing finished, above.
-
-  TODO: Just what sort of cut are we making here? Look this up when next up
-	at SFU. Must be in the presentation notes.  -- lh, 101128 --
-
-  TODO: Why are we borrowing saveU and saveL? There are method-global element
-	and index arrays used everywhere else.  -- lh, 101128 --
-*/
-		if (sum-gap*colsol[j] > maxR[irow]+primalTolerance_ ||
-		    (info->strengthenRow && rowLower[irow] < -1.0e20)) {
-		  int *index = reinterpret_cast<int *>(saveL) ;
-		  double *element = saveU ;
-		  int n = 0 ;
-		  bool coefficientExists = false ;
-		  double sum2 = 0.0 ;
-/*
-  Generate the coefficients.
-*/
-		  for (int kk = rowStart[irow] ;
-		       kk < rowStart[irow+1] ; kk++) {
-		    int kColumn = column[kk] ;
-		    double el = rowElements[kk] ;
-		    if (kColumn != j) {
-		      index[n] = kColumn ;
-		      element[n++] = el ;
-		    } else {
-		      el = el-gap ;
-		      if (fabs(el) > 1.0e-12) {
-			index[n] = kColumn ;
-			element[n++] = el ;
-		      }
-		      coefficientExists = true ;
-		    }
-		    sum2 += colsol[kColumn]*el ;
-		  }
-		  if (!coefficientExists) {
-		    index[n] = j ;
-		    element[n++] = -gap ;
-		    sum2 -= colsol[j]*gap ;
-		  }
-/*
-  Check effectiveness. Add the cut only if it's sufficiently effective.
-
-  If we're simply replacing an existing constraint, this is a little bit
-  misleading. Effectiveness is set extremely low.
-*/
-		  OsiRowCut rc ;
-		  rc.setLb(-DBL_MAX) ;
-		  double ub = rowUpper[irow]-gap*(colLower[j]+1.0) ;
-		  rc.setUb(ub) ;
-		  double effectiveness = sum2-ub ;
-		  effectiveness =
-		      CoinMax(effectiveness,
-			      (sum-gap*colsol[j]-maxR[irow])/gap) ;
-		  if (!coefficientExists)
-		    effectiveness = CoinMax(1.0e-7,effectiveness) ;
-		  rc.setEffectiveness(effectiveness) ;
-		  //rc.setEffectiveness((sum-gap*colsol[j]-maxR[irow])/gap) ;
-		  if (rc.effectiveness() > needEffectiveness) {
-		    rc.setRow(n,index,element,false) ;
-#if CGL_DEBUG > 0
-		    if (debugger) assert(!debugger->invalidCut(rc)); 
-#endif
-		    // If strengthenRow point to row
-		    //if(info->strengthenRow)
-		    //printf("a point to row %d\n",irow) ;
-#define STRENGTHEN_PRINT
-#		    ifdef STRENGTHEN_PRINT
-		    if (canReplace && rowLower[irow] < -1.0e20) {
-		      printf("Strengthen Cut (1):\n") ;
-		      dump_row(irow,rc.lb(),rc.ub(),
-		      	       nan(""),nan(""),&si,true,false,4,
-			       n,index,element,
-			       1.0e-10,colLower,colUpper) ;
-		      printf("Original Row:\n") ;
-		      int k = rowStart[irow] ;
-		      dump_row(irow,rowLower[irow],rowUpper[irow],
-		      	       minR[irow],maxR[irow],&si,true,false,4,
-			       rowStart[irow+1]-k,&column[k],&rowElements[k],
-			       1.0e-10,colLower,colUpper) ;
-		    }
-#		    endif
-/*
-Can we simply replace the existing constraint?
-
-realRows comes in as a parameter. This is the translation array created if
-we modified the constraint system during preprocessing in gutsOfGenerateCuts.
-
-TODO: Seems a bit disingenuous to fail at replacement now, given that
-effectiveness is artificially low. Notice again the inconsistent use of
-finite infinities on the row lb.  -- lh, 101128 --
-*/
-		    int realRow =
-		      (canReplace && rowLower[irow] < -1.0e20)?(irow):(-1) ;
-		    if (realRows && realRow >= 0)
-		      realRow = realRows[realRow] ;
-		    if (!justReplace) {
-		      rowCut.addCutIfNotDuplicate(rc,realRow) ;
-		    } else if (realRow >= 0) {
-		      double effectiveness = 0.0 ;
-		      for (int i = 0 ; i < n ; i++)
-			effectiveness += fabs(element[i]) ;
-		      if (!info->strengthenRow[realRow] ||
-			  info->strengthenRow[realRow]->effectiveness() > effectiveness) {
-			delete info->strengthenRow[realRow] ;
-			rc.setEffectiveness(effectiveness) ;
-			info->strengthenRow[realRow]=rc.clone() ;
-		      }
-		    }
-		  }
-		}
-	      }
-/*
-And repeat working against the lower bound L(i). As in so many other places
-in this code, it's the identical functionality, with some subtle edits that
-distinguish the L(i) math from the U(i) math.
-*/
-	      gap = minR[irow]-rowLower[irow] ;
-	      if (!ifCut&&(gap>primalTolerance_&&gap<1.0e8)) {
-		// see if the strengthened row is a cut
-		sum =0.0 ;
-		// also see if singletons can go to good objective
-#ifdef MOVE_SINGLETONS
-		bool moveSingletons=true ;
-#endif
-		for (int kk =rowStart[irow];kk<rowStart[irow+1] ;
-		     kk++) {
-		  int iColumn = column[kk] ;
-		  double value = rowElements[kk] ;
-		  sum += value*colsol[iColumn] ;
-#ifdef MOVE_SINGLETONS
-		  if (moveSingletons&&j!=iColumn) {
-		    if (colUpper[iColumn]>colLower[iColumn]) {
-		      if (columnLength2[iColumn]!=1) {
-			moveSingletons=false ;
-		      }
-		    }
-		  }
-#endif
-		}
-#ifdef MOVE_SINGLETONS
-		if (moveSingletons) {
-		  // can fix any with good costs
-		  for (int kk =rowStart[irow];kk<rowStart[irow+1] ;
-		       kk++) {
-		    int iColumn = column[kk] ;
-		    if (j!=iColumn) {
-		      if (colUpper[iColumn]>colLower[iColumn]) {
-			if (columnLength2[iColumn]==1) {
-			  double value = rowElements[kk] ;
-			  if
-			  (direction*objective[iColumn]*value>0.0&&!(markC[iColumn]&(tightenLower|tightenUpper))) {
-			    // Fix
-			    if (nstackC0+1<maxStack) {
-			      stackC0[nstackC0]=iColumn ;
-			      if (value<0.0) {
-				lo0[nstackC0]=colUpper[iColumn] ;
-				up0[nstackC0]=colUpper[iColumn] ;
-			      } else {
-				lo0[nstackC0]=colLower[iColumn] ;
-				up0[nstackC0]=colLower[iColumn] ;
-			      }
-			      nstackC0++ ;
-			    }
-			  }
-			}
-		      }
-		    }
-		  }
-		}
-#endif
-		if (sum+gap*colsol[j]<minR[irow]-primalTolerance_||(info->strengthenRow&&rowUpper[irow]>1.0e20)) {
-		  // can be a cut
-		  // add gap to lower and integer coefficient
-		  // saveU and saveL spare
-		  int * index = reinterpret_cast<int *>(saveL) ;
-		  double * element = saveU ;
-		  int n=0 ;
-		  bool coefficientExists=false ;
-		  double sum2=0.0 ;
-		  for (int kk =rowStart[irow];kk<rowStart[irow+1] ;
-		       kk++) {
-		    int kColumn = column[kk] ;
-		    double el = rowElements[kk] ;
-		    if (kColumn!=j) {
-		      index[n]=kColumn ;
-		      element[n++]=el ;
-		    } else {
-		      el=el+gap ;
-		      if (fabs(el)>1.0e-12) {
-			index[n]=kColumn ;
-			element[n++]=el ;
-		      }
-		      coefficientExists=true ;
-		    }
-		    sum2 += colsol[kColumn]*el ;
-		  }
-		  if (!coefficientExists) {
-		    index[n]=j ;
-		    element[n++]=gap ;
-		    sum2 += colsol[j]*gap ;
-		  }
-		  OsiRowCut rc ;
-		  double lb = rowLower[irow]+gap*(colLower[j]+1.0) ;
-		  rc.setLb(lb) ;
-		  rc.setUb(DBL_MAX) ;
-		  // effectiveness
-		  double effectiveness=lb-sum2 ;
-		  effectiveness = CoinMax(effectiveness,
-					  (minR[irow]-
-					   sum-gap*colsol[j])/gap) ;
-		  if (!coefficientExists)
-		    effectiveness=CoinMax(1.0e-7,
-					  effectiveness) ;
-		  rc.setEffectiveness(effectiveness) ;
-		  if (rc.effectiveness()>needEffectiveness) {
-		    rc.setRow(n,index,element,false) ;
-#if CGL_DEBUG > 0
-		    if (debugger) assert(!debugger->invalidCut(rc)); 
-#endif
-		    //if(info->strengthenRow)
-		    //printf("b point to row %d\n",irow) ;
-#		    ifdef STRENGTHEN_PRINT
-		    if (canReplace && rowUpper[irow] > 1.0e20) {
-		      printf("Strengthen Cut (2):\n") ;
-		      dump_row(irow,rc.lb(),rc.ub(),
-		      	       nan(""),nan(""),&si,true,false,4,
-			       n,index,element,
-			       1.0e-10,colLower,colUpper) ;
-		      printf("Original Row:\n") ;
-		      int k = rowStart[irow] ;
-		      dump_row(irow,rowLower[irow],rowUpper[irow],
-		      	       minR[irow],maxR[irow],&si,true,false,4,
-			       rowStart[irow+1]-k,&column[k],&rowElements[k],
-			       1.0e-10,colLower,colUpper) ;
-		    }
-#		    endif
-
-		    int realRow = (canReplace&&rowUpper[irow]>1.0e20) ? irow : -1 ;
-		    if (realRows&&realRow>=0)
-		      realRow=realRows[realRow] ;
-		    if (!justReplace) {
-		      rowCut.addCutIfNotDuplicate(rc,realRow) ;
-		    } else if (realRow>=0) {
-		      double effectiveness=0.0 ;
-		      for (int i=0;i<n;i++)
-			effectiveness+=fabs(element[i]) ;
-		      if (!info->strengthenRow[realRow]||info->strengthenRow[realRow]->effectiveness()>effectiveness) {
-			delete info->strengthenRow[realRow] ;
-			rc.setEffectiveness(effectiveness) ;
-			info->strengthenRow[realRow]=rc.clone() ;
-		      }
-		    }
-		  }
-		}
-	      }
-	    }    // end generate coefficient strengthening cuts (1)
-/*
-Restore row bounds.
-*/
 	    minR[irow] = saveMin[istackR] ;
 	    maxR[irow] = saveMax[istackR] ;
 	    markR[irow] = -1 ;
 	  }
 	}    // end of code to iterate after first down pass
 /*
-PROBE LOOP: DOWN AND UP FEASIBLE
+  PROBE LOOP: DOWN AND UP FEASIBLE
 
-Again, not quite the full story. Cases remaining:
-b) End of up probe, up and down feasible; in this case we will not
-   iterate.
-c) End of up probe, down feasible, up infeasible; in this case we will
-   iterate to restore the down feasible state.
+  Again, not quite the full story. Cases remaining:
+  b) End of up probe, up and down feasible; in this case we will not
+     iterate.
+  c) End of up probe, down feasible, up infeasible; in this case we will
+     iterate to restore the down feasible state.
 
-The next block deals with case b). We don't want to iterate the
-down/up/down loop, so force iway to oneProbeTooMany. As usual, the move
-singleton code consists of two nearly identical blocks, one working off
-U(i), the next off L(i).
+  The next block deals with case b). We don't want to iterate the
+  down/up/down loop, so force iway to oneProbeTooMany. As usual, the move
+  singleton code consists of two nearly identical blocks, one working off
+  U(i), the next off L(i).
 
-TODO: The conditions guarding the move singleton code here are different than
-      those for pass 0: here there's an added guard using strengthenRow.
-      Just a failure to change all instances? Nor do I see how John's
-      comment (`just at root') is enforced here, unless it's from outside
-      via rowCuts or strengthenRow.
+  TODO: The conditions guarding the move singleton code here are different than
+	those for pass 0: here there's an added guard using strengthenRow.
+	Just a failure to change all instances? Nor do I see how John's
+	comment (`just at root') is enforced here, unless it's from outside
+	via rowCuts or strengthenRow.
 
-      The check for any column cuts is not present, so presumably we can
-      do singleton motion in the presence of column cuts. The check for gap
-      does not have the high end (gap < 1.0e8) test.
+	The check for any column cuts is not present, so presumably we can
+	do singleton motion in the presence of column cuts. The check for gap
+	does not have the high end (gap < 1.0e8) test.
 
-      Note also that here the test for cut generation is moved outside the
-      loop that iterates over rows. Presumably that's because in the
-      previous case, the loop also restored markR, etc.
+	Note also that here the test for cut generation is moved outside the
+	loop that iterates over rows. Presumably that's because in the
+	previous case, the loop also restored markR, etc.
 
-      Note that the code that handles the bound change is considerably
-      different than the previous instance in pass 0. We're adding the
-      changes to stackC rather than stackC0.
-      -- lh, 101128 --
+	Note that the code that handles the bound change is considerably
+	different than the previous instance in pass 0. We're adding the
+	changes to stackC rather than stackC0.
+	-- lh, 101128 --
+
+  Moved the call to disaggCuts up from the common code for b) and c), because
+  c) (up infeasible) sets goingToTrueBound to 0 and we can't execute
+  disaggCuts. Similarly for strengthenCoeff.
 */
 	  else {
 	  if (iway == upProbe &&
 	      feasRecord == (downProbeFeas|upProbeFeas)) {
 	    iway = oneProbeTooMany ;
-#ifdef MOVE_SINGLETONS
-	    // look for singletons that can move (just at root)
-	    if ((rowCuts&2) != 0 &&
-		 goingToTrueBound && info->strengthenRow) {
-	      for (istackR = 0 ; istackR < nstackR ; istackR++) {
-		int irow = stackR[istackR] ;
-		double gap = rowUpper[irow]-maxR[irow] ;
-		if (gap > primalTolerance_) {
-		  // also see if singletons can go to good objective
-		  bool moveSingletons = true ;
-		  for (int kk = rowStart[irow] ;
-		       kk < rowStart[irow+1] ; kk++) {
-		    int iColumn = column[kk] ;
-		    if (moveSingletons && j != iColumn) {
-		      if (colUpper[iColumn] > colLower[iColumn]) {
-			if (columnLength2[iColumn] != 1) {
-			  moveSingletons = false ;
-			}
-		      }
-		    }
-		  }
-		  if (moveSingletons) {
-		    // can fix any with good costs
-		    for (int kk = rowStart[irow] ;
-			 kk < rowStart[irow+1] ; kk++) {
-		      int iColumn = column[kk] ;
-		      if (j != iColumn) {
-			if (colUpper[iColumn] > colLower[iColumn]) {
-			  if (columnLength2[iColumn] == 1) {
-			    double value = rowElements[kk] ;
-			    if (direction*objective[iColumn]*value < 0.0 &&
-				!(markC[iColumn]&(tightenLower|tightenUpper))) {
-			      stackC[nstackC] = iColumn ;
-			      saveL[nstackC] = colLower[iColumn] ;
-			      saveU[nstackC] = colUpper[iColumn] ;
-			      assert(saveU[nstackC] > saveL[nstackC]) ;
-			      if (value > 0.0) {
-				colLower[iColumn] = colUpper[iColumn] ;
-			      } else {
-				colUpper[iColumn] = colLower[iColumn] ;
-			      }
-			      columnGap[iColumn] = -primalTolerance_ ;
-			      assert (nstackC < nCols) ;
-			      nstackC++ ;
-			    }
-			  }
-			}
-		      }
-		    }
-		  }
-		}
-/*
-Repeat move singleton checks, against L(i).
-*/
-		gap = minR[irow]-rowLower[irow] ;
-		if (gap > primalTolerance_) {
-		  // also see if singletons can go to good objective
-		  bool moveSingletons=true ;
-		  for (int kk =rowStart[irow];kk<rowStart[irow+1] ;
-		       kk++) {
-		    int iColumn = column[kk] ;
-		    if (moveSingletons&&j!=iColumn) {
-		      if (colUpper[iColumn]>colLower[iColumn]) {
-			if (columnLength2[iColumn]!=1) {
-			  moveSingletons=false ;
-			}
-		      }
-		    }
-		  }
-		  if (moveSingletons) {
-		    // can fix any with good costs
-		    for (int kk =rowStart[irow];kk<rowStart[irow+1] ;
-		       kk++) {
-		      int iColumn = column[kk] ;
-		      if (j!=iColumn) {
-			if (colUpper[iColumn]>colLower[iColumn]) {
-			  if (columnLength2[iColumn]==1) {
-			    double value = rowElements[kk] ;
-			    if
-			    (direction*objective[iColumn]*value>0.0&&!(markC[iColumn]&(tightenLower|tightenUpper))) {
-			      // Fix
-			      stackC[nstackC]=iColumn ;
-			      saveL[nstackC]=colLower[iColumn] ;
-			      saveU[nstackC]=colUpper[iColumn] ;
-			      assert (saveU[nstackC]>saveL[nstackC]) ;
-			      if (value<0.0) {
-				colLower[iColumn]=colUpper[iColumn] ;
-			      } else {
-				colUpper[iColumn]=colLower[iColumn] ;
-			      }
-			      columnGap[iColumn] = -primalTolerance_ ;
-			      assert (nstackC<nCols) ;
-			      nstackC++ ;
-			    }
-			  }
-			}
-		      }
-		    }
-		  }
-		}
-	      }
-	    }
-#endif
-/*
-jjf: point back to stack
 
-We're done playing with singletons. Get to the real work here. We don't need
-markC any more; coopt it for a cross-reference, var index -> stackC index.
-The +1000 offset allows us to distinguish invalid entries (not all variables
-are on stackC).
+	    singletonRows(j,primalTolerance_,si,rowCopy,markC,
+			  nstackC,stackC,saveL,saveU,
+			  colUpper,colLower,columnGap,
+			  nstackR,stackR,rowUpper,rowLower,maxR,minR) ;
+	    if (goingToTrueBound == 2 && !justReplace) {
+	      disaggCuts(nstackC,probeUp,primalTolerance_,
+			 disaggEffectiveness,si,
+			 rowCut,stackC,colsol,colUpper,colLower,saveU,saveL,
+			 index,element) ;
+	    if ((rowCuts&0x02) != 0 && goingToTrueBound && !anyColumnCuts)
+	      strengthenCoeff(j,primalTolerance_,justReplace,canReplace,
+			      needEffectiveness,si,rowCut,
+			      rowCopy,colUpper,colLower,colsol,nstackR,stackR,
+			      rowUpper,rowLower,maxR,minR,realRows,
+			      element,index,info) ;
+	    }
+/*
+  jjf: point back to stack
+
+  We're done playing with singletons. Get to the real work here. We don't need
+  markC any more; coopt it for a cross-reference, var index -> stackC index.
+  The +1000 offset allows us to distinguish invalid entries (not all variables
+  are on stackC).
 */
 	    for (istackC = nstackC-1 ; istackC >= 0 ; istackC--) {
 	      int icol = stackC[istackC] ;
@@ -3150,10 +3212,10 @@ are on stackC).
 	    int nTot = 0, nFix = 0, nInt = 0 ;
 	    bool ifCut = false ;
 /*
-See if we have bounds improvement. Given a lower bound ld<j> from the
-down probe, a bound lu<j> from the up probe, and the original bound lo<j>,
-the bound we want is max(min(ld<j>,lu<j>),lo<j>). Use a conservative
-tolerance.
+  See if we have bounds improvement. Given a lower bound ld<j> from the
+  down probe, a bound lu<j> from the up probe, and the original bound lo<j>,
+  the bound we want is max(min(ld<j>,lu<j>),lo<j>). Use a conservative
+  tolerance.
 */
 	    for (istackC = 1 ; istackC < nstackC0 ; istackC++) {
 	      int icol = stackC0[istackC] ;
@@ -3179,14 +3241,14 @@ tolerance.
 	      nFix = 0 ;
 	    }
 /*
-Repeat for upper bounds. There's an odd bit of asymmetry here; this loop
-tries to generate a cut if there's no bound improvement.
+  Repeat for upper bounds. There's an odd bit of asymmetry here; this loop
+  tries to generate a cut if there's no bound improvement.
 
-TODO: What, pray tell, is a `two cut'?  Binary variables only, it seems.
-      Judging from the conditions, we're looking for a variable that's
-      fixed at 0 on a down probe and fixed at 1 on an up probe, or vice
-      versa.
-      -- lh, 101128 --
+  TODO: What, pray tell, is a `two cut'?  Binary variables only, it seems.
+	Judging from the conditions, we're looking for a variable that's
+	fixed at 0 on a down probe and fixed at 1 on an up probe, or vice
+	versa.
+	-- lh, 101128 --
 */
 	    for (istackC = 1 ; istackC < nstackC0 ; istackC++) {
 	      int icol = stackC0[istackC] ;
@@ -3224,10 +3286,10 @@ TODO: What, pray tell, is a `two cut'?  Binary variables only, it seems.
 		    index[1] = icol ;
 		    element[0] = -(upperOriginal-lowerOriginal) ;
 /*
-jjf: If zero then - must have been fixed without noticing!
+  jjf: If zero then - must have been fixed without noticing!
 
-TODO: Uh, fixed without noticing?! That's an algorithm problem.
-      -- lh, 101128 --
+  TODO: Uh, fixed without noticing?! That's an algorithm problem.
+	-- lh, 101128 --
 */
 		    if (fabs(element[0]) > 1.0e-8) {
 		      element[1] = 1.0 ;
@@ -3282,30 +3344,23 @@ TODO: Uh, fixed without noticing?! That's an algorithm problem.
 /*
   PROBE LOOP: RESTORE
 
-  And now the code to reset to the initial state. (But it seems to be doing a
-  bit more than that. Looks like some of the actions are related to
-  end-of-pass processing for the up probe, similar to end-of-pass processing
-  for the down probe.
+  And now the code to reset to the initial state.
 */
-	  if (goingToTrueBound == 2 && !justReplace) {
-	    disaggCuts(nstackC,probeUp,primalTolerance_,
-		       disaggEffectiveness,si,
-		       rowCut,stackC,colsol,colUpper,colLower,saveU,saveL,
-		       index,element) ;
-	  }
 	  /* restore all */
 	  for (istackC = nstackC-1 ; istackC >= 0 ; istackC--) {
 	    int icol = stackC[istackC] ;
 	    double oldU = saveU[istackC] ;
 	    double oldL = saveL[istackC] ;
 /*
-TODO: This next bit differs in subtle ways from the restore at the end
-      of pass 0. Here we force markC to show fixed of the bounds are
-      within 1.0e-4 of one another, a fairly broad tolerance; code for
-      the pass 0 restore does not restore fixed status.  Also,
-      we're not distinguishing here between actions for down feasible,
-      up feasible, vs. down feasible, up infeasible.  -- lh, 101128 --
+  TODO: This next bit differs in subtle ways from the restore at the end
+	of the down probe. Here we force markC to show fixed if the bounds are
+	within 1.0e-4 of one another, a fairly broad tolerance; code for
+	the pass 0 restore does not restore fixed status.  Also,
+	we're not distinguishing here between actions for down feasible,
+	up feasible, vs. down feasible, up infeasible.  -- lh, 101128 --
 
+	I still don't see any reason for the restore here to differ from
+	the restore after the down probe.  -- lh, 110113 --
 */
 	    colUpper[icol] = oldU ;
 	    colLower[icol] = oldL ;
@@ -3321,224 +3376,13 @@ TODO: This next bit differs in subtle ways from the restore at the end
 	    }
 	  }
 /*
-End of column restore. On to rows. Looks much like the end of pass 0 except
-that the singleton stuff was done up in the down feasible, up feasible
-block. Presumably we don't want to do it in the down feasible, up infeasible
-case. And we won't generate cuts for up infeasible because goingToTrueBound
-has been forced to zero.
-
-TODO: Note that here we run a separate loop to calculate sum, because we
-      can't piggyback on the singleton loop.  -- lh, 101128 --
-
-TODO: Again, subtle but important differences between this code and the code
-      that follows pass 0.   -- lh, 101128 --
-
-TODO: Recalculation of canReplace seems completely pointless here.
-      -- lh, 101128 --
-
-begin generate coefficient strengthening cuts (2)
+  End of column restore. On to rows.
 */
 	  for (istackR = 0 ; istackR < nstackR ; istackR++) {
 	    int irow = stackR[istackR] ;
-	    // switch off strengthening if not wanted
-	    if ((rowCuts&2) != 0 && goingToTrueBound) {
-	      bool canReplace = info->strengthenRow && (goingToTrueBound==2) ;
-	      bool ifCut = anyColumnCuts ;
-	      double gap = rowUpper[irow]-maxR[irow] ;
-	      double sum = 0.0 ;
-	      if (!ifCut && (gap > primalTolerance_ && gap < 1.0e8)) {
-		// see if the strengthened row is a cut
-		for (int kk = rowStart[irow] ;
-		     kk < rowStart[irow+1] ; kk++) {
-		  sum += rowElements[kk]*colsol[column[kk]] ;
-		}
-/*
-Same commentary as previous code in pass 0 finishing block.
-
-TODO: This condition differs from the pass 0 condition. canReplace replaces
-      a simple info->strengthenRow.  -- lh, 101128 --
-*/
-		if (sum+gap*colsol[j] > rowUpper[irow]+primalTolerance_ ||
-		    (canReplace && rowLower[irow]<-1.e20)) {
-		  int * index = reinterpret_cast<int *>(saveL) ;
-		  double * element = saveU ;
-		  int n=0 ;
-		  bool coefficientExists=false ;
-		  double sum2=0.0 ;
-		  for (int kk =rowStart[irow];kk<rowStart[irow+1] ;
-		       kk++) {
-		    int kColumn = column[kk] ;
-		    double el = rowElements[kk] ;
-		    if (kColumn!=j) {
-		      index[n]=kColumn ;
-		      element[n++]=el ;
-		    } else {
-		      el=el+gap ;
-		      if (fabs(el)>1.0e-12) {
-			index[n]=kColumn ;
-			element[n++]=el ;
-		      }
-		      coefficientExists=true ;
-		    }
-		    sum2 += colsol[kColumn]*el ;
-		  }
-		  if (!coefficientExists) {
-		    index[n]=j ;
-		    element[n++]=gap ;
-		    sum2 += colsol[j]*gap ;
-		  }
-		  OsiRowCut rc ;
-		  rc.setLb(-DBL_MAX) ;
-		  double ub = rowUpper[irow]+gap*(colUpper[j]-1.0) ;
-		  rc.setUb(ub) ;
-		  // effectiveness
-		  double effectiveness=sum2-ub ;
-		  effectiveness = CoinMax(effectiveness,
-					  (sum+gap*colsol[j]-
-					   rowUpper[irow])/gap) ;
-		  if (!coefficientExists)
-		    effectiveness=CoinMax(1.0e-7,
-					  effectiveness) ;
-		  rc.setEffectiveness(effectiveness) ;
-		  if (rc.effectiveness()>needEffectiveness) {
-		    rc.setRow(n,index,element,false) ;
-#if CGL_DEBUG > 0
-		    if (debugger) assert(!debugger->invalidCut(rc)); 
-#endif
-		    //if(canReplace)
-		    //printf("c point to row %d\n",irow) ;
-#		    ifdef STRENGTHEN_PRINT
-		    if (canReplace && rowLower[irow] < -1.0e20) {
-		      printf("Strengthen Cut (3):\n") ;
-		      dump_row(irow,rc.lb(),rc.ub(),
-		      	       nan(""),nan(""),&si,true,false,4,
-			       n,index,element,
-			       1.0e-10,colLower,colUpper) ;
-		      printf("Original Row:\n") ;
-		      int k = rowStart[irow] ;
-		      dump_row(irow,rowLower[irow],rowUpper[irow],
-		      	       minR[irow],maxR[irow],&si,true,false,4,
-			       rowStart[irow+1]-k,&column[k],&rowElements[k],
-			       1.0e-10,colLower,colUpper) ;
-		    }
-#		    endif
-		    int realRow = (canReplace&&rowLower[irow]<-1.0e20) ? irow : -1 ;
-		    if (realRows&&realRow>=0)
-		      realRow=realRows[realRow] ;
-		    if (!justReplace) {
-		      rowCut.addCutIfNotDuplicate(rc,realRow) ;
-		    } else if (realRow>=0) {
-		      double effectiveness=0.0 ;
-		      for (int i=0;i<n;i++)
-			effectiveness+=fabs(element[i]) ;
-		      if (!info->strengthenRow[realRow]||info->strengthenRow[realRow]->effectiveness()>effectiveness) {
-			delete info->strengthenRow[realRow] ;
-			rc.setEffectiveness(effectiveness) ;
-			info->strengthenRow[realRow]=rc.clone() ;
-		      }
-		    }
-		  }
-		}
-	      }
-/*
-As with pass 0 code, repeat working against row lower bound.
-*/
-	      gap = minR[irow]-rowLower[irow] ;
-	      if (!ifCut&&(gap>primalTolerance_&&gap<1.0e8)) {
-		// see if the strengthened row is a cut
-		if (!sum) {
-		  for (int kk =rowStart[irow];kk<rowStart[irow+1] ;
-		       kk++) {
-		    sum += rowElements[kk]*colsol[column[kk]] ;
-		  }
-		}
-		if (sum-gap*colsol[j]<rowLower[irow]-primalTolerance_||(canReplace&&rowUpper[irow]>1.0e20)) {
-		  // can be a cut
-		  // subtract gap from integer coefficient
-		  // saveU and saveL spare
-		  int * index = reinterpret_cast<int *>(saveL) ;
-		  double * element = saveU ;
-		  int n=0 ;
-		  bool coefficientExists=false ;
-		  double sum2=0.0 ;
-		  for (int kk =rowStart[irow];kk<rowStart[irow+1] ;
-		       kk++) {
-		    int kColumn = column[kk] ;
-		    double el = rowElements[kk] ;
-		    if (kColumn!=j) {
-		      index[n]=kColumn ;
-		      element[n++]=el ;
-		    } else {
-		      el=el-gap ;
-		      if (fabs(el)>1.0e-12) {
-			index[n]=kColumn ;
-			element[n++]=el ;
-		      }
-		      coefficientExists=true ;
-		    }
-		    sum2 += colsol[kColumn]*el ;
-		  }
-		  if (!coefficientExists) {
-		    index[n]=j ;
-		    element[n++]=-gap ;
-		    sum2 -= colsol[j]*gap ;
-		  }
-		  OsiRowCut rc ;
-		  double lb = rowLower[irow]-gap*(colUpper[j]-1) ;
-		  rc.setLb(lb) ;
-		  rc.setUb(DBL_MAX) ;
-		  double effectiveness=lb-sum2 ;
-		  effectiveness = CoinMax(effectiveness,
-					  (rowLower[irow]-
-					   sum+gap*colsol[j])/gap) ;
-		  if (!coefficientExists)
-		    effectiveness=CoinMax(1.0e-7,
-					  effectiveness) ;
-		  rc.setEffectiveness(effectiveness) ;
-		  if (rc.effectiveness()>needEffectiveness) {
-		    rc.setRow(n,index,element,false) ;
-#if CGL_DEBUG > 0
-		    if (debugger) assert(!debugger->invalidCut(rc)); 
-#endif
-		    //if(canReplace)
-		    //printf("d point to row %d\n",irow) ;
-#		    ifdef STRENGTHEN_PRINT
-		    if (canReplace && rowUpper[irow] > 1.0e20) {
-		      printf("Strengthen Cut (4):\n") ;
-		      dump_row(irow,rc.lb(),rc.ub(),
-		      	       nan(""),nan(""),&si,true,false,4,
-			       n,index,element,
-			       1.0e-10,colLower,colUpper) ;
-		      printf("Original Row:\n") ;
-		      int k = rowStart[irow] ;
-		      dump_row(irow,rowLower[irow],rowUpper[irow],
-		      	       minR[irow],maxR[irow],&si,true,false,4,
-			       rowStart[irow+1]-k,&column[k],&rowElements[k],
-			       1.0e-10,colLower,colUpper) ;
-		    }
-#		    endif
-		    int realRow = (canReplace&&rowUpper[irow]>1.0e20) ? irow : -1 ;
-		    if (realRows&&realRow>=0)
-		      realRow=realRows[realRow] ;
-		    if (!justReplace) {
-		      rowCut.addCutIfNotDuplicate(rc,realRow) ;
-		    } else if (realRow>=0) {
-		      double effectiveness=0.0 ;
-		      for (int i=0;i<n;i++)
-			effectiveness+=fabs(element[i]) ;
-		      if (!info->strengthenRow[realRow]||info->strengthenRow[realRow]->effectiveness()>effectiveness) {
-			delete info->strengthenRow[realRow] ;
-			rc.setEffectiveness(effectiveness) ;
-			info->strengthenRow[realRow]=rc.clone() ;
-		      }
-		    }
-		  }
-		}
-	      }
-	    }    // end generate coefficient strengthening cuts (2)
-	    minR[irow]=saveMin[istackR] ;
-	    maxR[irow]=saveMax[istackR] ;
-	    markR[irow]=-1 ;
+	    minR[irow] = saveMin[istackR] ;
+	    maxR[irow] = saveMax[istackR] ;
+	    markR[irow] = -1 ;
 	  }
 	}       // end of PROBE: DOWN AND UP FEASIBLE
       }     // PROBE LOOP: END
