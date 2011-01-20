@@ -5757,12 +5757,14 @@ int CglProbing::probe( const OsiSolverInterface & si,
     } else {
       for (int i=0;i<nRows;i++) {
 	int realRow=realRows[i];
-	OsiRowCut * cut = info->strengthenRow[realRow];
-	if (realRow>=0&&cut) {
+	if (realRow>=0) {
+	  OsiRowCut * cut = info->strengthenRow[realRow];
+	  if (cut) {
 #ifdef CLP_INVESTIGATE
-	  printf("Row %d, real row %d effectiveness %g\n",i,realRow,cut->effectiveness());
+	    printf("Row %d, real row %d effectiveness %g\n",i,realRow,cut->effectiveness());
 #endif
-	  cs.insert(cut);
+	    cs.insert(cut);
+	  }
 	}
       }
     }
