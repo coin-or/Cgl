@@ -19,7 +19,7 @@
   and nothing else. Values greater than zero enable debugging output, the
   methods declared below, and increasingly expensive checks.
 */
-#define CGL_DEBUG 1
+#define CGL_DEBUG 0
 
 #if defined(CGL_DEBUG)
 # ifdef NDEBUG
@@ -33,6 +33,15 @@
 
 #include "OsiSolverInterface.hpp"
 #include "OsiRowCutDebugger.hpp"
+
+namespace CglProbingDebug {
+
+/*! \brief Verify integrity of a column-major matrix.
+
+  Scans the index and coefficient arrays looking for obviously bogus values.
+  Can be handy when trying to pin down where a matrix is getting corrupted.
+*/
+int verifyMtx (const CoinPackedMatrix *const mtx) ;
 
 /*! \brief Check column bounds against optimal solution
 
@@ -73,6 +82,8 @@ void dump_row (int i, double rhsLow, double rhsHi, double lhsLow, double lhsHi,
 	       bool unfixed, bool fixed, int indent,
 	       int rowLen, const int *indices, const double *coeffs,
 	       double tol, const double *vlbs, const double *vubs) ;
+
+}  // end namespace CglProbingDebug
 
 #endif  // CGL_DEBUG > 0
 

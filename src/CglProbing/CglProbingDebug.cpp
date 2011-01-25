@@ -24,7 +24,11 @@
 #include "CglProbing.hpp"
 #include "CglProbingDebug.hpp"
 
+#include "CoinPackedMatrix.hpp"
+
 #if CGL_DEBUG > 0
+
+namespace CglProbingDebug {
 
 /*
   This function checks that the column bounds passed in cut do not cut off
@@ -69,6 +73,95 @@ void checkBounds (const OsiSolverInterface &si, const OsiColCut &cut)
   }
 }
 
+/*
+  Utility to scan a packed matrix for damage. Not exhaustive, but occasionally
+  useful. Assumes column-major.
+*/
+
+int verifyMtx (const CoinPackedMatrix *const mtx)
+
+{
+  const double smallCoeff = 1.0e-50 ;
+  const double largeCoeff = 1.0e50 ;
+
+  int n = mtx->getNumCols() ;
+  int m = mtx->getNumRows() ;
+  int e = mtx->getNumElements() ;
+
+  int majLen, minLen ;
+  std::string majName, minName ;
+
+  if (mtx->isColOrdered()) {
+    majLen = n ;
+    majName = "col" ;
+    minLen = m ;
+    minName = "row" ;
+  } else {
+    majLen = m ;
+    majName = "row" ;
+    minLen = n ;
+    minName = "col" ;
+  }
+
+  double extraGap = mtx->getExtraGap() ;
+  double extraMajor = mtx->getExtraMajor() ;
+
+  std::cout
+    << " Matrix is " << ((mtx->isColOrdered())?"column":"row") << "-major, "
+    << m << " rows X " << n << " cols; ex maj " << extraMajor
+    << ", ex gap " << extraGap << "." << std::endl ;
+  if (mtx->hasGaps())
+    std::cout << "  matrix has gaps." << std::endl ;
+
+  const CoinBigIndex *const majStarts = mtx->getVectorStarts() ;
+  const int *const majLens = mtx->getVectorLengths() ;
+  const int *const minInds = mtx->getIndices() ;
+  const double *const coeffs = mtx->getElements() ;
+/*
+  Scan the major dimension and make sure that the minor dimension indices are
+  reasonable.
+*/
+  int errs = 0 ;
+
+  for (int majndx = 0 ; majndx < majLen ; majndx++) {
+    CoinBigIndex majStart = majStarts[majndx] ;
+    CoinBigIndex majStartp1 = majStarts[majndx+1] ;
+    int majLen = majLens[majndx] ;
+
+    if (majLen != (majStartp1-majStart)) {
+      std::cout
+        << "  " << majName << majndx
+	<< ": (end+1)-start = " << majStartp1 << " - " << majStart
+	<< " = " << majStartp1-majStart << " != len = " << majLen
+	<< "." << std::endl ;
+      // errs++ ;
+    }
+
+    for (CoinBigIndex ii = majStart ;  ii < majLen ; ii++) {
+      int minndx = minInds[ii] ;
+      if (minndx < 0 || minndx >= minLen) {
+        std::cout
+	  << "  " << majName << " " << majndx << ": "
+	  << minName << " index " << ii << " is " << minndx
+	  << ", should be between 0 and " << minLen-1 << "." << std::endl ;
+	errs++ ;
+      }
+      double aij = coeffs[ii] ;
+      if (CoinIsnan(aij) ||
+          CoinAbs(aij) > largeCoeff || CoinAbs(aij) < smallCoeff) {
+        std::cout
+	  << "  a<" << majndx << "," << minndx << "> = " << aij
+	  << " appears bogus." << std::endl ;
+	errs++ ;
+      }
+    }
+  }
+  if (errs > 0) {
+    std::cout << "  Detected " << errs << " errors in matrix." << std::endl ;
+  }
+
+  return (errs) ;
+}
 
 /*
   Debugging utility to print row information. Far too many parameters, but
@@ -230,5 +323,7 @@ void dumpSoln (const OsiSolverInterface &si)
   std::cout << "." << std::endl ;
   
   return ; }
+
+}  // end namespace CglProbingDebug
 
 #endif  // CGL_DEBUG > 0

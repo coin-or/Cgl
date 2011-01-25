@@ -16,7 +16,6 @@
 #define PROBING100 0
 
 // #define PRINT_DEBUG
-// #define CGL_DEBUG 1
 // #undef NDEBUG
 
 #include "CoinPackedMatrix.hpp"
@@ -283,7 +282,7 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
 
 # if CGL_DEBUG > 0
   std::cout
-    << "Leaving CglProbing::generateCutsAndModify, return "
+    << "Leaving CglProbing::generateCutsAndModify, infeas "
     << ninfeas << std::endl ;
 # endif
 
@@ -629,6 +628,11 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   if (!info->inTree && !info->pass) {
     feasible = analyze(&si,intVar,colLower,colUpper) ;
   }
+# if CGL_DEBUG > 1
+  std::cout
+   << "  Analyze completed; " << ((feasible)?"feasible":"infeasible")
+   << "." << std::endl ;
+# endif
 /*
   Attempt to tighten bounds based on reduced costs. Consider movement by +/-1
   and use that as a filter. For integer variables, this will fix the variable
@@ -725,11 +729,11 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   // Get objective offset
   double offset ;
   si.getDblParam(OsiObjOffset,offset) ;
-#ifdef COIN_DEVELOP
+# if CGL_DEBUG > 3
   // print it just once
   if (offset && !info->inTree && !info->pass) 
     printf("CglProbing obj offset %g\n",offset) ;
-#endif
+# endif
 /*
   If we have a snapshot handy, most of the setup is done. Otherwise, we need to
   create row- and column-major copies of the constraint matrix. If the client
@@ -997,7 +1001,7 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 */
 	  int nPlus = 0 ;
 	  int nMinus = 0 ;
-	  for (CoinBigIndex j = rowStart[i] ; j < rowStart[i+1] ; j++) {
+	  for (CoinBigIndex j = rowStart[i] ; j < rowLength[i] ; j++) {
 	    int jColumn = column[j] ;
 	    if (intVar[jColumn] &&
 		colLower[jColumn] == 0.0 && colUpper[jColumn] == 1.0) {
@@ -1240,13 +1244,13 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   End of Stage 1.
 */
 
-#if CGL_DEBUG > 0
-  const OsiRowCutDebugger * debugger = si.getRowCutDebugger() ;
+# if CGL_DEBUG > 0
+  const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
   if (debugger && !debugger->onOptimalPath(si))
     debugger = NULL ;
-#else
+# else
   const OsiRowCutDebugger * debugger = NULL ;
-#endif
+# endif
 
 /*
   Begin Stage 2
@@ -1359,9 +1363,9 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 	  } else {
 	    cc.setEffectiveness(1.0e-5) ;
 	  }
-#if CGL_DEBUG > 0
-	  checkBounds(si,cc) ;
-#endif
+#         if CGL_DEBUG > 0
+	  CglProbingDebug::checkBounds(si,cc) ;
+#         endif
 	  cs.insert(cc) ;
 	}
       }  // end create column cuts block
@@ -1382,9 +1386,9 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 	mechanical level, tighten does not fill in minR, maxR, markR.
 	-- lh, 100923 --
 */
-        tighten2(colLower,colUpper,column,rowElements,
-                 rowStart,rowLength,rowLower,rowUpper,
-                 minR,maxR,markR,nRows) ;
+        calcRowBounds(colLower,colUpper,column,rowElements,
+		      rowStart,rowLength,rowLower,rowUpper,
+		      minR,maxR,markR,nRows) ;
 /*
   Decide what to look at. Mode 1 is unsatisfied variables only; mode 2 is all
   variables.
@@ -1529,12 +1533,12 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   -- lh, 101021 --
 
   TODO: Check out how we can get away with reordering the major operations
-	here. In the mode != 0 block, it's tighten2; select & sort; probe.
-	Here, it's select and sort; tighten2; probe.  -- lh, 101021 --
+	here. In the mode != 0 block, it's calcRowBounds; select & sort; probe.
+	Here, it's select and sort; calcRowBounds; probe.  -- lh, 101021 --
 
-	Now I think about it, there's no problem. Tighten2 flags rows worth
-	processing, which is independent of columns worth processing. Order
-	makes no difference.  -- lh, 101125 --
+	Now I think about it, there's no problem. calcRowBounds flags
+	rows worth processing, which is independent of columns worth
+	processing. Order makes no difference.	-- lh, 101125 --
 
 */
     assert(numberIntegers == numberIntegers_) ;
@@ -1561,7 +1565,7 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
     // std::sort(lookedAt_,lookedAt_+numberThisTime_) ;
     delete [] array ;
     // get min max etc for rows
-    tighten2(colLower, colUpper, column, rowElements,
+    calcRowBounds(colLower, colUpper, column, rowElements,
 	     rowStart, rowLength, rowLower, rowUpper,
 	     minR , maxR , markR, nRows) ;
 /*
@@ -2298,8 +2302,19 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 
 # if CGL_DEBUG > 0
   std::cout
-    << "Leaving CglProbing::gutsOfGenerateCuts, return "
-    << ninfeas << std::endl ;
+    << "Leaving CglProbing::gutsOfGenerateCuts, "
+    << cs.sizeRowCuts() << " row cuts, " << cs.sizeColCuts()
+    << " col cuts, infeas " << ninfeas << std::endl ;
+  debugger = si.getRowCutDebugger() ;
+  if (debugger) {
+    debugger->validateCuts(cs,0,cs.sizeCuts()) ;
+# if CGL_DEBUG > 2
+    for (OsiCuts::iterator oneCut = cs.begin() ; oneCut != cs.end() ; oneCut++)
+      (*oneCut)->print() ;
+# endif
+  } else {
+    std::cout << "  !! Not on optimal path." << std::endl ;
+  }
 # endif
 
   return ninfeas ;
@@ -3152,7 +3167,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		  cc.setEffectiveness(1.0e-5);
 		}
 #if CGL_DEBUG > 0
-		checkBounds(si,cc);
+		CglProbingDebug::checkBounds(si,cc);
 #endif
 		cs.insert(cc);
 	      }
@@ -3533,7 +3548,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		      cc.setEffectiveness(1.0e-5);
 		    }
 #if CGL_DEBUG > 0
-		    checkBounds(si,cc);
+		    CglProbingDebug::checkBounds(si,cc);
 #endif
 		    cs.insert(cc);
 		  }
@@ -4571,7 +4586,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                 cc.setEffectiveness(1.0e-5);
               }
 #if CGL_DEBUG > 0
-              checkBounds(si,cc);
+              CglProbingDebug::checkBounds(si,cc);
 #endif
               cs.insert(cc);
             }
@@ -4838,7 +4853,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                     cc.setEffectiveness(1.0e-5);
                   }
 #if CGL_DEBUG > 0
-                  checkBounds(si,cc);
+                  CglProbingDebug::checkBounds(si,cc);
 #endif
                   cs.insert(cc);
                 }

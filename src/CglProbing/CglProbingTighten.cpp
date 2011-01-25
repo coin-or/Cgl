@@ -274,13 +274,13 @@ CglProbing::tighten(double *colLower, double * colUpper,
 */
 
 void 
-CglProbing::tighten2(double *colLower, double * colUpper,
-		     const int *column, const double *rowElements, 
-		     const CoinBigIndex *rowStart, 
-		     const int * rowLength,
-		     double *rowLower, double *rowUpper, 
-		     double * minR, double * maxR, int * markR,
-		     int nRows) const
+CglProbing::calcRowBounds(double *colLower, double * colUpper,
+			     const int *column, const double *rowElements, 
+			     const CoinBigIndex *rowStart, 
+			     const int * rowLength,
+			     double *rowLower, double *rowUpper, 
+			     double * minR, double * maxR, int * markR,
+			     int nRows) const
 {
   int i, j, k, kre ;
   int krs ;
@@ -288,7 +288,7 @@ CglProbing::tighten2(double *colLower, double * colUpper,
   double dmaxup, dmaxdown ;
 
 # if CGL_DEBUG > 0
-  std::cout << "Entering CglProbing::tighten2." << std::endl ;
+  std::cout << "Entering CglProbing::calcRowBounds." << std::endl ;
 # endif
 /*
   Open a loop to step through the rows, calculating L<i> and U<i> for each row
@@ -377,7 +377,7 @@ CglProbing::tighten2(double *colLower, double * colUpper,
   }
 
 # if CGL_DEBUG > 0
-  std::cout << "Leaving CglProbing::tighten2." << std::endl ;
+  std::cout << "Leaving CglProbing::calcRowBounds." << std::endl ;
 # endif
 
 }

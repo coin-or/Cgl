@@ -400,14 +400,23 @@ private:
               double *rowLower, double *rowUpper, 
               int nRows,int nCols,char * intVar,int maxpass,
               double tolerance) const;
-  /// This just sets minima and maxima on rows
-  void tighten2(double *colLower, double * colUpper,
-                const int *column, const double *rowElements, 
-                const CoinBigIndex *rowStart,
-		const int * rowLength,
-                double *rowLower, double *rowUpper, 
-                double * minR, double * maxR, int * markR,
-                int nRows) const;
+
+  /*! \brief Calculate constraint left-hand-side bounds
+
+    Calculate lower and upper bounds on the constraint lhs based on variable
+    lower and upper bounds. The new bounds are loaded into minR and maxR.
+    The array markR will be set as:
+    - -1: constraint is useful for further propagation (at least one lhs
+          bound finite)
+    - -2: constraint is not useful (both lhs bounds infinite).
+    In practice, finite translates as `reasonable magnitude'.
+  */
+  void calcRowBounds(double *colLower, double *colUpper,
+		     const int *column, const double *rowElements, 
+		     const CoinBigIndex *rowStart, const int *rowLength,
+		     double *rowLower, double *rowUpper, 
+		     double *minR, double *maxR, int *markR,
+		     int nRows) const;
   //@}
 
   // Private member data
