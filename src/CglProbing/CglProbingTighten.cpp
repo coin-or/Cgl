@@ -254,8 +254,8 @@ CglProbing::tighten(double *colLower, double * colUpper,
   worth processing the row when propagating bounds.
 
   TODO: There doesn't seem to be any good reason to pass the guts of the row
-	and column copies as parameters. It should be easy enough to unpack
-	them.  -- lh, 100924 --
+	copy as parameters. It should be easy enough to unpack them.
+	-- lh, 100924 --
 
   TODO: minR and maxR will have artificial values of +/- 1e60 installed as
 	yet another arbitrary infinity.  -- lh, 100924 --
@@ -273,14 +273,13 @@ CglProbing::tighten(double *colLower, double * colUpper,
 	on variables. Look for CGL_BOGUS_1E60_BOUND.  -- lh, 100924 --
 */
 
-void 
-CglProbing::calcRowBounds(double *colLower, double * colUpper,
-			     const int *column, const double *rowElements, 
-			     const CoinBigIndex *rowStart, 
-			     const int * rowLength,
-			     double *rowLower, double *rowUpper, 
-			     double * minR, double * maxR, int * markR,
-			     int nRows) const
+void CglProbing::calcRowBounds (double *colLower, double * colUpper,
+			        const int *column, const double *rowElements, 
+			        const CoinBigIndex *rowStart, 
+			        const int * rowLength,
+			        double *rowLower, double *rowUpper, 
+			        double * minR, double * maxR, int * markR,
+			        int nRows) const
 {
   int i, j, k, kre ;
   int krs ;
@@ -369,10 +368,14 @@ CglProbing::calcRowBounds(double *colLower, double * colUpper,
       markR[i] = -2 ;
 #     endif
     }
-#   if CGL_DEBUG > 1
-    dump_row(i,rowLower[i],rowUpper[i],minR[i],maxR[i],0,false,false,0,
-	     rowLength[i],&column[krs],&rowElements[krs],
-	     primalTolerance_,colLower,colUpper) ;
+#   if CGL_DEBUG > 2
+    // Just in case we executed the else and didn't set these ...
+    krs = rowStart[i] ;
+    kre = rowStart[i]+rowLength[i] ;
+    CglProbingDebug::dump_row(i,rowLower[i],rowUpper[i],minR[i],maxR[i],
+    			      0,false,false,0,
+			      rowLength[i],&column[krs],&rowElements[krs],
+			      primalTolerance_,colLower,colUpper) ;
 #   endif
   }
 

@@ -23,16 +23,6 @@
 #include "CglProbingRowCut.hpp"
 #include "CglProbingDebug.hpp"
 
-/*
-  PROBING_EXTRA_STUFF has been false since June 2006, so anything guarded by
-  this symbol is likely to be extremely dusty.
-*/
-//#define PROBING_EXTRA_STUFF true
-#define PROBING_EXTRA_STUFF false
-// Seems to be unused  -- lh, 101202 --
-// #define FIXED_ALLOWANCE 10
-#define SIZE_ROW_MULT 4
-#define SIZE_ROW_ADD 2000
 
 typedef struct {double infeasibility;int sequence;} double_int_pair;
 class double_int_pair_compare {
@@ -48,6 +38,808 @@ public:
 static int nPath=0;
 #endif
 
+namespace {
+/*
+  This method will attempt to identify variables that will naturally take on
+  integer values but were not originally identified as such, and mark them as
+  integer. Upper and lower bounds are forced to integrality.
+  
+  Executed once, at first cut generation pass at the root.
+
+  Which begs various questions:
+    * Why not execute this independently, before any cut generation occurs?
+    * Why not execute repeatedly, as the problem is simplified due to fixed
+      variables?
+
+  The expression abs(x - floor(x+.5)) evaluates to zero when x is integer and
+  is nonzero otherwise. Farther down in the code, there's an odd-looking test
+  that checks abs(1/aij - floor(1/aij + .5)). What we're looking for is
+  coefficients aij = 1/k, k integer. This guarantees that b/aij is integer
+  as long as b is integer.
+*/
+
+bool analyze (const OsiSolverInterface *solverX, char *intVar,
+	      double *lower, double *upper)
+{
+  const double e20Inf = 1.0e20 ;
+  const int changedToInt = 77 ;
+
+  /*
+    I don't see why we clone the solver here. There are no modifications to
+    anything except the parameters intVar, lower, and upper.
+  */
+  OsiSolverInterface *solver = solverX->clone() ;
+  const double *objective = solver->getObjCoefficients() ;
+  int numberColumns = solver->getNumCols() ;
+  int numberRows = solver->getNumRows() ;
+  double direction = solver->getObjSense() ;
+  int iRow,iColumn ;
+
+  /*
+    Nor do I understand why we make copies of the matrix. Two, in fact! Surely
+    we could ask the OSI for these. Aaaaah, but then we might be triggering
+    changes inside the OSI? Shouldn't matter, getMatrixBy* are const.
+  */
+  // Row copy
+  CoinPackedMatrix matrixByRow(*solver->getMatrixByRow()) ;
+  const double *elementByRow = matrixByRow.getElements() ;
+  const int *column = matrixByRow.getIndices() ;
+  const CoinBigIndex *rowStart = matrixByRow.getVectorStarts() ;
+  const int *rowLength = matrixByRow.getVectorLengths() ;
+
+  // Column copy
+  CoinPackedMatrix matrixByCol(*solver->getMatrixByCol()) ;
+  const double *element = matrixByCol.getElements() ;
+  const int *row = matrixByCol.getIndices() ;
+  const CoinBigIndex *columnStart = matrixByCol.getVectorStarts() ;
+  const int *columnLength = matrixByCol.getVectorLengths() ;
+
+  const double * rowLower = solver->getRowLower() ;
+  const double * rowUpper = solver->getRowUpper() ;
+
+  char *ignore = new char [numberRows] ;
+  int *which = new int[numberRows] ;
+  double *changeRhs = new double[numberRows] ;
+  memset(changeRhs,0,numberRows*sizeof(double)) ;
+  memset(ignore,0,numberRows) ;
+
+  int numberChanged = 0 ;
+  bool finished = false ;
+/*
+  Open main analysis loop. Keep going until nothing changes.
+*/
+  while (!finished) {
+    int saveNumberChanged = numberChanged ;
+/*
+  Open loop to scan each constraint. With luck, we can conclude that some
+  variable must be integer. With less luck, the constraint will not prevent the
+  variable from being integer.
+*/
+    for (iRow = 0 ; iRow < numberRows ; iRow++) {
+      int numberContinuous = 0 ;
+      double value1 = 0.0,value2 = 0.0 ;
+      bool allIntegerCoeff = true ;
+      double sumFixed = 0.0 ;
+      int jColumn1 = -1,jColumn2 = -1 ;
+/*
+  Scan the coefficients of the constraint and accumulate some information:
+    * Contribution of fixed variables.
+    * Count of continuous variables, and column index and coefficients for
+      the first and last continuous variable.
+    * A boolean, allIntegerCoeff, true if all coefficients of unfixed
+      integer variables are integer.
+*/
+      for (CoinBigIndex j = rowStart[iRow] ;
+	   j < rowStart[iRow]+rowLength[iRow] ; j++) {
+        int jColumn = column[j] ;
+        double value = elementByRow[j] ;
+        if (upper[jColumn] > lower[jColumn]+1.0e-8) {
+          if (!intVar[jColumn]) {
+            if (numberContinuous == 0) {
+              jColumn1 = jColumn ;
+              value1 = value ;
+            } else {
+              jColumn2 = jColumn ;
+              value2 = value ;
+            }
+            numberContinuous++ ;
+          } else {
+            if (fabs(value-floor(value+0.5)) > 1.0e-12)
+              allIntegerCoeff = false ;
+          }
+        } else {
+          sumFixed += lower[jColumn]*value ;
+        }
+      }
+/*
+  See if the row bounds are integer after adjusting for the contribution of
+  fixed variables. Serendipitous cancellation is possible here (if unlikely).
+  The fixed contribution could change a non-integer bound to an integer.
+*/
+      double low = rowLower[iRow] ;
+      if (low > -e20Inf) {
+        low -= sumFixed ;
+        if (fabs(low-floor(low+0.5)) > 1.0e-12)
+          allIntegerCoeff = false ;
+      }
+      double up = rowUpper[iRow] ;
+      if (up<e20Inf) {
+        up -= sumFixed ;
+        if (fabs(up-floor(up+0.5)) > 1.0e-12)
+          allIntegerCoeff = false ;
+      }
+/*
+  To make progress, it must be true that the coefficients of all unfixed
+  integer variables are integer and the row bounds are integer.
+*/
+      if (!allIntegerCoeff) continue ;
+/*
+  Case 1: We have a single continuous variable to consider.
+
+  If a<ij> is of the form 1/k, k integer, then x<j> can be integer. Put another
+  way, this constraint will not prevent integrality and we can ignore it in
+  further processing.  An equality forces integrality.
+
+  So, for an equality with one continuous variable, shouldn't we mark the
+  variable as `cannot be declared integer' so we don't waste time in subsequent
+  passes?
+*/
+      if (numberContinuous == 1) {
+        if (low == up) {
+          if (fabs(value1) > 1.0e-3) {
+            value1 = 1.0/value1 ;
+            if (fabs(value1-floor(value1+0.5)) < 1.0e-12) {
+              numberChanged++ ;
+              intVar[jColumn1] = changedToInt ;
+            }
+          }
+        } else {
+          if (fabs(value1) > 1.0e-3) {
+            value1 = 1.0/value1 ;
+            if (fabs(value1-floor(value1+0.5)) < 1.0e-12) {
+              ignore[iRow] = 1 ;
+            }
+          }
+        }
+      } else
+/*
+  Case 2: Two continuous variables. 
+
+  John's comment is `need general theory - for now just look at 2 cases'. I've
+  worked out the general theory. See the paper documentation. The code needs
+  to be rewritten. What's here is overly restrictive for case 2.1 and wrong for
+  case 2.2.
+
+  2.1) Constraint is (integer lhs) + x<1> - x<2> = (integer rhs), x<1> and x<2>
+     have lower bounds of zero and do not appear in any other constraint.
+     The overall contribution to the objective, (c<1>+c<2>), is unfavourable.
+     Consider any given value of (rhs-lhs) = (integer). Some x<i> will head
+     towards infinity, the other towards zero, modulo finite bounds and
+     feasibility. See the paper documentation.
+
+  2.2) Constraint as above but two coefficients in each column. The second
+     coefficients feed into G/L row(s) which will try and minimize. Also
+     consider that the second coefficients may be in the same row. Code as
+     written is incorrect.
+
+  Case 2.2) has been disabled from the start (with a note that says `take out
+  until fixed').
+*/
+      if (numberContinuous == 2) {
+        if (low == up) {
+          if (fabs(value1) == 1.0 && value1*value2 == -1.0 &&
+	      !lower[jColumn1] && !lower[jColumn2] &&
+	      columnLength[jColumn1] == 1 && columnLength[jColumn2] == 1) {
+            int n = 0 ;
+            int i ;
+            double objChange =
+		direction*(objective[jColumn1]+objective[jColumn2]) ;
+            double bound = CoinMin(upper[jColumn1],upper[jColumn2]) ;
+            bound = CoinMin(bound,e20Inf) ;
+	    // Since column lengths are 1, there is no second coeff.
+            for (i = columnStart[jColumn1] ;
+		 i < columnStart[jColumn1]+columnLength[jColumn1] ; i++) {
+              int jRow = row[i] ;
+              double value = element[i] ;
+              if (jRow != iRow) {
+                which[n++] = jRow ;
+                changeRhs[jRow] = value ;
+              }
+            }
+            for (i = columnStart[jColumn2] ;
+		 i < columnStart[jColumn2]+columnLength[jColumn2] ; i++) {
+              int jRow = row[i] ;
+              double value = element[i] ;
+              if (jRow != iRow) {
+                if (!changeRhs[jRow]) {
+                  which[n++] = jRow ;
+                  changeRhs[jRow] = value ;
+                } else {
+                  changeRhs[jRow] += value ;
+                }
+              }
+            }
+            if (objChange >= 0.0) {
+              bool good = true ;
+	      // Since n = 0, this loop never executes
+              for (i = 0 ; i < n ; i++) {
+                int jRow = which[i] ;
+                double value = changeRhs[jRow] ;
+                if (value) {
+                  value *= bound ;
+                  if (rowLength[jRow] == 1) {
+                    if (value>0.0) {
+                      double rhs = rowLower[jRow] ;
+                      if (rhs>0.0) {
+                        double ratio =rhs/value ;
+                        if (fabs(ratio-floor(ratio+0.5))>1.0e-12)
+                          good = false ;
+                      }
+                    } else {
+                      double rhs = rowUpper[jRow] ;
+                      if (rhs<0.0) {
+                        double ratio =rhs/value ;
+                        if (fabs(ratio-floor(ratio+0.5))>1.0e-12)
+                          good = false ;
+                      }
+                    }
+                  } else if (rowLength[jRow] == 2) {
+                    if (value>0.0) {
+                      if (rowLower[jRow]>-e20Inf)
+                        good = false ;
+                    } else {
+                      if (rowUpper[jRow]<e20Inf)
+                        good = false ;
+                    }
+                  } else {
+                    good = false ;
+                  }
+                }
+              }
+
+              if (good) {
+                // both can be integer
+                numberChanged++ ;
+                intVar[jColumn1] = changedToInt ;
+                numberChanged++ ;
+                intVar[jColumn2] = changedToInt ;
+              }
+            }
+            // clear (another noop since n is zero)
+            for (i = 0 ; i < n ; i++) {
+              changeRhs[which[i]] = 0.0 ;
+            }
+          }
+        }
+      }
+    } // end loop to scan each constraint
+/*
+  Check for variables x<j> with integer bounds l<j> and u<j> and no
+  constraint that prevents x<j> from being integer.
+*/
+    for (iColumn = 0 ; iColumn < numberColumns ; iColumn++) {
+      if (upper[iColumn] > lower[iColumn]+1.0e-8 && !intVar[iColumn]) {
+        double value ;
+        value = upper[iColumn] ;
+        if (value < e20Inf && fabs(value-floor(value+0.5)) > 1.0e-12) 
+          continue ;
+        value = lower[iColumn] ;
+        if (value > -e20Inf && fabs(value-floor(value+0.5)) > 1.0e-12) 
+          continue ;
+        bool integer = true ;
+        for (CoinBigIndex j = columnStart[iColumn] ;
+	     j < columnStart[iColumn]+columnLength[iColumn] ; j++) {
+          int iRow = row[j] ;
+          if (!ignore[iRow]) {
+            integer = false ;
+            break ;
+          }
+        }
+        if (integer) {
+          numberChanged++ ;
+          intVar[iColumn] = changedToInt ;
+        }
+      }
+    }
+    finished = (numberChanged == saveNumberChanged) ;
+  } // end main loop: while !finished
+/*
+  Nothing changed on the last pass. Time to clean up the new integer
+  variables.  Force bounds to integer values. Feasibility can be lost here.
+  The codes assigned here are curious choices. If the variable is fixed at
+  zero, declare it binary (1), but if fixed at some other value, declare it
+  continuous (0). Otherwise, declare it general integer (2).
+*/
+  bool feasible = true ;
+  for (iColumn = 0 ; iColumn < numberColumns ; iColumn++) {
+    if (intVar[iColumn] == changedToInt) {
+      if (upper[iColumn] > e20Inf) {
+        upper[iColumn] = e20Inf ;
+      } else {
+        upper[iColumn] = floor(upper[iColumn]+1.0e-5) ;
+      }
+      if (lower[iColumn] < -e20Inf) {
+        lower[iColumn] = -e20Inf ;
+      } else {
+        lower[iColumn] = ceil(lower[iColumn]-1.0e-5) ;
+        if (lower[iColumn] > upper[iColumn])
+          feasible = false ;
+      }
+      if (lower[iColumn] == 0.0 && upper[iColumn] == 1.0)
+        intVar[iColumn] = 1 ;
+      else if (lower[iColumn] == upper[iColumn])
+        intVar[iColumn] = 0 ;
+      else
+        intVar[iColumn] = 2 ;
+    }
+  }
+/*
+  Clean up and return.
+*/
+  delete [] which ;
+  delete [] changeRhs ;
+  delete [] ignore ;
+  delete solver ;
+
+# if CGLPROBING_DEBUG > 0
+  std::cout
+    << "CglProbing::analyze: " << numberChanged
+    << " variables could be made integer." << std::endl ;
+# endif
+
+  return feasible ;
+}
+
+/*
+  Set up the working row copy.
+  
+  If we have a snapshot handy, most of the setup is done -- we just make
+  a copy of the snapshot.  Otherwise, we need to create a row-major copy
+  of the constraint matrix and the rhs and rhslow vectors.  If the client
+  has specified mode 0 (work from snapshot), we silently correct it.
+*/
+
+CoinPackedMatrix *setupRowCopy (int mode, bool useObj,
+				double cutoff, double offset,
+				const CoinPackedMatrix *rowCopy_,
+				int numberRows_, int numberColumns_,
+				const double *const rowLower_,
+				const double *const rowUpper_,
+				const OsiSolverInterface &si,
+				double *rowLower, double *rowUpper)
+{
+# if CGL_DEBUG > 0
+  std::cout << "Entering setupRowCopy, mode " << mode << ", " ;
+  if (!rowCopy_) std::cout << "no " ;
+  std::cout << "row copy." << std::endl ;
+# endif
+
+  int nCols = si.getNumCols() ;
+  int nRows = -1 ;
+  CoinPackedMatrix *rowCopy = NULL ;
+/*
+  Make the working copy from the model in the si. If we're using the
+  objective, add in the objective coefficients.
+*/
+  if (!rowCopy_) {
+
+    nRows = si.getNumRows(); 
+
+    CoinMemcpyN(si.getRowLower(),nRows,rowLower) ;
+    CoinMemcpyN(si.getRowUpper(),nRows,rowUpper) ;
+
+    if (!useObj) {
+      rowCopy = new CoinPackedMatrix(*si.getMatrixByRow()) ;
+    } else {
+      rowCopy = new CoinPackedMatrix(*si.getMatrixByRow(),1,nCols,false) ;
+      const double *objective = si.getObjCoefficients() ;
+      const double objmul = si.getObjSense() ;
+      int *columns = new int[nCols] ;
+      double *elements = new double[nCols] ;
+      int kk = 0 ;
+      for (int j = 0 ; j < nCols ; j++) {
+	if (objective[j]) {
+	  elements[kk] = objmul*objective[j] ;
+	  columns[kk++] = j ;
+	}
+      }
+      rowCopy->appendRow(kk,columns,elements) ;
+      delete[] columns ;
+      delete[] elements ;
+      rowLower[nRows] = -DBL_MAX ;
+      rowUpper[nRows] = cutoff+offset ;
+      nRows++ ;
+    }
+  } else {
+/*
+  Make the working copy from the snapshot. It must be true that the snapshot
+  has the same number of columns as the constraint system in the solver. The
+  asserts are sanity checks:
+    * the column count could go bad because the user has changed the model
+      outside of CglProbing;
+    * rowLower and rowUpper are allocated to the number of rows in the model
+      plus 1 (in case we want the objective), so we need to be sure there's
+      enough space;
+    * the final check of row counts is simple internal consistency.
+
+  TODO: Another good reason to hive off snapshot as a separate class.
+	-- lh, 100917 --
+*/
+    assert(nCols == numberColumns_) ;
+    assert(nRows <= si.getNumRows()+1) ;
+    assert(rowCopy_->getNumRows() == numberRows_) ;
+
+    nRows = numberRows_ ;
+    rowCopy = new CoinPackedMatrix(*rowCopy_) ;
+    CoinMemcpyN(rowLower_,nRows,rowLower) ;
+    CoinMemcpyN(rowUpper_,nRows,rowUpper) ;
+    if (useObj) {
+      rowLower[nRows-1] = -DBL_MAX ;
+      rowUpper[nRows-1] = cutoff+offset ;
+    }
+  }
+# if CGL_DEBUG > 0
+  if (rowCopy) {
+    std::cout << "  verifying matrix." << std::endl ;
+    rowCopy->verifyMtx(2) ;
+  }
+  std::cout << "Leaving setupRowCopy." << std::endl ;
+# endif
+  return (rowCopy) ;
+}
+
+
+/*
+  Remove rows with too many elements and rows that are deemed useless for
+  further probing.  Try to strengthen rows in place, if allowed. Deal with
+  fixed variables. We're going to do this in place by editing the internal
+  data structures of rowCopy. realRows will become a cross-reference from
+  row indices in the groomed model back to the original indices.
+
+  Strengthening in place is highly specialised. We're looking for constraints
+  that satisfy:
+    * All variables binary
+    * All coefficients negative (N), except for a single positive (t), and
+      b<i> > 0. In this case, we can convert
+        a<it>x<t> + SUM{N}a<ik>x<k> <= b<i>
+      to
+        (a<it>-b<i>)x<t> + SUM{N}a<ik>x<k> <= 0
+    * All coefficients positive (P), except for a single negative (t), and
+      blow<i> < 0. In this case, we can convert
+        a<it>x<t> + SUM{P}a<ik>x<k> >= blow<i>
+      to
+        (a<it>-blow<i>)x<t> + SUM{P}a<ik>x<k> >= 0
+  See the typeset documentation for the full derivation.
+
+  The original code here went to some trouble to avoid deleting the objective
+  for density, but it would delete it for an ineffective bound. But we've
+  gone to some trouble back in gutsOfGenerateCuts to use the objective only
+  if there's a reasonable cutoff. Let's not second guess the decision here.
+
+  While we're here, we will sort the coefficients of each row so that all
+  negative coefficients precede all positive coefficients. Record the break
+  points in rowStartPos.
+
+  An alternate code block for deleting constraints on bounds would delete
+  any constraint where an infinite (1.0e3 :-) bound on a variable would
+  lead to an infinite row LB or UB. This is a recipe for deleting the
+  entire model, when run prior to an initial round of bound propagation. It's
+  been disabled since r675 (2008). I've chopped it entirely. Something useful
+  could be done along this line, but only after an initial round of bound
+  propagation. Arguably, an initial round of bound propagation would help all
+  of CglProbing and should be done in any event.
+
+  Returns true if we're good to proceed, false if the groomed model is not
+  worth pursuing.
+*/
+
+bool groomModel (
+		 bool useObj, int maxRowLen,
+		 const OsiSolverInterface &si, const char *const intVar,
+		 CoinPackedMatrix *rowCopy,
+		 double *const rowLower, double *const rowUpper,
+		 const double *const colLower, const double *const colUpper,
+		 int *&realRows, CoinBigIndex *&rowStartPos,
+		 const CglTreeInfo *info
+	        )
+{
+# if CGL_DEBUG > 0
+  std::cout << "Entering groomModel." << std::endl ;
+# endif
+
+  realRows = 0 ;
+  rowStartPos = 0 ;
+
+  const double weakRhs = 1.0e20 ;
+  const double strengthenRhs = 1.0e10 ;
+/*
+  In the first half (row selection), only elements is modified. In the second
+  half (fixed variable removal), all are subject to change.
+*/
+  CoinBigIndex *rowStart = rowCopy->getMutableVectorStarts() ;
+  int *rowLength = rowCopy->getMutableVectorLengths(); 
+  double *elements = rowCopy->getMutableElements() ;
+  int *column = rowCopy->getMutableIndices() ;
+/*
+  nRealRows excludes the objective, if we're using it.
+*/
+  int nRows = rowCopy->getNumRows() ;
+  const int nRealRows = (useObj)?(nRows-1):(nRows) ;
+  const int nCols = rowCopy->getNumCols() ;
+  CoinBigIndex nElements = rowCopy->getNumElements() ;
+
+/*
+  Coefficient strengthening is allowed only on the first call of the
+  generator, and only if the user has provided an array to record the
+  strengthened rows.
+*/
+  bool allowStrengthen = (info->strengthenRow && !info->pass) ;
+  int *which = new int [nRealRows] ;
+
+  int nDense = 0 ;
+  int nWeak = 0 ;
+/*
+  Preliminary assessment for dense rows and free rows.  Count the number of
+  coefficients that we'll remove. We're looking for rows that are too long or
+  have row bounds so weak as to be ineffective.  If the total coefficients
+  in dense rows amounts to less than 1/10 of the matrix, just deal with it
+  (maxRowLen set to nCols won't exclude anything).
+
+  At the end of this markup, which[i] holds the row length, or (nCols+1) for
+  rows we're going to delete for weak rhs.
+*/
+  for (int i = 0 ; i < nRealRows ; i++) {
+    const int leni = rowLength[i] ;
+    if ((rowLower[i] < -weakRhs) && (rowUpper[i] > weakRhs)) {
+      nWeak += leni ;
+      which[i] = nCols+1 ;
+    } else {
+      if (leni > maxRowLen) nDense += leni ;
+      which[i] = leni ;
+    }
+  }
+  if (nDense*10 < nElements) maxRowLen = nCols ;
+
+/*
+  Walk the rows again. Rows that should be deleted will come up positive
+  when we subtract maxRowLen and can be summarily dismissed.  Note that we're
+  converting which[] as we go, so that at the end it will contain the
+  indices of the constraints to be deleted in a block at the beginning.
+*/
+  int nDelete = 0 ;
+  int nKeep = 0 ;
+  for (int i = 0 ; i < nRealRows ; i++) {
+    if (which[i]-maxRowLen > 0) {
+      which[nDelete++] = i ;
+      continue ;
+    }
+/*
+  Process the row further only if we can strengthen rows in place. Avoid
+  range constraints to avoid complications. See the comments at the head
+  for details.
+ 
+  Shift the rhs values here --- it has to be done for any constraint that we
+  keep.
+*/
+    const double bi = rowUpper[i] ;
+    const double blowi = rowLower[i] ;
+    rowLower[nKeep] = blowi ;
+    rowUpper[nKeep] = bi ;
+    nKeep++ ;
+
+    if (!allowStrengthen || (blowi > -weakRhs && bi < weakRhs)) continue ;
+/*
+  Assess the row. If we find anything other than binary variables, we're
+  immediately done.
+
+  We're lumping a<ij> = 0 in with a<ij> < 0, but arguably we shouldn't see
+  coefficients of zero. Introducing a whole lot of checks into this loop is
+  counterproductive; that's why we don't abort as soon as nPlus and nMinus
+  both exceed 1.
+*/
+    int nPlus = 0 ;
+    int nMinus = 0 ;
+    const CoinBigIndex rstarti = rowStart[i] ;
+    const int leni = rowLength[i] ;
+    const CoinBigIndex rendi = rstarti+leni ;
+    for (CoinBigIndex jj = rstarti ; jj < rendi ; jj++) {
+      int j = column[jj] ;
+      if (intVar[j] == 1) {
+	double value = elements[jj] ;
+	if (value > 0.0) {
+	  nPlus++ ;
+	} else {
+	  nMinus++ ;
+	}
+      } else {
+	nPlus = 2 ;
+	nMinus = 2 ;
+	break ;
+      }
+    }
+/*
+  If there's one positive coefficient, find it and reduce it, given a
+  reasonable value for b<i>. If there's one negative coefficient, find it
+  and increase it, given a reasonable value for blow<i>. Note that only one of
+  these will execute, even if nPlus = nMinus = 1, because only one of b<i> or
+  blow<i> will have a reasonable value. We just don't know which one.
+
+  Be careful with rhs values here! Remember that shift up above.
+*/
+    double effectiveness = 0.0 ;
+    if (nPlus == 1 && bi > 0.0 && bi < strengthenRhs) {
+      for (CoinBigIndex jj = rstarti ; jj < rendi ; jj++) {
+	double value = elements[jj] ;
+	if (value > 0.0) {
+	  elements[jj] -= bi ;
+#         if CGL_DEBUG > 1
+	  std::cout
+	    << "      row " << i << ": decrease a<" << i << ","
+	    << column[jj] << "> from " << value << " to "
+	    << elements[jj] << "." << std::endl ;
+#	  endif
+	}
+	effectiveness += fabs(value) ;
+      }
+      rowUpper[nKeep-1] = 0.0 ;
+    }
+    if (nMinus == 1 && blowi < 0.0 && blowi > -strengthenRhs) {
+      for (CoinBigIndex jj = rstarti ; jj < rendi ; jj++) {
+	double value = elements[jj] ;
+	if (value < 0.0) {
+	  elements[jj] -= blowi ;
+#         if CGL_DEBUG > 1
+	  std::cout
+	    << "      row " << i << ": increase a<" << i << ","
+	    << column[jj] << "> from " << value << " to "
+	    << elements[jj] << "." << std::endl ;
+#	  endif
+	}
+	effectiveness += fabs(value) ;
+      }
+      rowLower[nKeep-1] = 0.0 ;
+    }
+/*
+  If we actually strengthened a coefficient, stash the strengthened row in
+  strengthenRow for return to the caller.
+*/
+    if (effectiveness) {
+      OsiRowCut *rc = new OsiRowCut() ;
+      rc->setLb(rowLower[nKeep-1]) ;
+      rc->setUb(rowUpper[nKeep-1]) ;
+      rc->setRow(leni,column+rstarti,elements+rstarti,false) ;
+      rc->setEffectiveness(effectiveness) ;
+      assert (!info->strengthenRow[i]) ;
+      info->strengthenRow[i] = rc ;
+    }
+  }
+/*
+  Deal with the objective, if we're using it. In particular, if we've deleted
+  constraints, we need to shift the rhs entries for the objective.
+*/
+  if (useObj && nDelete)
+  { rowLower[nKeep] = rowLower[nRealRows] ;
+    rowUpper[nKeep] = rowUpper[nRealRows] ;
+  }
+/*
+  Did we decide to delete anything (but not everything) in the processing
+  loop?  If so, deal with it.  We need to physically delete the rows, of
+  course. There may also be bookkeeping, if we're trying to strengthen rows
+  in place.  In particular, strengthenRow will be passed back to the caller
+  and is indexed using the original row index. We need a cross-reference,
+  realRows, to keep track.
+
+  realRows is a tradeoff -- it's bigger than necessary, by nDelete entries,
+  but nDelete will typically be small and this approach to building the
+  xref saves some work (we need a working array of size nRows, and we want
+  to retain the block of indices at the front of which).
+
+  But keep in mind that we can't strengthen the objective in place!
+*/
+  if (nDelete > 0 && nDelete < nRealRows) {
+    if (info->strengthenRow) {
+      realRows = new int [nRows] ;
+      CoinZeroN(realRows,nRows) ;
+      for (int k = 0 ; k < nDelete ; k++) {
+        realRows[which[k]] = -1 ;
+      }
+      if (useObj) realRows[nRealRows] = -1 ;
+      int inew = 0 ;
+      for (int iold = 0 ; iold < nRows ; iold++) {
+	if (!realRows[iold]) {
+	  realRows[inew++] = iold ;
+	}
+      }
+      assert(inew == nKeep) ;
+    }
+    rowCopy->deleteRows(nDelete,which) ;
+    nRows = rowCopy->getNumRows() ;
+    assert((useObj && (nRows == nKeep+1)) || (!useObj && (nRows == nKeep))) ;
+  }
+  delete[] which ;
+/*
+  Do we have any real constraints left to work with? (The objective doesn't
+  count here.) If not, clean up and go home.
+*/
+  if (!nKeep) {
+#   if CGL_DEBUG > 0
+      std::cout
+	<< "  All rows unsuitable for probing! Cleaning up." << std::endl ;
+#   endif
+    delete[] realRows ;
+    return (false) ;
+  }
+/*
+  So far, so good. We have something that looks like a reasonable collection
+  of rows. Time to deal with fixed variables. We're going to walk the rows,
+  compressing out the coefficients of the fixed variables, and we'll sort
+  the remaining coefficients so that all negative coefficients precede
+  all positive coefficients.  There will be no gaps when we're done.
+
+  NOTE that columns are not physically removed.
+
+  We need to refresh the mutable pointers; deleteRows above may have rendered
+  the previous pointers invalid.
+
+  TODO: This code duplicates a block in snapshot(), except that the code in
+	snapshot doesn't substitute for the values of fixed variables. The
+	two blocks should probably be pulled out into a method.
+*/
+  elements = rowCopy->getMutableElements() ;
+  column = rowCopy->getMutableIndices() ;
+  rowStart = rowCopy->getMutableVectorStarts() ;
+  rowLength = rowCopy->getMutableVectorLengths(); 
+
+  CoinBigIndex newSize = 0 ;
+  int *columnPos = new int [nCols] ;
+  double *elementsPos = new double [nCols] ;
+  rowStartPos = new CoinBigIndex [nRows] ;
+  for (int i = 0 ; i < nRows ; i++) {
+    double offset = 0.0 ;
+    const CoinBigIndex rstarti = rowStart[i] ;
+    const CoinBigIndex rendi = rstarti+rowLength[i] ;
+    rowStart[i] = newSize ;
+    const CoinBigIndex saveNewStarti = newSize ;
+    int nPos = 0 ;
+    for (CoinBigIndex jj = rstarti ; jj < rendi ; jj++) { 
+      int j = column[jj] ;
+      double value = elements[jj] ;
+      if (colUpper[j] > colLower[j]) {
+	if (value < 0.0) {
+	  elements[newSize] = value ;
+	  column[newSize++] = j ;
+	} else {
+	  elementsPos[nPos] = value ;
+	  columnPos[nPos++] = j ;
+	}
+      } else {
+	offset += colUpper[j]*value ;
+      }
+    }
+    rowStartPos[i] = newSize ;
+    for (int k = 0 ; k < nPos ; k++) {
+      elements[newSize] = elementsPos[k] ;
+      column[newSize++] = columnPos[k] ;
+    }
+    rowLength[i] = newSize-saveNewStarti ;
+    if (offset) {
+      if (rowLower[i] > -weakRhs)
+	rowLower[i] -= offset ;
+      if (rowUpper[i] < weakRhs)
+	rowUpper[i] -= offset ;
+    }
+  }
+  delete [] columnPos ;
+  delete [] elementsPos ;
+  rowStart[nRows] = newSize ;
+  rowCopy->setNumElements(newSize) ;
+
+  return (true) ;
+} 
+
+}  // end file local namespace
+
+
 //-------------------------------------------------------------------
 // Generate disaggregation cuts
 //------------------------------------------------------------------- 
@@ -56,7 +848,9 @@ void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 {
 
 # if CGL_DEBUG > 0
-  std::cout << "Entering CglProbing::generateCuts." << std::endl ;
+  std::cout
+    << "Entering CglProbing::generateCuts, matrix " << si.getNumRows()
+    << " x " << si.getNumCols() << "." << std::endl ;
 /*
   Note that the debugger must be activated before generateCuts is called.
   Even then, getRowCutDebugger will return a pointer only if we're on the
@@ -84,6 +878,8 @@ void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   }
 /*
   Setup. Create arrays that will hold row and column bounds while we're
+  working. Note that the row bound arrays are allocated with one extra
+  position, in case we want to incorporate the objective as a constraint while
   working.
 
   TODO: !rowCopy_ is used lots of places as surrogate for `we have no
@@ -110,10 +906,25 @@ void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 */
   CglTreeInfo info = info2 ;
 /*
-  Do the work.
+  Do the work. There's no guarantee about the state of the row and column
+  bounds arrays if we come back infeasible.
 */
   int ninfeas =
 	gutsOfGenerateCuts(si,cs,rowLower,rowUpper,colLower,colUpper,&info) ;
+# if CGL_DEBUG > 0
+  { int errs = 0 ;
+    const CoinPackedMatrix *mtx = si.getMatrixByRow() ;
+    errs = mtx->verifyMtx(2) ;
+    if (errs > 0) {
+      std::cout
+        << "    generateCuts: verifyMtx failed, "
+	<< errs << " errors." << std::endl ;
+      assert (false) ;
+    } else {
+      std::cout << "    generateCuts: matrix verified." << std::endl ;
+    }
+  }
+# endif
 /*
   Infeasibility is indicated by a stylized infeasible column cut.
 
@@ -167,7 +978,9 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
 				       CglTreeInfo *info) 
 {
 # if CGL_DEBUG > 0
-  std::cout << "Entering CglProbing::generateCutsAndModify." << std::endl ;
+  std::cout
+    << "Entering CglProbing::generateCutsAndModify, matrix " << si.getNumRows()
+    << " x " << si.getNumCols() << "." << std::endl ;
   const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
   if (debugger) {
     std::cout << "On optimal path " << nPath << std::endl ;
@@ -222,8 +1035,36 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
 /*
   Do the work.
 */
+# if CGL_DEBUG > 0
+  { int errs = 0 ;
+    const CoinPackedMatrix *mtx = si.getMatrixByRow() ;
+    errs = mtx->verifyMtx(2) ;
+    if (errs > 0) {
+      std::cout
+        << "    generateCutsAndModify: verifyMtx failed pre-cutgen, "
+	<< errs << " errors." << std::endl ;
+      assert (errs == 0) ;
+    }
+  }
+# endif
+/*
+  Do the work. There's no guarantees about the state of the row and column
+  bounds arrays if we come back infeasible.
+*/
   int ninfeas = gutsOfGenerateCuts(si,cs,
 				   rowLower,rowUpper,colLower,colUpper,info) ;
+# if CGL_DEBUG > 0
+  { int errs = 0 ;
+    const CoinPackedMatrix *mtx = si.getMatrixByRow() ;
+    errs = mtx->verifyMtx(2) ;
+    if (errs > 0) {
+      std::cout
+        << "    generateCutsAndModify: verifyMtx failed post-cutgen, "
+	<< errs << " errors." << std::endl ;
+      assert (errs == 0) ;
+    }
+  }
+# endif
 /*
   Infeasibility is indicated by a stylized infeasible column cut.
 
@@ -289,254 +1130,14 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
   return ninfeas ;
 }
 
-bool analyze(const OsiSolverInterface * solverX, char * intVar,
-             double * lower, double * upper)
-{
-  OsiSolverInterface * solver = solverX->clone();
-  const double *objective = solver->getObjCoefficients() ;
-  int numberColumns = solver->getNumCols() ;
-  int numberRows = solver->getNumRows();
-  double direction = solver->getObjSense();
-  int iRow,iColumn;
-
-  // Row copy
-  CoinPackedMatrix matrixByRow(*solver->getMatrixByRow());
-  const double * elementByRow = matrixByRow.getElements();
-  const int * column = matrixByRow.getIndices();
-  const CoinBigIndex * rowStart = matrixByRow.getVectorStarts();
-  const int * rowLength = matrixByRow.getVectorLengths();
-
-  // Column copy
-  CoinPackedMatrix  matrixByCol(*solver->getMatrixByCol());
-  const double * element = matrixByCol.getElements();
-  const int * row = matrixByCol.getIndices();
-  const CoinBigIndex * columnStart = matrixByCol.getVectorStarts();
-  const int * columnLength = matrixByCol.getVectorLengths();
-
-  const double * rowLower = solver->getRowLower();
-  const double * rowUpper = solver->getRowUpper();
-
-  char * ignore = new char [numberRows];
-  int * which = new int[numberRows];
-  double * changeRhs = new double[numberRows];
-  memset(changeRhs,0,numberRows*sizeof(double));
-  memset(ignore,0,numberRows);
-  int numberChanged=0;
-  bool finished=false;
-  while (!finished) {
-    int saveNumberChanged = numberChanged;
-    for (iRow=0;iRow<numberRows;iRow++) {
-      int numberContinuous=0;
-      double value1=0.0,value2=0.0;
-      bool allIntegerCoeff=true;
-      double sumFixed=0.0;
-      int jColumn1=-1,jColumn2=-1;
-      for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
-        int jColumn = column[j];
-        double value = elementByRow[j];
-        if (upper[jColumn] > lower[jColumn]+1.0e-8) {
-          if (!intVar[jColumn]) {
-            if (numberContinuous==0) {
-              jColumn1=jColumn;
-              value1=value;
-            } else {
-              jColumn2=jColumn;
-              value2=value;
-            }
-            numberContinuous++;
-          } else {
-            if (fabs(value-floor(value+0.5))>1.0e-12)
-              allIntegerCoeff=false;
-          }
-        } else {
-          sumFixed += lower[jColumn]*value;
-        }
-      }
-      double low = rowLower[iRow];
-      if (low>-1.0e20) {
-        low -= sumFixed;
-        if (fabs(low-floor(low+0.5))>1.0e-12)
-          allIntegerCoeff=false;
-      }
-      double up = rowUpper[iRow];
-      if (up<1.0e20) {
-        up -= sumFixed;
-        if (fabs(up-floor(up+0.5))>1.0e-12)
-          allIntegerCoeff=false;
-      }
-      if (!allIntegerCoeff)
-        continue; // can't do
-      if (numberContinuous==1) {
-        // see if really integer
-        // This does not allow for complicated cases
-        if (low==up) {
-          if (fabs(value1)>1.0e-3) {
-            value1 = 1.0/value1;
-            if (fabs(value1-floor(value1+0.5))<1.0e-12) {
-              // integer
-              numberChanged++;
-              intVar[jColumn1]=77;
-            }
-          }
-        } else {
-          if (fabs(value1)>1.0e-3) {
-            value1 = 1.0/value1;
-            if (fabs(value1-floor(value1+0.5))<1.0e-12) {
-              // This constraint will not stop it being integer
-              ignore[iRow]=1;
-            }
-          }
-        }
-      } else if (numberContinuous==2) {
-        if (low==up) {
-          /* need general theory - for now just look at 2 cases -
-             1 - +- 1 one in column and just costs i.e. matching objective
-             2 - +- 1 two in column but feeds into G/L row which will try and minimize
-             (take out 2 for now - until fixed)
-          */
-          if (fabs(value1)==1.0&&value1*value2==-1.0&&!lower[jColumn1]
-              &&!lower[jColumn2]&&columnLength[jColumn1]==1&&columnLength[jColumn2]==1) {
-            int n=0;
-            int i;
-            double objChange=direction*(objective[jColumn1]+objective[jColumn2]);
-            double bound = CoinMin(upper[jColumn1],upper[jColumn2]);
-            bound = CoinMin(bound,1.0e20);
-            for ( i=columnStart[jColumn1];i<columnStart[jColumn1]+columnLength[jColumn1];i++) {
-              int jRow = row[i];
-              double value = element[i];
-              if (jRow!=iRow) {
-                which[n++]=jRow;
-                changeRhs[jRow]=value;
-              }
-            }
-            for ( i=columnStart[jColumn2];i<columnStart[jColumn2]+columnLength[jColumn2];i++) {
-              int jRow = row[i];
-              double value = element[i];
-              if (jRow!=iRow) {
-                if (!changeRhs[jRow]) {
-                  which[n++]=jRow;
-                  changeRhs[jRow]=value;
-                } else {
-                  changeRhs[jRow]+=value;
-                }
-              }
-            }
-            if (objChange>=0.0) {
-              // see if all rows OK
-              bool good=true;
-              for (i=0;i<n;i++) {
-                int jRow = which[i];
-                double value = changeRhs[jRow];
-                if (value) {
-                  value *= bound;
-                  if (rowLength[jRow]==1) {
-                    if (value>0.0) {
-                      double rhs = rowLower[jRow];
-                      if (rhs>0.0) {
-                        double ratio =rhs/value;
-                        if (fabs(ratio-floor(ratio+0.5))>1.0e-12)
-                          good=false;
-                      }
-                    } else {
-                      double rhs = rowUpper[jRow];
-                      if (rhs<0.0) {
-                        double ratio =rhs/value;
-                        if (fabs(ratio-floor(ratio+0.5))>1.0e-12)
-                          good=false;
-                      }
-                    }
-                  } else if (rowLength[jRow]==2) {
-                    if (value>0.0) {
-                      if (rowLower[jRow]>-1.0e20)
-                        good=false;
-                    } else {
-                      if (rowUpper[jRow]<1.0e20)
-                        good=false;
-                    }
-                  } else {
-                    good=false;
-                  }
-                }
-              }
-              if (good) {
-                // both can be integer
-                numberChanged++;
-                intVar[jColumn1]=77;
-                numberChanged++;
-                intVar[jColumn2]=77;
-              }
-            }
-            // clear
-            for (i=0;i<n;i++) {
-              changeRhs[which[i]]=0.0;
-            }
-          }
-        }
-      }
-    }
-    for (iColumn=0;iColumn<numberColumns;iColumn++) {
-      if (upper[iColumn] > lower[iColumn]+1.0e-8&&!intVar[iColumn]) {
-        double value;
-        value = upper[iColumn];
-        if (value<1.0e20&&fabs(value-floor(value+0.5))>1.0e-12) 
-          continue;
-        value = lower[iColumn];
-        if (value>-1.0e20&&fabs(value-floor(value+0.5))>1.0e-12) 
-          continue;
-        bool integer=true;
-        for (CoinBigIndex j=columnStart[iColumn];j<columnStart[iColumn]+columnLength[iColumn];j++) {
-          int iRow = row[j];
-          if (!ignore[iRow]) {
-            integer=false;
-            break;
-          }
-        }
-        if (integer) {
-          // integer
-          numberChanged++;
-          intVar[iColumn]=77;
-        }
-      }
-    }
-    finished = numberChanged==saveNumberChanged;
-  }
-  bool feasible=true;
-  for (iColumn=0;iColumn<numberColumns;iColumn++) {
-    if (intVar[iColumn]==77) {
-      if (upper[iColumn]>1.0e20) {
-        upper[iColumn] = 1.0e20;
-      } else {
-        upper[iColumn] = floor(upper[iColumn]+1.0e-5);
-      }
-      if (lower[iColumn]<-1.0e20) {
-        lower[iColumn] = -1.0e20;
-      } else {
-        lower[iColumn] = ceil(lower[iColumn]-1.0e-5);
-        if (lower[iColumn]>upper[iColumn])
-          feasible=false;
-      }
-      if (lower[iColumn]==0.0&&upper[iColumn]==1.0)
-        intVar[iColumn]=1;
-      else if (lower[iColumn]==upper[iColumn])
-        intVar[iColumn]=0;
-      else
-        intVar[iColumn]=2;
-    }
-  }
-  delete [] which;
-  delete [] changeRhs;
-  delete [] ignore;
-  //if (numberChanged)
-  //printf("%d variables could be made integer\n",numberChanged);
-  delete solver;
-  return feasible;
-}
-
 
 /*
   NOTE: It's assumed that the arrays passed in for rowLower and rowUpper
 	have an extra slot that can be used for bounds on the objective,
 	in the event that gutsOfGenerateCuts decides to put it in the matrix.
+
+  rowLower, rowUpper, colLower, and colUpper should be allocated by the caller
+  and will be filled in by gutsOfGenerateCuts.
 */
 int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si, 
 				    OsiCuts &cs ,
@@ -547,40 +1148,49 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 
 # if CGL_DEBUG > 0
   std::cout
-    << "Entering CglProbing::gutsOfGenerateCuts, mode "
-    << mode_ << std::endl ;
+    << "Entering CglProbing::gutsOfGenerateCuts, mode " << mode_ << ", " ;
+  if (!info->inTree) std::cout << "not " ;
+  std::cout << "in tree, pass " << info->pass << "." << std::endl ;
 # endif
 
-  int nRows ;
-  
-  CoinPackedMatrix *rowCopy = NULL ;
   int numberRowCutsBefore = cs.sizeRowCuts() ;
 
+  int ninfeas = 0 ;
+  bool feasible = true ;
 /*
-  Establish a cutoff -- nontrivial, if possible. The client can forbid use of
-  the objective by setting usingObjective_ to -1.
-*/
-  double cutoff ;
-  bool cutoff_available = si.getDblParam(OsiDualObjectiveLimit,cutoff) ;
-  if (!cutoff_available || usingObjective_ < 0) {
-    cutoff = si.getInfinity() ;
-  }
-  cutoff *= si.getObjSense() ;
-/*
-  This looks like a sure failure if we're maximising and grabbed the solver's
-  infinity.  In any event, why is large and positive ok but large and
-  negative is not? --lh, 100917 --
-*/
-  if (fabs(cutoff) > 1.0e30)
-    assert (cutoff > 1.0e30) ;
+  If we don't have a snapshot, force mode 0 to mode 1.
 
+  TODO: Ah ... maybe a `You're confused' message and an error return would be
+	more appropriate? Seems like a serious algorithm error at a higher
+	level.  -- lh, 100917 --
+
+	Or maybe the client is within the documentation. After all, John's
+	comment for mode 0 says `only available with snapshot; otherwise as
+	mode 1'.  -- lh, 101021 --
+
+	So, maybe I should try to figure out if requesting mode 0 results in
+	creating a snapshot somewhere along the way.  -- lh, 110204 --
+*/
   int mode = mode_ ;
-  int nCols = si.getNumCols(); 
+  if (!rowCopy_ && mode == 0) {
+    mode = 1 ;
+#   if CGL_DEBUG > 0
+    std::cout << "  forcing mode 0 to mode 1; no snapshot." << std::endl ;
+#   endif
+  }
+
+  int maxProbe = info->inTree ? maxProbe_ : maxProbeRoot_ ;
+  int maxRowLen = info->inTree ? maxElements_ : maxElementsRoot_ ;
+  // Forcing probing to consider really dense constraints wasn't good,
+  // even at the root.
+  // if (!info->inTree && !info->pass) maxRowLen = nCols ;
+
 /*
   Get a modifiable array of variable types. Force reevaluation of the
   integer classification (binary vs. general integer) based on current
   bounds.
 */
+  int nCols = si.getNumCols(); 
   const char *intVarOriginal = si.getColType(true) ;
   char *intVar = CoinCopyOfArray(intVarOriginal,nCols) ;
 /*
@@ -588,7 +1198,7 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 */
   CoinMemcpyN(si.getColLower(),nCols,colLower) ;
   CoinMemcpyN(si.getColUpper(),nCols,colUpper) ;
-  const double * colsol = si.getColSolution() ;
+  const double *colsol = si.getColSolution() ;
 /*
   Stage 1: Preliminary processing.
 
@@ -616,626 +1226,110 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
       }
     }
   }
-  bool feasible = true ;
 /*
   If we're at the root of the search tree, scan the constraint system to see
   if there are naturally integer variables that are not declared as integer.
   Convert them to integer type.
 
-  TODO: If we lose feasibility here, we should clean up and bail. This is not
-	handled well in subsequent blocks of code.  -- lh, 101021 --
+  If we lose feasibility here, cut our losses and bail out while it's still
+  uncomplicated.
+
+  TODO: Really, analyze should return a count instead of a boolean.
+  	-- lh, 110204 --
 */
   if (!info->inTree && !info->pass) {
     feasible = analyze(&si,intVar,colLower,colUpper) ;
+#   if CGL_DEBUG > 1
+    std::cout
+     << "  Analyze completed; " << ((feasible)?"feasible":"infeasible")
+     << "." << std::endl ;
+#   endif
+    if (!feasible) {
+      delete[] intVar ;
+      return (1) ;
+    }
   }
-# if CGL_DEBUG > 1
-  std::cout
-   << "  Analyze completed; " << ((feasible)?"feasible":"infeasible")
-   << "." << std::endl ;
-# endif
 /*
-  Attempt to tighten bounds based on reduced costs. Consider movement by +/-1
-  and use that as a filter. For integer variables, this will fix the variable
-  at the current bound. For continuous variables, we can restrict the gap
-  between lower and upper bound to less than 1.0.
+  Get the objective offset and try to establish a nontrivial cutoff. The
+  client can forbid use of the objective by setting usingObjective_ to -1.
+  If the si claims a nontrivial cutoff, check that it's reasonable.
 
-  jjf: Should be in CbcCutGenerator and check if basic.
+  TODO: Check through the code and make sure we're using cutoff and offset
+	correctly. Should add the offset in one place and keep the value
+	for later use.  -- lh, 110205 --
 
-  lh: (100917) Not sure why that's relevant, except that reduced cost is
-      zero by definition for basic variables. Why not just test for d<j> = 0?
-  
-  lh: (100917) Seems like a prime candidate for a subroutine (inlined, perhaps).
-      And that's a really good explanation for the redundant code. This
-      probably *was* a subroutine at one time.
-
-  This block disabled as of 100917 (PROBING_EXTRA_STUFF == false). Probably
-  disabled further back than that.
-
-  lh: (101021) And I'm asking myself `Why why?' in the print statements below.
-      Apparently John was of the opinion that anything that could be fixed here
-      should have been fixed elsewhere. Did this functionality actually move
-      elsewhere, so that those print statements are just telltales in case
-      something slipped by?
+  TODO: Down in probeClique, there's a clause that forces the cutoff to
+  	infty for mode 0.
 */
-  if (feasible && PROBING_EXTRA_STUFF) {
-    const double * djs = si.getReducedCost() ;
-
-    // Begin redundant code block -- we did this just above!
-    const double * colsol = si.getColSolution() ;
-    double direction = si.getObjSense() ;
-    double cutoff ;
-    bool cutoff_available = si.getDblParam(OsiDualObjectiveLimit,cutoff) ;
-    if (!cutoff_available || usingObjective_ < 0) {
-      cutoff = si.getInfinity() ;
-    }
-    cutoff *= direction ;
-    if (fabs(cutoff) > 1.0e30)
-      assert (cutoff > 1.0e30) ;
-    // End redundant code block
-
-    double current = si.getObjValue() ;
-    current *= direction ;
-    double gap = CoinMax(cutoff-current,1.0e-1) ;
-    for (int i = 0; i < nCols; ++i) {
-      double djValue = djs[i]*direction ;
-      // Consider only variables that are not fixed.
-      if (colUpper[i]-colLower[i] > 1.0e-8) {
-	// If we're currently at lower bound ...
-        if (colsol[i] < colLower[i]+primalTolerance_) {
-	  // ... and +1 will drive us over the cutoff ...
-          if (djValue > gap) {
-	    // ... and we have to move at least +1 ...
-            if (si.isInteger(i)) {
-	      // ... fix at lower bound.
-              printf("why int %d not fixed at lb\n",i) ;
-              colUpper[i] = colLower[i] ;
-            } else {
-	      // ... if a fractional move is possible, calculate the max
-	      // movement and crank down the upper bound.
-              double newUpper = colLower[i] + gap/djValue ;
-              if (newUpper < colUpper[i]) {
-                //printf("%d ub from %g to %g\n",i,colUpper[i],newUpper) ;
-                colUpper[i] = CoinMax(newUpper,colLower[i]+1.0e-5) ;
-              }
-            }
-          }
-        } else if (colsol[i] > colUpper[i]-primalTolerance_) {
-          if (-djValue > gap) {
-            if (si.isInteger(i)) {
-              printf("why int %d not fixed at ub\n",i) ;
-              colLower[i] = colUpper[i] ;
-            } else {
-              double newLower = colUpper[i] + gap/djValue ;
-              if (newLower>colLower[i]) {
-                //printf("%d lb from %g to %g\n",i,colLower[i],newLower) ;
-                colLower[i]= CoinMin(newLower,colUpper[i]-1.0e-5) ;
-              }
-            }
-          }
-        }
-      }
-    }
-  }  // End cost bound tightening using reduced costs.
-
-  int ninfeas = 0 ;
-  // Set up maxes
-  int maxProbe = info->inTree ? maxProbe_ : maxProbeRoot_ ;
-  int maxElements = info->inTree ? maxElements_ : maxElementsRoot_ ;
-
-  // Forcing probing to consider really dense constraints wasn't good,
-  // even at the root.
-  // if (!info->inTree && !info->pass) maxElements = nCols ;
-
-  // Get objective offset
   double offset ;
   si.getDblParam(OsiObjOffset,offset) ;
-# if CGL_DEBUG > 3
-  // print it just once
-  if (offset && !info->inTree && !info->pass) 
-    printf("CglProbing obj offset %g\n",offset) ;
+  double cutoff ;
+  bool cutoff_available = si.getDblParam(OsiDualObjectiveLimit,cutoff) ;
+  if (!cutoff_available) {
+    cutoff = si.getInfinity() ;
+  } else {
+    cutoff *= si.getObjSense() ;
+    if (cutoff > 1.0e30) cutoff_available = false ;
+  }
+  bool useObj = (cutoff_available && (usingObjective_ >= 1)) ;
+  bool useCutoff = (cutoff_available && (usingObjective_ >= 0)) ;
+# if CGL_DEBUG > 1
+  std::cout << "  cutoff " ;
+  if (!cutoff_available)
+    std::cout << "not available" ;
+  else
+    std::cout << cutoff ;
+  std::cout << ", offset " << offset << "." << std::endl ;
+  if (useCutoff)
+    std::cout << "  using cutoff" ;
+  else
+    std::cout << "  not using cutoff" ;
+  if (useObj)
+    std::cout << ", using objective as constraint" ;
+  else
+    std::cout << ", not using objective as constraint" ;
+  std::cout << "." << std::endl ;
 # endif
+
+/* EXTRA_PROBING_STUFF block (tighten using reduced cost) was here. */
+
 /*
-  If we have a snapshot handy, most of the setup is done. Otherwise, we need to
-  create row- and column-major copies of the constraint matrix. If the client
-  has specified mode 0 (work from snapshot), it is confused, but we silently
-  correct it.
-
-  TODO: Ah ... maybe a `You're confused' message and an error return would be
-	more appropriate? Seems like a serious algorithm error at a higher
-	level.  -- lh, 100917 --
-
-	Or maybe the client is within the documentation. After all, John's
-	comment for mode 0 says `only available with snapshot; otherwise as
-	mode 1'.  -- lh, 101021 --
-
-  TODO: Note that the column-major copy is not created until much further
-	down, after we've settled on the set of rows to process and applied
-	various techniques for row strengthening.   -- lh, 101021 --
+  Create the working row copy from the si's model or from a snapshot (only if
+  the user specified mode 0 and a snapshot exists).
 */
-  if (!rowCopy_) {
-    nRows = si.getNumRows(); 
-    if (mode == 0)
-      mode = 1 ;
+  CoinPackedMatrix *rowCopy = setupRowCopy(mode,useObj,cutoff,
+  					   offset,rowCopy_,
+					   numberRows_,numberColumns_,
+					   rowLower_,rowUpper_,
+					   si,rowLower,rowUpper) ;
+  int nRows = rowCopy->getNumRows() ;
 /*
-  Make the row copy and create modifiable row bound arrays. If we have a
-  nontrivial cutoff and are not forbidden from using it, add in the objective
-  coefficients.
+  Groom the rowCopy: delete useless rows, substitute for fixed variables, sort
+  coefficients so that negative precede positive, and try some specialised
+  coefficient strengthening on the rows that remain. If groomModel comes
+  back false, it's an indication that probing isn't worth pursuing. Clean
+  up and go home while it's relatively easy.
 
-  TODO: For the objective, we make an entry in rowLower and rowUpper and
-	install our bounds. That implies that the arrays passed in must have
-	sufficient capacity.  -- lh, 100917 --
-
-  TODO: Really, there should be a boolean for using the objective, so we don't
-	keep reevaluating this condition. And why do we generate a boolean,
-	maximise, instead of using sense*objcoeff, as is common elsewhere?
-	-- lh, 100917 --
-
-  TODO: No column copy?  -- lh, 100917 --
-	It's made far down below, at the end of the row strengthening block,
-	after we've decided on the rows to keep.
+  realRows is the cross-reference between rows in rowCopy and rows of the
+  original model. rowStartPos is the first positive coefficient in a row.
 */
-    if (cutoff < 1.0e30 && usingObjective_ > 0) {
-      rowCopy = new CoinPackedMatrix(*si.getMatrixByRow(),1,nCols,false) ;
-    } else {
-      rowCopy = new CoinPackedMatrix(*si.getMatrixByRow()) ;
-    }
-    if (cutoff < 1.0e30 && usingObjective_ > 0) {
-      int *columns = new int[nCols] ;
-      double *elements = new double[nCols] ;
-      int n = 0 ;
-      const double *objective = si.getObjCoefficients() ;
-      bool maximize = (si.getObjSense() == -1) ;
-      for (int i = 0 ; i < nCols ; i++) {
-	if (objective[i]) {
-	  elements[n] = (maximize) ? -objective[i] : objective[i] ;
-	  columns[n++] = i ;
-	}
-      }
-      rowCopy->appendRow(n,columns,elements) ;
-      delete [] columns ;
-      delete [] elements ;
-      CoinMemcpyN(si.getRowLower(),nRows,rowLower) ;
-      CoinMemcpyN(si.getRowUpper(),nRows,rowUpper) ;
-      rowLower[nRows] = -DBL_MAX ;
-      rowUpper[nRows] = cutoff+offset ;
-      nRows++ ;
-    } else {
-      CoinMemcpyN(si.getRowLower(),nRows,rowLower) ;
-      CoinMemcpyN(si.getRowUpper(),nRows,rowUpper) ;
-    }
+  int *realRows = 0 ;
+  int *rowStartPos = 0 ;
+  feasible = groomModel(useObj,maxRowLen,si,intVar,rowCopy,rowLower,rowUpper,
+  			colLower,colUpper,realRows,rowStartPos,info) ;
+  nRows = rowCopy->getNumRows() ;
+  if (!feasible) {
+    delete[] intVar ;
+    delete[] realRows ;
+    delete[] rowStartPos ;
+    delete rowCopy ;
+    return (0) ;
   }
 /*
-  If we're starting from a snapshot, make a copy for further processing. Make
-  sure we adjust rowLower and rowUpper to accommodate the objective (the
-  coefficients are already in).
+  Make a column-major copy, after we've winnowed the rows to the set we want
+  to work with.
 
-  TODO: Another good reason to hive off snapshot as a separate class.
-	-- lh, 100917 --
-
-  TODO: Ummmm ... what if the objective isn't already in? I see, I'm checking
-	usingObjective_, which (one hopes) is correctly set from before. But
-	it's publically accessible. This should be an internal state thing.
-	-- lh, 100917 --
-  
-  TODO: Note that we don't make a working copy of the column copy held by the
-	snapshot.  -- lh, 101021 --
-
-  TODO: Why do we need to avoid modifying the snapshot? Could we get by without
-	making yet another copy?  -- lh, 101125 --
-*/
-  else {
-    nRows = numberRows_ ;
-    // Sanity -- our cached copy must have the same number of columns!
-    assert(nCols == numberColumns_) ;
-    rowCopy = new CoinPackedMatrix(*rowCopy_) ;
-    // More sanity.
-    assert (rowCopy_->getNumRows() == numberRows_) ;
-    rowLower = new double[nRows] ;
-    rowUpper = new double[nRows] ;
-    CoinMemcpyN(rowLower_,nRows,rowLower) ;
-    CoinMemcpyN(rowUpper_,nRows,rowUpper) ;
-    if (usingObjective_ > 0) {
-      rowLower[nRows-1] = -DBL_MAX ;
-      rowUpper[nRows-1] = cutoff+offset ;
-    }
-  }
-/*
-  Remove rows with too many elements and rows that are deemed useless for
-  further probing.  Try to strengthen rows in place, if allowed. Deal with
-  fixed variables. We're going to do this in place by editing the internal
-  data structures of rowCopy.
-
-  TODO: At first glance, it looks like nRealRows is just so we can avoid
-	tossing the objective (that was John's comment). But then why not
-	just set the upper bound to nRows-1 or nRows-2, depending on
-	usingObjective_?  -- lh, 100917 --
-
-  TODO: This block of code looks like an excellent candidate for a subroutine.
-	Maybe it once was, given that it's wrapped in its own code block.
-	-- lh, 100923 --
-
-  TODO: OUTRUBBISH is disabled, so either it didn't improve performance or
-	it's buggy. -- lh, 100923
-*/
-  // int i ;
-  CoinBigIndex * rowStartPos = NULL ;
-  int * realRows = NULL ;
-  // Begin row strengthen block
-  {
-    //#define OUTRUBBISH
-
-    int *rowLength = rowCopy->getMutableVectorLengths(); 
-    double * elements = rowCopy->getMutableElements() ;
-    int * column = rowCopy->getMutableIndices() ;
-    CoinBigIndex *rowStart = rowCopy->getMutableVectorStarts() ;
-#ifdef OUTRUBBISH
-    double large = 1.0e3 ;
-#endif
-    int nDelete = 0 ;
-    int nKeep = 0 ;
-    int *which = new int[nRows] ;
-    int nElements = rowCopy->getNumElements() ;
-    int nTotalOut = 0 ;
-    int nRealRows = si.getNumRows() ;
-/*
-  Preliminary assessment for dense rows and free rows.  Count the number of
-  coefficients that we'll remove. We're looking for rows that are too long or
-  have row bounds so weak as to be ineffective. Don't toss the objective
-  (index larger than nRealRows.
-*/
-    for (int i = 0 ; i < nRows ; i++) {
-      if (rowLength[i] > maxElements ||
-	  (rowLower[i] < -1.0e20 && rowUpper[i] > 1.0e20)) {
-	if (i < nRealRows) 
-	  nTotalOut += rowLength[i] ;
-      }
-    }
-/*
-  If the total coefficients in dense rows amounts to less than 1/10 of the
-  matrix, just deal with it (maxElements set to nCols won't exclude anything).
-*/
-    if (nTotalOut*10 < nElements)
-      maxElements = nCols ;
-#ifdef OUTRUBBISH
-    int nExtraDel = 0 ;
-#endif
-/*
-  Main processing loop(1).
-  
-  Tossing the junk will significantly reduce the constraint system, so let's
-  get to it.
-
-  Examine each row for length and effectiveness.  We can summarily toss free
-  rows and rows that are too dense.
-
-  TODO: We carefully exclude the objective from deletion for density, but note
-	that 1e30 is the break for adding it and 1e20 is the break for removing
-	it. Admittedly, between 1e20 and 1e30 there's not likely to be much
-	effect, but it'd be nice to be consistent.  -- lh, 100923 --
-*/
-    for (int i = 0 ; i < nRows ; i++) {
-      if ((rowLength[i] > maxElements && i < nRealRows) ||
-	  (rowLower[i] < -1.0e20 && rowUpper[i] > 1.0e20)) {
-	which[nDelete++] = i ;
-      } else {
-/*
-  This row passes the coefficient limit and has at least one finite bound.
-  But is it useful for bound propagation and probing?
-
-  TODO: This is lhs bound evaluation. Should be done up front.
-	-- lh, 100917 --
-
-  TODO: The OUTRUBBISH and !OUTRUBBISH blocks are in no way mutually exclusive,
-	even though that's the configuration here. It's easy to conceive of a
-	blend in which the OUTRUBBISH block runs to remove `weak' constraints
-	at some threshold. Constraints that pass are then considered for
-	strengthening.  -- lh, 100923 --
-*/
-#ifdef OUTRUBBISH
-/* 
-  jjf: out all rows with infinite plus and minus
-
-  It's actually a bit more extreme than that; large is set to 1.0e3 above,
-  which is a fair bit short of infinity. Very aggressive removal of constraints
-  perceived to be weak. -- lh, 100923 --
-*/
-	int nPlus = (rowUpper[i] > -large) ? 0 : 1 ;
-	int nMinus = (rowLower[i] < large) ? 0 : 1 ;
-	CoinBigIndex start = rowStart[i] ;
-	CoinBigIndex end = start + rowLength[i] ;
-	for (CoinBigIndex j = start ; j < end ; j++) { 
-	  int iColumn = column[j] ;
-	  if (colUpper[iColumn] > large) {
-	    if (elements[j] > 0.0)
-	      nPlus++ ;
-	    else
-	      nMinus++ ;
-	  }
-	  if (colLower[iColumn] < -large) {
-	    if (elements[j] < 0.0)
-	      nPlus++ ;
-	    else
-	      nMinus++ ;
-	  }
-	}
-	if (!nPlus||!nMinus) {
-	  rowLower[nKeep] = rowLower[i] ;
-	  rowUpper[nKeep] = rowUpper[i] ;
-	  nKeep++ ;
-	} else {
-	  nExtraDel++ ;
-	  which[nDelete++] = i ;
-	}
-#else  // OUTRUBBISH
-/*
-  The (way) less aggressive approach. We won't actually delete anything
-  here.  We're only looking at rows that can be strengthened in place.
-  Call this Strengthen(1). See notes for details.
-
-  Process this row only if info says we can strengthen rows in place; only on
-  the first pass for this node; only if the row has at least one infinite
-  bound (lower or upper)
-*/
-	if (info->strengthenRow && !info->pass &&
-	    (rowLower[i] < -1.0e20 || rowUpper[i] > 1.0e20)) {
-/*
-  Assess the row. If we find anything other than binary variables, we're
-  immediately done.
-
-  TODO: Really, the loop should abort as soon as nPlus > 1 & nMinus > 1.
-	Presumably it doesn't because the test would take more time than
-	just finishing the processing?
-	-- lh, 100923 --
-
-  TODO: coefficients of zero are lumped into nMinus, but arguably a coeff
-	of zero shouldn't exist in a sparse matrix structure.
-	-- lh, 100923 --
-
-  TODO: Is the code not consistent about labelling binary variables? This is
-	precisely the condition used to set the code for binary in intVar.
-	-- lh, 100923 --
-
-  TODO: Doesn't allow for nPlus == 1 and nMinus == 1. Maybe that's a special
-	case that gets caught elsewhere? And why increment effectiveness
-	rather than simply assign to it?   -- lh, 100923 --
-*/
-	  int nPlus = 0 ;
-	  int nMinus = 0 ;
-	  for (CoinBigIndex j = rowStart[i] ; j < rowLength[i] ; j++) {
-	    int jColumn = column[j] ;
-	    if (intVar[jColumn] &&
-		colLower[jColumn] == 0.0 && colUpper[jColumn] == 1.0) {
-	      double value = elements[j] ;
-	      if (value > 0.0) {
-		nPlus++ ;
-	      } else {
-		nMinus++ ;
-	      }
-	    } else {
-	      nPlus = 2 ;
-	      nMinus = 2 ;
-	      break ;
-	    }
-	  }
-/*
-  Look for the single positive coefficient in the row and reduce it. (Similarly
-  for negative coefficient in the next block.
-
-  TODO: So why don't we just break from the loop after we've tweaked the
-	coefficient?  There's no real loop here to accumulate effectiveness.
-	-- lh, 100923 --
-*/
-	  double effectiveness = 0.0 ;
-	  if (nPlus == 1 && rowUpper[i] > 0.0 && rowUpper[i] < 1.0e10) {
-	    // can make element smaller
-	    for (CoinBigIndex j = rowStart[i] ; j < rowStart[i+1] ; j++) {
-	      double value = elements[j] ;
-	      if (value > 0.0) {
-		elements[j] -= rowUpper[i] ;
-		//printf("pass %d row %d plus el from %g to %g\n",info->pass,
-		//     i,elements[j]+rowUpper[i],elements[j]) ;
-	      }
-	      effectiveness += fabs(elements[j]) ;
-	    }
-	    rowUpper[i] = 0.0 ;
-	  } else
-	  if (nMinus == 1 && rowLower[i] < 0.0 && rowLower[i] > -1.0e10) {
-	    // can make element smaller in magnitude
-	    for (CoinBigIndex j = rowStart[i] ; j < rowStart[i+1] ; j++) {
-	      double value = elements[j] ;
-	      if (value < 0.0) {
-		elements[j] -= rowLower[i] ;
-		//printf("pass %d row %d minus el from %g to %g\n",info->pass,
-		//     i,elements[j]+rowLower[i],elements[j]) ;
-	      }
-	      effectiveness += fabs(elements[j]) ;
-	    }
-	    rowLower[i]=0.0 ;
-	  }
-/*
-  If the coefficient is nonzero, remember the result. We need to remember the
-  result because (as with everything done here) we're working with a copy.
-  This business of strengthening the coefficient must be propagated back out
-  to the client, who gets to make the decision about whether to use it.
-
-  TODO: Why do we create a block-local object, then create a clone for later
-	use? Why not just use new?  -- lh, 100923 --
-*/
-	  if (effectiveness) {
-	    OsiRowCut rc ;
-	    rc.setLb(rowLower[i]) ;
-	    rc.setUb(rowUpper[i]) ;
-	    int start = rowStart[i] ;
-	    rc.setRow(rowLength[i],column+start,elements+start,false) ;
-	    rc.setEffectiveness(effectiveness) ;
-	    assert (!info->strengthenRow[i]) ;
-	    info->strengthenRow[i] = rc.clone() ;
-	  }
-	}
-	rowLower[nKeep] = rowLower[i] ;
-	rowUpper[nKeep] = rowUpper[i] ;
-	nKeep++ ;
-#endif   // OUTRUBBISH
-      }
-    }  // End main processing loop(1)
-/*
-  Did we delete anything in processing loop(1)? If so, deal with it. We need
-  to delete the rows, of course. There may also be bookkeeping.  In
-  particular, strengthened constraints are held in strengthenRow by the
-  original row index. We need a cross-reference, realRows, to keep track.
-
-  TODO: Huh? What's the deal with the objective here? Why does it need
-	special treatment in realRows?  -- lh, 100923 -- 
-
-  TODO: If we have no constraints remaining (nKeep == 0), then surely we could
-	skip this bit of work.  -- lh, 101021 --
-
-  TODO: Because realRows is not allocated unless we delete rows from the
-	system, we will not be able to strengthen in place. See the matching
-	TODO in probe().  -- lh, 101209 --
-*/
-    if (nDelete) {
-#ifdef OUTRUBBISH
-      if (nExtraDel) {
-	printf("%d rows deleted (extra %d)\n",nDelete,nExtraDel) ;
-      }
-#else
-#endif
-      if (info->strengthenRow) {
-	realRows = new int [nRows] ;
-	CoinZeroN(realRows,nRows) ;
-	for (int i = 0 ; i < nDelete ; i++)
-	  realRows[which[i]] = -1 ;
-	int k = 0 ;
-	for (int i = 0 ; i < nRows ; i++) {
-	  if (!realRows[i]) {
-	    if (i < nRealRows)
-	      realRows[k++] = i ; // keep
-	    else
-	      realRows[k++] = -1 ; // objective - discard
-	  }
-	}
-      }
-      rowCopy->deleteRows(nDelete,which) ;
-      nRows = nKeep ;
-    }
-    delete [] which ;
-/*
-  Do we have any constraints left to work with? If not, clean up and go home.
-*/
-    if (!nRows) {
-#ifdef COIN_DEVELOP
-      printf("All rows too long for probing\n") ;
-#endif
-      delete rowCopy ;
-      // Read `if we're working from a snapshot'
-      if (rowCopy_) {
-	delete [] rowLower ;
-	delete [] rowUpper ;
-      }
-      delete [] intVar ;
-/*
-  jjf: and put back unreasonable bounds on integer variables
-
-  TODO: Do we need to be so careful here? Why not just do a block copy?
-	-- lh, 100923 --
-*/
-      const double * trueLower = si.getColLower() ;
-      const double * trueUpper = si.getColUpper() ;
-      for (int i = 0 ; i < nCols ; i++) {
-	if (intVarOriginal[i] == 2) {
-	  if (colUpper[i] == CGL_REASONABLE_INTEGER_BOUND) 
-	    colUpper[i] = trueUpper[i] ;
-	  if (colLower[i] == -CGL_REASONABLE_INTEGER_BOUND) 
-	    colLower[i] = trueLower[i] ;
-	}
-      }
-      delete [] realRows ;
-      return 0 ;
-    }
-/*
-  We're still inside the row strengthen block ...
-
-  jjf: Out elements for fixed columns and sort
-
-  In a few more words: Process the rows, adjusting rowLower and rowUpper for
-  fixed variables; the columns are physically removed. As we rewrite the
-  coefficients, sort them so that negative coefficients precede positive
-  coefficients.
-
-  We need to refresh the mutable pointers; deleteRows above may have rendered
-  the previous pointers invalid.
-
-  TODO: This code duplicates a block in snapshot(), except that the code in
-	snapshot doesn't substitute for the values of fixed variables. The
-	two blocks should probably be pulled out into a method.
-*/
-    elements = rowCopy->getMutableElements() ;
-    column = rowCopy->getMutableIndices() ;
-    rowStart = rowCopy->getMutableVectorStarts() ;
-    rowLength = rowCopy->getMutableVectorLengths(); 
-
-#if 0
-    // For debugging?
-    int nFixed = 0 ;
-    for (i = 0 ; i < nCols ; i++) {
-      if (colUpper[i] == colLower[i])
-	nFixed++ ;
-    }
-    printf("%d columns fixed\n",nFixed) ;
-#endif
-
-    CoinBigIndex newSize = 0 ;
-    int * column2 = new int[nCols] ;
-    double * elements2 = new double[nCols] ;
-    rowStartPos = new CoinBigIndex [nRows] ;
-    for (int i = 0 ; i < nRows ; i++) {
-      double offset = 0.0 ;
-      CoinBigIndex start = rowStart[i] ;
-      CoinBigIndex end = start+rowLength[i] ;
-      rowStart[i] = newSize ;
-      CoinBigIndex save = newSize ;
-      int nOther = 0 ;
-      for (CoinBigIndex j = start ; j < end ; j++) { 
-	int iColumn = column[j] ;
-	if (colUpper[iColumn] > colLower[iColumn]) {
-	  double value = elements[j] ;
-	  if (value < 0.0) {
-	    elements[newSize] = value ;
-	    column[newSize++] = iColumn ;
-	  } else {
-	    elements2[nOther] = value ;
-	    column2[nOther++] = iColumn ;
-	  }
-	} else {
-	  offset += colUpper[iColumn]*elements[j] ;
-	}
-      }
-      rowStartPos[i] = newSize ;
-      for (int k = 0 ; k < nOther ; k++) {
-	elements[newSize] = elements2[k] ;
-	column[newSize++] = column2[k] ;
-      }
-      rowLength[i] = newSize-save ;
-      if (offset) {
-	if (rowLower[i] > -1.0e20)
-	  rowLower[i] -= offset ;
-	if (rowUpper[i] < 1.0e20)
-	  rowUpper[i] -= offset ;
-      }
-    }
-    delete [] column2 ;
-    delete [] elements2 ;
-    rowStart[nRows] = newSize ;
-    rowCopy->setNumElements(newSize) ;
-  } 
-  // End row strengthen block
-
-/*
-  Here, finally, we're making a column-major copy, after we've winnowed the
-  rows for the set we want to work with.
-
-  TODO: Still, I'm asking myself, ``Why does the snapshot keep a colum-major
+  TODO: I'm asking myself, ``Why does the snapshot keep a colum-major
 	copy?  -- lh, 101021 --
 */
   CoinPackedMatrix * columnCopy = new CoinPackedMatrix(*rowCopy,0,0,true) ;
@@ -1466,19 +1560,6 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   lookedAt_ now contains a list of indices of variables to probe. Rows worth
   processing are tagged with -1 in markR 
 */
-#if 0
-/*
-  TODO: This bit of code seems to have migrated up to the head of Stage 1,
-	main processing loop (1), where it's used to limit the constraints
-	installed in rowCopy. Presumably this is the origin of the abort().
-	We should never see a dense row in the working matrix.
-*/
-        // Only look at short rows
-        for (i=0;i<nRows;i++) {
-          if (rowLength[i]>maxElements)
-            abort(); //markR[i]=-2 ;
-        }
-#endif
 /*
   TODO: Eh? Sort by index for repeatability? Seems pointless, and it is
 	commented out. -- lh, 100924 --
@@ -1491,19 +1572,22 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
         if (!numberCliques_) {
           ninfeas = probe(si,cs,colLower,colUpper,rowCopy,columnCopy,
                           rowStartPos,realRows,rowLower,rowUpper,
-                          intVar,minR,maxR,markR,info) ;
+                          intVar,minR,maxR,markR,info,
+			  useObj,useCutoff,cutoff) ;
         } else {
           ninfeas = probeCliques(si,debugger,cs,
 				 colLower,colUpper,rowCopy,columnCopy,
                                  realRows,rowLower,rowUpper,
-                                 intVar,minR,maxR,markR,info) ;
+                                 intVar,minR,maxR,markR,info,
+				 useObj,useCutoff,cutoff) ;
         }
       } // end maxProbe > 0
     } // end !nInfeas
   } // end mode != 0
 /*
-  End of block for mode = 1 or 2; begin mode = 0. This works with the snapshot
-  and does not do bound propagation.
+  End of block for mode = 1 or 2; begin mode = 0.
+  
+  Mode 0 works with the snapshot and does not do bound propagation.
 
   TODO: In fact, it's unclear to me just what we're doing here. The activity
 	is completely unsymmetric with the previous case. -- lh, 100924 --
@@ -1582,21 +1666,11 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 */
     OsiCuts csNew ;
     if (rowCuts_) {
-#if 0
-/*
-  As for mode = 1 or 2; this bit of code migrated up to the head of the Stage 1
-  main processing loop.
-*/
-      // Only look at short rows
-      for (i=0;i<nRows;i++) {
-        if (rowLength[i]>maxElements)
-          abort(); //markR[i]=-2 ;
-      }
-#endif
       ninfeas = probeCliques(si,debugger,csNew,colLower,colUpper,
 			     rowCopy,columnCopy,
 			     realRows,rowLower,rowUpper,
-			     intVar,minR,maxR,markR,info) ;
+			     intVar,minR,maxR,markR,info,
+			     useObj,useCutoff,cutoff) ;
     }
 /*
   TODO: And I have no idea what we're getting into here --- completely
@@ -2312,7 +2386,7 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
     for (OsiCuts::iterator oneCut = cs.begin() ; oneCut != cs.end() ; oneCut++)
       (*oneCut)->print() ;
 # endif
-  } else {
+  } else if (si.getRowCutDebuggerAlways()) {
     std::cout << "  !! Not on optimal path." << std::endl ;
   }
 # endif
@@ -2321,6 +2395,10 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 }
 
 
+/*
+  Parameters useObj, useCutoff, and cutoff are unused as of 110208. Added to
+  probe(), added here for symmetry.
+*/
 
 // Does probing and adding cuts
 int CglProbing::probeCliques( const OsiSolverInterface & si, 
@@ -2335,7 +2413,8 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		       double * rowLower, double * rowUpper,
 		       char * intVar, double * minR, double * maxR, 
 		       int * markR, 
-                       CglTreeInfo * info) const
+                       CglTreeInfo * info,
+		       bool useObj, bool useCutoff, double cutoff) const
 {
   // Set up maxes
   int maxStack = info->inTree ? maxStack_ : maxStackRoot_;
@@ -2431,7 +2510,8 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
   }
 
   int ipass=0,nfixed=-1;
-
+/*
+  Chop now that useCutoff and cutoff come in as parameters.
   double cutoff;
   bool cutoff_available = si.getDblParam(OsiDualObjectiveLimit,cutoff);
   if (!cutoff_available||usingObjective_<0) { // cut off isn't set or isn't valid
@@ -2440,6 +2520,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
   cutoff *= si.getObjSense();
   if (fabs(cutoff)>1.0e30)
     assert (cutoff>1.0e30);
+*/
   double current = si.getObjValue();
   // make irrelevant if mode is 0
   if (!mode_)
@@ -3397,7 +3478,8 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		      int realRow = (rowLower[irow]<-1.0e20) ? irow : -1;
 		      if (realRows&&realRow>0)
 			realRow=realRows[realRow];
-		      rowCut.addCutIfNotDuplicate(rc,realRow);
+		      rc.setWhichRow(realRow) ;
+		      rowCut.addCutIfNotDuplicate(rc);
 		      }
 		    }
 		  }
@@ -3476,7 +3558,8 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		      int realRow = (rowUpper[irow]>1.0e20) ? irow : -1;
 		      if (realRows&&realRow>0)
 			realRow=realRows[realRow];
-		      rowCut.addCutIfNotDuplicate(rc,realRow);
+		      rc.setWhichRow(realRow) ;
+		      rowCut.addCutIfNotDuplicate(rc);
 		      }
 		    }
 		  }
@@ -3723,34 +3806,35 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
                         //if(info->strengthenRow)
                         //printf("c point to row %d\n",irow);
 #ifdef STRENGTHEN_PRINT
-		      if (rowLower[irow]<-1.0e20) {
-			printf("7Cut %g <= ",rc.lb());
-			int k;
-			for ( k=0;k<n;k++) {
-			  int iColumn = index[k];
-			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
+			if (rowLower[irow]<-1.0e20) {
+			  printf("7Cut %g <= ",rc.lb());
+			  int k;
+			  for ( k=0;k<n;k++) {
+			    int iColumn = index[k];
+			    printf("%g*",element[k]);
+			    if (si.isInteger(iColumn))
+			      printf("i%d ",iColumn);
+			    else
+			      printf("x%d ",iColumn);
+			  }
+			  printf("<= %g\n",rc.ub());
+			  printf("Row %g <= ",rowLower[irow]);
+			  for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
+			    int iColumn = column[k];
+			    printf("%g*",rowElements[k]);
+			    if (si.isInteger(iColumn))
+			      printf("i%d ",iColumn);
+			    else
+			      printf("x%d ",iColumn);
+			  }
+			  printf("<= %g\n",rowUpper[irow]);
 			}
-			printf("<= %g\n",rc.ub());
-			printf("Row %g <= ",rowLower[irow]);
-			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
-			  int iColumn = column[k];
-			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rowUpper[irow]);
-		      }
-#endif
-		      int realRow = (rowLower[irow]<-1.0e20) ? irow : -1;
-		      if (realRows&&realRow>0)
-			realRow=realRows[realRow];
-			rowCut.addCutIfNotDuplicate(rc,realRow);
+  #endif
+			int realRow = (rowLower[irow]<-1.0e20) ? irow : -1;
+			if (realRows&&realRow>0)
+			  realRow=realRows[realRow];
+			rc.setWhichRow(realRow) ;
+			rowCut.addCutIfNotDuplicate(rc);
 		      }
 		    }
 		  }
@@ -3802,34 +3886,35 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
                         //if(info->strengthenRow)
                         //printf("d point to row %d\n",irow);
 #ifdef STRENGTHEN_PRINT
-		      if (rowUpper[irow]>1.0e20) {
-			printf("8Cut %g <= ",rc.lb());
-			int k;
-			for ( k=0;k<n;k++) {
-			  int iColumn = index[k];
-			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
+			if (rowUpper[irow]>1.0e20) {
+			  printf("8Cut %g <= ",rc.lb());
+			  int k;
+			  for ( k=0;k<n;k++) {
+			    int iColumn = index[k];
+			    printf("%g*",element[k]);
+			    if (si.isInteger(iColumn))
+			      printf("i%d ",iColumn);
+			    else
+			      printf("x%d ",iColumn);
+			  }
+			  printf("<= %g\n",rc.ub());
+			  printf("Row %g <= ",rowLower[irow]);
+			  for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
+			    int iColumn = column[k];
+			    printf("%g*",rowElements[k]);
+			    if (si.isInteger(iColumn))
+			      printf("i%d ",iColumn);
+			    else
+			      printf("x%d ",iColumn);
+			  }
+			  printf("<= %g\n",rowUpper[irow]);
 			}
-			printf("<= %g\n",rc.ub());
-			printf("Row %g <= ",rowLower[irow]);
-			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
-			  int iColumn = column[k];
-			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rowUpper[irow]);
-		      }
-#endif
-		      int realRow = (rowUpper[irow]>1.0e20) ? irow : -1;
-		      if (realRows&&realRow>0)
-			realRow=realRows[realRow];
-			rowCut.addCutIfNotDuplicate(rc,realRow);
+  #endif
+			int realRow = (rowUpper[irow]>1.0e20) ? irow : -1;
+			if (realRows&&realRow>0)
+			  realRow=realRows[realRow];
+			rc.setWhichRow(realRow) ;
+			rowCut.addCutIfNotDuplicate(rc);
 		      }
 		    }
 		  }
@@ -3885,6 +3970,8 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                           char * intVar, double * minR, double * maxR,int * markR,
                           CglTreeInfo * info) const
 {
+  // Check if this is ever used.
+  assert(false) ;
   if (!numberCliques_)
     return 0;
   // Set up maxes
@@ -4705,7 +4792,8 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 			printf("<= %g\n",rowUpper[irow]);
 		      }
 #endif
-                      rowCut.addCutIfNotDuplicate(rc,irow);
+		      rc.setWhichRow(irow) ;
+                      rowCut.addCutIfNotDuplicate(rc);
                     }
                   }
                 }
@@ -4781,7 +4869,8 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 			printf("<= %g\n",rowUpper[irow]);
 		      }
 #endif
-                      rowCut.addCutIfNotDuplicate(rc,irow);
+		      rc.setWhichRow(irow) ;
+                      rowCut.addCutIfNotDuplicate(rc);
                     }
                   }
                 }
@@ -4947,7 +5036,8 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 			printf("<= %g\n",rowUpper[irow]);
 		      }
 #endif
-			rowCut.addCutIfNotDuplicate(rc,irow);
+			rc.setWhichRow(irow) ;
+			rowCut.addCutIfNotDuplicate(rc);
 		      }
 		    }
 		  }
@@ -5023,7 +5113,8 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 			printf("<= %g\n",rowUpper[irow]);
 		      }
 #endif
-			rowCut.addCutIfNotDuplicate(rc,irow);
+			rc.setWhichRow(irow) ;
+			rowCut.addCutIfNotDuplicate(rc);
 		      }
 		    }
 		  }

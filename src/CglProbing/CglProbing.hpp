@@ -13,7 +13,7 @@
       For now just done for 0-1 variables
       Can be used for building cliques
 
-      ?!?? What is this?
+      ?!?? What is this?  -- lh, 10???? --
    */
   typedef struct {
     //unsigned int zeroOne:1; // nonzero if affected variable is 0-1
@@ -46,18 +46,31 @@
      Sadly, this is not done in this code as there is no mechanism for
      returning the information. This is a big TODO.
 
+     \todo
+     Actually, it *is* done in the code here, labelled as two-cuts, in
+     conjunction with CglPreProcess. It's just that John never bothered
+     to change the comment. Update this once I'm a bit further along in
+     the rewrite. -- lh, 110201 --
+
   3) x -> 1 causes a constraint to become slack by some amount c.  We can
      tighten the constraint ax + .... <= b (where a may be zero) to
      (a+c)x + .... <= b.  If this cut is violated then it is generated.
 
-  4) Similarly, we can generate implied disaggregation cuts
+  4) Similarly, we can generate implied disaggregation cuts.
 
   Note the following differences from cuts in OSL:
 
   a) OSL had structures intended to make this faster.
   b) The "chaining" in 2) was implemented.
   c) Row cuts modified the original constraint rather than adding a cut.
-  b) This code can cope with general integer variables.
+  d) This code can cope with general integer variables. Sort of. Sometimes
+     it trails off into a disabled dead end.
+
+  \todo
+  c) is also untrue for the existing code, in the sense that CglPreProcess
+  will replace original rows with coefficient strengthening cuts. Again,
+  the comment was never updated. Update once I'm a bit further along in
+  the rewrite. -- lh, 110201 --
 
   The generated cuts are inserted into an OsiCut object. Both row cuts and
   column cuts may be returned.
@@ -347,7 +360,8 @@ private:
 	    CoinPackedMatrix *columnCopy, const CoinBigIndex *rowStartPos,
 	    const int *realRow, const double *rowLower, const double *rowUpper,
 	    const char *intVar, double *minR, double *maxR, int *markR, 
-	    CglTreeInfo *info) const;
+	    CglTreeInfo *info,
+	    bool useObj, bool useCutoff, double cutoff) const;
   /// Does probing and adding cuts (with cliques)
   int probeCliques( const OsiSolverInterface & si, 
 	     const OsiRowCutDebugger * debugger, 
@@ -356,7 +370,8 @@ private:
 		    CoinPackedMatrix *columnCopy, const int * realRow,
 	     double * rowLower, double * rowUpper,
 	     char * intVar, double * minR, double * maxR, int * markR, 
-             CglTreeInfo * info) const;
+             CglTreeInfo * info,
+	     bool useObj, bool useCutoff, double cutoff) const;
   /// Does probing and adding cuts for clique slacks
   int probeSlacks( const OsiSolverInterface & si, 
                     const OsiRowCutDebugger * debugger, 
@@ -507,6 +522,15 @@ private:
   int mode_;
 
   /*! \brief Row cuts flags
+
+    Broadly, the possibilities are:
+    - generate row cuts that will be returned in an OsiCuts collection;
+    - generate row cuts that can replace (strengthen) rows in the original
+      constraint system, returned through a CglTreeInfo structure;
+    - generate column cuts
+    If the CglTreeInfo structure contains a strengthenRow vector, and you
+    specify 0x4 here, no row cuts are returned in the cut collection, but rows
+    are strengthened if possible.
 
     - 0x0: do not generate row cuts
     - 0x1: generate disaggregation row cuts

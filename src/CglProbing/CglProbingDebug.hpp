@@ -36,13 +36,6 @@
 
 namespace CglProbingDebug {
 
-/*! \brief Verify integrity of a column-major matrix.
-
-  Scans the index and coefficient arrays looking for obviously bogus values.
-  Can be handy when trying to pin down where a matrix is getting corrupted.
-*/
-int verifyMtx (const CoinPackedMatrix *const mtx) ;
-
 /*! \brief Check column bounds against optimal solution
 
   Check the column bounds passed as parameters against the optimal solution
