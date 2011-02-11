@@ -1270,14 +1270,17 @@ void strengthenCoeff (
     double blowi = rowLower[irow] ;
 /*
   We can't get anywhere unless probing has made one end or the other of the
-  constraint redundant. If there's no gap, we can't do anything.
+  constraint redundant (but not too redundant --- the gap value will become
+  the new coefficient a<ip>', so it must be reasonable).
 
   Range constraints pose the danger that we'll want to assign two different
   values to a<ip>. If we're in `justReplace' mode, this is a nonstarter.
 */
     double uGap = bi-maxR[irow] ;
     double lGap = blowi-minR[irow] ;
-    if (uGap < primalTolerance_ && -lGap < primalTolerance_) continue ;
+    bool useableUGap = ((uGap > primalTolerance_) && (uGap < bigCoeff)) ;
+    bool useableLGap = ((-lGap > primalTolerance_) && (-lGap < bigCoeff)) ;
+    if (!(useableUGap || useableLGap)) continue ;
     bool isRangeCon = ((blowi  > -rhsInf) && (bi < rhsInf)) ;
     if (isRangeCon && justReplace) continue ;
 /*
@@ -1310,21 +1313,21 @@ void strengthenCoeff (
     bool revisebi = true ;
     if (probeDir == probeDown) {
       if (aip >= 0) {
-        if (uGap < primalTolerance_ || uGap > bigCoeff) continue ;
+        if (!useableUGap) continue ;
         delta = -uGap ;
       } else {
-        if (lGap > -primalTolerance_ || lGap < -bigCoeff) continue ;
+        if (!useableLGap) continue ;
         delta = -lGap ;
 	revisebi = false ;
       }
       deltaMul = colUpper[jProbe]+1.0 ; 
     } else {
       if (aip >= 0) {
-        if (lGap > -primalTolerance_ || lGap < -bigCoeff) continue ;
+        if (!useableLGap) continue ;
         delta = lGap ;
 	revisebi = false ;
       } else {
-        if (uGap < primalTolerance_ || uGap > bigCoeff) continue ;
+        if (!useableUGap) continue ;
         delta = uGap ;
       }
       deltaMul = colLower[jProbe]-1.0 ; 
