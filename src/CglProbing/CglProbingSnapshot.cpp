@@ -33,6 +33,12 @@
   and column-major copies at each call) and also to make it easier to do
   global cuts (because we can use the possible array to specify that only
   original constraints are to be considered) or impose other restrictions.
+
+  TODO: Now that I've gone through the setup code in gutsOfGenerateCuts and
+  	pulled it out into setupRowCopy and groomModel, I can really see the
+	commonality. It should be possible to merge these. Also notice that
+	we call tighten here, which is something I've been thinking is a good
+	idea.  -- lh, 110212 --
 */
 int CglProbing::snapshot ( const OsiSolverInterface & si,
 			   char * possible, bool withObjective)
@@ -140,10 +146,9 @@ int CglProbing::snapshot ( const OsiSolverInterface & si,
 	could just have a mutable snapshot.
 */
   int returnCode = 0 ;
-  int ninfeas= 
-    tighten(colLower_, colUpper_, column, rowElements,
-	    rowStart, NULL,rowLength, rowLower_, rowUpper_,
-	    numberRows_, numberColumns_, intVar, 5, primalTolerance_) ;
+  int ninfeas = tighten(colLower_,colUpper_,column,rowElements,
+  			rowStart,NULL,rowLength,rowLower_,rowUpper_,
+			numberRows_,numberColumns_,intVar,5,primalTolerance_) ;
   delete [] rowStartPos ;
   if (ninfeas) {
     returnCode = 1 ;
@@ -151,13 +156,16 @@ int CglProbing::snapshot ( const OsiSolverInterface & si,
 /*
   jjf: do integer stuff for mode 0
 
-  TODO: Hmmm ... that implies cutVector_ is discarded at the end of cut
-	generation. Not part of the retained state.
-
   TODO: We throw our mutable intVar away after this loop. If it's really
 	different from the nonmutable intVarOriginal, seems like we're in
 	trouble. Not the least because if it has more binary vars, we've
 	overrun the end of cutVector_. -- lh, 100917 --
+
+  Ok, now I think I see the point here. We need to have this in place in the
+  snapshot for the benefit of the mode 0 code that populates lookedAt_. It
+  will scan this vector and add variables for which there is no probing info
+  (cutVector_[].index == 0) to lookedAt_. So here we're arranging for all
+  binary variables to be probed.  -- lh, 110212 --
 */
   cutVector_ = new disaggregation [number01Integers_] ;
   memset(cutVector_,0,number01Integers_*sizeof(disaggregation)) ;

@@ -39,6 +39,64 @@ static int nPath=0;
 #endif
 
 namespace {
+
+/*
+  Compare two sets of upper and lower bound arrays and generate column cuts.
+*/
+
+void makeColCuts (int nCols, OsiCuts &cs,
+		  const char *const intVar,
+		  const double *const colsol,
+		  const double *const origlbs,
+		  const double *const origubs,
+		  const double *const soln,
+		  double *const newlbs,
+		  double *const newubs
+		 )
+{
+  int numberChanged = 0 ;
+  int ifCut = 0 ;
+  CoinPackedVector lbs ;
+  CoinPackedVector ubs ;
+/*
+  Scan the bound arrays, recording changed bounds and counting changes and
+  actual cuts.
+*/
+  for (int i = 0 ; i < nCols ; ++i) {
+    if (intVar[i]) {
+      newubs[i] = CoinMin(origubs[i],floor(newubs[i]+1.0e-4)) ;
+      if (newubs[i] < origubs[i]-1.0e-8) {
+	if (newubs[i] < colsol[i]-1.0e-8) ifCut++ ;
+	ubs.insert(i,newubs[i]) ;
+	numberChanged++ ;
+      }
+      newlbs[i] = CoinMax(origlbs[i],ceil(newlbs[i]-1.0e-4)) ;
+      if (newlbs[i] > origlbs[i]+1.0e-8) {
+	if (newlbs[i] > colsol[i]+1.0e-8) ifCut++ ;
+	lbs.insert(i,newlbs[i]) ;
+	numberChanged++ ;
+      }
+    }
+  }
+/*
+  Stash the changes in a column cut. If the changes actually cut off some part
+  of the current solution, boost the effectiveness.
+*/
+  if (numberChanged) {
+    OsiColCut cc ;
+    cc.setUbs(ubs) ;
+    cc.setLbs(lbs) ;
+    if (ifCut) {
+      cc.setEffectiveness(100.0) ;
+    } else {
+      cc.setEffectiveness(1.0e-5) ;
+    }
+    cs.insert(cc) ;
+  }
+}
+
+
+
 /*
   This method will attempt to identify variables that will naturally take on
   integer values but were not originally identified as such, and mark them as
@@ -50,12 +108,16 @@ namespace {
     * Why not execute this independently, before any cut generation occurs?
     * Why not execute repeatedly, as the problem is simplified due to fixed
       variables?
+  This would involve calling analyze as part of integer preprocessing.
 
   The expression abs(x - floor(x+.5)) evaluates to zero when x is integer and
   is nonzero otherwise. Farther down in the code, there's an odd-looking test
   that checks abs(1/aij - floor(1/aij + .5)). What we're looking for is
   coefficients aij = 1/k, k integer. This guarantees that b/aij is integer
   as long as b is integer.
+
+  TODO: Should this routine return a count, instead of a boolean? No
+	particular reason other than more information.  -- lh, 110211 --
 */
 
 bool analyze (const OsiSolverInterface *solverX, char *intVar,
@@ -843,7 +905,11 @@ bool groomModel (
 //-------------------------------------------------------------------
 // Generate disaggregation cuts
 //------------------------------------------------------------------- 
-void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
+
+/*
+  The traditional const method. Row and column cuts will be returned in cs.
+*/
+void CglProbing::generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
 			      const CglTreeInfo info2) const
 {
 
@@ -943,6 +1009,9 @@ void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   }
 /*
   Delete the working arrays and restore the row cut mode.
+
+  TODO: Why are we fiddling with colLower_, colUpper_? Track this down.
+        -- lh, 110212 --
 */
   delete [] rowLower ;
   delete [] rowUpper ;
@@ -963,12 +1032,14 @@ void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 
 
 /*
-  TODO: Note that this is not a const method (contrast with generateCuts).
-	-- lh, 100924
+  Note that this is not a const method (contrast with generateCuts).
   
-  TODO: Note that the CglTreeInfo object is not const here. In generateCuts,
+  TODO: Note that the CglTreeInfo object is not const either. In generateCuts,
 	it's passed in as a const and a nonconst clone is created. I need to
 	look into that.  -- lh, 100924 --
+
+	Possible reason is use of CglTreeInfo to pass back strengthened rows
+	for row replacement during preprocessing.  -- lh, 110211 --
 
   Generally, check generateCuts for additional comment. I went through it first
   and didn't repeat comments on common code blocks here.
@@ -1024,14 +1095,17 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
   }
 /*
   Create working arrays for row and column bounds.
+
+  We need nRows+1 because we may use the objective function as a constraint
+  in the working system within gutsOfGenerateCuts.
 */
   int nRows = si.getNumRows() ; 
-  double * rowLower = new double[nRows+1] ;
-  double * rowUpper = new double[nRows+1] ;
+  double *rowLower = new double[nRows+1] ;
+  double *rowUpper = new double[nRows+1] ;
 
   int nCols = si.getNumCols() ; 
-  double * colLower = new double[nCols] ;
-  double * colUpper = new double[nCols] ;
+  double *colLower = new double[nCols] ;
+  double *colUpper = new double[nCols] ;
 /*
   Do the work.
 */
@@ -1069,9 +1143,6 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
   Infeasibility is indicated by a stylized infeasible column cut.
 
   If we're debugging, check whether this is a plausible outcome.
-
-  TODO: Remind me --- Why can't I use the debugger created at the top of the
-	method. And don't I need to dispose of both of these?
 */
   if (ninfeas) {
     OsiRowCut rc ;
@@ -1094,8 +1165,12 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
 
   Mode 3 is just like mode 2, except that the tightened row bounds will be
   returned to the client.
+
+  Don't replace bounds supplied by the client if we've gone infeasible.
+  There's no guarantee of consistency in the values reported back from
+  gutsOfGenerateCuts.
 */
-  if (mode_ == 3) {
+  if (mode_ == 3 && !ninfeas) {
     delete [] rowLower_ ;
     delete [] rowUpper_ ;
     rowLower_ = rowLower ;
@@ -1104,14 +1179,15 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
     delete [] rowLower ;
     delete [] rowUpper ;
   }
-/*
-  But given that this is generateCutsAndModify, we certainly want to return the
-  tightened column bounds.
-*/
-  delete [] colLower_ ;
-  delete [] colUpper_ ;
-  colLower_ = colLower ;
-  colUpper_ = colUpper ;
+  if (!ninfeas) {
+    delete [] colLower_ ;
+    delete [] colUpper_ ;
+    colLower_ = colLower ;
+    colUpper_ = colUpper ;
+  } else {
+    delete [] colUpper ;
+    delete [] colLower ;
+  }
 /*
   jjf: Setup information 
 
@@ -1127,7 +1203,7 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
     << ninfeas << std::endl ;
 # endif
 
-  return ninfeas ;
+  return (ninfeas) ;
 }
 
 
@@ -1137,7 +1213,9 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
 	in the event that gutsOfGenerateCuts decides to put it in the matrix.
 
   rowLower, rowUpper, colLower, and colUpper should be allocated by the caller
-  and will be filled in by gutsOfGenerateCuts.
+  and will be filled in by gutsOfGenerateCuts. If the system is found to be
+  infeasible, there's no particular guarantee of consistency for these arrays
+  and the content should not be used.
 */
 int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si, 
 				    OsiCuts &cs ,
@@ -1200,7 +1278,7 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   CoinMemcpyN(si.getColUpper(),nCols,colUpper) ;
   const double *colsol = si.getColSolution() ;
 /*
-  Stage 1: Preliminary processing.
+  Stage 1: Preliminary Processing (Common setup?)
 
   During Stage 1 we'll set `reasonable' bounds on variables and constraints,
   get rid of constraints that are judged unsuitable for further probing (too
@@ -1233,9 +1311,6 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 
   If we lose feasibility here, cut our losses and bail out while it's still
   uncomplicated.
-
-  TODO: Really, analyze should return a count instead of a boolean.
-  	-- lh, 110204 --
 */
   if (!info->inTree && !info->pass) {
     feasible = analyze(&si,intVar,colLower,colUpper) ;
@@ -1259,11 +1334,11 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 	for later use.  -- lh, 110205 --
 
   TODO: Down in probeClique, there's a clause that forces the cutoff to
-  	infty for mode 0.
+  	infty for mode 0. Why not here?  -- lh, 110211 --
 */
-  double offset ;
+  double offset = 0.0 ;
   si.getDblParam(OsiObjOffset,offset) ;
-  double cutoff ;
+  double cutoff = 0.0 ;
   bool cutoff_available = si.getDblParam(OsiDualObjectiveLimit,cutoff) ;
   if (!cutoff_available) {
     cutoff = si.getInfinity() ;
@@ -1295,7 +1370,10 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 
 /*
   Create the working row copy from the si's model or from a snapshot (only if
-  the user specified mode 0 and a snapshot exists).
+  the user specified mode 0 and a snapshot exists). rowLower and rowUpper are
+  valid at completion, but if we initialise the local row copy from a snapshot
+  the number of valid entries may not match the number of rows for the system
+  held in the si.
 */
   CoinPackedMatrix *rowCopy = setupRowCopy(mode,useObj,cutoff,
   					   offset,rowCopy_,
@@ -1312,6 +1390,10 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 
   realRows is the cross-reference between rows in rowCopy and rows of the
   original model. rowStartPos is the first positive coefficient in a row.
+
+  Note that the number of rows in the local copy is almost certainly not the
+  same as the number of rows in the system held in the si. You can't just copy
+  rowLower and rowUpper; they must be translated if realRows exists.
 */
   int *realRows = 0 ;
   int *rowStartPos = 0 ;
@@ -1327,75 +1409,52 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   }
 /*
   Make a column-major copy, after we've winnowed the rows to the set we want
-  to work with.
+  to work with. The break out the internal arrays for subsequent use.
 
   TODO: I'm asking myself, ``Why does the snapshot keep a colum-major
-	copy?  -- lh, 101021 --
+	copy? It doesn't seem to be used.  -- lh, 101021 --
 */
   CoinPackedMatrix * columnCopy = new CoinPackedMatrix(*rowCopy,0,0,true) ;
-
-/*
-  End of Stage 1.
-*/
-
-# if CGL_DEBUG > 0
-  const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
-  if (debugger && !debugger->onOptimalPath(si))
-    debugger = NULL ;
-# else
-  const OsiRowCutDebugger * debugger = NULL ;
-# endif
-
-/*
-  Begin Stage 2
-*/
-
   const int *column = rowCopy->getIndices() ;
   const CoinBigIndex *rowStart = rowCopy->getVectorStarts() ;
   const int *rowLength = rowCopy->getVectorLengths(); 
   const double *rowElements = rowCopy->getElements() ;
 /*
-  jjf: Arrays so user can find out what happened
-
-  TODO: Misleading? lookedAt_ seems to be used to hold the set of variables
-	selected for probing. The question is whether the selection activity
-	is duplicated in probe() and/or probeCliques().
+  Allocate an array to hold indices of the columns we will probe.
 */
   if (!lookedAt_) {
     lookedAt_ = new int[nCols] ;
   }
   numberThisTime_ = 0 ;
 /*
-  jjf: Let us never add more than twice the number of rows worth of row cuts
-  jjf: Keep cuts out of cs until end so we can find duplicates quickly
-
-  TODO: Well, ok, but none of the values for nRowsFake agree with that comment
-	(assuming nRowsFake is the limit on the number of row cuts). And the
-	row_cut constructor also adjusts the value.
-	-- lh, 100923 --
+  Allocate a container to hold the cuts we'll generate locally. We'll only use
+  this in mode 0.
 
   TODO: There's a similar calculation in probe() to size the local container
-	used there. It allocates much more space.
+	used there. It allocates much more space. But note that the container
+	passed to probe() is the OsiCuts container cs, given as a parameter to
+	this method. rowCut is going to be used down in mode 0 for something.
 */
   int nRowsSafe = CoinMin(nRows,si.getNumRows()) ;
-  int nRowsFake = info->inTree ? nRowsSafe/3 : nRowsSafe ;
-  if (!info->inTree && !info->pass) 
-    nRowsFake *= 5 ;
-  CglProbingRowCut rowCut(nRowsFake,!info->inTree) ;
-
+  int cutCapacity = info->inTree ? nRowsSafe/3 : nRowsSafe ;
+  if (!info->inTree && !info->pass) cutCapacity *= 5 ;
+  CglProbingRowCut rowCut(cutCapacity,!info->inTree) ;
+/*
+  Allocate the row processing record (markR) and the arrays that will hold
+  row lhs bounds (minR, maxR).
+*/
   int * markR = new int [nRows] ;
   double * minR = new double [nRows] ;
   double * maxR = new double [nRows] ;
 /*
+  End of Stage 1: Setup.
+
+  Begin Stage 2: Mode-dependent Setup and Probing
+*/
+/*
   In modes 1 and 2, we're allowed to tighten bounds. Call tighten() to do bound
   propagation (two pass limit), then create `column cuts' to record the
   tightened bounds.
-
-  TODO: Surely we could skip this if we've already lost feasibility! Or does
-	tighten() bail immediately? Not immediately obvious. This method
-	really needs a cleanupAndGoHome() method that can be called at the
-	point where we discover infeasibility.
-	-- lh, 100923 --
 
   NOTE: Split tighten() into tighten() and tightenClique() -- lh, 101124 --
 */
@@ -1411,61 +1470,20 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 			rowLower,rowUpper,nRows,nCols,
 			intVar,2,primalTolerance_);
     }
-    if (!feasible)
-      ninfeas = 1 ;
     if (!ninfeas) {   // block extends to end of if (mode)
 /*
-  jjf: create column cuts where integer bounds have changed
-
-  TODO: Looks like another good candidate for a method. Already a block.
-	-- lh, 100923 --
-  
-  TODO: ifCut could just as well be a boolean.  -- lh, 100923 --
+  Create column cuts where integer bounds have changed.
 */
-      {
-	const double *lower = si.getColLower() ;
-	const double *upper = si.getColUpper() ;
-	const double *colsol = si.getColSolution() ;
-	int numberChanged = 0 ;
-	int ifCut = 0 ;
-	CoinPackedVector lbs ;
-	CoinPackedVector ubs ;
-	for (int i = 0 ; i < nCols ; ++i) {
-	  if (intVar[i]) {
-	    colUpper[i] = CoinMin(upper[i],floor(colUpper[i]+1.0e-4)) ;
-	    if (colUpper[i] < upper[i]-1.0e-8) {
-	      if (colUpper[i] < colsol[i]-1.0e-8)
-		ifCut = 1 ;
-	      ubs.insert(i,colUpper[i]) ;
-	      numberChanged++ ;
-	    }
-	    colLower[i] = CoinMax(lower[i],ceil(colLower[i]-1.0e-4)) ;
-	    if (colLower[i] > lower[i]+1.0e-8) {
-	      if (colLower[i] > colsol[i]+1.0e-8)
-		ifCut = 1 ;
-	      lbs.insert(i,colLower[i]) ;
-	      numberChanged++ ;
-	    }
-	  }
-	}
-	if (numberChanged) {
-	  OsiColCut cc ;
-	  cc.setUbs(ubs) ;
-	  cc.setLbs(lbs) ;
-	  if (ifCut) {
-	    cc.setEffectiveness(100.0) ;
-	  } else {
-	    cc.setEffectiveness(1.0e-5) ;
-	  }
-#         if CGL_DEBUG > 0
-	  CglProbingDebug::checkBounds(si,cc) ;
-#         endif
-	  cs.insert(cc) ;
-	}
-      }  // end create column cuts block
-
-      // This next block extends to end of mode 1,2 block
-      if (maxProbe > 0) {
+      makeColCuts(nCols,cs,intVar,colsol,si.getColLower(),si.getColUpper(),
+    		  si.getColSolution(),colLower,colUpper) ;
+#     if CGL_DEBUG > 0
+      CglProbingDebug::checkBounds(si,cs.getColCut(cs.sizeColCuts())) ;
+#     endif
+/*
+  We've calculated changes in column bounds due to propagation. To go further,
+  we need to be able to probe.
+*/
+      if (maxProbe > 0) {    // block extends to end of if (mode)
         numberThisTime_ = 0 ;
 /*
   jjf: get min max etc for rows
@@ -1476,9 +1494,10 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 
   TODO: Why do we need a second run for this? Why not do it as part of
 	tighten()? My old notes indicate that tighten calculates the row
-	bounds (and indeed it must to propagate column bounds). On a purely
-	mechanical level, tighten does not fill in minR, maxR, markR.
-	-- lh, 100923 --
+	bounds (and indeed it must to propagate column bounds). It's not
+	like we're saving any work, other than transcribing the bounds into
+	minR and maxR. On a purely mechanical level, tighten does not fill
+	in minR, maxR, markR.  -- lh, 100923 --
 */
         calcRowBounds(colLower,colUpper,column,rowElements,
 		      rowStart,rowLength,rowLower,rowUpper,
@@ -1557,17 +1576,9 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
           }
         }
 /*
-  lookedAt_ now contains a list of indices of variables to probe. Rows worth
-  processing are tagged with -1 in markR 
-*/
-/*
-  TODO: Eh? Sort by index for repeatability? Seems pointless, and it is
-	commented out. -- lh, 100924 --
-*/
-	// sort to be clean
-	// std::sort(lookedAt_,lookedAt_+numberThisTime_) ;
-/*
-  And do the probing, with or without cliques.
+  lookedAt_ now contains a list of indices of variables to probe. Rows
+  worth processing are tagged with -1 in markR. Do the probing, with or
+  without cliques.
 */
         if (!numberCliques_) {
           ninfeas = probe(si,cs,colLower,colUpper,rowCopy,columnCopy,
@@ -1575,8 +1586,7 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
                           intVar,minR,maxR,markR,info,
 			  useObj,useCutoff,cutoff) ;
         } else {
-          ninfeas = probeCliques(si,debugger,cs,
-				 colLower,colUpper,rowCopy,columnCopy,
+          ninfeas = probeCliques(si,cs,colLower,colUpper,rowCopy,columnCopy,
                                  realRows,rowLower,rowUpper,
                                  intVar,minR,maxR,markR,info,
 				 useObj,useCutoff,cutoff) ;
@@ -1587,10 +1597,47 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 /*
   End of block for mode = 1 or 2; begin mode = 0.
   
-  Mode 0 works with the snapshot and does not do bound propagation.
+  Mode 0 works with the snapshot and does not do bound propagation. But note
+  that much of the preparatory work that's done above for modes 1 and 2 in
+  Stage 1 is done in snapshot() when the snapshot is created, including
+  bound propagation. It really should be possible to unify a lot of this.
 
-  TODO: In fact, it's unclear to me just what we're doing here. The activity
-	is completely unsymmetric with the previous case. -- lh, 100924 --
+  TODO: Note that this code has been effectively disabled since 080428 (r629)
+	when the only use (in CglPreProcess::modified) was guarded with 
+	#if 0 / #endif. Expect oddities.  -- lh, 110212 --
+
+  TODO: And now that I've worked through it, I have real questions. The key is
+  	the table down at ACTIONS.
+	
+	We start out by calling probeClique and get back a private container
+	of cuts. The code is clear that it's expecting only disaggregation
+	cuts. We go through a lot of work to classify these cuts and process
+	them into an alternate form which is stored in cutVector_. Then
+	we work through cutVector_, looking for the situations identified
+	in ACTIONS. Which are exactly the things that should be picked up
+	by monotone actions, disaggregation cuts, and implication cuts. So
+	if this code ever finds anything, it indicates an algorithm error
+	someplace else. (Just possibly, we might pick up something across
+	calls to this CglProbing object. cutVector_ is preserved for as
+	long as the object is in existence.) Then we go through a lot
+	more work to go back over cutVector_ one more time, checking for
+	violations and reconstituting the cuts we processed away at the
+	start. I'm still shaking my head.
+
+	What's worth keeping? Well, the basic concept of the snapshot: We
+	don't have to recreate the row and column copies with each call. And
+	there's a simple placeholder where John's comment says `could augment
+	cliques'. Which is true, but I wonder if that, too, isn't already done
+	somewhere else, or could be done somewhere else more efficiently.
+
+	So my conclusion, at this point, is that the only distinction worth
+	keeping between mode 0 and modes 1 -- 3 is that mode 0 works from the
+	snapshot. I'll see if I notice more along the way.
+
+	-- lh, 110212 --
+
+	Essentially confirmed in correspondence with JJF. Clique code
+	imported from OSL but never fully functional.  -- lh, 110216 --
 */
   else
   if (maxProbe > 0) {
@@ -1599,38 +1646,22 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
        could check more thoroughly that integers are correct (sanity)
        make up list of new variables to look at 
 
-  Initial hypothesis: We're working from a snapshot, so we've done at least
-  one round of probing and cut generation. In particular, we should have
-  disaggregation cuts, stashed in cutVector_. So we're only going to probe
-  variables where we have no information. We're looking at binary
-  variables because that's the natural index for a collection of
-  disaggregation cuts generated by splitting a constraint where a single
-  binary variable controls whether a bunch of other variables can be
-  nonzero.
+  We're working from a snapshot.  In particular, we should have information
+  about probing stashed in cutVector_ (for each x<p> = sequence, a vector of
+  affected variables x<t> = index). So we're only going to probe variables
+  where we have no information.
 
-  The comment in CglProbing for mode 0: `if no information exists for
-  that variable then probing will be done' makes more sense now. And if you
-  take that together with the comment `only with snapshot; otherwise as mode
-  1' then the tweaking of mode at the head of generateCutsAndModify almost
-  makes sense.
-
-  -- lh, 101021 --
-
-  TODO: Check out how we can get away with reordering the major operations
-	here. In the mode != 0 block, it's calcRowBounds; select & sort; probe.
-	Here, it's select and sort; calcRowBounds; probe.  -- lh, 101021 --
-
-	Now I think about it, there's no problem. calcRowBounds flags
-	rows worth processing, which is independent of columns worth
-	processing. Order makes no difference.	-- lh, 101125 --
-
+  When the snapshot is created, cutVector_ is initialised with all binary
+  variables. So the snapshot documentation is a little deceptive. On first use
+  after creation, we'll probe all binary variables, in order of distance from
+  integrality, subject to whatever limits have been set.
 */
     assert(numberIntegers == numberIntegers_) ;
     numberThisTime_ = 0 ;
     const double *colsol = si.getColSolution() ;
-    double_int_pair *array = new double_int_pair [nCols] ;
+    double_int_pair *array = new double_int_pair [number01Integers_] ;
 #   ifdef ZEROFAULT
-    std::memset(array,0,sizeof(double_int_pair)*nCols) ;
+    std::memset(array,0,sizeof(double_int_pair)*number01Integers_) ;
 #   endif
     for (int i = 0 ; i < number01Integers_ ; i++) {
       int j = cutVector_[i].sequence ;
@@ -1645,20 +1676,16 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
     for (int i = 0 ; i < numberThisTime_ ; i++) {
       lookedAt_[i] = array[i].sequence ;
     }
-    // sort to be clean
-    // std::sort(lookedAt_,lookedAt_+numberThisTime_) ;
     delete [] array ;
-    // get min max etc for rows
-    calcRowBounds(colLower, colUpper, column, rowElements,
-	     rowStart, rowLength, rowLower, rowUpper,
-	     minR , maxR , markR, nRows) ;
+/*
+  lookedAt_ now contains the indices of the binary variables for which we have
+  no probing information. Calculate row lhs min and max, and call probeClique
+  to do the probing (note that we will have clique information!)
+*/
+    calcRowBounds(colLower,colUpper,column,rowElements,rowStart,rowLength,
+    		  rowLower,rowUpper,minR,maxR,markR,nRows) ;
 /*
   jjf: don't do cuts at all if 0 (i.e. we are just checking bounds)
-
-  TODO: The comment is wrong, at least for generateCuts. What happens there is
-	that any negative value of rowCuts_ is converted to 0x4, which is
-	supposedly column cuts only. But it's definitely not 0, so this block
-	will still execute.  -- lh, 100924 --
 
   TODO: Why don't we get a choice between probe and probeCliques? And why did
 	we create a new cut collection (csNew) instead of using parameter cs?
@@ -1666,36 +1693,45 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 */
     OsiCuts csNew ;
     if (rowCuts_) {
-      ninfeas = probeCliques(si,debugger,csNew,colLower,colUpper,
+      ninfeas = probeCliques(si,csNew,colLower,colUpper,
 			     rowCopy,columnCopy,
 			     realRows,rowLower,rowUpper,
 			     intVar,minR,maxR,markR,info,
 			     useObj,useCutoff,cutoff) ;
     }
 /*
-  TODO: And I have no idea what we're getting into here --- completely
-	asymmetric to the mode 1 and 2 case. I'm going to bail from here for a
-	bit and look over the startup code and probing methods, then come back
-	to this.  -- lh, 100924 --
+  TODO: I've made it to this point twice now (100924, 101021) and each time
+  	bailed out to sort out other parts. Now it's time.
 
-	Made it back this far with an understanding of cliques, but have been
-	spending far too much time at home with Windows. As a working theory,
-	it's this next bit that does disaggregation cuts, or strengthens
-	disaggregation cuts with implication cuts from probing.
+	The first thing that hits me is `If we have no snapshot to work from
+	(rowCuts_ = 0), csNew is surely empty. Why are we even executing
+	this next bit of code? For that matter, why are we here?! Mode 0
+	should have been converted to mode 1.
 
-	If I interpret the slides from the 3/97 presentation correctly,
-	probing should do implication cuts, and disaggregation would be a
-	separate activity.  So I'm off to look at the probing code and
-	understand what it does. There's 500 lines of uncommented code coming
-	up, followed by another 200 lines with the comment `see if any
-	disaggregation cuts are violated.' I'll be back. -- lh, 101021 --
+	After reading ahead about 350 lines (look for END CLASSIFICATION) it's
+	clear what we're doing in the next bit of code. We take the
+	disaggregation cuts returned by probeCliques (and gods help us if
+	there's anything else) and do a complicated case analysis to try and
+	classify the type of cut we're looking at. We have about 150 lines of
+	classification code whose sole purpose is to do a count, followed by
+	the same 150 lines of classification code, this time filling in the
+	entries and labelling them with the classification. This whole code
+	block is highly suspect.
+
+	-- lh, 110211 --
+
+  AFTER PROBECLIQUE
 */
     if (!ninfeas) {
-      // go through row cuts
       int nCuts = csNew.sizeRowCuts() ;
       int iCut ;
-      // need space for backward lookup
-      // just for ones being looked at
+/*
+  backward will allow us to go from a probe index p to the corresponding in
+  cutVector_.
+  onList is an indicator that x<p> is in cutVector_
+
+  Presumably onList will become more? It's not clear below why we need it.
+*/
       int *backward = new int [2*nCols] ;
       int *onList = backward+nCols ;
       for (int i = 0 ; i < nCols ; i++) {
@@ -1707,47 +1743,105 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 	backward[j] = i ;
 	onList[j] = 1 ;
       }
-      // first do counts
-      // we know initialized to zero
-      for (iCut=0;iCut<nCuts;iCut++) {
+/*
+  jjf: first do counts; we know initialized to zero
+
+  We know this because we only probed variables that didn't have information.
+  (Of course, if we guess wrong below while trying to determine the type of
+  constraint, that goes out the window.)
+
+  TODO: I've fixed up a few obvious errors (redundant tests, incorrect
+	semantics) in the next two loops to classify cuts, but there are
+	lots more. I'm going to wait 'til I have a grasp of the whole
+	activity before trying to do more detail fixes. The possibility
+	of classification error remains. Not to mention the `can do
+	something?' comments.  -- lh, 110212 --
+
+  TODO: There were a number of instances in the next two loops where there's a
+  	test for backward[k] < 0 in one place and, close by, a test for
+	onList[k]. Given initialisation immediately above, these tests should
+	be equivalent. It'd be nice if the code made that apparent, and I've
+	settled for backward[.] < 0.
+	-- lh, 110212 --
+*/
+      for (iCut = 0 ; iCut < nCuts ; iCut++) {
 	OsiRowCut rcut ;
 	CoinPackedVector rpv ;
 	rcut = csNew.rowCut(iCut) ;
 	rpv = rcut.row() ;
-	assert(rpv.getNumElements()==2) ;
-	const int * indices = rpv.getIndices() ;
-	double* elements = rpv.getElements() ;
-	double lb=rcut.lb() ;
-	// find out which integer
-        int which=0 ;
-        int i=backward[indices[0]] ;
-        if (i<0||!onList[indices[0]]) {
-          which=1 ;
-          i=backward[indices[1]] ;
-          // Just possible variable was general integer but now 0-1
-          if (!onList[indices[which]])
-            continue ;
+/*
+  Hmmm ... probeClique looks to be capable of generating coefficient
+  strengthening cuts. The code is there, at least. But this assert is only
+  guaranteed for disaggregation cuts.  -- lh, 110211 --
+
+  Examination of the Cgl timeline says that mode 0 has been effectively
+  disabled since 080428 r629, so this assert may well predate the introduction
+  of coefficient strengthening.  -- lh, 110212 --
+*/
+	assert(rpv.getNumElements() == 2) ;
+/*
+  Get the index of the probing variable x<p> from the cut and use it to locate
+  the entry in cutVector_. The other index will be x<t>.
+
+  TODO: The probe variable x<p> could be either index, apparently. But
+	it's entirely possible that x<p> in one cut could be x<t> in
+	another. What happens then?  -- lh, 110211 --
+
+  TODO: John allows that neither variable might be in cutVector_, because it's
+  	possible for a variable to be converted to binary if its bounds are
+	reduced to 0-1. So we have the freak accident of a disaggregation
+	constraint where x<t> is general integer and x<p> was converted from
+	general integer to binary.  -- lh, 110212 --
+*/
+	const int *indices = rpv.getIndices() ;
+        int which = 0 ;
+        int i = backward[indices[0]] ;
+        if (i < 0) {
+          which = 1 ;
+          i = backward[indices[1]] ;
+          if (i < 0) continue ;
         }
         int other = indices[1-which] ;
-	if (lb==-DBL_MAX) {
+	double *elements = rpv.getElements() ;
+	double lb = rcut.lb() ;
+/*
+  Sort out what kind of cut we're looking at. It's a bit hard to say
+  whether this is correct for John's disaggregation cut generation code
+  (I think not), and it's a cinch it's wrong for my disaggCuts method. But
+  the details can be worked out.
+
+  TODO: If this is going to be done easily and efficiently, it should be done
+  	when the disaggregation cut is generated. The critical questions
+	(identity of x<p>, probe direction, identity of x<t>, bound change)
+	are all known at that point. It's far more difficult to recover that
+	information here. Having said that, the current implementation always
+	constructs disaggregation cuts in a canonical form, with x<p> in the
+	second position.   -- lh, 110212 --
+
+  In-code comments for this next bit are JJF.
+*/
+	if (lb == -DBL_MAX) {
           if (!rcut.ub()) {
             // UB
-            if (elements[which]<0.0) {
-              //assert (elements[1-which]>0.0) ;
+	    double elWhich = elements[which] ;
+	    double elOther = elements[1-which] ;
+            if (elWhich < 0.0) {
+              // assert (elOther > 0.0) ;
               // delta to 0 => x to 0.0
               cutVector_[i].length++ ;
             } else {
-              if (elements[1-which]<0.0 && fabs(elements[which]/elements[1-which]-
-                                              colUpper[other])<1.0e-5) {
+              if (elOther < 0.0 &&
+		  fabs(elWhich/elOther-colUpper[other]) < 1.0e-5) {
                 // delta to 1 => x to upper bound
                 cutVector_[i].length++ ;
               } else {
                 if (onList[other]) {
                   double value0 = elements[0] ;
                   double value1 = elements[1] ;
-                  if (value0*value1==-1.0) {
+                  if (value0*value1 == -1.0) {
                     // can do something ?
-                    int j=backward[other] ;
+		    // (lh) is x<t> binary? if not, j < 0 here.
+                    int j = backward[other] ;
                     cutVector_[i].length++ ;
                     cutVector_[j].length++ ;
                   } else {
@@ -1758,9 +1852,11 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
             }
           } else {
             if (onList[other]) {
-              if (elements[0]==1.0 && elements[1]==1.0&&rcut.ub()==1.0) {
+              if (elements[0] == 1.0 &&
+	          elements[1] == 1.0 && rcut.ub() == 1.0) {
                 // can do something ?
-                int j=backward[other] ;
+		// (lh) is x<t> binary? if not, j < 0 here.
+                int j = backward[other] ;
                 cutVector_[i].length++ ;
                 cutVector_[j].length++ ;
               } else {
@@ -1769,26 +1865,32 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
             }
           }
 	} else {
-          assert(rcut.ub()==DBL_MAX) ;
+/*
+  End (stuff) <= b, begin b <= (stuff). Note that this case is not symmetric
+  with the above case --- there's nothing for lb != 0.
+*/
+          assert(rcut.ub() == DBL_MAX) ;
           if (!lb) {
             // LB
-            if (elements[which]>0.0) {
-              //assert (elements[1-which]<0.0) ;
+	    double elWhich = elements[which] ;
+	    double elOther = elements[1-which] ;
+            if (elWhich > 0.0) {
+              // assert (elOther < 0.0) ;
               // delta to 0 => x to 0.0
               // flip so same as UB
               cutVector_[i].length++; 
             } else {
-              if (elements[1-which]<0.0 && fabs(elements[which]/elements[1-which]-
-                                              colUpper[other])<1.0e-5) {
+              if (elOther < 0.0 &&
+	      	  fabs(elWhich/elOther-colUpper[other]) < 1.0e-5) {
                 // delta to 1 => x to upper bound
                 cutVector_[i].length++ ;
               } else {
                 if (onList[other]) {
                   double value0 = elements[0] ;
                   double value1 = elements[1] ;
-                  if (value0*value1==-1.0) {
+                  if (value0*value1 == -1.0) {
                     // can do something ?
-                    int j=backward[other] ;
+                    int j = backward[other] ;
                     cutVector_[i].length++ ;
                     cutVector_[j].length++ ;
                   } else {
@@ -1797,119 +1899,172 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
                 }
               }
             }
-          }
-	} 
-      }
-      // allocate space
-      for (int i=0;i<number01Integers_;i++) {
-	int j=cutVector_[i].sequence ;
+          }        // end of b == 0
+	}       // end of b <= (stuff)
+      }      // end of counting loop
+/*
+  We have a set of counts attached to entries in cutVector_ that tell us how
+  long the index arrays will need to be. Allocate the arrays.
+*/
+      for (int i = 0 ; i < number01Integers_ ; i++) {
+	int j = cutVector_[i].sequence ;
 	if (onList[j] && !cutVector_[i].index) {
-	  disaggregation thisOne=cutVector_[i] ;
-	  cutVector_[i].index=new disaggregationAction [thisOne.length] ;
-          cutVector_[i].length=0 ;
+	  disaggregation thisOne = cutVector_[i] ;
+	  cutVector_[i].index = new disaggregationAction [thisOne.length] ;
+          cutVector_[i].length = 0 ;
 	}
       }
-      // now put in
-      for (iCut=0;iCut<nCuts;iCut++) {
+/*
+  And load up the arrays.
+
+  The classification structure here is cut-and-paste from above; all the
+  comments about the case analysis apply again. The Agree/Disagree forms
+  assume binary probe and target.   -- lh, 110212 --
+
+  TODO: Note that the index stored in disaggregation.index[] can be either an
+	index for cutVector_ (zeroOneInDisagg true) or the original
+	column index (false). Presence in cutVector_ implies binary; it's
+	still unclear to me if the reverse is always true. cutVector_
+	may not be loaded with every binary variable.  -- lh, 110212 --
+
+  TODO: What you can see, after a bit of thought, is that for a disaggregation
+  	cut on two binary variables, there's a symmetry. For example,
+	x<p> -> 1 ==> x<t> -> 0 gives x<p> <= (1-x<t>), which also arises from
+	x<t> -> 1 ==> x<p> -> 0 (with the roles of x<p> and x<t> exchanged).
+	It looks like the classification scheme is trying to exploit this, but
+	not getting the decision tree right. We need to check for two binary
+	variables right at the top.  -- lh, 110212 --
+
+*/
+      for (iCut = 0 ; iCut < nCuts ; iCut++) {
 	OsiRowCut rcut ;
 	CoinPackedVector rpv ;
 	int iput ;
 	rcut = csNew.rowCut(iCut) ;
 	rpv = rcut.row() ;
-	assert(rpv.getNumElements()==2) ;
-	const int * indices = rpv.getIndices() ;
-	double* elements = rpv.getElements() ;
-	double lb=rcut.lb() ;
-	// find out which integer
-	// find out which integer
-        int which=0 ;
-        int i=backward[indices[0]] ;
-        if (i<0||!onList[indices[0]]) {
-          which=1 ;
-          i=backward[indices[1]] ;
-          // Just possible variable was general integer but now 0-1
-          if (!onList[indices[which]])
-            continue ;
+	assert(rpv.getNumElements() == 2) ;
+	const int *indices = rpv.getIndices() ;
+	double *elements = rpv.getElements() ;
+	double lb = rcut.lb() ;
+	// (lh) assume x<p> is the first binary variable we find?
+        int which = 0 ;
+        int i = backward[indices[0]] ;
+        if (i < 0) {
+          which = 1 ;
+          i = backward[indices[1]] ;
+          if (i < 0) continue ;
         }
+	disaggregation *cVi = &cutVector_[i] ;
         int other = indices[1-which] ;
-        int j = other ? backward[other] : -1 ;
-	if (lb==-DBL_MAX) {
-          if (!rcut.ub()) {
-            // UB
-            if (elements[which]<0.0) {
-              iput=cutVector_[i].length ;
-              if (j>=0)
-                setAffectedInDisaggregation(cutVector_[i].index[iput],j) ;
+        int j = backward[other] ;
+	disaggregation *cVj = 0 ;
+	if (j >= 0) cVj = &cutVector_[j] ;
+
+	if (lb == -DBL_MAX) {	// <= constraint
+          if (!rcut.ub()) {     // b = 0
+	    double elWhich = elements[which] ;
+	    double elOther = elements[1-which] ;
+            if (elWhich < 0.0) {
+	      // delta to 0 => x to 0.0
+	      // Agree: -x<p>+x<t> <= 0
+              iput = cVi->length ;
+              if (j >= 0)
+                setAffectedInDisagg(cVi->index[iput],j) ;
               else
-                setAffectedInDisaggregation(cutVector_[i].index[iput],other) ;
-              setWhenAtUBInDisaggregation(cutVector_[i].index[iput],false) ;
-              setAffectedToUBInDisaggregation(cutVector_[i].index[iput],false) ;
-	      setZeroOneInDisaggregation(cutVector_[i].index[iput],onList[other]!=0) ;
-              cutVector_[i].length++ ;
+                setAffectedInDisagg(cVi->index[iput],other) ;
+              setWhenAtUBInDisagg(cVi->index[iput],false) ;
+              setAffectedToUBInDisagg(cVi->index[iput],false) ;
+	      setZeroOneInDisagg(cVi->index[iput],(j >= 0)) ;
+              cVi->length++ ;
             } else { 
-              if (elements[1-which]<0.0 && fabs(elements[which]/elements[1-which]-
-                                              colUpper[other])<1.0e-5) {
+	      /*
+	        Wrong classification check. Assume x<p> binary, x<t> general
+		integer, l<p> = l<t> = 0. l'<p> = 1. Canonical form is
+		(l<t>-l'<t>)x<p> + (l'<p>-l<p>)x<t> >= l<t>l'<p>-l'<t>l<p>
+		reduces to
+		l'<t>x<p> - x<t> <= 0
+		l'<t> is tightened colLower, equivalent to colUpper only for
+		binary variables or fixed general integer (shades of
+		goingToTrueBound). Also, we've carefully tested to ensure
+		that a<p> > 0 and a<t> < 0.  -- lh, 110212 --
+	      */
+              if (elOther < 0.0 &&
+	          fabs(elWhich/elOther-colUpper[other]) < 1.0e-5) {
                 // delta to 1 => x to upper bound
-                iput=cutVector_[i].length ;
-                if (j>=0)
-                  setAffectedInDisaggregation(cutVector_[i].index[iput],j) ;
+		// Agree: x<p>-x<t> <= 0
+                iput = cVi->length ;
+                if (j >= 0)
+                  setAffectedInDisagg(cVi->index[iput],j) ;
                 else
-                  setAffectedInDisaggregation(cutVector_[i].index[iput],other) ;
-                setWhenAtUBInDisaggregation(cutVector_[i].index[iput],true) ;
-                setAffectedToUBInDisaggregation(cutVector_[i].index[iput],true) ;
-                setZeroOneInDisaggregation(cutVector_[i].index[iput],onList[other]!=0) ;
-                cutVector_[i].length++ ;
+                  setAffectedInDisagg(cVi->index[iput],other) ;
+                setWhenAtUBInDisagg(cVi->index[iput],true) ;
+                setAffectedToUBInDisagg(cVi->index[iput],true) ;
+                setZeroOneInDisagg(cVi->index[iput],(j >= 0)) ;
+                cVi->length++ ;
               } else {
-                if (onList[other]) {
+	        /*
+		  a<p> > 0, a<t> < 0, b == 0, x<p>  binary. Now add x<t>
+		  binary (j >= 0) and a<p>*a<t> = -1.0.  Effectively, we're
+		  looking for x<p> - x<t> <= 0. Sure, we can do something. We
+		  just did it, immediately above. Symmetry here says that
+		  x<p> -> 1 ==> x<t> -> 1 and x<t> -> 0 ==> x<p> -> 0
+		  -- lh, 110212 --
+		*/
+                if (j >= 0) {
                   double value0 = elements[0] ;
                   double value1 = elements[1] ;
-                  if (value0*value1==-1.0) {
+                  if (value0*value1 == -1.0) {
                     // can do something ?
-                    int j=backward[other] ;
-                    assert (j>=0) ;
                     // flip so value0 1.0
-                    if (value1==1.0) {
-                      j=i ;
-                      i=backward[other] ;
-                      value1=value0 ;
-                      value0=1.0 ;
+                    if (value1 == 1.0) {
+                      j = i ;
+                      i = backward[other] ;
+                      value1 = value0 ;
+                      value0 = 1.0 ;
                     }
-                    assert (value0==1.0) ;
-                    assert (value1==-1.0) ;
-                    iput=cutVector_[i].length ;
-                    setAffectedInDisaggregation(cutVector_[i].index[iput],j) ;
-                    setWhenAtUBInDisaggregation(cutVector_[i].index[iput],true) ;
-                    setAffectedToUBInDisaggregation(cutVector_[i].index[iput],true) ;
-                    setZeroOneInDisaggregation(cutVector_[i].index[iput],true) ;
-                    cutVector_[i].length++ ;
-                    iput=cutVector_[j].length ;
-                    setAffectedInDisaggregation(cutVector_[j].index[iput],i) ;
-                    setWhenAtUBInDisaggregation(cutVector_[j].index[iput],false) ;
-                    setAffectedToUBInDisaggregation(cutVector_[j].index[iput],false) ;
-                    setZeroOneInDisaggregation(cutVector_[j].index[iput],true) ;
-                    cutVector_[j].length++ ;
+                    assert (value0 == 1.0) ;
+                    assert (value1 == -1.0) ;
+                    iput = cVi->length ;
+                    setAffectedInDisagg(cVi->index[iput],j) ;
+                    setWhenAtUBInDisagg(cVi->index[iput],true) ;
+                    setAffectedToUBInDisagg(cVi->index[iput],true) ;
+                    setZeroOneInDisagg(cVi->index[iput],true) ;
+                    cVi->length++ ;
+                    iput = cVj->length ;
+                    setAffectedInDisagg(cVj->index[iput],i) ;
+                    setWhenAtUBInDisagg(cVj->index[iput],false) ;
+                    setAffectedToUBInDisagg(cVj->index[iput],false) ;
+                    setZeroOneInDisagg(cVj->index[iput],true) ;
+                    cVj->length++ ;
                   }
                 }
               }
             }
           } else {
+	    /*
+	      stuff <= b, b != 0. Additionally require x<t> binary,
+	      a<p> = a<t> = 1.0, b = 1. So we're looking for x<p> + x<t> <= 1.
+	      This is the binary disaggregation for x<p> to 1 ==> x<t> to 0,
+	      and x<t> -> 1 ==> x<p> -> 0.
+	    */
             if (onList[other]) {
-              if (elements[0]==1.0 && elements[1]==1.0&&rcut.ub()==1.0) {
+              if (elements[0] == 1.0 &&
+	          elements[1] == 1.0 && rcut.ub() == 1.0) {
                 // can do something ?
-                int j=backward[other] ;
-                assert (j>=0) ;
-                iput=cutVector_[i].length ;
-                setAffectedInDisaggregation(cutVector_[i].index[iput],j) ;
-                setWhenAtUBInDisaggregation(cutVector_[i].index[iput],true) ;
-                setAffectedToUBInDisaggregation(cutVector_[i].index[iput],false) ;
-                setZeroOneInDisaggregation(cutVector_[i].index[iput],true) ;
-                cutVector_[i].length++ ;
-                iput=cutVector_[j].length ;
-                setAffectedInDisaggregation(cutVector_[j].index[iput],i) ;
-                setWhenAtUBInDisaggregation(cutVector_[j].index[iput],true) ;
-                setAffectedToUBInDisaggregation(cutVector_[j].index[iput],false) ;
-                setZeroOneInDisaggregation(cutVector_[j].index[iput],true) ;
-                cutVector_[j].length++ ;
+                int j = backward[other] ;
+                assert ( j >= 0) ;
+                iput = cVi->length ;
+                setAffectedInDisagg(cVi->index[iput],j) ;
+                setWhenAtUBInDisagg(cVi->index[iput],true) ;
+                setAffectedToUBInDisagg(cVi->index[iput],false) ;
+                setZeroOneInDisagg(cVi->index[iput],true) ;
+                cVi->length++ ;
+                iput = cVj->length ;
+                setAffectedInDisagg(cVj->index[iput],i) ;
+                setWhenAtUBInDisagg(cVj->index[iput],true) ;
+                setAffectedToUBInDisagg(cVj->index[iput],false) ;
+                setZeroOneInDisagg(cVj->index[iput],true) ;
+                cVj->length++ ;
               } else {
 #ifdef COIN_DEVELOP
                 abort() ;
@@ -1919,60 +2074,65 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
             }
           }
 	} else {
-          assert(rcut.ub()==DBL_MAX) ;
+/*
+  More of the same, this time for constraints of the form b <= (stuff).
+*/
+          assert(rcut.ub() == DBL_MAX) ;
           if (!lb) {
             // LB
-            if (elements[which]>0.0) {
-              iput=cutVector_[i].length ;
-              if (j>=0)
-                setAffectedInDisaggregation(cutVector_[i].index[iput],j) ;
+	    double elWhich = elements[which] ;
+	    double elOther = elements[1-which] ;
+            if (elWhich > 0.0) {
+              iput = cVi->length ;
+              if (j >= 0)
+                setAffectedInDisagg(cVi->index[iput],j) ;
               else
-                setAffectedInDisaggregation(cutVector_[i].index[iput],other) ;
-              setWhenAtUBInDisaggregation(cutVector_[i].index[iput],false) ;
-              setAffectedToUBInDisaggregation(cutVector_[i].index[iput],false) ;
-              setZeroOneInDisaggregation(cutVector_[i].index[iput],onList[other]!=0) ;
-              cutVector_[i].length++ ;
+                setAffectedInDisagg(cVi->index[iput],other) ;
+              setWhenAtUBInDisagg(cVi->index[iput],false) ;
+              setAffectedToUBInDisagg(cVi->index[iput],false) ;
+              setZeroOneInDisagg(cVi->index[iput],onList[other]!=0) ;
+              cVi->length++ ;
             } else { 
-              if (elements[1-which]<0.0 && fabs(elements[which]/elements[1-which]-
-                                              colUpper[other])<1.0e-5) {
-                iput=cutVector_[i].length ;
-                if (j>=0)
-                  setAffectedInDisaggregation(cutVector_[i].index[iput],j) ;
+              if (elOther < 0.0 &&
+	          fabs(elWhich/elOther-colUpper[other]) < 1.0e-5) {
+                iput = cVi->length ;
+                if (j >= 0)
+                  setAffectedInDisagg(cVi->index[iput],j) ;
                 else
-                  setAffectedInDisaggregation(cutVector_[i].index[iput],other) ;
-                setWhenAtUBInDisaggregation(cutVector_[i].index[iput],true) ;
-                setAffectedToUBInDisaggregation(cutVector_[i].index[iput],true) ;
-                setZeroOneInDisaggregation(cutVector_[i].index[iput],onList[other]!=0) ;
-                cutVector_[i].length++ ;
+                  setAffectedInDisagg(cVi->index[iput],other) ;
+                setWhenAtUBInDisagg(cVi->index[iput],true) ;
+                setAffectedToUBInDisagg(cVi->index[iput],true) ;
+                setZeroOneInDisagg(cVi->index[iput],onList[other]!=0) ;
+                cVi->length++ ;
               } else {
                 if (onList[other]) {
                   double value0 = elements[0] ;
                   double value1 = elements[1] ;
-                  if (value0*value1==-1.0) {
+                  if (value0*value1 == -1.0) {
                     // can do something ?
-                    int j=backward[other] ;
+                    int j = backward[other] ;
                     assert (j>=0) ;
                     // flip so value0 -1.0
-                    if (value1==-1.0) {
-                      j=i ;
-                      i=backward[other] ;
-                      value1=value0 ;
-                      value0=-1.0 ;
+                    if (value1 == -1.0) {
+                      j = i ;
+                      i = backward[other] ;
+                      value1 = value0 ;
+                      value0 = -1.0 ;
                     }
-                    assert (value0==-1.0) ;
-                    assert (value1==1.0) ;
-                    iput=cutVector_[i].length ;
-                    setAffectedInDisaggregation(cutVector_[i].index[iput],j) ;
-                    setWhenAtUBInDisaggregation(cutVector_[i].index[iput],true) ;
-                    setAffectedToUBInDisaggregation(cutVector_[i].index[iput],true) ;
-                    setZeroOneInDisaggregation(cutVector_[i].index[iput],true) ;
-                    cutVector_[i].length++ ;
-                    iput=cutVector_[j].length ;
-                    setAffectedInDisaggregation(cutVector_[j].index[iput],i) ;
-                    setWhenAtUBInDisaggregation(cutVector_[j].index[iput],false) ;
-                    setAffectedToUBInDisaggregation(cutVector_[j].index[iput],false) ;
-                    setZeroOneInDisaggregation(cutVector_[j].index[iput],true) ;
-                    cutVector_[j].length++ ;
+                    assert (value0 == -1.0) ;
+                    assert (value1 == 1.0) ;
+                    iput = cVi->length ;
+                    setAffectedInDisagg(cVi->index[iput],j) ;
+                    setWhenAtUBInDisagg(cVi->index[iput],true) ;
+                    setAffectedToUBInDisagg(cVi->index[iput],true) ;
+                    setZeroOneInDisagg(cVi->index[iput],true) ;
+                    cVi->length++ ;
+                    iput = cVj->length ;
+                    setAffectedInDisagg(cVj->index[iput],i) ;
+                    setWhenAtUBInDisagg(cVj->index[iput],false) ;
+                    setAffectedToUBInDisagg(cVj->index[iput],false) ;
+                    setZeroOneInDisagg(cVj->index[iput],true) ;
+                    cVj->length++ ;
                   }
                 }
               }
@@ -1981,90 +2141,141 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 	} 
       }
       delete [] backward ;
-      // Now sort and get rid of duplicates
-      // could also see if any are cliques
-      int longest=0 ;
-      for (int i=0;i<number01Integers_;i++) 
-        longest = CoinMax(longest, cutVector_[i].length) ;
-      unsigned int * sortit = new unsigned int[longest] ;
-      for (int i=0;i<number01Integers_;i++) {
-        disaggregation & thisOne=cutVector_[i] ;
+/*
+  Note that onList is just a pointer into the block of space headed by
+  backward.
+
+  END CLASSIFICATION
+
+  We know have a vector of indices attached to each entry in cutVector_,
+  with bits set to indicate just what sort of disaggregation cut we're
+  dealing with.
+
+  jjf: Now sort and get rid of duplicates;  could also see if any are cliques
+
+  To do the sort, compose a unique signature for each disaggregation entry, as
+  (index)@(status bits), and sort the resulting vector. Then compare adjacent
+  entries, squeezing out duplicates.
+*/
+      int longest = 0 ;
+      for (int i = 0 ; i < number01Integers_ ; i++) 
+        longest = CoinMax(longest,cutVector_[i].length) ;
+      unsigned int *sortit = new unsigned int[longest] ;
+
+      for (int i = 0 ; i < number01Integers_ ; i++) {
+
+        disaggregation &thisOne = cutVector_[i] ;
         int k ;
         int number = thisOne.length ;
-        for (k=0;k<number;k++) {
-          int affected = affectedInDisaggregation(thisOne.index[k]) ;
-          int zeroOne = zeroOneInDisaggregation(thisOne.index[k]) ? 1 : 0 ;
-          int whenAtUB = whenAtUBInDisaggregation(thisOne.index[k]) ? 1 : 0 ;
-          int affectedToUB = affectedToUBInDisaggregation(thisOne.index[k]) ? 1: 0 ;
-          sortit[k]=(affected<<3)|(zeroOne<<2)|(whenAtUB<<1)|affectedToUB ;
+        for (k = 0 ; k < number ; k++) {
+          int affected = affectedInDisagg(thisOne.index[k]) ;
+          int zeroOne = zeroOneInDisagg(thisOne.index[k]) ? 1 : 0 ;
+          int whenAtUB = whenAtUBInDisagg(thisOne.index[k]) ? 1 : 0 ;
+          int affectedToUB = affectedToUBInDisagg(thisOne.index[k]) ? 1 : 0 ;
+          sortit[k] = (affected<<3)|(zeroOne<<2)|(whenAtUB<<1)|affectedToUB ;
         }
         std::sort(sortit,sortit+number) ;
+
         int affectedLast = 0xffffffff ;
         int zeroOneLast = 0 ;
         int whenAtUBLast = 0 ;
-        int affectedToUBLast = 0; 
-        int put=0 ;
-        for (k=0;k<number;k++) {
+        int affectedToUBLast = 0 ;
+        int put = 0 ;
+        for (k = 0 ; k < number ; k++) {
           int affected = sortit[k]>>3 ;
           int zeroOne = (sortit[k]&4)>>2 ;
           int whenAtUB = (sortit[k]&2)>>1 ;
           int affectedToUB = sortit[k]&1 ;
           disaggregationAction action ;
-	  action.affected=0 ;
-          setAffectedInDisaggregation(action,affected) ;
-          setZeroOneInDisaggregation(action,zeroOne!=0) ;
-          setWhenAtUBInDisaggregation(action,whenAtUB!=0) ;
-          setAffectedToUBInDisaggregation(action,affectedToUB!=0) ;
-          if (affected!=affectedLast||zeroOne!=zeroOneLast) {
+	  action.affected = 0 ;
+          setAffectedInDisagg(action,affected) ;
+          setZeroOneInDisagg(action,(zeroOne != 0)) ;
+          setWhenAtUBInDisagg(action,(whenAtUB != 0)) ;
+          setAffectedToUBInDisagg(action,(affectedToUB != 0)) ;
+          if (affected != affectedLast || zeroOne != zeroOneLast) {
             // new variable
-            thisOne.index[put++]=action ;
-          } else if (whenAtUB!=whenAtUBLast||affectedToUB!=affectedToUBLast) {
+            thisOne.index[put++] = action ;
+          } else if (whenAtUB != whenAtUBLast ||
+	  	     affectedToUB != affectedToUBLast) {
             // new action - what can we discover
-            thisOne.index[put++]=action ;
-            int j=cutVector_[i].sequence ;
-            int k=affected ;
+            thisOne.index[put++] = action ;
+            int j = cutVector_[i].sequence ;
+            int k = affected ;
             if (zeroOne) {
-              k=cutVector_[k].sequence ;
-              if (logLevel_>1)
-                printf("For %d %d 0-1 pair",j,k) ;
+              k = cutVector_[k].sequence ;
+              if (logLevel_ > 1)
+	        std::cout
+		  << "  for 0-1 pair " << j << " and "
+		  << k << ":" << std::endl ;
             } else {
-              if (logLevel_>1)
-                printf("For %d %d pair",j,k) ;
+              if (logLevel_ > 1)
+	        std::cout
+		  << "  for pair " << j << " and " << k << ":" << std::endl ;
             }
-            if (logLevel_>1)
-              printf(" old whenAtUB, affectedToUB %d %d, new whenAtUB, affectedToUB %d %d\n",
-                     whenAtUBLast, affectedToUBLast,whenAtUB, affectedToUB) ;
+            if (logLevel_ > 1)
+	      std::cout
+	        << "    previous: " << ((whenAtUBLast)?"up":"down") << " probe "
+		<< "tightened " << ((affectedToUBLast)?"lower":"upper")
+		<< " bound" << std::endl ;
+	      std::cout
+	        << "    current: " << ((whenAtUB)?"up":"down") << " probe "
+		<< "tightened " << ((affectedToUB)?"lower":"upper")
+		<< " bound" << std::endl ;
           }
-          affectedLast=affected ;
-          zeroOneLast=zeroOne ;
-          whenAtUBLast=whenAtUB ;
-          affectedToUBLast=affectedToUB ;
+          affectedLast = affected ;
+          zeroOneLast = zeroOne ;
+          whenAtUBLast = whenAtUB ;
+          affectedToUBLast = affectedToUB ;
         }
-        if (put<number) {
-          //printf("%d reduced from %d to %d\n",i,number,put) ;
-          thisOne.length=put ;
+        if (put < number) {
+	  if (logLevel_ > 1)
+	    std::cout
+	      << "  actions for " << i << "reduced from " << number
+	      << " to " << put << "." << std::endl ;
+          thisOne.length = put ;
         }
       }
-      // And look at all where two 0-1 variables involved
-      for (int i=0;i<number01Integers_;i++) {
-        disaggregation & thisOne=cutVector_[i] ;
-        int k ;
+/*
+  End sort. Now look over the lists of disaggregation cuts and see what we can
+  learn from the ones where both x<p> and x<t> are binary.
+
+  TODO: Unless I totally miss my guess here, we're about to derive implication
+	cuts. And indeed, if I'd read ahead 20 lines, that's exactly what
+	we're up to. Not to mention looking again for monotone actions and
+	disaggregation cuts. So the real question is `Why aren't we doing all
+	this by calling the appropriate methods in probeClique?
+
+	What could be done here is to try and extend cliques. But there's only
+	a placeholder case statement. Which is consistent with the comment up
+	in CglPreProcess at the call to snapshot: `out for now - think about
+	cliques'.
+	
+	-- lh, 110212 --
+*/
+      for (int i = 0 ; i < number01Integers_ ; i++) {
+        disaggregation &thisOne = cutVector_[i] ;
         int number = thisOne.length ;
-        for (k=0;k<number;k++) {
-          int affected = affectedInDisaggregation(thisOne.index[k]) ;
-          bool zeroOne = zeroOneInDisaggregation(thisOne.index[k]) ;
-          if (zeroOne && static_cast<int>(affected)>i) {
-            bool whenAtUB = whenAtUBInDisaggregation(thisOne.index[k]) ;
-            bool affectedToUB = affectedToUBInDisaggregation(thisOne.index[k]) ;
-            disaggregation otherOne=cutVector_[affected] ;
+        for (int k = 0 ; k < number ; k++) {
+          int affected = affectedInDisagg(thisOne.index[k]) ;
+          bool zeroOne = zeroOneInDisagg(thisOne.index[k]) ;
+	  /*
+	    affected < i means we've already processed the equivalent cut
+	    when we processed the list associated with affected, with the
+	    roles of affected and i exchanged.
+	  */
+          if (zeroOne && affected > i) {
+            bool whenAtUB = whenAtUBInDisagg(thisOne.index[k]) ;
+            bool affectedToUB = affectedToUBInDisagg(thisOne.index[k]) ;
+            disaggregation otherOne = cutVector_[affected] ;
             int numberOther = otherOne.length ;
             // Could do binary search if a lot
-            int lastAction=-1 ;
-            for (int j=0;j<numberOther;j++) {
-              if (affectedInDisaggregation(otherOne.index[j])==i) {
-                bool whenAtUBOther = whenAtUBInDisaggregation(otherOne.index[j]) ;
-                bool affectedToUBOther = affectedToUBInDisaggregation(otherOne.index[j]) ;
-                /* action -
+            int lastAction = -1 ;
+            for (int j = 0 ; j < numberOther ; j++) {
+              if (affectedInDisagg(otherOne.index[j])==i) {
+                bool whenAtUBOther = whenAtUBInDisagg(otherOne.index[j]) ;
+                bool affectedToUBOther = affectedToUBInDisagg(otherOne.index[j]) ;
+                /* ACTIONS
+		
                    0 -> x + y <=1 (1,1 impossible)
                    1 -> x - y <=0 (1,0 impossible)
                    2 -> -x + y <=0 (0,1 impossible)
@@ -2075,6 +2286,12 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
                   21 -> x == 1
                   22 -> y == 0
                   23 -> y == 1
+
+		  (lh) 0 -- 3 are standard disaggregation forms. 10 -- 11 are
+		  implication cuts. 20 -- 23 are caught as monotone actions or
+		  implication cuts. We're just treading old ground. If this
+		  code discovers anything, it indicates an algorithm error
+		  elsewhere.  -- lh, 110212 --
                 */
                 int action=-1 ;
                 if (whenAtUB) {
@@ -2222,95 +2439,115 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
         }
       }
       delete [] sortit ;
-    }
+    }		// end AFTER PROBECLIQUE
+/*
+  End of the block that starts with if (!ninfeas), right after the call to
+  probeClique.
+
+  Now have a look at the cuts in cutVector_ and see if any are violated. Only
+  look at the entries for unfixed variables, and then only if the current
+  solution value is not integral.
+
+  TODO: The immediate question is ``Why are we doing this if we're
+	infeasible?' I suppose you can argue that cutVector_ will be mostly
+	empty (we haven't loaded in the disaggregation cuts), but it will be
+	present. And didn't we check these cuts for violation when we created
+	them? Apparently not -- a quick look ahead says we're finally going to
+	add the cut to cs if we find it's violated.   -- lh, 110212 -- 
+
+  TODO: Good grief! We're about to reconstitute the cuts that we processed
+	down into the entries in cutVector_. And we're not even going to do
+	a complete job of it. Surely there must be a better way.
+	-- lh, 110212 --
+*/
     if (cutVector_) {
-      // now see if any disaggregation cuts are violated
-      for (int i=0;i<number01Integers_;i++) {
-	int j=cutVector_[i].sequence ;
-	double solInt=colsol[j] ;
-	double  upper, solValue ;
-	int icol ;
+      for (int i = 0 ; i < number01Integers_ ; i++) {
+	int j = cutVector_[i].sequence ;
+	double solInt = colsol[j] ;
+	double  upper ;
+	double solValue ;
+	int icol = -1 ;
 	int index[2] ;
 	double element[2] ;
-	if (colUpper[j]-colLower[j]>1.0e-8) {
+	if (colUpper[j]-colLower[j] > 1.0e-8) {
 	  double away = fabs(0.5-(solInt-floor(solInt))) ;
-	  if (away<0.4999999) {
-	    disaggregation thisOne=cutVector_[i] ;
+	  if (away < 0.4999999) {
+	    disaggregation thisOne = cutVector_[i] ;
 	    int k ;
 	    OsiRowCut rc ;
-	    for (k=0;k<thisOne.length;k++) {
-	      icol = affectedInDisaggregation(thisOne.index[k]) ;
-              if (zeroOneInDisaggregation(thisOne.index[k]))
+	    for (k = 0 ; k < thisOne.length ; k++) {
+	      icol = affectedInDisagg(thisOne.index[k]) ;
+              if (zeroOneInDisagg(thisOne.index[k]))
                 icol = cutVector_[icol].sequence ;
-	      solValue=colsol[icol] ;
-	      upper=colUpper_[icol] ;
-              double infeasibility=0.0 ;
-              if (!whenAtUBInDisaggregation(thisOne.index[k])) {
-                if (!affectedToUBInDisaggregation(thisOne.index[k])) {
+	      solValue = colsol[icol] ;
+	      upper = colUpper_[icol] ;
+              double infeasibility = 0.0 ;
+              if (!whenAtUBInDisagg(thisOne.index[k])) {
+                if (!affectedToUBInDisagg(thisOne.index[k])) {
                   // delta -> 0 => x to lb (at present just 0)
                   infeasibility = solValue - upper * solInt ;
                   if (infeasibility > 1.0e-3) {
                     rc.setLb(-DBL_MAX) ;
                     rc.setUb(0.0) ;
-                    index[0]=icol ;
-                    element[0]=1.0 ;
-                    index[1]=j ;
-                    element[1]= -upper ;
+                    index[0] = icol ;
+                    element[0] = 1.0 ;
+                    index[1] = j ;
+                    element[1] = -upper ;
                   } else {
-                    infeasibility=0.0 ;
+                    infeasibility = 0.0 ;
                   }
                 } else {
                   // delta -> 0 => x to ub
                   abort() ;
                 }
               } else {
-                if (affectedToUBInDisaggregation(thisOne.index[k])) {
+                if (affectedToUBInDisagg(thisOne.index[k])) {
                   // delta -> 1 => x to ub (?)
-                  icol = affectedInDisaggregation(thisOne.index[k]) ;
-                  if (zeroOneInDisaggregation(thisOne.index[k]))
+                  icol = affectedInDisagg(thisOne.index[k]) ;
+                  if (zeroOneInDisagg(thisOne.index[k]))
                     icol = cutVector_[icol].sequence ;
-                  solValue=colsol[icol] ;
-                  upper=colUpper_[icol] ;
+                  solValue = colsol[icol] ;
+                  upper = colUpper_[icol] ;
                   if (!colLower[icol]) {
                     infeasibility = upper * solInt - solValue ;
                     if (infeasibility > 1.0e-3) {
                       rc.setLb(-DBL_MAX) ;
                       rc.setUb(0.0) ;
-                      index[0]=icol ;
-                      element[0]=-1.0 ;
-                      index[1]=j ;
-                      element[1]= upper ;
+                      index[0] = icol ;
+                      element[0] = -1.0 ;
+                      index[1] = j ;
+                      element[1] = upper ;
                     } else {
-                      infeasibility=0.0 ;
+                      infeasibility = 0.0 ;
                     }
                   } else {
-                    assert (upper==colLower[icol]) ;
-                    infeasibility=0.0 ;
+                    assert (upper == colLower[icol]) ;
+                    infeasibility = 0.0 ;
                   }
                 } else {
                   // delta + delta2 <= 1
-                  assert (zeroOneInDisaggregation(thisOne.index[k])) ;
+                  assert (zeroOneInDisagg(thisOne.index[k])) ;
                   // delta -> 1 => delta2 -> 0
-                  icol = affectedInDisaggregation(thisOne.index[k]) ;
+                  icol = affectedInDisagg(thisOne.index[k]) ;
                   icol = cutVector_[icol].sequence ;
                   // only do if icol > j
-                  if (icol >j && colUpper[icol] ) {
-                    solValue=colsol[icol] ;
+                  if (icol > j && colUpper[icol] ) {
+                    solValue = colsol[icol] ;
                     if (!colLower[icol]) {
                       infeasibility = solInt + solValue - 1.0 ;
                       if (infeasibility > 1.0e-3) {
                         rc.setLb(-DBL_MAX) ;
                         rc.setUb(1.0) ;
-                        index[0]=icol ;
-                        element[0]=1.0 ;
-                        index[1]=j ;
-                        element[1]= 1.0 ;
+                        index[0] = icol ;
+                        element[0] = 1.0 ;
+                        index[1] = j ;
+                        element[1] = 1.0 ;
                       } else {
-                        infeasibility=0.0 ;
+                        infeasibility = 0.0 ;
                       }
                     } else {
-                      assert (upper==colLower[icol]) ;
-                      infeasibility=0.0 ;
+                      assert (upper == colLower[icol]) ;
+                      infeasibility = 0.0 ;
                     }
                   }
                 }
@@ -2320,7 +2557,8 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
                 rc.setRow(2,index,element,false) ;
                 if (logLevel_>1)
                   printf("%g <= %g * x%d + %g * x%d <= %g\n",
-                         rc.lb(),element[0],index[0],element[1],index[1],rc.ub()) ;
+                         rc.lb(),element[0],index[0],element[1],
+			 index[1],rc.ub()) ;
 #if CGL_DEBUG > 0
                 if (debugger) assert(!debugger->invalidCut(rc)); 
 #endif
@@ -2396,2763 +2634,7 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 
 
 /*
-  Parameters useObj, useCutoff, and cutoff are unused as of 110208. Added to
-  probe(), added here for symmetry.
-*/
-
-// Does probing and adding cuts
-int CglProbing::probeCliques( const OsiSolverInterface & si, 
-                              const OsiRowCutDebugger *
-#if CGL_DEBUG > 0
-			 debugger
-#endif
-                              ,OsiCuts & cs, 
-                              double * colLower, double * colUpper, 
-		       CoinPackedMatrix *rowCopy,
-			      CoinPackedMatrix *columnCopy, const int * realRows,
-		       double * rowLower, double * rowUpper,
-		       char * intVar, double * minR, double * maxR, 
-		       int * markR, 
-                       CglTreeInfo * info,
-		       bool useObj, bool useCutoff, double cutoff) const
-{
-  // Set up maxes
-  int maxStack = info->inTree ? maxStack_ : maxStackRoot_;
-  int nRows=rowCopy->getNumRows();
-  int nCols=rowCopy->getNumCols();
-  double * colsol = new double[nCols];
-  double * djs = new double[nCols];
-  const double * currentColLower = si.getColLower();
-  const double * currentColUpper = si.getColUpper();
-  double * tempL = new double [nCols];
-  double * tempU = new double [nCols];
-  int * markC = new int [nCols];
-  int * stackC = new int [2*nCols];
-  int * stackR = new int [nRows];
-  double * saveL = new double [2*nCols];
-  double * saveU = new double [2*nCols];
-  double * saveMin = new double [nRows];
-  double * saveMax = new double [nRows];
-  double * element = new double[nCols];
-  int * index = new int[nCols];
-  // For trying to extend cliques
-  int * cliqueStack=NULL;
-  int * cliqueCount=NULL;
-  int * to_01=NULL;
-  if (!mode_) {
-    to_01 = new int[nCols];
-    cliqueStack = new int[numberCliques_];
-    cliqueCount = new int[numberCliques_];
-    int i;
-    for (i=0;i<numberCliques_;i++) {
-      cliqueCount[i]=cliqueStart_[i+1]-cliqueStart_[i];
-    }
-    for (i=0;i<nCols;i++) 
-      to_01[i]=-1;
-    for (i=0;i<number01Integers_;i++) {
-      int j=cutVector_[i].sequence;
-      to_01[j]=i;
-    }
-  }
-  // Let us never add more than twice the number of rows worth of row cuts
-  // Keep cuts out of cs until end so we can find duplicates quickly
-  int nRowsFake = info->inTree ? nRows/3 : nRows;
-  CglProbingRowCut rowCut(nRowsFake, !info->inTree);
-  const int * column = rowCopy->getIndices();
-  const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
-  const int * rowLength = rowCopy->getVectorLengths(); 
-  const double * rowElements = rowCopy->getElements();
-  const int * row = columnCopy->getIndices();
-  const CoinBigIndex * columnStart = columnCopy->getVectorStarts();
-  const int * columnLength = columnCopy->getVectorLengths(); 
-  const double * columnElements = columnCopy->getElements();
-  double movement;
-  int i, j, k,kk,jj;
-  int kcol,krow;
-  bool anyColumnCuts=false;
-  double dbound, value, value2;
-  int ninfeas=0;
-  int rowCuts;
-  double disaggEffectiveness;
-  if (mode_) {
-    /* clean up djs and solution */
-    CoinMemcpyN(si.getReducedCost(),nCols,djs);
-    CoinMemcpyN( si.getColSolution(),nCols,colsol);
-    disaggEffectiveness=1.0e-3;
-    rowCuts=rowCuts_;
-  } else {
-    // need to go from a neutral place
-    memset(djs,0,nCols*sizeof(double));
-    CoinMemcpyN( si.getColSolution(),nCols,colsol);
-    disaggEffectiveness=-1.0e10;
-    if (rowCuts_!=4)
-      rowCuts=1;
-    else
-      rowCuts=4;
-  }
-  for (i = 0; i < nCols; ++i) {
-    /* was if (intVar[i]) */
-    if (1) {
-      if (colUpper[i]-colLower[i]>1.0e-8) {
-	if (colsol[i]<colLower[i]+primalTolerance_) {
-	  colsol[i]=colLower[i];
-	  djs[i] = CoinMax(0.0,djs[i]);
-	} else if (colsol[i]>colUpper[i]-primalTolerance_) {
-	  colsol[i]=colUpper[i];
-	  djs[i] = CoinMin(0.0,djs[i]);
-	} else {
-	  djs[i]=0.0;
-	}
-	/*if (fabs(djs[i])<1.0e-5) 
-	  djs[i]=0.0;*/
-      }
-    }
-  }
-
-  int ipass=0,nfixed=-1;
-/*
-  Chop now that useCutoff and cutoff come in as parameters.
-  double cutoff;
-  bool cutoff_available = si.getDblParam(OsiDualObjectiveLimit,cutoff);
-  if (!cutoff_available||usingObjective_<0) { // cut off isn't set or isn't valid
-    cutoff = si.getInfinity();
-  }
-  cutoff *= si.getObjSense();
-  if (fabs(cutoff)>1.0e30)
-    assert (cutoff>1.0e30);
-*/
-  double current = si.getObjValue();
-  // make irrelevant if mode is 0
-  if (!mode_)
-    cutoff=DBL_MAX;
-  /* for both way coding */
-  int nstackC0=-1;
-  int * stackC0 = new int[maxStack];
-  double * lo0 = new double[maxStack];
-  double * up0 = new double[maxStack];
-  int nstackR,nstackC;
-  for (i=0;i<nCols;i++) {
-    if (colUpper[i]-colLower[i]<1.0e-8) {
-      markC[i]=3;
-    } else {
-      markC[i]=0;
-    }
-  }
-  double tolerance = 1.0e1*primalTolerance_;
-  int maxPass = info->inTree ? maxPass_ : maxPassRoot_;
-  // If we are going to replace coefficient then we don't need to be effective
-  double needEffectiveness = info->strengthenRow ? -1.0e10 : 1.0e-3;
-  while (ipass<maxPass&&nfixed) {
-    int iLook;
-    ipass++;
-    nfixed=0;
-    for (iLook=0;iLook<numberThisTime_;iLook++) {
-      double solval;
-      double down;
-      double up;
-      int awayFromBound=1;
-      j=lookedAt_[iLook];
-      solval=colsol[j];
-      down = floor(solval+tolerance);
-      up = ceil(solval-tolerance);
-      if(colUpper[j]-colLower[j]<1.0e-8) markC[j]=3;
-      if (markC[j]||!intVar[j]) continue;
-      double saveSolval = solval;
-      if (solval>=colUpper[j]-tolerance||solval<=colLower[j]+tolerance||up==down) {
-	awayFromBound=0;
-	if (solval<=colLower[j]+2.0*tolerance) {
-	  solval = colLower[j]+1.0e-1;
-	  down=colLower[j];
-	  up=down+1.0;
-	} else if (solval>=colUpper[j]-2.0*tolerance) {
-	  solval = colUpper[j]-1.0e-1;
-	  up=colUpper[j];
-	  down=up-1;
-	} else {
-          // odd
-          up=down+1.0;
-          solval = down+1.0e-1;
-        }
-      }
-      assert (up<=colUpper[j]);
-      assert (down>=colLower[j]);
-      assert (up>down);
-      if ((solval-down>1.0e-6&&up-solval>1.0e-6)||mode_!=1) {
-	int istackC,iway, istackR;
-	int way[]={1,2,1};
-	int feas[]={1,2,4};
-	int feasible=0;
-	int notFeasible;
-	for (iway=0;iway<3;iway ++) {
-	  int fixThis=0;
-	  double objVal=current;
-	  int goingToTrueBound=0;
-	  stackC[0]=j;
-	  markC[j]=way[iway];
-          double solMovement;
-	  if (way[iway]==1) {
-	    movement=down-colUpper[j];
-            solMovement = down-colsol[j];
-	    assert(movement<-0.99999);
-	    if (fabs(down-colLower[j])<1.0e-7) {
-	      goingToTrueBound=2;
-	      down=colLower[j];
-	    }
-	  } else {
-	    movement=up-colLower[j];
-            solMovement = up-colsol[j];
-	    assert(movement>0.99999);
-	    if (fabs(up-colUpper[j])<1.0e-7) {
-	      goingToTrueBound=2;
-	      up=colUpper[j];
-	    }
-	  }
-	  if (goingToTrueBound&&(colUpper[j]-colLower[j]>1.5||colLower[j]))
-	    goingToTrueBound=1;
-	  // switch off disaggregation if not wanted
-	  if ((rowCuts&1)==0)
-	    goingToTrueBound=0;
-#ifdef PRINT_DEBUG
-	  if (fabs(movement)>1.01) {
-	    printf("big %d %g %g %g\n",j,colLower[j],solval,colUpper[j]);
-	  }
-#endif
-	  if (solMovement*djs[j]>0.0)
-	    objVal += solMovement*djs[j];
-	  nstackC=1;
-	  nstackR=0;
-	  saveL[0]=colLower[j];
-	  saveU[0]=colUpper[j];
-          assert (saveU[0]>saveL[0]);
-	  notFeasible=0;
-	  if (movement<0.0) {
-	    colUpper[j] += movement;
-	    colUpper[j] = floor(colUpper[j]+0.5);
-#ifdef PRINT_DEBUG
-	    printf("** Trying %d down to 0\n",j);
-#endif
-	  } else {
-	    colLower[j] += movement;
-	    colLower[j] = floor(colLower[j]+0.5);
-#ifdef PRINT_DEBUG
-	    printf("** Trying %d up to 1\n",j);
-#endif
-	  }
-	  if (fabs(colUpper[j]-colLower[j])<1.0e-6) 
-	    markC[j]=3; // say fixed
-	  istackC=0;
-	  /* update immediately */
-	  for (k=columnStart[j];k<columnStart[j]+columnLength[j];k++) {
-	    int irow = row[k];
-	    value = columnElements[k];
-	    assert (markR[irow]!=-2);
-	    if (markR[irow]==-1) {
-	      stackR[nstackR]=irow;
-	      markR[irow]=nstackR;
-	      saveMin[nstackR]=minR[irow];
-	      saveMax[nstackR]=maxR[irow];
-	      nstackR++;
-#if 0
-	    } else if (markR[irow]==-2) {
-	      continue;
-#endif
-	    }
-	    /* could check immediately if violation */
-	    if (movement>0.0) {
-	      /* up */
-	      if (value>0.0) {
-		/* up does not change - down does */
-                if (minR[irow]>-1.0e10)
-                  minR[irow] += value;
-		if (minR[irow]>rowUpper[irow]+1.0e-5) {
-		  notFeasible=1;
-		  istackC=1;
-		  break;
-		}
-	      } else {
-		/* down does not change - up does */
-                if (maxR[irow]<1.0e10)
-                  maxR[irow] += value;
-		if (maxR[irow]<rowLower[irow]-1.0e-5) {
-		  notFeasible=1;
-		  istackC=1;
-		  break;
-		}
-	      }
-	    } else {
-	      /* down */
-	      if (value<0.0) {
-		/* up does not change - down does */
-                if (minR[irow]>-1.0e10)
-                  minR[irow] -= value;
-		if (minR[irow]>rowUpper[irow]+1.0e-5) {
-		  notFeasible=1;
-		  istackC=1;
-		  break;
-		}
-	      } else {
-		/* down does not change - up does */
-                if (maxR[irow]<1.0e10)
-                  maxR[irow] -= value;
-		if (maxR[irow]<rowLower[irow]-1.0e-5) {
-		  notFeasible=1;
-		  istackC=1;
-		  break;
-		}
-	      }
-	    }
-	  }
-	  while (istackC<nstackC&&nstackC<maxStack) {
-	    int jway;
-	    int jcol =stackC[istackC];
-	    jway=markC[jcol];
-	    // If not first and fixed then skip
-	    if (jway==3&&istackC) {
-	      //istackC++;
-	      //continue;
-              //printf("fixed %d on stack\n",jcol);
-	    }
-	    // Do cliques
-	    if (oneFixStart_&&oneFixStart_[jcol]>=0) {
-	      int start;
-	      int end;
-	      if (colLower[jcol]>saveL[istackC]) {
-		// going up
-		start = oneFixStart_[jcol];
-		end = zeroFixStart_[jcol];
-	      } else {
-		assert (colUpper[jcol]<saveU[istackC]);
-		// going down
-		start = zeroFixStart_[jcol];
-		end = endFixStart_[jcol];
-	      }
-	      for (int i=start;i<end;i++) {
-		int iClique = whichClique_[i];
-		for (int k=cliqueStart_[iClique];k<cliqueStart_[iClique+1];k++) {
-		  int kcol = sequenceInCliqueEntry(cliqueEntry_[k]);
-                  if (jcol==kcol)
-                    continue;
-		  int kway = oneFixesInCliqueEntry(cliqueEntry_[k]);
-                  if (kcol!=jcol) {
-                    if (!markC[kcol]) {
-                      // not on list yet
-                      if (nstackC<2*maxStack) {
-                        markC[kcol] = 3; // say fixed
-                        fixThis++;
-                        stackC[nstackC]=kcol;
-                        saveL[nstackC]=colLower[kcol];
-                        saveU[nstackC]=colUpper[kcol];
-                        assert (saveU[nstackC]>saveL[nstackC]);
-                        nstackC++;
-                        if (!kway) {
-                          // going up
-                          double solMovement=1.0-colsol[kcol];
-                          if (solMovement>0.0001) {
-                            assert (djs[kcol]>=0.0);
-                            objVal += djs[kcol]*solMovement;
-                          }
-                          colLower[kcol]=1.0;
-                          /* update immediately */
-                          for (int jj =columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
-                            krow = row[jj];
-                            value = columnElements[jj];
-			    assert (markR[krow]!=-2);
-                            if (markR[krow]==-1) {
-                              stackR[nstackR]=krow;
-                              markR[krow]=nstackR;
-                              saveMin[nstackR]=minR[krow];
-                              saveMax[nstackR]=maxR[krow];
-                              nstackR++;
-#if 0
-                            } else if (markR[krow]==-2) {
-                              continue;
-#endif
-                            }
-                            /* could check immediately if violation */
-                            /* up */
-                            if (value>0.0) {
-                              /* up does not change - down does */
-                              if (minR[krow]>-1.0e10)
-                                minR[krow] += value;
-                              if (minR[krow]>rowUpper[krow]+1.0e-5) {
-                                colUpper[kcol]=-1.0e50; /* force infeasible */
-                                break;
-                              }
-                            } else {
-                              /* down does not change - up does */
-                              if (maxR[krow]<1.0e10)
-                                maxR[krow] += value;
-                              if (maxR[krow]<rowLower[krow]-1.0e-5) {
-                                notFeasible=1;
-                                break;
-                              }
-                            }
-                          }
-                        } else {
-                          // going down
-                          double solMovement=0.0-colsol[kcol];
-                          if (solMovement<-0.0001) {
-                            assert (djs[kcol]<=0.0);
-                            objVal += djs[kcol]*solMovement;
-                          }
-                          colUpper[kcol]=0.0;
-                          /* update immediately */
-                          for (int jj =columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
-                            krow = row[jj];
-                            value = columnElements[jj];
-			    assert (markR[krow]!=-2);
-                            if (markR[krow]==-1) {
-                              stackR[nstackR]=krow;
-                              markR[krow]=nstackR;
-                              saveMin[nstackR]=minR[krow];
-                              saveMax[nstackR]=maxR[krow];
-                              nstackR++;
-#if 0
-                            } else if (markR[krow]==-2) {
-                              continue;
-#endif
-                            }
-                            /* could check immediately if violation */
-                            /* down */
-                            if (value<0.0) {
-                              /* up does not change - down does */
-                              if (minR[krow]>-1.0e10)
-                                minR[krow] -= value;
-                              if (minR[krow]>rowUpper[krow]+1.0e-5) {
-                                notFeasible=1;
-                                break;
-                              }
-                            } else {
-                              /* down does not change - up does */
-                              if (maxR[krow]<1.0e10)
-                                maxR[krow] -= value;
-                              if (maxR[krow]<rowLower[krow]-1.0e-5) {
-                                notFeasible=1;
-                                break;
-                              }
-                            }
-                          }
-                        }
-                      }
-                    } else if (markC[kcol]==1) {
-                      // marked as going to 0
-                      assert (!colUpper[kcol]);
-                      if (!kway) {
-                        // contradiction
-                        notFeasible=1;
-                        break;
-                      }
-                    } else if (markC[kcol]==2) {
-                      // marked as going to 1
-                      assert (colLower[kcol]);
-                      if (kway) {
-                        // contradiction
-                        notFeasible=1;
-                        break;
-                      }
-                    } else {
-                      // marked as fixed
-                      assert (markC[kcol]==3);
-                      int jkway;
-                      if (colLower[kcol])
-                        jkway=1;
-                      else
-                        jkway=0;
-                      if (kway==jkway) {
-                        // contradiction
-                        notFeasible=1;
-                        break;
-                      }
-                    }
-                  }
-		}
-		if (notFeasible)
-		  break;
-	      }
-	      if (notFeasible)
-		istackC=nstackC+1;
-	    }
-	    for (k=columnStart[jcol];k<columnStart[jcol]+columnLength[jcol];k++) {
-	      // break if found not feasible
-	      if (notFeasible)
-		break;
-	      int irow = row[k];
-	      /*value = columnElements[k];*/
-	      assert (markR[irow]!=-2);
-#if 0
-	      if (markR[irow]!=-2) {
-#endif
-		/* see if anything forced */
-		for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];kk++) {
-		  double moveUp=0.0;
-		  double moveDown=0.0;
-		  double newUpper=-1.0,newLower=1.0;
-		  kcol=column[kk];
-		  bool onList = (markC[kcol]!=0);
-		  if (markC[kcol]!=3) {
-		    value2=rowElements[kk];
-                    int markIt=markC[kcol];
-		    if (value2 < 0.0) {
-		      if (colUpper[kcol] < 1e10 && (markIt&2)==0 &&
-			  rowUpper[irow]<1.0e10) {
-			dbound = colUpper[kcol]+
-			  (rowUpper[irow]-minR[irow])/value2;
-			if (dbound > colLower[kcol] + primalTolerance_) {
-			  if (intVar[kcol]) {
-                            markIt |= 2;
-			    newLower = ceil(dbound-primalTolerance_);
-			  } else {
-			    newLower=dbound;
-			    if (newLower+primalTolerance_>colUpper[kcol]&&
-				newLower-primalTolerance_<=colUpper[kcol]) {
-			      newLower=colUpper[kcol];
-                              markIt |= 2;
-                              //markIt=3;
-			    } else {
-                              // avoid problems - fix later ?
-                              markIt=3;
-                            }
-			  }
-			  moveUp = newLower-colLower[kcol];
-			}
-		      }
-		      if (colLower[kcol] > -1e10 && (markIt&1)==0 &&
-			  rowLower[irow]>-1.0e10) {
-			dbound = colLower[kcol] + 
-			  (rowLower[irow]-maxR[irow])/value2;
-			if (dbound < colUpper[kcol] - primalTolerance_) {
-			  if (intVar[kcol]) {
-			    markIt |= 1;
-			    newUpper = floor(dbound+primalTolerance_);
-			  } else {
-			    newUpper=dbound;
-			    if (newUpper-primalTolerance_<colLower[kcol]&&
-				newUpper+primalTolerance_>=colLower[kcol]) {
-			      newUpper=colLower[kcol];
-                              markIt |= 1;
-                              //markIt=3;
-			    } else {
-                              // avoid problems - fix later ?
-                              markIt=3;
-                            }
-			  }
-			  moveDown = newUpper-colUpper[kcol];
-			}
-		      }
-		    } else {
-		      /* positive element */
-		      if (colUpper[kcol] < 1e10 && (markIt&2)==0 &&
-			  rowLower[irow]>-1.0e10) {
-			dbound = colUpper[kcol] + 
-			  (rowLower[irow]-maxR[irow])/value2;
-			if (dbound > colLower[kcol] + primalTolerance_) {
-			  if (intVar[kcol]) {
-			    markIt |= 2;
-			    newLower = ceil(dbound-primalTolerance_);
-			  } else {
-			    newLower=dbound;
-			    if (newLower+primalTolerance_>colUpper[kcol]&&
-				newLower-primalTolerance_<=colUpper[kcol]) {
-			      newLower=colUpper[kcol];
-                              markIt |= 2;
-                              //markIt=3;
-			    } else {
-                              // avoid problems - fix later ?
-                              markIt=3;
-			    }
-			  }
-			  moveUp = newLower-colLower[kcol];
-			}
-		      }
-		      if (colLower[kcol] > -1e10 && (markIt&1)==0 &&
-			  rowUpper[irow]<1.0e10) {
-			dbound = colLower[kcol] + 
-			  (rowUpper[irow]-minR[irow])/value2;
-			if (dbound < colUpper[kcol] - primalTolerance_) {
-			  if (intVar[kcol]) {
-			    markIt |= 1;
-			    newUpper = floor(dbound+primalTolerance_);
-			  } else {
-			    newUpper=dbound;
-			    if (newUpper-primalTolerance_<colLower[kcol]&&
-				newUpper+primalTolerance_>=colLower[kcol]) {
-			      newUpper=colLower[kcol];
-                              markIt |= 1;
-                              //markIt=3;
-			    } else {
-                              // avoid problems - fix later ?
-                              markIt=3;
-			    }
-			  }
-			  moveDown = newUpper-colUpper[kcol];
-			}
-		      }
-		    }
-		    if (nstackC<2*maxStack) {
-                      markC[kcol] = markIt;
-		    }
-		    if (moveUp&&nstackC<2*maxStack) {
-		      fixThis++;
-#ifdef PRINT_DEBUG
-		      printf("lower bound on %d increased from %g to %g by row %d %g %g\n",kcol,colLower[kcol],newLower,irow,rowLower[irow],rowUpper[irow]);
-		      value=0.0;
-		      for (jj=rowStart[irow];jj<rowStart[irow]+rowLength[irow];jj++) {
-			int ii=column[jj];
-			if (colUpper[ii]-colLower[ii]>primalTolerance_) {
-			  printf("(%d, %g) ",ii,rowElements[jj]);
-			} else {
-			  value += rowElements[jj]*colLower[ii];
-			}
-		      }
-		      printf(" - fixed %g\n",value);
-		      for (jj=rowStart[irow];jj<rowStart[irow]+rowLength[irow];jj++) {
-			int ii=column[jj];
-			if (colUpper[ii]-colLower[ii]<primalTolerance_) {
-			  printf("(%d, %g, %g) ",ii,rowElements[jj],colLower[ii]);
-			}
-		      }
-		      printf("\n");
-#endif
-		      if (!onList) {
-			stackC[nstackC]=kcol;
-			saveL[nstackC]=colLower[kcol];
-			saveU[nstackC]=colUpper[kcol];
-                        assert (saveU[nstackC]>saveL[nstackC]);
-			nstackC++;
-			onList=true;
-		      }
-		      if (newLower>colsol[kcol]) {
-			if (djs[kcol]<0.0) {
-			  /* should be infeasible */
-			  assert (newLower>colUpper[kcol]+primalTolerance_);
-			} else {
-			  objVal += moveUp*djs[kcol];
-			}
-		      }
-		      if (intVar[kcol])
-			newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
-		      colLower[kcol]=newLower;
-		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
-			markC[kcol]=3; // say fixed
-		      }
-		      /* update immediately */
-		      for (jj=columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
-			krow = row[jj];
-			value = columnElements[jj];
-			assert (markR[krow]!=-2);
-			if (markR[krow]==-1) {
-			  stackR[nstackR]=krow;
-			  markR[krow]=nstackR;
-			  saveMin[nstackR]=minR[krow];
-			  saveMax[nstackR]=maxR[krow];
-			  nstackR++;
-#if 0
-			} else if (markR[krow]==-2) {
-			  continue;
-#endif
-			}
-			/* could check immediately if violation */
-			/* up */
-			if (value>0.0) {
-			  /* up does not change - down does */
-                          if (minR[krow]>-1.0e10)
-                            minR[krow] += value*moveUp;
-			  if (minR[krow]>rowUpper[krow]+1.0e-5) {
-			    colUpper[kcol]=-1.0e50; /* force infeasible */
-			    break;
-			  }
-			} else {
-			  /* down does not change - up does */
-                          if (maxR[krow]<1.0e10)
-                            maxR[krow] += value*moveUp;
-			  if (maxR[krow]<rowLower[krow]-1.0e-5) {
-			    colUpper[kcol]=-1.0e50; /* force infeasible */
-			    break;
-			  }
-			}
-		      }
-		    }
-		    if (moveDown&&nstackC<2*maxStack) {
-		      fixThis++;
-#ifdef PRINT_DEBUG
-		      printf("upper bound on %d decreased from %g to %g by row %d %g %g\n",kcol,colUpper[kcol],newUpper,irow,rowLower[irow],rowUpper[irow]);
-		      value=0.0;
-		      for (jj=rowStart[irow];jj<rowStart[irow]+rowLength[irow];jj++) {
-			int ii=column[jj];
-			if (colUpper[ii]-colLower[ii]>primalTolerance_) {
-			  printf("(%d, %g) ",ii,rowElements[jj]);
-			} else {
-			  value += rowElements[jj]*colLower[ii];
-			}
-		      }
-		      printf(" - fixed %g\n",value);
-		      for (jj=rowStart[irow];jj<rowStart[irow]+rowLength[irow];jj++) {
-			int ii=column[jj];
-			if (colUpper[ii]-colLower[ii]<primalTolerance_) {
-			  printf("(%d, %g, %g) ",ii,rowElements[jj],colLower[ii]);
-			}
-		      }
-		      printf("\n");
-#endif
-		      if (!onList) {
-			stackC[nstackC]=kcol;
-			saveL[nstackC]=colLower[kcol];
-			saveU[nstackC]=colUpper[kcol];
-                        assert (saveU[nstackC]>saveL[nstackC]);
-			nstackC++;
-			onList=true;
-		      }
-		      if (newUpper<colsol[kcol]) {
-			if (djs[kcol]>0.0) {
-			  /* should be infeasible */
-			  assert (colLower[kcol]>newUpper+primalTolerance_);
-			} else {
-			  objVal += moveDown*djs[kcol];
-			}
-		      }
-		      if (intVar[kcol])
-			newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
-		      colUpper[kcol]=newUpper;
-		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
-			markC[kcol]=3; // say fixed
-		      }
-		      /* update immediately */
-		      for (jj=columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
-			krow = row[jj];
-			value = columnElements[jj];
-			assert (markR[krow]!=-2);
-			if (markR[krow]==-1) {
-			  stackR[nstackR]=krow;
-			  markR[krow]=nstackR;
-			  saveMin[nstackR]=minR[krow];
-			  saveMax[nstackR]=maxR[krow];
-			  nstackR++;
-#if 0
-			} else if (markR[krow]==-2) {
-#endif
-			  continue;
-			}
-			/* could check immediately if violation */
-			/* down */
-			if (value<0.0) {
-			  /* up does not change - down does */
-                          if (minR[krow]>-1.0e10)
-                            minR[krow] += value*moveDown;
-			  if (minR[krow]>rowUpper[krow]+1.0e-5) {
-			    colUpper[kcol]=-1.0e50; /* force infeasible */
-			    break;
-			  }
-			} else {
-			  /* down does not change - up does */
-                          if (maxR[krow]<1.0e10)
-                            maxR[krow] += value*moveDown;
-			  if (maxR[krow]<rowLower[krow]-1.0e-5) {
-			    colUpper[kcol]=-1.0e50; /* force infeasible */
-			    break;
-			  }
-			}
-		      }
-		    }
-		    if (colLower[kcol]>colUpper[kcol]+primalTolerance_) {
-		      notFeasible=1;;
-		      k=columnStart[jcol]+columnLength[jcol];
-		      istackC=nstackC+1;
-#ifdef PRINT_DEBUG
-		      printf("** not feasible this way\n");
-#endif
-		      break;
-		    }
-		  }
-		}
-#if 0
-	      }
-#endif
-	    }
-	    istackC++;
-	  }
-	  if (!notFeasible) {
-	    if (objVal<=cutoff) {
-	      feasible |= feas[iway];
-	    } else {
-#ifdef PRINT_DEBUG
-	      printf("not feasible on dj\n");
-#endif
-	      notFeasible=1;
-	      if (iway==1&&feasible==0) {
-		/* not feasible at all */
-		ninfeas=1;
-		j=nCols-1;
-		break;
-	      }
-	    }
-	  } else if (iway==1&&feasible==0) {
-	    /* not feasible at all */
-	    ninfeas=1;
-	    j=nCols-1;
-            iLook=numberThisTime_;
-	    ipass=maxPass;
-	    break;
-	  }
-	  if (notFeasible)
-	    goingToTrueBound=0;
-	  if (iway==2||(iway==1&&feasible==2)) {
-	    /* keep */
-	    iway=3;
-	    nfixed++;
-            if (mode_) {
-	      OsiColCut cc;
-	      int nTot=0,nFix=0,nInt=0;
-	      bool ifCut=false;
-	      for (istackC=0;istackC<nstackC;istackC++) {
-		int icol=stackC[istackC];
-		if (intVar[icol]) {
-		  if (colUpper[icol]<currentColUpper[icol]-1.0e-4) {
-		    element[nFix]=colUpper[icol];
-		    index[nFix++]=icol;
-		    nInt++;
-		    if (colsol[icol]>colUpper[icol]+primalTolerance_) {
-		      ifCut=true;
-		      anyColumnCuts=true;
-		    }
-		  }
-		}
-	      }
-	      if (nFix) {
-		nTot=nFix;
-		cc.setUbs(nFix,index,element);
-		nFix=0;
-	      }
-	      for (istackC=0;istackC<nstackC;istackC++) {
-		int icol=stackC[istackC];
-		if (intVar[icol]) {
-		  if (colLower[icol]>currentColLower[icol]+1.0e-4) {
-		    element[nFix]=colLower[icol];
-		    index[nFix++]=icol;
-		    nInt++;
-		    if (colsol[icol]<colLower[icol]-primalTolerance_) {
-		      ifCut=true;
-		      anyColumnCuts=true;
-		    }
-		  }
-		}
-	      }
-	      if (nFix) {
-		nTot+=nFix;
-		cc.setLbs(nFix,index,element);
-	      }
-	      // could tighten continuous as well
-	      if (nInt) {
-		if (ifCut) {
-		  cc.setEffectiveness(100.0);
-		} else {
-		  cc.setEffectiveness(1.0e-5);
-		}
-#if CGL_DEBUG > 0
-		CglProbingDebug::checkBounds(si,cc);
-#endif
-		cs.insert(cc);
-	      }
-	    }
-	    for (istackC=0;istackC<nstackC;istackC++) {
-	      int icol=stackC[istackC];
-	      if (colUpper[icol]-colLower[icol]>primalTolerance_) {
-		markC[icol]=0;
-	      } else {
-		markC[icol]=3;
-	      }
-	    }
-	    for (istackR=0;istackR<nstackR;istackR++) {
-	      int irow=stackR[istackR];
-	      markR[irow]=-1;
-	    }
-	  } else {
-	    /* is it worth seeing if can increase coefficients
-	       or maybe better see if it is a cut */
-	    if (iway==0) {
-	      nstackC0=CoinMin(nstackC,maxStack);
-	      double solMove = saveSolval-down;
-	      double boundChange;
-	      if (notFeasible) {
-		nstackC0=0;
-	      } else {
-		for (istackC=0;istackC<nstackC0;istackC++) {
-		  int icol=stackC[istackC];
-		  stackC0[istackC]=icol;
-		  lo0[istackC]=colLower[icol];
-		  up0[istackC]=colUpper[icol];
-		}
-	      }
-	      /* restore all */
-              int nCliquesAffected=0;
-              assert (iway==0);
-	      for (istackC=nstackC-1;istackC>=0;istackC--) {
-		int icol=stackC[istackC];
-		double oldU=saveU[istackC];
-		double oldL=saveL[istackC];
-		if(goingToTrueBound==2&&istackC) {
-                  // Work for extending cliques
-                  if (!mode_&&numberCliques_) {
-                    int i_01 = to_01[icol];
-                    if (i_01>=0) {
-                      int start;
-                      int end;
-                      if (colLower[icol]) {
-                        // going up - but we want weak way
-                        start = zeroFixStart_[icol];
-                        end = endFixStart_[icol];
-                      } else {
-                        // going down - but we want weak way
-                        start = oneFixStart_[icol];
-                        end = zeroFixStart_[icol];
-                      }
-                      //if (end>start)
-                      //printf("j %d, other %d is in %d cliques\n",
-                      //     j,i_01,end-start);
-                      for (int i=start;i<end;i++) {
-                        int iClique = whichClique_[i];
-                        int size = cliqueStart_[iClique+1]-cliqueStart_[iClique];
-                        if (cliqueCount[iClique]==size) {
-                          // first time
-                          cliqueStack[nCliquesAffected++]=iClique;
-                        }
-                        // decrement counts
-                        cliqueCount[iClique]--;
-                      }
-                    }
-                  }
-		  // upper disaggregation cut would be
-		  // xval < upper + (old_upper-upper) (jval-down)
-		  boundChange = oldU-colUpper[icol];
-		  if (boundChange>0.0&&oldU<1.0e10&&
-		      (!mode_||colsol[icol]>colUpper[icol]
-		      + boundChange*solMove+primalTolerance_)) {
-		    // create cut
-		    OsiRowCut rc;
-		    rc.setLb(-DBL_MAX);
-		    rc.setUb(colUpper[icol]-down*boundChange);
-		    index[0]=icol;
-		    element[0]=1.0;
-		    index[1]=j;
-		    element[1]= - boundChange;
-		    // effectiveness is how far j moves
-		    double newSol = (colsol[icol]-colUpper[icol])/
-		      boundChange;
-		    if (mode_) 
-		      assert(newSol>solMove);
-		    rc.setEffectiveness(newSol-solMove);
-		    if (rc.effectiveness()>disaggEffectiveness) {
-		      rc.setRow(2,index,element,false);
-#if CGL_DEBUG > 0
-		      if (debugger) assert(!debugger->invalidCut(rc)); 
-#endif
-		      rowCut.addCutIfNotDuplicate(rc);
-		    }
-		  }
-		  // lower disaggregation cut would be
-		  // xval > lower + (old_lower-lower) (jval-down)
-		  boundChange = oldL-colLower[icol];
-		  if (boundChange<0.0&&oldL>-1.0e10&&
-		      (!mode_||colsol[icol]<colLower[icol]
-		      + boundChange*solMove-primalTolerance_)) {
-		    // create cut
-		    OsiRowCut rc;
-		    rc.setLb(colLower[icol]-down*boundChange);
-		    rc.setUb(DBL_MAX);
-		    index[0]=icol;
-		    element[0]=1.0;
-		    index[1]=j;
-		    element[1]=- boundChange;
-		    // effectiveness is how far j moves
-		    double newSol = (colsol[icol]-colLower[icol])/
-		      boundChange;
-		    if (mode_)
-		      assert(newSol>solMove);
-		    rc.setEffectiveness(newSol-solMove);
-		    if (rc.effectiveness()>disaggEffectiveness) {
-		      rc.setRow(2,index,element,false);
-#if CGL_DEBUG > 0
-		      if (debugger) assert(!debugger->invalidCut(rc)); 
-#endif
-		      rowCut.addCutIfNotDuplicate(rc);
-#if 0
-		      printf("%d original bounds %g, %g new Lo %g sol= %g int %d sol= %g\n",icol,oldL,oldU,colLower[icol],colsol[icol], j, colsol[j]);
-		      printf("-1.0 * x(%d) + %g * y(%d) <= %g\n",
-			     icol,boundChange,j,rc.ub());
-#endif
-		    }
-		  }
-		}
-		colUpper[icol]=oldU;
-		colLower[icol]=oldL;
-		markC[icol]=0;
-	      }
-              if (nCliquesAffected) {
-                for (int i=0;i<nCliquesAffected;i++) {
-                  int iClique = cliqueStack[i];
-                  int size = cliqueCount[iClique];
-                  // restore
-                  cliqueCount[iClique]= cliqueStart_[iClique+1]-cliqueStart_[iClique];
-                  if (!size) {
-                    if (logLevel_>1)
-                      printf("** could extend clique by adding j!\n");
-                  }
-                }
-              }
-	      for (istackR=0;istackR<nstackR;istackR++) {
-		int irow=stackR[istackR];
-		// switch off strengthening if not wanted
-		if ((rowCuts&2)!=0&&goingToTrueBound) {
-		  bool ifCut=anyColumnCuts;
-		  double gap = rowUpper[irow]-maxR[irow];
-		  double sum=0.0;
-		  if (!ifCut&&(gap>primalTolerance_&&gap<1.0e8)) {
-		    // see if the strengthened row is a cut
-		    for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
-			 kk++) {
-		      sum += rowElements[kk]*colsol[column[kk]];
-		    }
-		    if (sum-gap*colsol[j]>maxR[irow]+primalTolerance_||(info->strengthenRow&&rowLower[irow]<-1.0e20)) {
-		      // can be a cut
-		      // subtract gap from upper and integer coefficient
-		      // saveU and saveL spare
-		      int * index = reinterpret_cast<int *>(saveL);
-		      double * element = saveU;
-		      int n=0;
-                      bool coefficientExists=false;
-		      for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
-			   kk++) {
-			if (column[kk]!=j) {
-			  index[n]=column[kk];
-			  element[n++]=rowElements[kk];
-			} else {
-			  double value=rowElements[kk]-gap;
-			  if (fabs(value)>1.0e-12) {
-			    index[n]=column[kk];
-			    element[n++]=value;
-			  }
-			  coefficientExists=true;
-			}
-		      }
-		      if (!coefficientExists) {
-			index[n]=j;
-			element[n++]=-gap;
-		      }
-		      OsiRowCut rc;
-		      rc.setLb(-DBL_MAX);
-		      rc.setUb(rowUpper[irow]-gap*(colLower[j]+1.0));
-		      // effectiveness is how far j moves
-		      rc.setEffectiveness((sum-gap*colsol[j]-maxR[irow])/gap);
-		      if (rc.effectiveness()>needEffectiveness) {
-			rc.setRow(n,index,element,false);
-#if CGL_DEBUG > 0
-			if (debugger) assert(!debugger->invalidCut(rc)); 
-#endif
-                        // If strengthenRow point to row
-                        //if(info->strengthenRow)
-                        //printf("a point to row %d\n",irow);
-#ifdef STRENGTHEN_PRINT
-		      if (rowLower[irow]<-1.0e20) {
-			printf("5Cut %g <= ",rc.lb());
-			int k;
-			for ( k=0;k<n;k++) {
-			  int iColumn = index[k];
-			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rc.ub());
-			printf("Row %g <= ",rowLower[irow]);
-			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
-			  int iColumn = column[k];
-			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rowUpper[irow]);
-		      }
-#endif
-		      int realRow = (rowLower[irow]<-1.0e20) ? irow : -1;
-		      if (realRows&&realRow>0)
-			realRow=realRows[realRow];
-		      rc.setWhichRow(realRow) ;
-		      rowCut.addCutIfNotDuplicate(rc);
-		      }
-		    }
-		  }
-		  gap = minR[irow]-rowLower[irow];
-		  if (!ifCut&&(gap>primalTolerance_&&gap<1.0e8)) {
-		    // see if the strengthened row is a cut
-		    if (!sum) {
-		      for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
-			   kk++) {
-			sum += rowElements[kk]*colsol[column[kk]];
-		      }
-		    }
-		    if (sum+gap*colsol[j]<minR[irow]+primalTolerance_||(info->strengthenRow&&rowUpper[irow]>1.0e20)) {
-		      // can be a cut
-		      // add gap to lower and integer coefficient
-		      // saveU and saveL spare
-		      int * index = reinterpret_cast<int *>(saveL);
-		      double * element = saveU;
-		      int n=0;
-                      bool coefficientExists=false;
-		      for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
-			   kk++) {
-			if (column[kk]!=j) {
-			  index[n]=column[kk];
-			  element[n++]=rowElements[kk];
-			} else {
-			  double value=rowElements[kk]+gap;
-			  if (fabs(value)>1.0e-12) {
-			    index[n]=column[kk];
-			    element[n++]=value;
-			  }
-			  coefficientExists=true;
-			}
-		      }
-		      if (!coefficientExists) {
-			index[n]=j;
-			element[n++]=gap;
-		      }
-		      OsiRowCut rc;
-		      rc.setLb(rowLower[irow]+gap*(colLower[j]+1.0));
-		      rc.setUb(DBL_MAX);
-		      // effectiveness is how far j moves
-		      rc.setEffectiveness((minR[irow]-sum-gap*colsol[j])/gap);
-		      if (rc.effectiveness()>needEffectiveness) {
-			rc.setRow(n,index,element,false);
-#if CGL_DEBUG > 0
-			if (debugger) assert(!debugger->invalidCut(rc)); 
-#endif
-                        //if(info->strengthenRow)
-                        //printf("b point to row %d\n",irow);
-#ifdef STRENGTHEN_PRINT
-		      if (rowUpper[irow]>1.0e20) {
-			printf("6Cut %g <= ",rc.lb());
-			int k;
-			for ( k=0;k<n;k++) {
-			  int iColumn = index[k];
-			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rc.ub());
-			printf("Row %g <= ",rowLower[irow]);
-			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
-			  int iColumn = column[k];
-			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rowUpper[irow]);
-		      }
-#endif
-		      int realRow = (rowUpper[irow]>1.0e20) ? irow : -1;
-		      if (realRows&&realRow>0)
-			realRow=realRows[realRow];
-		      rc.setWhichRow(realRow) ;
-		      rowCut.addCutIfNotDuplicate(rc);
-		      }
-		    }
-		  }
-		}
-		minR[irow]=saveMin[istackR];
-		maxR[irow]=saveMax[istackR];
-		markR[irow]=-1;
-	      }
-	    } else {
-	      if (iway==1&&feasible==3) {
-		iway=3;
-		/* point back to stack */
-		for (istackC=nstackC-1;istackC>=0;istackC--) {
-		  int icol=stackC[istackC];
-		  markC[icol]=istackC+1000;
-		}
-		if (mode_) {
-		  OsiColCut cc;
-		  int nTot=0,nFix=0,nInt=0;
-		  bool ifCut=false;
-		  for (istackC=0;istackC<nstackC0;istackC++) {
-		    int icol=stackC0[istackC];
-		    int istackC1=markC[icol]-1000;
-		    if (istackC1>=0) {
-		      if (CoinMin(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
-			saveL[istackC1]=CoinMin(lo0[istackC],colLower[icol]);
-			if (intVar[icol]) {
-			  element[nFix]=saveL[istackC1];
-			  index[nFix++]=icol;
-			  nInt++;
-			  if (colsol[icol]<saveL[istackC1]-primalTolerance_)
-			    ifCut=true;
-			}
-			nfixed++;
-		      }
-		    }
-		  }
-		  if (nFix) {
-		    nTot=nFix;
-		    cc.setLbs(nFix,index,element);
-		    nFix=0;
-		  }
-		  for (istackC=0;istackC<nstackC0;istackC++) {
-		    int icol=stackC0[istackC];
-		    int istackC1=markC[icol]-1000;
-		    if (istackC1>=0) {
-		      if (CoinMax(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
-			saveU[istackC1]=CoinMax(up0[istackC],colUpper[icol]);
-			if (intVar[icol]) {
-			  element[nFix]=saveU[istackC1];
-			  index[nFix++]=icol;
-			  nInt++;
-			  if (colsol[icol]>saveU[istackC1]+primalTolerance_)
-			    ifCut=true;
-			}
-			nfixed++;
-		      }
-		    }
-		  }
-		  if (nFix) {
-		    nTot+=nFix;
-		    cc.setUbs(nFix,index,element);
-		  }
-		  // could tighten continuous as well
-		  if (nInt) {
-		    if (ifCut) {
-		      cc.setEffectiveness(100.0);
-		    } else {
-		      cc.setEffectiveness(1.0e-5);
-		    }
-#if CGL_DEBUG > 0
-		    CglProbingDebug::checkBounds(si,cc);
-#endif
-		    cs.insert(cc);
-		  }
-		}
-	      } else {
-		goingToTrueBound=0;
-	      }
-	      double solMove = up-saveSolval;
-	      double boundChange;
-	      /* restore all */
-              int nCliquesAffected=0;
-	      for (istackC=nstackC-1;istackC>=0;istackC--) {
-		int icol=stackC[istackC];
-		double oldU=saveU[istackC];
-		double oldL=saveL[istackC];
-		if(goingToTrueBound==2&&istackC) {
-                  // Work for extending cliques
-                  if (!mode_&&numberCliques_&&iway==3) {
-                    int i_01 = to_01[icol];
-                    if (i_01>=0) {
-                      int start;
-                      int end;
-                      if (colLower[icol]) {
-                        // going up - but we want weak way
-                        start = zeroFixStart_[icol];
-                        end = endFixStart_[icol];
-                      } else {
-                        // going down - but we want weak way
-                        start = oneFixStart_[icol];
-                        end = zeroFixStart_[icol];
-                      }
-                      //if (end>start)
-                      //printf("up j %d, other %d is in %d cliques\n",
-                      //     j,i_01,end-start);
-                      for (int i=start;i<end;i++) {
-                        int iClique = whichClique_[i];
-                        int size = cliqueStart_[iClique+1]-cliqueStart_[iClique];
-                        if (cliqueCount[iClique]==size) {
-                          // first time
-                          cliqueStack[nCliquesAffected++]=iClique;
-                        }
-                        // decrement counts
-                        cliqueCount[iClique]--;
-                      }
-                    }
-                  }
-		  // upper disaggregation cut would be
-		  // xval < upper + (old_upper-upper) (up-jval)
-		  boundChange = oldU-colUpper[icol];
-		  if (boundChange>0.0&&oldU<1.0e10&&
-		      (!mode_||colsol[icol]>colUpper[icol]
-		      + boundChange*solMove+primalTolerance_)) {
-		    // create cut
-		    OsiRowCut rc;
-		    rc.setLb(-DBL_MAX);
-		    rc.setUb(colUpper[icol]+up*boundChange);
-		    index[0]=icol;
-		    element[0]=1.0;
-		    index[1]=j;
-		    element[1]= + boundChange;
-		    // effectiveness is how far j moves
-		    double newSol = (colsol[icol]-colUpper[icol])/
-		      boundChange;
-		    if (mode_)
-		      assert(newSol>solMove);
-		    rc.setEffectiveness(newSol-solMove);
-		    if (rc.effectiveness()>disaggEffectiveness) {
-		      rc.setRow(2,index,element,false);
-#if CGL_DEBUG > 0
-		      if (debugger) assert(!debugger->invalidCut(rc)); 
-#endif
-		      rowCut.addCutIfNotDuplicate(rc);
-		    }
-		  }
-		  // lower disaggregation cut would be
-		  // xval > lower + (old_lower-lower) (up-jval)
-		  boundChange = oldL-colLower[icol];
-		  if (boundChange<0.0&&oldL>-1.0e10&&
-		      (!mode_||colsol[icol]<colLower[icol]
-		      + boundChange*solMove-primalTolerance_)) {
-		    // create cut
-		    OsiRowCut rc;
-		    rc.setLb(colLower[icol]+up*boundChange);
-		    rc.setUb(DBL_MAX);
-		    index[0]=icol;
-		    element[0]=1.0;
-		    index[1]=j;
-		    element[1]= + boundChange;
-		    // effectiveness is how far j moves
-		    double newSol = (colsol[icol]-colLower[icol])/
-		      boundChange;
-		    if (mode_)
-		      assert(newSol>solMove);
-		    rc.setEffectiveness(newSol-solMove);
-		    if (rc.effectiveness()>disaggEffectiveness) {
-		      rc.setRow(2,index,element,false);
-#if CGL_DEBUG > 0
-		      if (debugger) assert(!debugger->invalidCut(rc)); 
-#endif
-		      rowCut.addCutIfNotDuplicate(rc);
-		    }
-		  }
-		}
-		colUpper[icol]=oldU;
-		colLower[icol]=oldL;
-                if (oldU>oldL+1.0e-4)
-                  markC[icol]=0;
-                else
-                  markC[icol]=3;
-	      }
-              if (nCliquesAffected) {
-                for (int i=0;i<nCliquesAffected;i++) {
-                  int iClique = cliqueStack[i];
-                  int size = cliqueCount[iClique];
-                  // restore
-                  cliqueCount[iClique]= cliqueStart_[iClique+1]-cliqueStart_[iClique];
-                  if (!size) {
-                    if (logLevel_>1)
-                      printf("** could extend clique by adding j!\n");
-                  }
-                }
-              }
-	      for (istackR=0;istackR<nstackR;istackR++) {
-		int irow=stackR[istackR];
-		// switch off strengthening if not wanted
-		if ((rowCuts&2)!=0&&goingToTrueBound) {
-		  bool ifCut=anyColumnCuts;
-		  double gap = rowUpper[irow]-maxR[irow];
-		  double sum=0.0;
-		  if (!ifCut&&(gap>primalTolerance_&&gap<1.0e8)) {
-		    // see if the strengthened row is a cut
-		    for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
-			 kk++) {
-		      sum += rowElements[kk]*colsol[column[kk]];
-		    }
-		    if (sum+gap*colsol[j]>rowUpper[irow]+primalTolerance_||(info->strengthenRow&&rowLower[irow]<-1.0e20)) {
-		      // can be a cut
-		      // add gap to integer coefficient
-		      // saveU and saveL spare
-		      int * index = reinterpret_cast<int *>(saveL);
-		      double * element = saveU;
-		      int n=0;
-                      bool coefficientExists=false;
-		      for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
-			   kk++) {
-			if (column[kk]!=j) {
-			  index[n]=column[kk];
-			  element[n++]=rowElements[kk];
-			} else {
-			  double value=rowElements[kk]+gap;
-			  if (fabs(value)>1.0e-12) {
-			    index[n]=column[kk];
-			    element[n++]=value;
-			  }
-			  coefficientExists=true;
-			}
-		      }
-		      if (!coefficientExists) {
-			index[n]=j;
-			element[n++]=gap;
-		      }
-		      OsiRowCut rc;
-		      rc.setLb(-DBL_MAX);
-		      rc.setUb(rowUpper[irow]+gap*(colUpper[j]-1.0));
-		      // effectiveness is how far j moves
-		      rc.setEffectiveness((sum+gap*colsol[j]-rowUpper[irow])/gap);
-		      if (rc.effectiveness()>needEffectiveness) {
-			rc.setRow(n,index,element,false);
-#if CGL_DEBUG > 0
-			if (debugger) assert(!debugger->invalidCut(rc)); 
-#endif
-                        //if(info->strengthenRow)
-                        //printf("c point to row %d\n",irow);
-#ifdef STRENGTHEN_PRINT
-			if (rowLower[irow]<-1.0e20) {
-			  printf("7Cut %g <= ",rc.lb());
-			  int k;
-			  for ( k=0;k<n;k++) {
-			    int iColumn = index[k];
-			    printf("%g*",element[k]);
-			    if (si.isInteger(iColumn))
-			      printf("i%d ",iColumn);
-			    else
-			      printf("x%d ",iColumn);
-			  }
-			  printf("<= %g\n",rc.ub());
-			  printf("Row %g <= ",rowLower[irow]);
-			  for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
-			    int iColumn = column[k];
-			    printf("%g*",rowElements[k]);
-			    if (si.isInteger(iColumn))
-			      printf("i%d ",iColumn);
-			    else
-			      printf("x%d ",iColumn);
-			  }
-			  printf("<= %g\n",rowUpper[irow]);
-			}
-  #endif
-			int realRow = (rowLower[irow]<-1.0e20) ? irow : -1;
-			if (realRows&&realRow>0)
-			  realRow=realRows[realRow];
-			rc.setWhichRow(realRow) ;
-			rowCut.addCutIfNotDuplicate(rc);
-		      }
-		    }
-		  }
-		  gap = minR[irow]-rowLower[irow];
-		  if (!ifCut&&(gap>primalTolerance_&&gap<1.0e8)) {
-		    // see if the strengthened row is a cut
-		    if (!sum) {
-		      for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
-			   kk++) {
-			sum += rowElements[kk]*colsol[column[kk]];
-		      }
-		    }
-		    if (sum-gap*colsol[j]<rowLower[irow]+primalTolerance_||(info->strengthenRow&&rowUpper[irow]>1.0e20)) {
-		      // can be a cut
-		      // subtract gap from integer coefficient
-		      // saveU and saveL spare
-		      int * index = reinterpret_cast<int *>(saveL);
-		      double * element = saveU;
-		      int n=0;
-                      bool coefficientExists=false;
-		      for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
-			   kk++) {
-			if (column[kk]!=j) {
-			  index[n]=column[kk];
-			  element[n++]=rowElements[kk];
-			} else {
-			  double value=rowElements[kk]-gap;
-			  if (fabs(value)>1.0e-12) {
-			    index[n]=column[kk];
-			    element[n++]=value;
-			  }
-			  coefficientExists=true;
-			}
-		      }
-		      if (!coefficientExists) {
-			index[n]=j;
-			element[n++]=-gap;
-		      }
-		      OsiRowCut rc;
-		      rc.setLb(rowLower[irow]-gap*(colUpper[j]-1));
-		      rc.setUb(DBL_MAX);
-		      // effectiveness is how far j moves
-		      rc.setEffectiveness((rowLower[irow]-sum+gap*colsol[j])/gap);
-		      if (rc.effectiveness()>needEffectiveness) {
-			rc.setRow(n,index,element,false);
-#if CGL_DEBUG > 0
-			if (debugger) assert(!debugger->invalidCut(rc)); 
-#endif
-                        //if(info->strengthenRow)
-                        //printf("d point to row %d\n",irow);
-#ifdef STRENGTHEN_PRINT
-			if (rowUpper[irow]>1.0e20) {
-			  printf("8Cut %g <= ",rc.lb());
-			  int k;
-			  for ( k=0;k<n;k++) {
-			    int iColumn = index[k];
-			    printf("%g*",element[k]);
-			    if (si.isInteger(iColumn))
-			      printf("i%d ",iColumn);
-			    else
-			      printf("x%d ",iColumn);
-			  }
-			  printf("<= %g\n",rc.ub());
-			  printf("Row %g <= ",rowLower[irow]);
-			  for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
-			    int iColumn = column[k];
-			    printf("%g*",rowElements[k]);
-			    if (si.isInteger(iColumn))
-			      printf("i%d ",iColumn);
-			    else
-			      printf("x%d ",iColumn);
-			  }
-			  printf("<= %g\n",rowUpper[irow]);
-			}
-  #endif
-			int realRow = (rowUpper[irow]>1.0e20) ? irow : -1;
-			if (realRows&&realRow>0)
-			  realRow=realRows[realRow];
-			rc.setWhichRow(realRow) ;
-			rowCut.addCutIfNotDuplicate(rc);
-		      }
-		    }
-		  }
-		}
-		minR[irow]=saveMin[istackR];
-		maxR[irow]=saveMax[istackR];
-		markR[irow]=-1;
-	      }
-	    }
-	  }
-	}
-      }
-    }
-  }
-  delete [] cliqueStack;
-  delete [] cliqueCount;
-  delete [] to_01;
-  delete [] stackC0;
-  delete [] lo0;
-  delete [] up0;
-  delete [] tempL;
-  delete [] tempU;
-  delete [] markC;
-  delete [] stackC;
-  delete [] stackR;
-  delete [] saveL;
-  delete [] saveU;
-  delete [] saveMin;
-  delete [] saveMax;
-  delete [] index;
-  delete [] element;
-  delete [] djs;
-  delete [] colsol;
-  // Add in row cuts
-  if (!ninfeas) {
-    rowCut.addCuts(cs,info->strengthenRow,0);
-  }
-  return (ninfeas);
-}
-
-
-// Does probing and adding cuts for clique slacks
-int 
-CglProbing::probeSlacks( const OsiSolverInterface & si, 
-                          const OsiRowCutDebugger * 
-#if CGL_DEBUG > 0
-			 debugger
-#endif
-			 ,OsiCuts & cs, 
-                          double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
-			 CoinPackedMatrix *columnCopy,
-                          double * rowLower, double * rowUpper,
-                          char * intVar, double * minR, double * maxR,int * markR,
-                          CglTreeInfo * info) const
-{
-  // Check if this is ever used.
-  assert(false) ;
-  if (!numberCliques_)
-    return 0;
-  // Set up maxes
-  int maxProbe = info->inTree ? maxProbe_ : maxProbeRoot_;
-  int maxStack = info->inTree ? maxStack_ : maxStackRoot_;
-  int nRows=rowCopy->getNumRows();
-  int nCols=rowCopy->getNumCols();
-  double * colsol = new double[nCols];
-  CoinMemcpyN( si.getColSolution(),nCols,colsol);
-  int rowCuts=rowCuts_;
-  double_int_pair * array = new double_int_pair [numberCliques_];
-  // look at <= cliques
-  int iClique;
-  int nLook=0;
-  for (iClique=0;iClique<numberCliques_;iClique++) {
-    if (!cliqueType_[iClique].equality) {
-      double sum=0.0;
-      for (int j=cliqueStart_[iClique];j<cliqueStart_[iClique+1];j++) {
-        int iColumn = sequenceInCliqueEntry(cliqueEntry_[j]);
-        double value = colsol[iColumn];
-        if (oneFixesInCliqueEntry(cliqueEntry_[j]))
-          sum += value;
-        else
-          sum -= value;
-      }
-      double away = fabs(0.5-(sum-floor(sum)));
-      if (away<0.49999) {
-        array[nLook].infeasibility=away;
-        array[nLook++].sequence=iClique;
-      }
-    }
-  }
-  std::sort(array,array+nLook,double_int_pair_compare());
-  nLook=CoinMin(nLook,maxProbe);
-  const double * currentColLower = si.getColLower();
-  const double * currentColUpper = si.getColUpper();
-  double * tempL = new double [nCols];
-  double * tempU = new double [nCols];
-  int * markC = new int [nCols];
-  int * stackC = new int [2*nCols];
-  int * stackR = new int [nRows];
-  double * saveL = new double [2*nCols];
-  double * saveU = new double [2*nCols];
-  double * saveMin = new double [nRows];
-  double * saveMax = new double [nRows];
-  double * element = new double[nCols];
-  int * index = new int[nCols];
-  // Let us never add more than twice the number of rows worth of row cuts
-  // Keep cuts out of cs until end so we can find duplicates quickly
-  int nRowsFake = info->inTree ? nRows/3 : nRows;
-  CglProbingRowCut rowCut(nRowsFake, !info->inTree);
-  const int * column = rowCopy->getIndices();
-  const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
-  const int * rowLength = rowCopy->getVectorLengths(); 
-  const double * rowElements = rowCopy->getElements();
-  const int * row = columnCopy->getIndices();
-  const CoinBigIndex * columnStart = columnCopy->getVectorStarts();
-  const int * columnLength = columnCopy->getVectorLengths(); 
-  const double * columnElements = columnCopy->getElements();
-  double movement;
-  int i, j, k,kk,jj;
-  int kcol,irow,krow;
-  bool anyColumnCuts=false;
-  double dbound, value, value2;
-  int ninfeas=0;
-  for (i = 0; i < nCols; ++i) {
-    if (colUpper[i]-colLower[i]>1.0e-8) {
-      if (colsol[i]<colLower[i]+primalTolerance_) {
-        colsol[i]=colLower[i];
-      } else if (colsol[i]>colUpper[i]-primalTolerance_) {
-        colsol[i]=colUpper[i];
-      }
-    }
-  }
-
-  int ipass=0,nfixed=-1;
-
-  /* for both way coding */
-  int nstackC0=-1;
-  int * stackC0 = new int[maxStack];
-  double * lo0 = new double[maxStack];
-  double * up0 = new double[maxStack];
-  int nstackR,nstackC;
-  for (i=0;i<nCols;i++) {
-    if (colUpper[i]-colLower[i]<1.0e-8) {
-      markC[i]=3;
-    } else {
-      markC[i]=0;
-    }
-  }
-  double tolerance = 1.0e1*primalTolerance_;
-  // If we are going to replace coefficient then we don't need to be effective
-  int maxPass = info->inTree ? maxPass_ : maxPassRoot_;
-  double needEffectiveness = info->strengthenRow ? -1.0e10 : 1.0e-3;
-  while (ipass<maxPass&&nfixed) {
-    int iLook;
-    ipass++;
-    nfixed=0;
-    for (iLook=0;iLook<nLook;iLook++) {
-      double solval;
-      double down;
-      double up;
-      int iClique=array[iLook].sequence;
-      solval=0.0;
-      j=0;
-      for (j=cliqueStart_[iClique];j<cliqueStart_[iClique+1];j++) {
-        int iColumn = sequenceInCliqueEntry(cliqueEntry_[j]);
-        double value = colsol[iColumn];
-        if (oneFixesInCliqueEntry(cliqueEntry_[j]))
-          solval += value;
-        else
-          solval -= value;
-      }
-      down = floor(solval+tolerance);
-      up = ceil(solval-tolerance);
-      int istackC,iway, istackR;
-      int way[]={1,2,1};
-      int feas[]={1,2,4};
-      int feasible=0;
-      int notFeasible;
-      for (iway=0;iway<3;iway ++) {
-        int fixThis=0;
-        stackC[0]=j;
-        markC[j]=way[iway];
-        if (way[iway]==1) {
-          movement=down-colUpper[j];
-          assert(movement<-0.99999);
-          down=colLower[j];
-        } else {
-          movement=up-colLower[j];
-          assert(movement>0.99999);
-          up=colUpper[j];
-        }
-        nstackC=1;
-        nstackR=0;
-        saveL[0]=colLower[j];
-        saveU[0]=colUpper[j];
-        assert (saveU[0]>saveL[0]);
-        notFeasible=0;
-        if (movement<0.0) {
-          colUpper[j] += movement;
-          colUpper[j] = floor(colUpper[j]+0.5);
-#ifdef PRINT_DEBUG
-          printf("** Trying %d down to 0\n",j);
-#endif
-        } else {
-          colLower[j] += movement;
-          colLower[j] = floor(colLower[j]+0.5);
-#ifdef PRINT_DEBUG
-          printf("** Trying %d up to 1\n",j);
-#endif
-        }
-        if (fabs(colUpper[j]-colLower[j])<1.0e-6) 
-          markC[j]=3; // say fixed
-        istackC=0;
-        /* update immediately */
-        for (k=columnStart[j];k<columnStart[j]+columnLength[j];k++) {
-          int irow = row[k];
-          value = columnElements[k];
-          if (markR[irow]==-1) {
-            stackR[nstackR]=irow;
-            markR[irow]=nstackR;
-            saveMin[nstackR]=minR[irow];
-            saveMax[nstackR]=maxR[irow];
-            nstackR++;
-          } else if (markR[irow]==-2) {
-            continue;
-          }
-          /* could check immediately if violation */
-          if (movement>0.0) {
-            /* up */
-            if (value>0.0) {
-              /* up does not change - down does */
-              if (minR[irow]>-1.0e10)
-                minR[irow] += value;
-              if (minR[irow]>rowUpper[irow]+1.0e-5) {
-                notFeasible=1;
-                istackC=1;
-                break;
-              }
-            } else {
-              /* down does not change - up does */
-              if (maxR[irow]<1.0e10)
-                maxR[irow] += value;
-              if (maxR[irow]<rowLower[irow]-1.0e-5) {
-                notFeasible=1;
-                istackC=1;
-                break;
-              }
-            }
-          } else {
-            /* down */
-            if (value<0.0) {
-              /* up does not change - down does */
-              if (minR[irow]>-1.0e10)
-                minR[irow] -= value;
-              if (minR[irow]>rowUpper[irow]+1.0e-5) {
-                notFeasible=1;
-                istackC=1;
-                break;
-              }
-            } else {
-              /* down does not change - up does */
-              if (maxR[irow]<1.0e10)
-                maxR[irow] -= value;
-              if (maxR[irow]<rowLower[irow]-1.0e-5) {
-                notFeasible=1;
-                istackC=1;
-                break;
-              }
-            }
-          }
-        }
-        while (istackC<nstackC&&nstackC<maxStack) {
-          int jway;
-          int jcol =stackC[istackC];
-          jway=markC[jcol];
-          // If not first and fixed then skip
-          if (jway==3&&istackC) {
-            //istackC++;
-            //continue;
-            //printf("fixed %d on stack\n",jcol);
-          }
-          // Do cliques
-          if (oneFixStart_&&oneFixStart_[jcol]>=0) {
-            int start;
-            int end;
-            if (colLower[jcol]>saveL[istackC]) {
-              // going up
-              start = oneFixStart_[jcol];
-              end = zeroFixStart_[jcol];
-            } else {
-              assert (colUpper[jcol]<saveU[istackC]);
-              // going down
-              start = zeroFixStart_[jcol];
-              end = endFixStart_[jcol];
-            }
-            for (int i=start;i<end;i++) {
-              int iClique = whichClique_[i];
-              for (int k=cliqueStart_[iClique];k<cliqueStart_[iClique+1];k++) {
-                int kcol = sequenceInCliqueEntry(cliqueEntry_[k]);
-                if (jcol==kcol)
-                  continue;
-                int kway = oneFixesInCliqueEntry(cliqueEntry_[k]);
-                if (kcol!=jcol) {
-                  if (!markC[kcol]) {
-                    // not on list yet
-                    if (nstackC<2*maxStack) {
-                      markC[kcol] = 3; // say fixed
-                      fixThis++;
-                      stackC[nstackC]=kcol;
-                      saveL[nstackC]=colLower[kcol];
-                      saveU[nstackC]=colUpper[kcol];
-                      assert (saveU[nstackC]>saveL[nstackC]);
-                      nstackC++;
-                      if (!kway) {
-                        // going up
-                        colLower[kcol]=1.0;
-                        /* update immediately */
-                        for (jj=columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
-                          krow = row[jj];
-                          value = columnElements[jj];
-                          if (markR[krow]==-1) {
-                            stackR[nstackR]=krow;
-                            markR[krow]=nstackR;
-                            saveMin[nstackR]=minR[krow];
-                            saveMax[nstackR]=maxR[krow];
-                            nstackR++;
-                          } else if (markR[krow]==-2) {
-                            continue;
-                          }
-                          /* could check immediately if violation */
-                          /* up */
-                          if (value>0.0) {
-                            /* up does not change - down does */
-                            if (minR[krow]>-1.0e10)
-                              minR[krow] += value;
-                            if (minR[krow]>rowUpper[krow]+1.0e-5) {
-                              colUpper[kcol]=-1.0e50; /* force infeasible */
-                              break;
-                            }
-                          } else {
-                            /* down does not change - up does */
-                            if (maxR[krow]<1.0e10)
-                              maxR[krow] += value;
-                            if (maxR[krow]<rowLower[krow]-1.0e-5) {
-                              notFeasible=1;
-                              break;
-                            }
-                          }
-                        }
-                      } else {
-                        // going down
-                        colUpper[kcol]=0.0;
-                        /* update immediately */
-                        for (jj=columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
-                          krow = row[jj];
-                          value = columnElements[jj];
-                          if (markR[krow]==-1) {
-                            stackR[nstackR]=krow;
-                            markR[krow]=nstackR;
-                            saveMin[nstackR]=minR[krow];
-                            saveMax[nstackR]=maxR[krow];
-                            nstackR++;
-                          } else if (markR[krow]==-2) {
-                            continue;
-                          }
-                          /* could check immediately if violation */
-                          /* down */
-                          if (value<0.0) {
-                            /* up does not change - down does */
-                            if (minR[krow]>-1.0e10)
-                              minR[krow] -= value;
-                            if (minR[krow]>rowUpper[krow]+1.0e-5) {
-                              notFeasible=1;
-                              break;
-                            }
-                          } else {
-                            /* down does not change - up does */
-                            if (maxR[krow]<1.0e10)
-                              maxR[krow] -= value;
-                            if (maxR[krow]<rowLower[krow]-1.0e-5) {
-                              notFeasible=1;
-                              break;
-                            }
-                          }
-                        }
-                      }
-                    }
-                  } else if (markC[kcol]==1) {
-                    // marked as going to 0
-                    assert (!colUpper[kcol]);
-                    if (!kway) {
-                      // contradiction
-                      notFeasible=1;
-                      break;
-                    }
-                  } else if (markC[kcol]==2) {
-                    // marked as going to 1
-                    assert (colLower[kcol]);
-                    if (kway) {
-                      // contradiction
-                      notFeasible=1;
-                      break;
-                    }
-                  } else {
-                    // marked as fixed
-                    assert (markC[kcol]==3);
-                    int jkway;
-                    if (colLower[kcol])
-                      jkway=1;
-                    else
-                      jkway=0;
-                    if (kway==jkway) {
-                      // contradiction
-                      notFeasible=1;
-                      break;
-                    }
-                  }
-                }
-              }
-              if (notFeasible)
-                break;
-            }
-            if (notFeasible)
-              istackC=nstackC+1;
-          }
-          for (k=columnStart[jcol];k<columnStart[jcol]+columnLength[jcol];k++) {
-            // break if found not feasible
-            if (notFeasible)
-              break;
-            irow = row[k];
-            /*value = columnElements[k];*/
-            if (markR[irow]!=-2) {
-              /* see if anything forced */
-              for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];kk++) {
-                double moveUp=0.0;
-                double moveDown=0.0;
-                double newUpper=-1.0,newLower=1.0;
-                kcol=column[kk];
-                bool onList = (markC[kcol]!=0);
-                if (markC[kcol]!=3) {
-                  value2=rowElements[kk];
-                  int markIt=markC[kcol];
-                  if (value2 < 0.0) {
-                    if (colUpper[kcol] < 1e10 && (markIt&2)==0 &&
-                        rowUpper[irow]<1.0e10) {
-                      dbound = colUpper[kcol]+
-                        (rowUpper[irow]-minR[irow])/value2;
-                      if (dbound > colLower[kcol] + primalTolerance_) {
-                        if (intVar[kcol]) {
-                          markIt |= 2;
-                          newLower = ceil(dbound-primalTolerance_);
-                        } else {
-                          newLower=dbound;
-                          if (newLower+primalTolerance_>colUpper[kcol]&&
-                              newLower-primalTolerance_<=colUpper[kcol]) {
-                            newLower=colUpper[kcol];
-                            markIt |= 2;
-                            markIt=3;
-                          } else {
-                            // avoid problems - fix later ?
-                            markIt=3;
-                          }
-                        }
-                        moveUp = newLower-colLower[kcol];
-                      }
-                    }
-                    if (colLower[kcol] > -1e10 && (markIt&1)==0 &&
-                        rowLower[irow]>-1.0e10) {
-                      dbound = colLower[kcol] + 
-                        (rowLower[irow]-maxR[irow])/value2;
-                      if (dbound < colUpper[kcol] - primalTolerance_) {
-                        if (intVar[kcol]) {
-                          markIt |= 1;
-                          newUpper = floor(dbound+primalTolerance_);
-                        } else {
-                          newUpper=dbound;
-                          if (newUpper-primalTolerance_<colLower[kcol]&&
-                              newUpper+primalTolerance_>=colLower[kcol]) {
-                            newUpper=colLower[kcol];
-                            markIt |= 1;
-                            markIt=3;
-                          } else {
-                            // avoid problems - fix later ?
-                            markIt=3;
-                          }
-                        }
-                        moveDown = newUpper-colUpper[kcol];
-                      }
-                    }
-                  } else {
-                    /* positive element */
-                    if (colUpper[kcol] < 1e10 && (markIt&2)==0 &&
-                        rowLower[irow]>-1.0e10) {
-                      dbound = colUpper[kcol] + 
-                        (rowLower[irow]-maxR[irow])/value2;
-                      if (dbound > colLower[kcol] + primalTolerance_) {
-                        if (intVar[kcol]) {
-                          markIt |= 2;
-                          newLower = ceil(dbound-primalTolerance_);
-                        } else {
-                          newLower=dbound;
-                          if (newLower+primalTolerance_>colUpper[kcol]&&
-                              newLower-primalTolerance_<=colUpper[kcol]) {
-                            newLower=colUpper[kcol];
-                            markIt |= 2;
-                            markIt=3;
-                          } else {
-                            // avoid problems - fix later ?
-                            markIt=3;
-                          }
-                        }
-                        moveUp = newLower-colLower[kcol];
-                      }
-                    }
-                    if (colLower[kcol] > -1e10 && (markIt&1)==0 &&
-                        rowUpper[irow]<1.0e10) {
-                      dbound = colLower[kcol] + 
-                        (rowUpper[irow]-minR[irow])/value2;
-                      if (dbound < colUpper[kcol] - primalTolerance_) {
-                        if (intVar[kcol]) {
-                          markIt |= 1;
-                          newUpper = floor(dbound+primalTolerance_);
-                        } else {
-                          newUpper=dbound;
-                          if (newUpper-primalTolerance_<colLower[kcol]&&
-                              newUpper+primalTolerance_>=colLower[kcol]) {
-                            newUpper=colLower[kcol];
-                            markIt |= 1;
-                            markIt=3;
-                          } else {
-                            // avoid problems - fix later ?
-                            markIt=3;
-                          }
-                        }
-                        moveDown = newUpper-colUpper[kcol];
-                      }
-                    }
-                  }
-                  if (nstackC<2*maxStack) {
-                    markC[kcol] = markIt;
-		  }
-                  if (moveUp&&nstackC<2*maxStack) {
-                    fixThis++;
-#ifdef PRINT_DEBUG
-                    printf("lower bound on %d increased from %g to %g by row %d %g %g\n",kcol,colLower[kcol],newLower,irow,rowLower[irow],rowUpper[irow]);
-                    value=0.0;
-                    for (jj=rowStart[irow];jj<rowStart[irow]+rowLength[irow];jj++) {
-                      int ii=column[jj];
-                      if (colUpper[ii]-colLower[ii]>primalTolerance_) {
-                        printf("(%d, %g) ",ii,rowElements[jj]);
-                      } else {
-                        value += rowElements[jj]*colLower[ii];
-                      }
-                    }
-                    printf(" - fixed %g\n",value);
-                    for (jj=rowStart[irow];jj<rowStart[irow]+rowLength[irow];jj++) {
-                      int ii=column[jj];
-                      if (colUpper[ii]-colLower[ii]<primalTolerance_) {
-                        printf("(%d, %g, %g) ",ii,rowElements[jj],colLower[ii]);
-                      }
-                    }
-                    printf("\n");
-#endif
-                    if (!onList) {
-                      stackC[nstackC]=kcol;
-                      saveL[nstackC]=colLower[kcol];
-                      saveU[nstackC]=colUpper[kcol];
-                      assert (saveU[nstackC]>saveL[nstackC]);
-                      nstackC++;
-                      onList=true;
-                    }
-                    if (intVar[kcol])
-                      newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
-                    colLower[kcol]=newLower;
-                    if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
-                      markC[kcol]=3; // say fixed
-		    }
-                    /* update immediately */
-                    for (jj=columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
-                      krow = row[jj];
-                      value = columnElements[jj];
-                      if (markR[krow]==-1) {
-                        stackR[nstackR]=krow;
-                        markR[krow]=nstackR;
-                        saveMin[nstackR]=minR[krow];
-                        saveMax[nstackR]=maxR[krow];
-                        nstackR++;
-                      } else if (markR[krow]==-2) {
-                        continue;
-                      }
-                      /* could check immediately if violation */
-                      /* up */
-                      if (value>0.0) {
-                        /* up does not change - down does */
-                        if (minR[krow]>-1.0e10)
-                          minR[krow] += value*moveUp;
-                        if (minR[krow]>rowUpper[krow]+1.0e-5) {
-                          colUpper[kcol]=-1.0e50; /* force infeasible */
-                          break;
-                        }
-                      } else {
-                        /* down does not change - up does */
-                        if (maxR[krow]<1.0e10)
-                          maxR[krow] += value*moveUp;
-                        if (maxR[krow]<rowLower[krow]-1.0e-5) {
-                          colUpper[kcol]=-1.0e50; /* force infeasible */
-                          break;
-                        }
-                      }
-                    }
-                  }
-                  if (moveDown&&nstackC<2*maxStack) {
-                    fixThis++;
-#ifdef PRINT_DEBUG
-                    printf("upper bound on %d decreased from %g to %g by row %d %g %g\n",kcol,colUpper[kcol],newUpper,irow,rowLower[irow],rowUpper[irow]);
-                    value=0.0;
-                    for (jj=rowStart[irow];jj<rowStart[irow]+rowLength[irow];jj++) {
-                      int ii=column[jj];
-                      if (colUpper[ii]-colLower[ii]>primalTolerance_) {
-                        printf("(%d, %g) ",ii,rowElements[jj]);
-                      } else {
-                        value += rowElements[jj]*colLower[ii];
-                      }
-                    }
-                    printf(" - fixed %g\n",value);
-                    for (jj=rowStart[irow];jj<rowStart[irow]+rowLength[irow];jj++) {
-                      int ii=column[jj];
-                      if (colUpper[ii]-colLower[ii]<primalTolerance_) {
-                        printf("(%d, %g, %g) ",ii,rowElements[jj],colLower[ii]);
-                      }
-                    }
-                    printf("\n");
-#endif
-                    if (!onList) {
-                      stackC[nstackC]=kcol;
-                      saveL[nstackC]=colLower[kcol];
-                      saveU[nstackC]=colUpper[kcol];
-                      assert (saveU[nstackC]>saveL[nstackC]);
-                      nstackC++;
-                      onList=true;
-                    }
-                    if (intVar[kcol])
-                      newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
-                    colUpper[kcol]=newUpper;
-                    if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
-                      markC[kcol]=3; // say fixed
-		    }
-                    /* update immediately */
-                    for (jj=columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
-                      krow = row[jj];
-                      value = columnElements[jj];
-                      if (markR[krow]==-1) {
-                        stackR[nstackR]=krow;
-                        markR[krow]=nstackR;
-                        saveMin[nstackR]=minR[krow];
-                        saveMax[nstackR]=maxR[krow];
-                        nstackR++;
-                      } else if (markR[krow]==-2) {
-                        continue;
-                      }
-                      /* could check immediately if violation */
-                      /* down */
-                      if (value<0.0) {
-                        /* up does not change - down does */
-                        if (minR[krow]>-1.0e10)
-                          minR[krow] += value*moveDown;
-                        if (minR[krow]>rowUpper[krow]+1.0e-5) {
-                          colUpper[kcol]=-1.0e50; /* force infeasible */
-                          break;
-                        }
-                      } else {
-                        /* down does not change - up does */
-                        if (maxR[krow]<1.0e10)
-                          maxR[krow] += value*moveDown;
-                        if (maxR[krow]<rowLower[krow]-1.0e-5) {
-                          colUpper[kcol]=-1.0e50; /* force infeasible */
-                          break;
-                        }
-                      }
-                    }
-                  }
-                  if (colLower[kcol]>colUpper[kcol]+primalTolerance_) {
-                    notFeasible=1;;
-                    k=columnStart[jcol]+columnLength[jcol];
-                    istackC=nstackC+1;
-#ifdef PRINT_DEBUG
-                    printf("** not feasible this way\n");
-#endif
-                    break;
-                  }
-                }
-              }
-            }
-          }
-          istackC++;
-        }
-        if (!notFeasible) {
-          feasible |= feas[iway];
-        } else if (iway==1&&feasible==0) {
-          /* not feasible at all */
-          ninfeas=1;
-          j=nCols-1;
-          iLook=nLook;
-          ipass=maxPass;
-          break;
-        }
-        if (iway==2||(iway==1&&feasible==2)) {
-          /* keep */
-          iway=3;
-          nfixed++;
-          if (mode_) {
-            OsiColCut cc;
-            int nTot=0,nFix=0,nInt=0;
-            bool ifCut=false;
-            for (istackC=0;istackC<nstackC;istackC++) {
-              int icol=stackC[istackC];
-              if (intVar[icol]) {
-                if (colUpper[icol]<currentColUpper[icol]-1.0e-4) {
-                  element[nFix]=colUpper[icol];
-                  index[nFix++]=icol;
-                  nInt++;
-                  if (colsol[icol]>colUpper[icol]+primalTolerance_) {
-                    ifCut=true;
-                    anyColumnCuts=true;
-                  }
-                }
-              }
-            }
-            if (nFix) {
-              nTot=nFix;
-              cc.setUbs(nFix,index,element);
-              nFix=0;
-            }
-            for (istackC=0;istackC<nstackC;istackC++) {
-              int icol=stackC[istackC];
-              if (intVar[icol]) {
-                if (colLower[icol]>currentColLower[icol]+1.0e-4) {
-                  element[nFix]=colLower[icol];
-                  index[nFix++]=icol;
-                  nInt++;
-                  if (colsol[icol]<colLower[icol]-primalTolerance_) {
-                    ifCut=true;
-                    anyColumnCuts=true;
-                  }
-                }
-              }
-            }
-            if (nFix) {
-              nTot+=nFix;
-              cc.setLbs(nFix,index,element);
-            }
-            // could tighten continuous as well
-            if (nInt) {
-              if (ifCut) {
-                cc.setEffectiveness(100.0);
-              } else {
-                cc.setEffectiveness(1.0e-5);
-              }
-#if CGL_DEBUG > 0
-              CglProbingDebug::checkBounds(si,cc);
-#endif
-              cs.insert(cc);
-            }
-          }
-          for (istackC=0;istackC<nstackC;istackC++) {
-            int icol=stackC[istackC];
-            if (colUpper[icol]-colLower[icol]>primalTolerance_) {
-              markC[icol]=0;
-            } else {
-              markC[icol]=3;
-            }
-          }
-          for (istackR=0;istackR<nstackR;istackR++) {
-            int irow=stackR[istackR];
-            markR[irow]=-1;
-          }
-        } else {
-          /* is it worth seeing if can increase coefficients
-             or maybe better see if it is a cut */
-          if (iway==0) {
-            nstackC0=CoinMin(nstackC,maxStack);
-            if (notFeasible) {
-              nstackC0=0;
-            } else {
-              for (istackC=0;istackC<nstackC0;istackC++) {
-                int icol=stackC[istackC];
-                stackC0[istackC]=icol;
-                lo0[istackC]=colLower[icol];
-                up0[istackC]=colUpper[icol];
-              }
-            }
-            /* restore all */
-            assert (iway==0);
-            for (istackC=nstackC-1;istackC>=0;istackC--) {
-              int icol=stackC[istackC];
-              double oldU=saveU[istackC];
-              double oldL=saveL[istackC];
-              colUpper[icol]=oldU;
-              colLower[icol]=oldL;
-              markC[icol]=0;
-            }
-            for (istackR=0;istackR<nstackR;istackR++) {
-              int irow=stackR[istackR];
-              // switch off strengthening if not wanted
-              if ((rowCuts&2)!=0) {
-                bool ifCut=anyColumnCuts;
-                double gap = rowUpper[irow]-maxR[irow];
-                double sum=0.0;
-                if (!ifCut&&(gap>primalTolerance_&&gap<1.0e8)) {
-                  // see if the strengthened row is a cut
-                  for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
-                       kk++) {
-                    sum += rowElements[kk]*colsol[column[kk]];
-                  }
-                  if (sum-gap*colsol[j]>maxR[irow]+primalTolerance_||info->strengthenRow) {
-                    // can be a cut
-                    // subtract gap from upper and integer coefficient
-                    // saveU and saveL spare
-                    int * index = reinterpret_cast<int *>(saveL);
-                    double * element = saveU;
-                    int n=0;
-                    bool coefficientExists=false;
-                    for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
-                         kk++) {
-                      if (column[kk]!=j) {
-                        index[n]=column[kk];
-                        element[n++]=rowElements[kk];
-                      } else {
-                        double value=rowElements[kk]-gap;
-                        if (fabs(value)>1.0e-12) {
-                          index[n]=column[kk];
-                          element[n++]=value;
-                        }
-                        coefficientExists=true;
-                      }
-                    }
-                    if (!coefficientExists) {
-                      index[n]=j;
-                      element[n++]=-gap;
-                    }
-                    OsiRowCut rc;
-                    rc.setLb(-DBL_MAX);
-                    rc.setUb(rowUpper[irow]-gap*(colLower[j]+1.0));
-                    // effectiveness is how far j moves
-                    rc.setEffectiveness((sum-gap*colsol[j]-maxR[irow])/gap);
-                    if (rc.effectiveness()>needEffectiveness) {
-                      rc.setRow(n,index,element,false);
-#if CGL_DEBUG > 0
-                      if (debugger) assert(!debugger->invalidCut(rc)); 
-#endif
-                      // If strengthenRow point to row
-                      //if(info->strengthenRow)
-                      //printf("a point to row %d\n",irow);
-#ifdef STRENGTHEN_PRINT
-		      {
-			printf("9Cut %g <= ",rc.lb());
-			int k;
-			for ( k=0;k<n;k++) {
-			  int iColumn = index[k];
-			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rc.ub());
-			printf("Row %g <= ",rowLower[irow]);
-			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
-			  int iColumn = column[k];
-			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rowUpper[irow]);
-		      }
-#endif
-		      rc.setWhichRow(irow) ;
-                      rowCut.addCutIfNotDuplicate(rc);
-                    }
-                  }
-                }
-                gap = minR[irow]-rowLower[irow];
-                if (!ifCut&&(gap>primalTolerance_&&gap<1.0e8)) {
-                  // see if the strengthened row is a cut
-                  if (!sum) {
-                    for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
-                         kk++) {
-                      sum += rowElements[kk]*colsol[column[kk]];
-                    }
-                  }
-                  if (sum+gap*colsol[j]<minR[irow]+primalTolerance_||info->strengthenRow) {
-                    // can be a cut
-                    // add gap to lower and integer coefficient
-                    // saveU and saveL spare
-                    int * index = reinterpret_cast<int *>(saveL);
-                    double * element = saveU;
-                    int n=0;
-                    bool coefficientExists=false;
-                    for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
-                         kk++) {
-                      if (column[kk]!=j) {
-                        index[n]=column[kk];
-                        element[n++]=rowElements[kk];
-                      } else {
-                        double value=rowElements[kk]+gap;
-                        if (fabs(value)>1.0e-12) {
-                          index[n]=column[kk];
-                          element[n++]=value;
-                        }
-                        coefficientExists=true;
-                      }
-                    }
-                    if (!coefficientExists) {
-                      index[n]=j;
-                      element[n++]=gap;
-                    }
-                    OsiRowCut rc;
-                    rc.setLb(rowLower[irow]+gap*(colLower[j]+1.0));
-                    rc.setUb(DBL_MAX);
-                    // effectiveness is how far j moves
-                    rc.setEffectiveness((minR[irow]-sum-gap*colsol[j])/gap);
-                    if (rc.effectiveness()>needEffectiveness) {
-                      rc.setRow(n,index,element,false);
-#if CGL_DEBUG > 0
-                      if (debugger) assert(!debugger->invalidCut(rc)); 
-#endif
-                      //if(info->strengthenRow)
-                      //printf("b point to row %d\n",irow);
-#ifdef STRENGTHEN_PRINT
-		      {
-			printf("10Cut %g <= ",rc.lb());
-			int k;
-			for ( k=0;k<n;k++) {
-			  int iColumn = index[k];
-			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rc.ub());
-			printf("Row %g <= ",rowLower[irow]);
-			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
-			  int iColumn = column[k];
-			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rowUpper[irow]);
-		      }
-#endif
-		      rc.setWhichRow(irow) ;
-                      rowCut.addCutIfNotDuplicate(rc);
-                    }
-                  }
-                }
-              }
-              minR[irow]=saveMin[istackR];
-              maxR[irow]=saveMax[istackR];
-              markR[irow]=-1;
-            }
-          } else {
-            if (iway==1&&feasible==3) {
-              iway=3;
-              /* point back to stack */
-              for (istackC=nstackC-1;istackC>=0;istackC--) {
-                int icol=stackC[istackC];
-                markC[icol]=istackC+1000;
-              }
-              if (mode_) {
-                OsiColCut cc;
-                int nTot=0,nFix=0,nInt=0;
-                bool ifCut=false;
-                for (istackC=0;istackC<nstackC0;istackC++) {
-                  int icol=stackC0[istackC];
-                  int istackC1=markC[icol]-1000;
-                  if (istackC1>=0) {
-                    if (CoinMin(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
-                      saveL[istackC1]=CoinMin(lo0[istackC],colLower[icol]);
-                      if (intVar[icol]) {
-                        element[nFix]=saveL[istackC1];
-                        index[nFix++]=icol;
-                        nInt++;
-                        if (colsol[icol]<saveL[istackC1]-primalTolerance_)
-                          ifCut=true;
-                      }
-                      nfixed++;
-                    }
-                  }
-                }
-                if (nFix) {
-                  nTot=nFix;
-                  cc.setLbs(nFix,index,element);
-                  nFix=0;
-                }
-                for (istackC=0;istackC<nstackC0;istackC++) {
-                  int icol=stackC0[istackC];
-                  int istackC1=markC[icol]-1000;
-                  if (istackC1>=0) {
-                    if (CoinMax(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
-                      saveU[istackC1]=CoinMax(up0[istackC],colUpper[icol]);
-                      if (intVar[icol]) {
-                        element[nFix]=saveU[istackC1];
-                        index[nFix++]=icol;
-                        nInt++;
-                        if (colsol[icol]>saveU[istackC1]+primalTolerance_)
-                          ifCut=true;
-                      }
-                      nfixed++;
-                    }
-                  }
-                }
-                if (nFix) {
-                  nTot+=nFix;
-                  cc.setUbs(nFix,index,element);
-                }
-                // could tighten continuous as well
-                if (nInt) {
-                  if (ifCut) {
-                    cc.setEffectiveness(100.0);
-                  } else {
-                    cc.setEffectiveness(1.0e-5);
-                  }
-#if CGL_DEBUG > 0
-                  CglProbingDebug::checkBounds(si,cc);
-#endif
-                  cs.insert(cc);
-                }
-              }
-            }
-            /* restore all */
-            for (istackC=nstackC-1;istackC>=0;istackC--) {
-              int icol=stackC[istackC];
-              double oldU=saveU[istackC];
-              double oldL=saveL[istackC];
-              colUpper[icol]=oldU;
-              colLower[icol]=oldL;
-              if (oldU>oldL+1.0e-4)
-                markC[icol]=0;
-              else
-                markC[icol]=3;
-            }
-            for (istackR=0;istackR<nstackR;istackR++) {
-              int irow=stackR[istackR];
-              // switch off strengthening if not wanted
-              if ((rowCuts&2)!=0) {
-                bool ifCut=anyColumnCuts;
-                double gap = rowUpper[irow]-maxR[irow];
-                double sum=0.0;
-                if (!ifCut&&(gap>primalTolerance_&&gap<1.0e8)) {
-                  // see if the strengthened row is a cut
-                  for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
-                       kk++) {
-                    sum += rowElements[kk]*colsol[column[kk]];
-                  }
-                  if (sum+gap*colsol[j]>rowUpper[irow]+primalTolerance_||info->strengthenRow) {
-                    // can be a cut
-                    // add gap to integer coefficient
-                    // saveU and saveL spare
-                    int * index = reinterpret_cast<int *>(saveL);
-                    double * element = saveU;
-                    int n=0;
-                    bool coefficientExists=false;
-                    for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
-                         kk++) {
-                      if (column[kk]!=j) {
-                        index[n]=column[kk];
-                        element[n++]=rowElements[kk];
-			} else {
-			  double value=rowElements[kk]+gap;
-			  if (fabs(value)>1.0e-12) {
-			    index[n]=column[kk];
-			    element[n++]=value;
-			  }
-			  coefficientExists=true;
-			}
-		      }
-		      if (!coefficientExists) {
-			index[n]=j;
-			element[n++]=gap;
-		      }
-		      OsiRowCut rc;
-		      rc.setLb(-DBL_MAX);
-		      rc.setUb(rowUpper[irow]+gap*(colUpper[j]-1.0));
-		      // effectiveness is how far j moves
-		      rc.setEffectiveness((sum+gap*colsol[j]-rowUpper[irow])/gap);
-		      if (rc.effectiveness()>needEffectiveness) {
-			rc.setRow(n,index,element,false);
-#if CGL_DEBUG > 0
-			if (debugger) assert(!debugger->invalidCut(rc)); 
-#endif
-                        //if(info->strengthenRow)
-                        //printf("c point to row %d\n",irow);
-#ifdef STRENGTHEN_PRINT
-		      {
-			printf("11Cut %g <= ",rc.lb());
-			int k;
-			for ( k=0;k<n;k++) {
-			  int iColumn = index[k];
-			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rc.ub());
-			printf("Row %g <= ",rowLower[irow]);
-			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
-			  int iColumn = column[k];
-			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rowUpper[irow]);
-		      }
-#endif
-			rc.setWhichRow(irow) ;
-			rowCut.addCutIfNotDuplicate(rc);
-		      }
-		    }
-		  }
-		  gap = minR[irow]-rowLower[irow];
-		  if (!ifCut&&(gap>primalTolerance_&&gap<1.0e8)) {
-		    // see if the strengthened row is a cut
-		    if (!sum) {
-		      for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
-			   kk++) {
-			sum += rowElements[kk]*colsol[column[kk]];
-		      }
-		    }
-		    if (sum-gap*colsol[j]<rowLower[irow]+primalTolerance_||info->strengthenRow) {
-		      // can be a cut
-		      // subtract gap from integer coefficient
-		      // saveU and saveL spare
-		      int * index = reinterpret_cast<int *>(saveL);
-		      double * element = saveU;
-		      int n=0;
-                      bool coefficientExists=false;
-		      for (kk=rowStart[irow];kk<rowStart[irow]+rowLength[irow];
-			   kk++) {
-			if (column[kk]!=j) {
-			  index[n]=column[kk];
-			  element[n++]=rowElements[kk];
-			} else {
-			  double value=rowElements[kk]-gap;
-			  if (fabs(value)>1.0e-12) {
-			    index[n]=column[kk];
-			    element[n++]=value;
-			  }
-			  coefficientExists=true;
-			}
-		      }
-		      if (!coefficientExists) {
-			index[n]=j;
-			element[n++]=-gap;
-		      }
-		      OsiRowCut rc;
-		      rc.setLb(rowLower[irow]-gap*(colUpper[j]-1));
-		      rc.setUb(DBL_MAX);
-		      // effectiveness is how far j moves
-		      rc.setEffectiveness((rowLower[irow]-sum+gap*colsol[j])/gap);
-		      if (rc.effectiveness()>needEffectiveness) {
-			rc.setRow(n,index,element,false);
-#if CGL_DEBUG > 0
-			if (debugger) assert(!debugger->invalidCut(rc)); 
-#endif
-                        //if(info->strengthenRow)
-                        //printf("d point to row %d\n",irow);
-#ifdef STRENGTHEN_PRINT
-		      {
-			printf("12Cut %g <= ",rc.lb());
-			int k;
-			for ( k=0;k<n;k++) {
-			  int iColumn = index[k];
-			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rc.ub());
-			printf("Row %g <= ",rowLower[irow]);
-			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
-			  int iColumn = column[k];
-			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rowUpper[irow]);
-		      }
-#endif
-			rc.setWhichRow(irow) ;
-			rowCut.addCutIfNotDuplicate(rc);
-		      }
-		    }
-		  }
-		}
-		minR[irow]=saveMin[istackR];
-		maxR[irow]=saveMax[istackR];
-		markR[irow]=-1;
-	      }
-	    }
-	  }
-        }
-    }
-  }
-  delete [] stackC0;
-  delete [] lo0;
-  delete [] up0;
-  delete [] tempL;
-  delete [] tempU;
-  delete [] markC;
-  delete [] stackC;
-  delete [] stackR;
-  delete [] saveL;
-  delete [] saveU;
-  delete [] saveMin;
-  delete [] saveMax;
-  delete [] index;
-  delete [] element;
-  delete [] colsol;
-  // Add in row cuts
-  if (!ninfeas) {
-    rowCut.addCuts(cs,info->strengthenRow,0);
-  }
-  delete [] array;
-  abort();
-  return (ninfeas);
-}
-
-/* Set mode
+  Set mode
 
   Take care to change only the basic mode, without affecting higher bits.
 */
@@ -5710,151 +3192,216 @@ CglProbing::refreshSolver(OsiSolverInterface * solver)
   }
 }
 
+/*
+  Creates cliques for use by probing.
+  Can also try and extend cliques as a result of probing (root node).
+  Returns number of cliques found.
 
-/* Creates cliques for use by probing.
-   Can also try and extend cliques as a result of probing (root node).
-   Returns number of cliques found.
+  minimumSize and maximumSize limit the size of the cliques reported.
+
+  Mathematically, we look for constraints of the form
+      L<i> <= SUM{P}x<j> - SUM{M}x<j> <= U<i>
+  where all x<j> are binary, all x<j> j in P have a coefficient of +1, and
+  all x<j>, j in M, have a coefficient of -1. The smallest value of the lhs
+  is -|M|, the largest, |P|. We can make the following conclusions (numbered to
+  match state codes below):
+
+  3) -|M| > U<i> or |P| < L<i>  ==> infeasible
+
+  2) -|M| = U<i> ==> all x<j>, j in M, at 1, all x<j>, j in P, at 0
+      |P| = L<i> ==> all x<j>, j in P, at 1, all x<j>, j in M, at 0
+
+  1) U<i> = -|M|+1 ==> any x<t>, t in P, at 1 ==> all x<j>, j in M, at 1
+					      ==> all x<j>, j in P\t, at 0
+		   ==> any x<t>, t in M, at 0 ==> all x<j>, j in P, at 0
+					      ==> all x<j>, j in M\t, at 1
+     L<i> =  |P|-1 ==> any x<t>, j in M, at 1 ==> all x<j>, j in P, at 1
+					      ==> all x<j>, j in M\t, at 0
+		   ==> any x<t>, j in P, at 0 ==> all x<j>, j in M, at 0
+					      ==> all x<j>, j in P\t, at 1
+
+  1) is the only case where we have an interesting clique to work with.
+
 */
 int 
-CglProbing::createCliques( OsiSolverInterface & si, 
-			  int minimumSize, int maximumSize)
+CglProbing::createCliques (OsiSolverInterface &si, 
+			   int minimumSize, int maximumSize)
 {
-  // get rid of what is there
-  deleteCliques();
-  CoinPackedMatrix matrixByRow(*si.getMatrixByRow());
-  int numberRows = si.getNumRows();
+  // Remove existing clique information
+  deleteCliques() ;
+/*
+  Generate cliques from the original matrix. Don't use a snapshot, even if
+  we have one.
+*/
+  CoinPackedMatrix matrixByRow(*si.getMatrixByRow()) ;
+  int numberRows = si.getNumRows() ;
   if (!rowCopy_)
-    numberRows_=numberRows;
-  numberColumns_ = si.getNumCols();
-
-  numberCliques_=0;
-  int numberEntries=0;
-  int numberIntegers=0;
-  int * lookup = new int[numberColumns_];
-  int i;
-  for (i=0;i<numberColumns_;i++) {
+    numberRows_ = numberRows ;
+  numberColumns_ = si.getNumCols() ;
+/*
+  Initialise some bookkeeping. lookup will enable us to find the integer
+  variable's sequence number given the column number.
+*/
+  numberCliques_ = 0 ;
+  int numberEntries = 0 ;
+  int numberIntegers = 0 ;
+  int *lookup = new int[numberColumns_] ;
+  int i ;
+  for (i = 0 ; i < numberColumns_ ; i++) {
     if (si.isBinary(i))
-      lookup[i]=numberIntegers++;
+      lookup[i] = numberIntegers++ ;
     else
-      lookup[i]=-1;
+      lookup[i] = -1 ;
   }
+  int *which = new int[numberColumns_] ;
+  int *whichRow = new int[numberRows] ;
 
-  int * which = new int[numberColumns_];
-  int * whichRow = new int[numberRows];
   // Statistics
-  int totalP1=0,totalM1=0;
-  int numberBig=0,totalBig=0;
-  int numberFixed=0;
+  int totalP1 = 0 ;
+  int totalM1 = 0 ;
+  int numberBig = 0 ;
+  int totalBig = 0 ;
+  int numberFixed = 0 ;
 
-  // Row copy
-  const double * elementByRow = matrixByRow.getElements();
-  const int * column = matrixByRow.getIndices();
-  const CoinBigIndex * rowStart = matrixByRow.getVectorStarts();
-  const int * rowLength = matrixByRow.getVectorLengths();
+  // Expose the internal arrays of the matrix
+  const double *elementByRow = matrixByRow.getElements() ;
+  const int *column = matrixByRow.getIndices() ;
+  const CoinBigIndex *rowStart = matrixByRow.getVectorStarts() ;
+  const int *rowLength = matrixByRow.getVectorLengths() ;
 
-  // Column lengths for slacks
-  const int * columnLength = si.getMatrixByCol()->getVectorLengths();
+  /*
+    jjf: Column lengths for slacks
+    
+    See note below re. slacks. Vestigial  -- lh, 100924
+  */
+  const int *columnLength = si.getMatrixByCol()->getVectorLengths() ;
 
-  const double * lower = si.getColLower();
-  const double * upper = si.getColUpper();
-  const double * rowLower = si.getRowLower();
-  const double * rowUpper = si.getRowUpper();
-  int iRow;
-  for (iRow=0;iRow<numberRows;iRow++) {
-    int numberP1=0, numberM1=0;
-    int j;
-    double upperValue=rowUpper[iRow];
-    double lowerValue=rowLower[iRow];
-    bool good=true;
-    int slack = -1;
-    for (j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
-      int iColumn = column[j];
-      int iInteger=lookup[iColumn];
-      if (upper[iColumn]-lower[iColumn]<1.0e-8) {
-	// fixed
-	upperValue -= lower[iColumn]*elementByRow[j];
-	lowerValue -= lower[iColumn]*elementByRow[j];
-	continue;
-      } else if (upper[iColumn]!=1.0||lower[iColumn]!=0.0) {
-	good = false;
-	break;
-      } else if (iInteger<0) {
-	good = false;
-	break;
+  const double *lower = si.getColLower() ;
+  const double *upper = si.getColUpper() ;
+  const double *rowLower = si.getRowLower() ;
+  const double *rowUpper = si.getRowUpper() ;
+/*
+  Get down to the business of scanning rows.
+*/
+  int iRow ;
+  for (iRow = 0 ; iRow < numberRows ; iRow++) {
+    int numberP1 = 0 ;
+    int numberM1 = 0 ;
+    int j ;
+    double upperValue = rowUpper[iRow] ;
+    double lowerValue = rowLower[iRow] ;
+    bool good = true ;
+    int slack = -1 ;
+/*
+  Scan the columns of the current row. In order to generate cliques, the row
+  must contain only binary variables with coefficients of +/- 1.0. Adjust the
+  row bounds for fixed variables while we're here. If the row survives, the
+  small end of which contains the indices of the positive coefficients, the
+  large end the indices of the negative coefficients.
+
+  TODO: We set slack when we run across a column of length 1, but don't use it
+	for anything.   -- lh, 100924 --
+*/
+    for (j = rowStart[iRow] ; j < rowStart[iRow]+rowLength[iRow] ; j++) {
+      int iColumn = column[j] ;
+      int iInteger = lookup[iColumn] ;
+      if (upper[iColumn]-lower[iColumn] < 1.0e-8) {
+	upperValue -= lower[iColumn]*elementByRow[j] ;
+	lowerValue -= lower[iColumn]*elementByRow[j] ;
+	continue ;
+      } else if (upper[iColumn] != 1.0 || lower[iColumn] != 0.0) {
+	good = false ;
+	break ;
+      } else if (iInteger < 0) {
+	good = false ;
+	break ;
       } else {
-	if (columnLength[iColumn]==1)
-	  slack = iInteger;
+	if (columnLength[iColumn] == 1)
+	  slack = iInteger ;
       }
-      if (fabs(elementByRow[j])!=1.0) {
-	good=false;
-	break;
-      } else if (elementByRow[j]>0.0) {
-	which[numberP1++]=iColumn;
+      if (fabs(elementByRow[j]) != 1.0) {
+	good = false ;
+	break ;
+      } else if (elementByRow[j] > 0.0) {
+	which[numberP1++] = iColumn ;
       } else {
-	numberM1++;
-	which[numberIntegers-numberM1]=iColumn;
+	numberM1++ ;
+	which[numberIntegers-numberM1] = iColumn ;
       }
     }
-    int iUpper = static_cast<int> (floor(upperValue+1.0e-5));
-    int iLower = static_cast<int> (ceil(lowerValue-1.0e-5));
-    int state=0;
-    if (upperValue<1.0e6) {
-      if (iUpper==1-numberM1)
-	state=1;
-      else if (iUpper==-numberM1)
-	state=2;
-      else if (iUpper<-numberM1)
-	state=3;
+/*
+  See if we have any strength. As explained at the head of the routine,
+  3: infeasible; 2: all variables fixed ; 1: clique of some sort.
+*/
+    int iUpper = static_cast<int>(floor(upperValue+1.0e-5)) ;
+    int iLower = static_cast<int>(ceil(lowerValue-1.0e-5)) ;
+    int state = 0 ;
+    if (upperValue < 1.0e6) {
+      if (iUpper == 1-numberM1)
+	state = 1 ;
+      else if (iUpper == -numberM1)
+	state = 2 ;
+      else if (iUpper < -numberM1)
+	state = 3 ;
     }
-    if (!state&&lowerValue>-1.0e6) {
-      if (-iLower==1-numberP1)
-	state=-1;
-      else if (-iLower==-numberP1)
-	state=-2;
-      else if (-iLower<-numberP1)
-	state=-3;
+    if (!state && lowerValue > -1.0e6) {
+      if (-iLower == 1-numberP1)
+	state = -1 ;
+      else if (-iLower == -numberP1)
+	state = -2 ;
+      else if (-iLower < -numberP1)
+	state = -3 ;
     }
-    if (good&&state) {
-      if (abs(state)==3) {
-	// infeasible
-	numberCliques_ = -99999;
-	break;
-      } else if (abs(state)==2) {
-	// we can fix all
-	numberFixed += numberP1+numberM1;
-	if (state>0) {
-	  // fix all +1 at 0, -1 at 1
-	  for (i=0;i<numberP1;i++)
-	    si.setColUpper(which[i],0.0);
-	  for (i=0;i<numberM1;i++)
-	    si.setColLower(which[numberIntegers-i-1],
-				 1.0);
+/*
+  +/- 3 is infeasible; we're done.
+*/
+    if (good && state) {
+      if (abs(state) == 3) {
+	numberCliques_ = -99999 ;
+	break ;
+      }
+/*
+  +2 means all x<j>, j in M, must be 1, all x<j>, j in P, must be 0.
+  -2 is the opposite.
+*/
+      else if (abs(state) == 2) {
+	numberFixed += numberP1+numberM1 ;
+	if (state > 0) {
+	  for (i = 0 ; i < numberP1 ; i++)
+	    si.setColUpper(which[i],0.0) ;
+	  for (i = 0 ; i < numberM1 ; i++)
+	    si.setColLower(which[numberIntegers-i-1],1.0) ;
 	} else {
-	  // fix all +1 at 1, -1 at 0
-	  for (i=0;i<numberP1;i++)
-	    si.setColLower(which[i],1.0);
-	  for (i=0;i<numberM1;i++)
-	    si.setColUpper(which[numberIntegers-i-1],
-				 0.0);
+	  for (i = 0 ; i < numberP1 ; i++)
+	    si.setColLower(which[i],1.0) ;
+	  for (i = 0 ; i < numberM1 ; i++)
+	    si.setColUpper(which[numberIntegers-i-1],0.0) ;
 	}
-      } else {
-	int length = numberP1+numberM1;
-        totalP1 += numberP1;
-        totalM1 += numberM1;
-	if (length >= minimumSize&&length<maximumSize) {
-	  whichRow[numberCliques_++]=iRow;
-	  numberEntries += length;
+      }
+/*
+  +1 means that any x<j>, j in P, at 1 implies all x<j>, j in M, at 1.
+  -1 means that any x<j>, j in M, at 1 implies all x<j>, j in P, at 1.
+*/
+      else {
+	int length = numberP1+numberM1 ;
+        totalP1 += numberP1 ;
+        totalM1 += numberM1 ;
+	if (length >= minimumSize && length < maximumSize) {
+	  whichRow[numberCliques_++] = iRow ;
+	  numberEntries += length ;
 	} else if (numberP1+numberM1 >= maximumSize) {
-	  // too big
-	  numberBig++;
-	  totalBig += numberP1+numberM1;
+	  numberBig++ ;
+	  totalBig += numberP1+numberM1 ;
 	}
       }
     }
   }
-  if (numberCliques_<0) {
+/*
+  Done with the row scan. Print a bit of information.
+*/
+  if (numberCliques_ < 0) {
     if (logLevel_)
-      printf("*** Problem infeasible\n");
+      printf("*** Problem infeasible\n") ;
   } else {
     if (numberCliques_) {
       if (logLevel_)
@@ -5862,170 +3409,264 @@ CglProbing::createCliques( OsiSolverInterface & si,
                numberCliques_,
                (static_cast<double>(totalP1+totalM1))/
 	       (static_cast<double> (numberCliques_)),
-               totalP1,totalM1);
+               totalP1,totalM1) ;
     } else {
-      if (logLevel_>1)
-        printf("No cliques found\n");
+      if (logLevel_ > 1)
+        printf("No cliques found\n") ;
     }
     if (numberBig) {
       if (logLevel_)
         printf("%d large cliques ( >= %d) found, total %d\n",
-	     numberBig,maximumSize,totalBig);
+	     numberBig,maximumSize,totalBig) ;
     }
     if (numberFixed) {
       if (logLevel_)
-        printf("%d variables fixed\n",numberFixed);
+        printf("%d variables fixed\n",numberFixed) ;
     }
   }
-  if (numberCliques_>0) {
-    cliqueType_ = new cliqueType [numberCliques_];
-    cliqueStart_ = new int [numberCliques_+1];
-    cliqueEntry_ = new cliqueEntry [numberEntries];
-    oneFixStart_ = new int [numberColumns_];
-    zeroFixStart_ = new int [numberColumns_];
-    endFixStart_ = new int [numberColumns_];
-    whichClique_ = new int [numberEntries];
-    numberEntries=0;
-    cliqueStart_[0]=0;
-    for (i=0;i<numberColumns_;i++) {
-      oneFixStart_[i]=-1;
-      zeroFixStart_[i]=-1;
-      endFixStart_[i]=-1;
+/*
+  Deal with any cliques we found. The only information saved from the row scan
+  is the row indices of the cliques. Start by setting up the bookkeeping arrays.
+
+    cliqueType_  is a bit array; if set, the clique row is an equality
+    cliqueStart_ is an index array; each entry points to the start of a clique
+		 in cliqueEntry_
+    cliqueEntry_ is an array with one entry per clique member; each entry
+		 gives the column number of the variable and a single bit
+		 indicating whether 1 or 0 is the strong direction.
+    whichClique_ crossreferences a variable back to its clique; for each
+		 variable there's a block of clique indices where the variable
+		 is strong-1, followed by a block where the variable is
+		 strong-0.
+    oneFixStart_ points to the start of the strong-1 block for the variable
+    zeroFixStart_ points to the start of the strong-0 block for the variable
+    endFixStart_ is one past the end of the entire block for the variable
+*/
+  if (numberCliques_ > 0) {
+    cliqueType_ = new cliqueType [numberCliques_] ;
+    cliqueStart_ = new int [numberCliques_+1] ;
+    cliqueEntry_ = new cliqueEntry [numberEntries] ;
+    oneFixStart_ = new int [numberColumns_] ;
+    zeroFixStart_ = new int [numberColumns_] ;
+    endFixStart_ = new int [numberColumns_] ;
+    whichClique_ = new int [numberEntries] ;
+    numberEntries = 0 ;
+    cliqueStart_[0] = 0 ;
+    for (i = 0 ; i < numberColumns_ ; i++) {
+      oneFixStart_[i] = -1 ;
+      zeroFixStart_[i] = -1 ;
+      endFixStart_[i] = -1 ;
     }
-    int iClique;
-    // Possible some have been fixed
-    int numberCliques=numberCliques_;
-    numberCliques_=0;
-    for (iClique=0;iClique<numberCliques;iClique++) {
-      int iRow=whichRow[iClique];
-      whichRow[numberCliques_]=iRow;
-      int numberP1=0, numberM1=0;
-      int j;
-      double upperValue=rowUpper[iRow];
-      double lowerValue=rowLower[iRow];
-      for (j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
-	int iColumn = column[j];
-	if (upper[iColumn]-lower[iColumn]<1.0e-8) {
-	  // fixed
-	  upperValue -= lower[iColumn]*elementByRow[j];
-	  lowerValue -= lower[iColumn]*elementByRow[j];
-	  continue;
+/*
+  Process each clique into cliqueEntry storage format. Keep in mind that some
+  cliques may now be vacant because their variables have been fixed, so the
+  first thing we need to do is evaluate each row again to see if the clique
+  conditions still hold, and to recover the index sets P and M. At least we
+  know the row has the correct form.
+
+  TODO: Is there any possibility that a type 1 row has converted to type 2? Is
+	it worth checking here? -- lh, 101007 --
+*/
+    int iClique ;
+    int numberCliques = numberCliques_ ;
+    numberCliques_ = 0 ;
+    for (iClique = 0 ; iClique < numberCliques ; iClique++) {
+      int iRow = whichRow[iClique] ;
+      whichRow[numberCliques_] = iRow ;
+      int numberP1 = 0 ;
+      int numberM1 = 0 ;
+      int j ;
+      double upperValue = rowUpper[iRow] ;
+      double lowerValue = rowLower[iRow] ;
+      for (j = rowStart[iRow] ; j < rowStart[iRow]+rowLength[iRow] ; j++) {
+	int iColumn = column[j] ;
+	if (upper[iColumn]-lower[iColumn] < 1.0e-8) {
+	  upperValue -= lower[iColumn]*elementByRow[j] ;
+	  lowerValue -= lower[iColumn]*elementByRow[j] ;
+	  continue ;
 	}
-	if (elementByRow[j]>0.0) {
-	  which[numberP1++]=iColumn;
+	if (elementByRow[j] > 0.0) {
+	  which[numberP1++] = iColumn ;
 	} else {
-	  numberM1++;
-	  which[numberIntegers-numberM1]=iColumn;
+	  numberM1++ ;
+	  which[numberIntegers-numberM1] = iColumn ;
 	}
       }
-      int iUpper = static_cast<int> (floor(upperValue+1.0e-5));
-      int iLower = static_cast<int> (ceil(lowerValue-1.0e-5));
-      int state=0;
-      if (upperValue<1.0e6) {
-	if (iUpper==1-numberM1)
-	  state=1;
+      int iUpper = static_cast<int>(floor(upperValue+1.0e-5)) ;
+      int iLower = static_cast<int>(ceil(lowerValue-1.0e-5)) ;
+      int state = 0 ;
+      if (upperValue < 1.0e6) {
+	if (iUpper == 1-numberM1)
+	  state = 1 ;
       }
-      if (!state&&lowerValue>-1.0e6) {
-	state=-1;
+      if (!state && lowerValue > -1.0e6) {
+	state = -1 ;
       }
-      if (abs(state)!=1)
-	continue; // must have been fixed
-      if (iLower==iUpper) {
-	cliqueType_[numberCliques_].equality=1;
+/*
+  If the clique conditions no longer hold, move on to the next candidate.
+*/
+      if (abs(state) != 1)
+	continue ;
+/*
+  Mark whether the clique row is an equality in cliqueType_. Record the
+  column index of each clique member and the strong branching direction in
+  cliqueEntry_.
+
+  TODO: Unless there's some indication that other information will go into
+	cliqueType, converting it to a simple boolean array, or even a struct
+	with a simple boolean array, would be better than this single-bit
+	setup.  -- lh, 101007 --
+*/
+      if (iLower == iUpper) {
+	cliqueType_[numberCliques_].equality = 1 ;
       } else {
-	cliqueType_[numberCliques_].equality=0;
+	cliqueType_[numberCliques_].equality = 0 ;
       }
-      if (state>0) {
-	for (i=0;i<numberP1;i++) {
-	  // 1 is strong branch
-	  int iColumn = which[i];
-	  setSequenceInCliqueEntry(cliqueEntry_[numberEntries],iColumn);
-	  setOneFixesInCliqueEntry(cliqueEntry_[numberEntries],true);
-	  numberEntries++;
-	  // zero counts
-	  oneFixStart_[iColumn]=0;
-	  zeroFixStart_[iColumn]=0;
+/*
+  U<i> = -|M|+1. 1 is the strong value for x<j> in P, 0 is the strong value for
+  x<j> in M.
+*/
+      if (state > 0) {
+	for (i = 0 ; i < numberP1 ; i++) {
+	  int iColumn = which[i] ;
+	  setSequenceInCliqueEntry(cliqueEntry_[numberEntries],iColumn) ;
+	  setOneFixesInCliqueEntry(cliqueEntry_[numberEntries],true) ;
+	  numberEntries++ ;
+	  oneFixStart_[iColumn] = 0 ;
+	  zeroFixStart_[iColumn] = 0 ;
 	}
-	for (i=0;i<numberM1;i++) {
-	  // 0 is strong branch
-	  int iColumn = which[numberIntegers-i-1];
-	  setSequenceInCliqueEntry(cliqueEntry_[numberEntries],iColumn);
-	  setOneFixesInCliqueEntry(cliqueEntry_[numberEntries],false);
-	  numberEntries++;
-	  // zero counts
-	  oneFixStart_[iColumn]=0;
-	  zeroFixStart_[iColumn]=0;
-	}
-      } else {
-	for (i=0;i<numberP1;i++) {
-	  // 0 is strong branch
-	  int iColumn = which[i];
-	  setSequenceInCliqueEntry(cliqueEntry_[numberEntries],iColumn);
-	  setOneFixesInCliqueEntry(cliqueEntry_[numberEntries],false);
-	  numberEntries++;
-	  // zero counts
-	  oneFixStart_[iColumn]=0;
-	  zeroFixStart_[iColumn]=0;
-	}
-	for (i=0;i<numberM1;i++) {
-	  // 1 is strong branch
-	  int iColumn = which[numberIntegers-i-1];
-	  setSequenceInCliqueEntry(cliqueEntry_[numberEntries],iColumn);
-	  setOneFixesInCliqueEntry(cliqueEntry_[numberEntries],true);
-	  numberEntries++;
-	  // zero counts
-	  oneFixStart_[iColumn]=0;
-	  zeroFixStart_[iColumn]=0;
+	for (i = 0 ; i < numberM1 ; i++) {
+	  int iColumn = which[numberIntegers-i-1] ;
+	  setSequenceInCliqueEntry(cliqueEntry_[numberEntries],iColumn) ;
+	  setOneFixesInCliqueEntry(cliqueEntry_[numberEntries],false) ;
+	  numberEntries++ ;
+	  oneFixStart_[iColumn] = 0 ;
+	  zeroFixStart_[iColumn] = 0 ;
 	}
       }
-      numberCliques_++;
-      cliqueStart_[numberCliques_]=numberEntries;
+/*
+  L<i> = |P|-1. 0 is the strong value for x<j> in P, 1 is the strong value for
+  x<j> in M.
+*/
+      else {
+	for (i = 0 ; i < numberP1 ; i++) {
+	  int iColumn = which[i] ;
+	  setSequenceInCliqueEntry(cliqueEntry_[numberEntries],iColumn) ;
+	  setOneFixesInCliqueEntry(cliqueEntry_[numberEntries],false) ;
+	  numberEntries++ ;
+	  oneFixStart_[iColumn] = 0 ;
+	  zeroFixStart_[iColumn] = 0 ;
+	}
+	for (i = 0 ; i < numberM1 ; i++) {
+	  int iColumn = which[numberIntegers-i-1] ;
+	  setSequenceInCliqueEntry(cliqueEntry_[numberEntries],iColumn) ;
+	  setOneFixesInCliqueEntry(cliqueEntry_[numberEntries],true) ;
+	  numberEntries++ ;
+	  oneFixStart_[iColumn] = 0 ;
+	  zeroFixStart_[iColumn] = 0 ;
+	}
+      }
+      numberCliques_++ ;
+      cliqueStart_[numberCliques_] = numberEntries ;
     }
-    // Now do column lists
-    // First do counts
-    for (iClique=0;iClique<numberCliques_;iClique++) {
-      for (int j=cliqueStart_[iClique];j<cliqueStart_[iClique+1];j++) {
-	int iColumn = sequenceInCliqueEntry(cliqueEntry_[j]);
+/*
+  cliqueEntry now contains a block for each clique, P variables followed by
+  M variables. In a U<i> clique, the strong-1 entries precede the strong-0
+  entries. In a L<i> clique, the strong-0 entries precede the strong-1
+  entries. cliqueStart_ points to the start of the block for each clique.
+
+  Now count the number of times each variable occurs as strong-1 or
+  strong-0.  By virtue of previous initialisation, entries for variables not
+  in any clique will be -1.
+
+  TODO: I can't see any point in the nested loops here. Just walking
+	cliqueEntry_ would achieve the same result.  -- lh, 101007 --
+*/
+    for (iClique = 0 ; iClique < numberCliques_ ; iClique++) {
+      for (int j = cliqueStart_[iClique] ; j < cliqueStart_[iClique+1] ; j++) {
+	int iColumn = sequenceInCliqueEntry(cliqueEntry_[j]) ;
 	if (oneFixesInCliqueEntry(cliqueEntry_[j]))
-	  oneFixStart_[iColumn]++;
+	  oneFixStart_[iColumn]++ ;
 	else
-	  zeroFixStart_[iColumn]++;
+	  zeroFixStart_[iColumn]++ ;
       }
     }
-    // now get starts and use which and end as counters
-    numberEntries=0;
-    for (int iColumn=0;iColumn<numberColumns_;iColumn++) {
-      if (oneFixStart_[iColumn]>=0) {
-	int n1=oneFixStart_[iColumn];
-	int n2=zeroFixStart_[iColumn];
-	oneFixStart_[iColumn]=numberEntries;
-	which[iColumn]=numberEntries;
-	numberEntries += n1;
-	zeroFixStart_[iColumn]=numberEntries;
-	endFixStart_[iColumn]=numberEntries;
-	numberEntries += n2;
+/*
+  We want to set up whichClique_ with blocks of entries for each variable,
+  pointing back to the cliques that use the variable.  The block of entries
+  for a variable will be divided into two subblocks, first the strong-1
+  cliques, then the strong-0 cliques.
+
+  This first loop establishes the start of each strong-1 and strong-0
+  subblock in oneFixStart_ and zeroFixStart_. The arrays which and
+  endFixStart mirror oneFixStart_ and zeroFixStart_, respectively.
+*/
+    numberEntries = 0 ;
+    for (int iColumn = 0 ; iColumn < numberColumns_ ; iColumn++) {
+      if (oneFixStart_[iColumn] >= 0) {
+	int n1 = oneFixStart_[iColumn] ;
+	int n2 = zeroFixStart_[iColumn] ;
+	oneFixStart_[iColumn] = numberEntries ;
+	which[iColumn] = numberEntries ;
+	numberEntries += n1 ;
+	zeroFixStart_[iColumn] = numberEntries ;
+	endFixStart_[iColumn] = numberEntries ;
+	numberEntries += n2 ;
       }
     }
-    // now put in
-    for (iClique=0;iClique<numberCliques_;iClique++) {
-      for (int j=cliqueStart_[iClique];j<cliqueStart_[iClique+1];j++) {
-	int iColumn = sequenceInCliqueEntry(cliqueEntry_[j]);
+/*
+  Now drop the clique indices into whichClique. which and endFixStart advance
+  through each subblock as we process the cliques. When we're done, we can
+  discard which (it's equal to zeroFixStart). endFixStart will be one past
+  the end of the block for the variable. Note that endFixStart is not quite
+  equal to oneFixStart shifted one index, because not all variables are in use
+  in cliques --- all of oneFixStart, zeroFixStart, and endFixStart have entries
+  of -1 interspersed with meaningful entries.
+*/
+    for (iClique=0 ;iClique<numberCliques_ ;iClique++) {
+      for (int j=cliqueStart_[iClique] ;j<cliqueStart_[iClique+1] ;j++) {
+	int iColumn = sequenceInCliqueEntry(cliqueEntry_[j]) ;
 	if (oneFixesInCliqueEntry(cliqueEntry_[j])) {
-	  int put = which[iColumn];
-	  which[iColumn]++;
-	  whichClique_[put]=iClique;
+	  int put = which[iColumn] ;
+	  which[iColumn]++ ;
+	  whichClique_[put]=iClique ;
 	} else {
-	  int put = endFixStart_[iColumn];
-	  endFixStart_[iColumn]++;
-	  whichClique_[put]=iClique;
+	  int put = endFixStart_[iColumn] ;
+	  endFixStart_[iColumn]++ ;
+	  whichClique_[put]=iClique ;
 	}
       }
     }
   }
-  delete [] which;
-  delete [] whichRow;
-  delete [] lookup;
-  return numberCliques_;
+  delete [] which ;
+  delete [] whichRow ;
+  delete [] lookup ;
+  return numberCliques_ ;
+}
+
+// Delete all clique information
+void 
+CglProbing::deleteCliques()
+{
+  delete [] cliqueType_ ;
+  delete [] cliqueStart_ ;
+  delete [] cliqueEntry_ ;
+  delete [] oneFixStart_ ;
+  delete [] zeroFixStart_ ;
+  delete [] endFixStart_ ;
+  delete [] whichClique_ ;
+  delete [] cliqueRow_ ;
+  delete [] cliqueRowStart_ ;
+  cliqueType_ = NULL ;
+  cliqueStart_ = NULL ;
+  cliqueEntry_ = NULL ;
+  oneFixStart_ = NULL ;
+  zeroFixStart_ = NULL ;
+  endFixStart_ = NULL ;
+  whichClique_ = NULL ;
+  cliqueRow_ = NULL ;
+  cliqueRowStart_ = NULL ;
+  numberCliques_ = 0 ;
 }
 
 
@@ -6072,147 +3713,265 @@ CglProbing::mayGenerateRowCutsInTree() const
 }
 
 
-// Sets up clique information for each row
+/*
+  jjf: Sets up clique information for each row
+
+  Boils down clique information into a form suitable for easy use when
+  calculating row bounds U<i> and L<i>. To motivate the process, consider
+  calculating U<i> for a row that is entangled with several cliques. If
+  the cliques don't intersect, we can treat each of them as a super-variable
+  and calculate
+
+    U<i> = (upper bound for non-clique variables) +
+		SUM{cliques}(upper bound clique contribution)
+
+  A nontrivial amount of thinking will convince you that all we need to know
+  to calculate the upper bound on the contribution of a clique is which
+  variables are in a given clique, and the strong direction for the variable.
+  See the written doc'n for details. But what if the cliques intersect? We
+  don't want to double count. So this method partitions the variables. The
+  largest clique goes in intact. Then the clique with the most unclaimed
+  variables goes in. And so on, until the number of unclaimed variables is one
+  or zero. We're not getting the full strength from cliques later in the
+  sequence, but that's conservative.
+
+  TODO: The current algorithm allows later cliques to poach variables that
+	are in the intersection with earlier cliques. It's not clear to me
+	that this is a good idea. It weakens the earlier (larger) cliques
+	with no guarantee of major benefits in terms of strengthening the
+	later (smaller) cliques.  -- lh, 101008 --
+*/
+
 void 
-CglProbing::setupRowCliqueInformation(const OsiSolverInterface & si) 
+CglProbing::setupRowCliqueInformation (const OsiSolverInterface &si) 
 {
   if (!numberCliques_)
-    return;
-  CoinPackedMatrix * rowCopy;
+    return ;
+/*
+  Use a snapshot if we have one, otherwise ask the solver for a copy of the
+  constraint matrix. It can happen that CglProbing managed to eliminate rows
+  when generating the snapshot, but the column count should be the same.
+*/
+  CoinPackedMatrix *rowCopy ;
   if (!rowCopy_) {
-    // create from current
-    numberRows_=si.getNumRows(); 
-    numberColumns_=si.getNumCols(); 
-    rowCopy = new CoinPackedMatrix(*si.getMatrixByRow());
+    numberRows_ = si.getNumRows() ; 
+    numberColumns_ = si.getNumCols() ; 
+    rowCopy = new CoinPackedMatrix(*si.getMatrixByRow()) ;
   } else {
-    rowCopy = rowCopy_;
-    assert(numberRows_<=si.getNumRows()); 
-    assert(numberColumns_==si.getNumCols()); 
+    rowCopy = rowCopy_ ;
+    assert(numberRows_ <= si.getNumRows()) ; 
+    assert(numberColumns_ == si.getNumCols()) ; 
   }
-  assert(numberRows_&&numberColumns_);
-  cliqueRowStart_ = new int [numberRows_+1];
-  cliqueRowStart_[0]=0;
+  assert(numberRows_ && numberColumns_) ;
+  const int *column = rowCopy->getIndices() ;
+  const CoinBigIndex *rowStart = rowCopy->getVectorStarts() ;
+  const int *rowLength = rowCopy->getVectorLengths() ; 
+
+  cliqueRowStart_ = new int [numberRows_+1] ;
+  cliqueRowStart_[0] = 0 ;
+
   // Temporary array while building list
-  cliqueEntry ** array = new cliqueEntry * [numberRows_];
-  // Which cliques in use
-  int * which = new int[numberCliques_];
-  int * count = new int[numberCliques_];
-  int * back =new int[numberColumns_];
-  CoinZeroN(count,numberCliques_);
-  CoinFillN(back,numberColumns_,-1);
-  const int * column = rowCopy->getIndices();
-  const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
-  const int * rowLength = rowCopy->getVectorLengths(); 
-  const double * lower = si.getColLower();
-  const double * upper = si.getColUpper();
-  int iRow;
-  for (iRow=0;iRow<numberRows_;iRow++) {
-    int j;
-    int numberFree=0;
-    int numberUsed=0;
-    for (j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
-      int iColumn=column[j];
-      if (upper[iColumn]>lower[iColumn]) {
-        back[iColumn]=j-rowStart[iRow];
-        numberFree++;
-        for (int k=oneFixStart_[iColumn];k<endFixStart_[iColumn];k++) {
-          int iClique = whichClique_[k];
+  cliqueEntry **array = new cliqueEntry* [numberRows_] ;
+
+  // Clique ids
+  int *which = new int [numberCliques_] ;
+  // Number of times a given clique is encountered
+  int *count = new int [numberCliques_] ;
+  // Position of column in row (unfixed variables only; -1 otherwise).
+  int *back = new int [numberColumns_] ;
+  CoinZeroN(count,numberCliques_) ;
+  CoinFillN(back,numberColumns_,-1) ;
+
+  const double *lower = si.getColLower() ;
+  const double *upper = si.getColUpper() ;
+
+/*
+  Open the main loop to scan rows. It won't be apparent for a while yet, but
+  we're only interested in rows that a) were not used to form cliques, and
+  b) contain variables that are members of cliques. We need to collect some
+  data before we can answer the question.
+*/
+  int iRow ;
+  for (iRow = 0 ; iRow < numberRows_ ; iRow++) {
+    int j ;
+/*
+  Scan this row. Count the number of free variables and record the position
+  of each variable in the row. Then update clique entanglement (the clique
+  id, and the number of variables entangled with the clique).
+*/
+    int numberFree = 0 ;
+    int numberUsed = 0 ;
+    for (j = rowStart[iRow] ; j < rowStart[iRow]+rowLength[iRow] ; j++) {
+      int iColumn = column[j] ;
+      if (upper[iColumn] > lower[iColumn]) {
+        back[iColumn] = j-rowStart[iRow] ;
+        numberFree++ ;
+        for (int k = oneFixStart_[iColumn] ; k < endFixStart_[iColumn] ; k++) {
+          int iClique = whichClique_[k] ;
           if (!count[iClique]) {
-            which[numberUsed++]=iClique;
+            which[numberUsed++] = iClique ;
           }
-          count[iClique]++;
+          count[iClique]++ ;
         }
       }
     }
-    // find largest cliques
-    bool finished=false;
-    int numberInThis=0;
-    cliqueEntry * entries = NULL;
-    array[iRow]=entries;
+/*
+  jjf: find largest cliques
+
+  Recast the clique entanglement data into a form that's easily useable
+  when calculating row bounds.
+*/
+    bool finished = false ;
+    int numberInThis = 0 ;
+    cliqueEntry *entries = NULL ;
+    array[iRow] = entries ;
     while (!finished) {
-      int largest=1;
-      int whichClique=-1;
-      for (int i=0;i<numberUsed;i++) {
-        int iClique = which[i];
-        if (count[iClique]>largest) {
-          largest=count[iClique];
-          whichClique=iClique;
+/*
+  Find the clique entangled with the largest number of variables from this
+  row. As the loop progresses, a more accurate description will be `Find the
+  clique with the largest number of entangled variables not yet claimed by
+  cliques already processed.'
+*/
+      int largest = 1 ;
+      int whichClique = -1 ;
+      for (int i = 0 ; i < numberUsed ; i++) {
+        int iClique = which[i] ;
+        if (count[iClique] > largest) {
+          largest = count[iClique] ;
+          whichClique = iClique ;
         }
       }
-      // Add in if >1 (but not if all as that means clique==row)
-      if (whichClique>=0&&largest<numberFree) {
+/*
+  jjf: Add in if >1 (but not if all as that means clique==row)
+
+  If we formed a clique from this row then largest == numberFree by
+  construction and we're done. We'll skip down to the else, set finished =
+  true, and move on to the next row. So the rows we're processing here are
+  rows that were not used to form cliques but contain 2 or more variables
+  that are part of the same clique.
+
+  TODO: This might be overly restrictive. You could picture a scenario where
+	one constraint defines a clique, and another constraint, with the same
+	variables but arbitrary coefficients, enforces some other restriction.
+	(Admittedly, no example leaps to mind.)  -- lh, 101008 --
+
+  TODO: It should be the case that if this is the row that formed the clique,
+	count[which[0]] == numberFree. Because we have to suck in all the
+	variables, and that means that the very first variable needs to be
+	part of a clique, and that clique id will be in which[0]. We could make
+	this check immediately after generating the entanglement data.
+	-- lh, 101008 --
+*/
+      if (whichClique >= 0 && largest < numberFree) {
         if (!numberInThis) {
-          int length=rowLength[iRow];
-          entries = new cliqueEntry [length];
-          array[iRow]=entries;
-          for (int i=0;i<length;i++) {
-            setOneFixesInCliqueEntry(entries[i],false);
-            setSequenceInCliqueEntry(entries[i],numberColumns_+1);
+          int length = rowLength[iRow] ;
+          entries = new cliqueEntry [length] ;
+          array[iRow] = entries ;
+          for (int i = 0 ; i < length ; i++) {
+            setOneFixesInCliqueEntry(entries[i],false) ;
+            setSequenceInCliqueEntry(entries[i],numberColumns_+1) ;
           }
         }
-        // put in (and take out all counts)
-        for (j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
-          int iColumn=column[j];
-          if (upper[iColumn]>lower[iColumn]) {
-            bool found=false;
-            int k;
-            for ( k=oneFixStart_[iColumn];k<endFixStart_[iColumn];k++) {
-              int iClique = whichClique_[k];
-              if (iClique==whichClique) {
-                found=true;
-                break;
+      
+/*
+  jjf: put in (and take out all counts)
+
+  Scan the row again. For each unfixed variable, look to see if it's a member
+  of the clique we're processing. If so, `remove' the variable from the count
+  for other cliques where it's a member, and record the variable as a member
+  of this clique, along with its strong direction.
+
+  Presumably the rationale for scanning the block for this variable in
+  whichClique_, as opposed to the block for this clique in cliqueEntry_,
+  is that on average the number of variables in a clique is larger than the
+  number of cliques using a variable, so the block in whichClique_ is smaller.
+*/
+        for (j = rowStart[iRow] ; j < rowStart[iRow]+rowLength[iRow] ; j++) {
+          int iColumn = column[j] ;
+          if (upper[iColumn] > lower[iColumn]) {
+            bool found = false ;
+            int k ;
+            for (k = oneFixStart_[iColumn] ; k < endFixStart_[iColumn] ; k++) {
+              int iClique = whichClique_[k] ;
+              if (iClique == whichClique) {
+                found = true ;
+                break ;
               }
             }
+
             if (found) {
-              for ( k=oneFixStart_[iColumn];k<endFixStart_[iColumn];k++) {
-                int iClique = whichClique_[k];
-                count[iClique]--;
+              for (k = oneFixStart_[iColumn] ;
+		   k < endFixStart_[iColumn] ; k++) {
+                int iClique = whichClique_[k] ;
+                count[iClique]-- ;
               }
-              for (k=cliqueStart_[whichClique];k<cliqueStart_[whichClique+1];k++) {
-                if (sequenceInCliqueEntry(cliqueEntry_[k])==iColumn) {
-                  int iback=back[iColumn];
-                  setSequenceInCliqueEntry(entries[iback],numberInThis);
+/*
+  Note that the id given here is only locally significant (for this row). But
+  that's ok, all we need to know to use this information is the variables that
+  are part of a given clique.
+
+  TODO: Now that I've figured out the motivation for this whole activity, the
+	question that remains for me is this: Why do we allow later cliques
+	to overwrite the entries for earlier cliques? It seems like we're
+	weakening the earlier cliques.  -- lh, 101008 --
+*/
+              for (k = cliqueStart_[whichClique] ;
+		   k < cliqueStart_[whichClique+1] ; k++) {
+                if (sequenceInCliqueEntry(cliqueEntry_[k]) == iColumn) {
+                  int iback = back[iColumn] ;
+                  setSequenceInCliqueEntry(entries[iback],numberInThis) ;
                   setOneFixesInCliqueEntry(entries[iback],
-					   oneFixesInCliqueEntry(cliqueEntry_[k]));
-                  break;
+				 oneFixesInCliqueEntry(cliqueEntry_[k])) ;
+                  break ;
                 }
               }
             }
           }
         }
-        numberInThis++;
+        numberInThis++ ;
       } else {
-        finished=true;
+        finished = true ;
       }
     }
+/*
+  Reserve space in the final output array.
+*/
     if (numberInThis) 
-      cliqueRowStart_[iRow+1]=cliqueRowStart_[iRow]+rowLength[iRow];
+      cliqueRowStart_[iRow+1] = cliqueRowStart_[iRow]+rowLength[iRow] ;
     else
-      cliqueRowStart_[iRow+1]=cliqueRowStart_[iRow];
-    for (int i=0;i<numberUsed;i++) {
-      int iClique = which[i];
-      count[iClique]=0;
+      cliqueRowStart_[iRow+1] = cliqueRowStart_[iRow] ;
+/*
+  Clear the bookkeeping arrays in preparation for the next row.
+*/
+    for (int i = 0 ; i < numberUsed ; i++) {
+      int iClique = which[i] ;
+      count[iClique] = 0 ;
     }
-    for (j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
-      int iColumn=column[j];
-      back[iColumn]=-1;
+    for (j = rowStart[iRow] ; j < rowStart[iRow]+rowLength[iRow] ; j++) {
+      int iColumn = column[j] ;
+      back[iColumn] = -1 ;
     }
   }
-  delete [] which;
-  delete [] count;
-  delete [] back;
-  // Now put info in one array
-  cliqueRow_ = new cliqueEntry [cliqueRowStart_[numberRows_]];
-  for (iRow=0;iRow<numberRows_;iRow++) {
+/*
+  End main loop. Clean up, store the results, and go home. Rather than keep all
+  the row-length fragments allocated above for individual entries arrays,
+  copy them off into one big array, cliqueRow_, with the starting position for
+  each row indexed through cliqueRowStart_.
+*/
+  delete [] which ;
+  delete [] count ;
+  delete [] back ;
+  cliqueRow_ = new cliqueEntry [cliqueRowStart_[numberRows_]] ;
+  for (iRow = 0 ; iRow < numberRows_ ; iRow++) {
     if (array[iRow]) {
-      int start = cliqueRowStart_[iRow];
-      CoinMemcpyN(array[iRow],rowLength[iRow],cliqueRow_+start);
-      delete [] array[iRow];
+      int start = cliqueRowStart_[iRow] ;
+      CoinMemcpyN(array[iRow],rowLength[iRow],cliqueRow_+start) ;
+      delete [] array[iRow] ;
     }
   }
-  delete [] array;
-  if (rowCopy!=rowCopy_)
-    delete rowCopy;
+  delete [] array ;
+  if (rowCopy != rowCopy_)
+    delete rowCopy ;
 }
 
 

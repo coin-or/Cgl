@@ -9,17 +9,36 @@
 
 #include "CglCutGenerator.hpp"
 
-  /** Only useful type of disaggregation is most normal
-      For now just done for 0-1 variables
-      Can be used for building cliques
+/*! \brief Umm ... ???
+  
+  jjf: Only useful type of disaggregation is most normal. For now just done
+       for 0-1 variables. Can be used for building cliques
 
-      ?!?? What is this?  -- lh, 10???? --
-   */
-  typedef struct {
-    //unsigned int zeroOne:1; // nonzero if affected variable is 0-1
-    //unsigned int whenAtUB:1; // nonzero if fixing happens when this variable at 1
-    //unsigned int affectedToUB:1; // nonzero if affected variable fixed to UB
-    //unsigned int affected:29; // If 0-1 then 0-1 sequence, otherwise true
+  See the comments with the methods at the end of the file that fake the bit
+  fields by borrowing the top three bits of affected.
+
+  What John considers `most normal' remains to be discovered.
+  -- lh, 110211 --
+*/
+typedef struct {
+    /// nonzero if affected variable is 0-1
+    //unsigned int zeroOne:1 ;
+
+    /// nonzero if fixing happens when this variable at 1
+    //unsigned int whenAtUB:1;
+
+    /// nonzero if affected variable fixed to UB
+    //unsigned int affectedToUB:1;
+
+    /// If 0-1 then 0-1 sequence, otherwise true
+    //unsigned int affected:29;
+
+    /*! \brief index of affected variable
+
+      Bits (31:29) are overloaded with status codes. If the bit for
+      zeroOneInDisagg is true, index is an index in cutVector_; if
+      false, it's a plain old variable index.
+    */
     unsigned int affected;
   } disaggregationAction;
 
@@ -84,15 +103,18 @@
 
   - 0: Only unsatisfied integer variables will be looked at.  If no
        information exists for that variable then probing will be done so as a
-       by-product you "may" get a fixing or infeasibility.  This will be fast
-       and is only available if a snapshot exists (otherwise as 1).  The
-       bounds in the snapshot are the ones used.
+       by-product you may get a fixing or infeasibility.  This will be fast
+       and is only available if a snapshot exists (otherwise you get mode 1).
+       The bounds in the snapshot are the ones used.
 
-  - 1: Look at unsatisfied integer variables, using current bounds.  Probing
-       will be done on all looked at.
+  - 1: Look at unsatisfied integer variables, using current bounds. All
+       unsatisfied integer variables will be probed.
 
-  - 2: Look at all integer variables, using current bounds.  Probing will be
-       done on all
+  - 2: Look at all integer variables, using current bounds. All integer
+       variables will be probed.
+
+  In all modes, user specified limits (number of variables probed, types of
+  cuts generated, etc.) will be observed.
 */
 class CglProbing : public CglCutGenerator {
    friend int CglProbingUnitTest(const OsiSolverInterface *siP,
@@ -353,7 +375,7 @@ private:
  // Private member methods
   /**@name probe */
   //@{
-  /// Does probing and adding cuts (without cliques and mode_!=0)
+  /// Does probing and adding cuts (without cliques)
   int probe(const OsiSolverInterface &si, 
 	    OsiCuts &cs, 
 	    double *colLower, double *colUpper, CoinPackedMatrix *rowCopy,
@@ -362,17 +384,22 @@ private:
 	    const char *intVar, double *minR, double *maxR, int *markR, 
 	    CglTreeInfo *info,
 	    bool useObj, bool useCutoff, double cutoff) const;
+
   /// Does probing and adding cuts (with cliques)
-  int probeCliques( const OsiSolverInterface & si, 
-	     const OsiRowCutDebugger * debugger, 
-	     OsiCuts & cs, 
-	     double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
-		    CoinPackedMatrix *columnCopy, const int * realRow,
-	     double * rowLower, double * rowUpper,
-	     char * intVar, double * minR, double * maxR, int * markR, 
-             CglTreeInfo * info,
-	     bool useObj, bool useCutoff, double cutoff) const;
-  /// Does probing and adding cuts for clique slacks
+  int probeCliques(const OsiSolverInterface &si, 
+	    OsiCuts & cs, 
+	    double *colLower, double *colUpper, CoinPackedMatrix *rowCopy,
+	    CoinPackedMatrix *columnCopy,
+	    const int *realRow, double *rowLower, double *rowUpper,
+	    char *intVar, double *minR, double *maxR, int *markR, 
+            CglTreeInfo *info,
+	    bool useObj, bool useCutoff, double cutoff) const;
+
+  /*! Does probing and adding cuts for clique slacks
+
+    Doesn't seem to be used. Let's see what happens when it's not present.
+    -- lh, 110211 --
+
   int probeSlacks( const OsiSolverInterface & si, 
                     const OsiRowCutDebugger * debugger, 
                     OsiCuts & cs, 
@@ -381,6 +408,7 @@ private:
                     double * rowLower, double * rowUpper,
                     char * intVar, double * minR, double * maxR,int * markR,
                      CglTreeInfo * info) const;
+  */
   /** Does most of work of generateCuts 
       Returns number of infeasibilities */
   int gutsOfGenerateCuts( const OsiSolverInterface & si, 
@@ -573,13 +601,18 @@ private:
   /// Which ones looked at this time
   mutable int * lookedAt_;
 
-  /// For disaggregation cuts and for building cliques
+  /*! \brief For disaggregation cuts and for building cliques
+
+    disaggregationAction has been reduced to a vector of indices, presumably
+    the variables x<t> where u<t> or l<t> was changed by a probe on x<p>.
+    -- lh, 110211 --
+  */
   typedef struct disaggregation_struct_tag {
-    /// Integer variable column number
+    /// Integer variable column number (index of x<p>)
     int sequence;
     /// length of new value
     int length;
-    /// columns whose bounds will be changed
+    /// columns whose bounds will be changed (indices of x<t>)
     disaggregationAction *index;
   } disaggregation;
 
@@ -587,7 +620,7 @@ private:
 
     Initialised when probing starts, or when a snapshot is created.
   */
-  disaggregation * cutVector_;
+  disaggregation *cutVector_;
 
   /************************  Cliques  ************************/
   /*
@@ -690,28 +723,59 @@ private:
   char * tightenBounds_;
   //@}
 };
-inline int affectedInDisaggregation(const disaggregationAction & dis)
+
+/*
+  What we have here is dangerous, but efficient. (Vid. the commented-out
+  bit fields in disaggregationAction).  Expropriate the top three bits of
+  an integer index as status indicators. Here's my 110212 guess as to the
+  meaning, given probing variable x<p>, affected variable x<t>.
+
+  affectedInDisagg	(28:0)	index of x<t>
+  zeroOneInDisagg	  (31)	x<t> is binary
+  atUBInDisagg		  (30)	x<t> forced to u<t>
+  whenAtUB		  (29)	up probe for x<p>
+
+  The math for a disaggregation cut says that there are four possibilities:
+    * down probe on x<p> tightens ub u<t> on target x<t>
+    * down probe on x<p> tightens lb l<t> on target x<t>
+    * up probe on x<p> tightens ub u<t> on target x<t>
+    * up probe on x<p> tightens lb l<t> on target x<t>
+  In the current implementation, x<p> will be binary. x<t> need not be
+  binary. This set of attributes are capable of capturing the variations.
+
+  The variants for zeroOneInDisagg reflect evolution in the code. It started
+  with the assumption that x<p> and x<t> are both binary. But the math for
+  a disaggregation cut doesn't require either one to be binary. The code
+  was evolving to allow x<t> to be general integer, but the particular
+  bit of code where these methods are used was not yet ready (in fact,
+  my guess is that it was still buggy and under development when it was
+  effectively abandoned 080428 r629).
+
+  -- lh, 110211 --
+*/
+
+inline int affectedInDisagg(const disaggregationAction & dis)
 { return dis.affected&0x1fffffff;}
-inline void setAffectedInDisaggregation(disaggregationAction & dis,
+inline void setAffectedInDisagg(disaggregationAction & dis,
 					   int affected)
 { dis.affected = affected|(dis.affected&0xe0000000);}
 #ifdef NDEBUG
-inline bool zeroOneInDisaggregation(const disaggregationAction & )
+inline bool zeroOneInDisagg(const disaggregationAction & )
 { return true;}
 #else
-inline bool zeroOneInDisaggregation(const disaggregationAction & dis)
+inline bool zeroOneInDisagg(const disaggregationAction & dis)
 //{ return (dis.affected&0x80000000)!=0;}
 { assert ((dis.affected&0x80000000)!=0); return true;}
 #endif
-inline void setZeroOneInDisaggregation(disaggregationAction & dis,bool zeroOne)
+inline void setZeroOneInDisagg(disaggregationAction & dis,bool zeroOne)
 { dis.affected = (zeroOne ? 0x80000000 : 0)|(dis.affected&0x7fffffff);}
-inline bool whenAtUBInDisaggregation(const disaggregationAction & dis)
+inline bool whenAtUBInDisagg(const disaggregationAction & dis)
 { return (dis.affected&0x40000000)!=0;}
-inline void setWhenAtUBInDisaggregation(disaggregationAction & dis,bool whenAtUB)
+inline void setWhenAtUBInDisagg(disaggregationAction & dis,bool whenAtUB)
 { dis.affected = (whenAtUB ? 0x40000000 : 0)|(dis.affected&0xbfffffff);}
-inline bool affectedToUBInDisaggregation(const disaggregationAction & dis)
+inline bool affectedToUBInDisagg(const disaggregationAction & dis)
 { return (dis.affected&0x20000000)!=0;}
-inline void setAffectedToUBInDisaggregation(disaggregationAction & dis,bool affectedToUB)
+inline void setAffectedToUBInDisagg(disaggregationAction & dis,bool affectedToUB)
 { dis.affected = (affectedToUB ? 0x20000000 : 0)|(dis.affected&0xdfffffff);}
 
 //#############################################################################

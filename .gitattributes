@@ -65,6 +65,8 @@ src/CglProbing/CglImplication.hpp -text
 src/CglProbing/CglProbingDebug.cpp -text
 src/CglProbing/CglProbingDebug.hpp -text
 src/CglProbing/CglProbingProbe.cpp -text
+src/CglProbing/CglProbingProbeClique.cpp -text
+src/CglProbing/CglProbingProbeSlack.cpp -text
 src/CglProbing/CglProbingRowCut.cpp -text
 src/CglProbing/CglProbingRowCut.hpp -text
 src/CglProbing/CglProbingSnapshot.cpp -text

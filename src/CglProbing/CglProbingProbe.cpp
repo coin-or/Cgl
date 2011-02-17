@@ -1877,7 +1877,7 @@ int CglProbing::probe( const OsiSolverInterface &si,
 
   See CbcCutGenerator::generateCuts for the origin of magic number 123. 
   Comments there indicate it's intended to take effect deep in the tree, but
-  the code here will also work at the root.
+  the code here will also work at the root. This appeared in r629.
 
   Special cases aside, the net effect of the loops is to walk lookedAt_,
   promoting every nth variable (n = cutDown) to the front of lookedAt_. When
@@ -1982,7 +1982,8 @@ int CglProbing::probe( const OsiSolverInterface &si,
   at the end of this pass. Otherwise, if we haven't fixed any variables, break.
 
   TODO: Otherwise keep going with no changes? That doesn't seem right. The
-  	logic here does not cover all situations.  -- lh, 101126 --
+  	logic here does not cover all situations. This bit of code appeared
+	at r629.   -- lh, 101126 --
 */
       if (rowCut.outOfSpace() || leftTotalStack <= 0) {
 	if (!justFix && (!nfixed || info->inTree)) {
@@ -3306,6 +3307,12 @@ int CglProbing::probe( const OsiSolverInterface &si,
   
   TODO: This would be one of the places that will fail if fixes() and
   	initializeFixing() are removed from CglTreeInfo.  -- lh, 101127 --
+
+  TODO: Does this have any relation to cutVector_? It seems to have
+        some function related to saving implication information between
+	calls to the same CglProbing object. CglTreeProbingInfo would allow
+	the info to be saved across CglProbing objects. But why? And where's
+	the reload method?  -- lh, 110211 --
 */
 	if (!notFeasible && saveFixingInfo) {
 	  // save fixing info
