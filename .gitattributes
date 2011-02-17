@@ -12,6 +12,7 @@ Cgl/MSVisualStudio/v9alt/Cgl.sln -text
 Cgl/MSVisualStudio/v9alt/CglUnitTest.vcproj -text
 Cgl/MSVisualStudio/v9alt/cgl.vsprops -text
 Cgl/MSVisualStudio/v9alt/cglbase.vsprops -text
+Cgl/MSVisualStudio/v9alt/genDefForCgl.ps1 -text
 Cgl/MSVisualStudio/v9alt/libCglAllDifferent.vcproj -text
 Cgl/MSVisualStudio/v9alt/libCglBase.vcproj -text
 Cgl/MSVisualStudio/v9alt/libCglClique.vcproj -text
