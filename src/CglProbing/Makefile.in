@@ -57,8 +57,7 @@ CONFIG_CLEAN_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libCglProbing_la_LIBADD =
 am_libCglProbing_la_OBJECTS = CglProbing.lo CglProbingDebug.lo \
-	CglProbingProbe.lo CglProbingProbeClique.lo \
-	CglProbingRowCut.lo CglProbingSnapshot.lo CglProbingTighten.lo \
+	CglProbingProbe.lo CglProbingRowCut.lo CglProbingTighten.lo \
 	CglImplication.lo CglProbingTest.lo
 libCglProbing_la_OBJECTS = $(am_libCglProbing_la_OBJECTS)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -365,9 +364,7 @@ libCglProbing_la_SOURCES = \
 	CglProbing.cpp  CglProbing.hpp \
 	CglProbingDebug.cpp CglProbingDebug.hpp \
 	CglProbingProbe.cpp \
-	CglProbingProbeClique.cpp \
 	CglProbingRowCut.cpp CglProbingRowCut.hpp \
-	CglProbingSnapshot.cpp \
 	CglProbingTighten.cpp \
 	CglImplication.cpp CglImplication.hpp \
 	CglProbingTest.cpp
@@ -453,9 +450,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbing.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbingDebug.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbingProbe.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbingProbeClique.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbingRowCut.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbingSnapshot.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbingTest.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbingTighten.Plo@am__quote@
 

@@ -141,49 +141,6 @@ public:
 			     CglTreeInfo * info);
   //@}
 
-  /*! \name Snapshot and Clique Utilities */
-  //@{
-  /*! \brief Create a copy of the constraint matrix which will be used for
-	     probing.
-
-      This is to speed up the process and to give global cuts. Column bounds
-      are tightened on the copy and remembered from one call to the next, as
-      are the results of probing.  Returns 1 if infeasible, otherwise 0.
-
-      If given, \p possible specifies which rows should be used; set entry i
-      to 1 to retain row i in the copy, 0 to drop it. In addition, if \p
-      possible is provided, rows that are determined to be ineffective will
-      be dropped.  If \p withObjective is true, the objective will be added
-      as an additional constraint.
-  */
-  int snapshot ( const OsiSolverInterface & si,
-		  char * possible=NULL,
-                  bool withObjective=true);
-
-  /*! \brief Refresh an existing snapshot from the solver.
-  
-    Yes, the name is totally misleading.
-  */
-  virtual void refreshSolver(OsiSolverInterface * solver);
-
-  /// Delete the snapshot
-  void deleteSnapshot ( );
-
-  /*! \brief Create cliques for use by probing.
-
-      Only cliques >= minimumSize and < maximumSize are created.  The method
-      will also try to extend cliques as a result of probing (root node
-      only).
-
-      Returns the number of cliques found.
-  */
-  int createCliques( OsiSolverInterface & si, 
-		     int minimumSize=2, int maximumSize=100);
-
-  /// Delete all clique information
-  void deleteCliques();
-  //@}
-
   /**@name Get tighter column bounds */
   //@{
   /// Lower
@@ -424,19 +381,6 @@ private:
      and  may also declare rows to be redundant
   */
   int tighten(double *colLower, double * colUpper,
-              const int *column, const double *rowElements, 
-              const CoinBigIndex *rowStart,const CoinBigIndex * rowStartPos,
-	      const int * rowLength,
-              double *rowLower, double *rowUpper, 
-              int nRows,int nCols,char * intVar,int maxpass,
-              double tolerance) const;
-  /*! \brief Tighten column bounds using clique information
-  
-     Use bound propagation augmented with clique information to tighten column
-     bounds. Can declare infeasibility and  may also declare rows to be
-     redundant
-  */
-  int tightenClique(double *colLower, double * colUpper,
               const int *column, const double *rowElements, 
               const CoinBigIndex *rowStart,const CoinBigIndex * rowStartPos,
 	      const int * rowLength,

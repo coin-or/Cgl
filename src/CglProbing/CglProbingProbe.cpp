@@ -1482,16 +1482,6 @@ void strengthenCoeff (
 // =========================================================
 
 
-
-/*
-  jjf: Does probing and adding cuts
-
-  Note that this method is heavily commented and instrumented in CbcAnn.
-
-  It would appear that probe() has received more attention that probeClique or
-  probeSlack. Neither of them has the ONE_ARRAY option.
-*/
-
 /*
   We're going to probe integer variables, and we're interested in propagating
   the effect of each probe (force a variable up or down).

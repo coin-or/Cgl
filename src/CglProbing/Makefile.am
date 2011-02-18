@@ -21,9 +21,7 @@ libCglProbing_la_SOURCES = \
 	CglProbing.cpp  CglProbing.hpp \
 	CglProbingDebug.cpp CglProbingDebug.hpp \
 	CglProbingProbe.cpp \
-	CglProbingProbeClique.cpp \
 	CglProbingRowCut.cpp CglProbingRowCut.hpp \
-	CglProbingSnapshot.cpp \
 	CglProbingTighten.cpp \
 	CglImplication.cpp CglImplication.hpp \
 	CglProbingTest.cpp
