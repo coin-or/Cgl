@@ -24,6 +24,14 @@ CglClique::selectFractionalBinaries(const OsiSolverInterface& si) const
    si.getDblParam(OsiPrimalTolerance, lclPetol);
 
    const int numcols = si.getNumCols();
+/*
+  This can't be correct. Compare the conditions on this special case with the
+  handling of petol in generateCuts, and notice that we use lclPetol against
+  the lower bound and petol against the upper bound in the following loop.
+  As long as petol is positive, or exactly -1.0 (the default), behaviour will
+  be sane because petol will be > 0 when we get here.
+  -- lh, 110222 --
+*/
    if (petol<0.0) {
      // do all if not too many
      int n=0;
@@ -84,6 +92,9 @@ CglClique::selectFractionals(const OsiSolverInterface& si) const
 /*****************************************************************************/
 
 /*===========================================================================*
+  Collect rows that have clique potential. All fractional variables
+  must have coefficients of +1.0; the row upper bound must be 1.0, and all
+  other coefficients must be positive.
  *===========================================================================*/
 
 void
@@ -142,7 +153,11 @@ CglClique::selectRowCliques(const OsiSolverInterface& si,int numOriginalRows) co
 /*****************************************************************************/
 
 /*===========================================================================*
-  Create the set packing submatrix
+  Create the set packing submatrix. At the end of this, we have a column-major
+  representation in sp_col_start, sp_col_ind and a row-major representation in
+  sp_row_start, sp_row_ind.
+
+  Since all nonzero coefficients are 1.0, no need to store them.
  *===========================================================================*/
 void
 CglClique::createSetPackingSubMatrix(const OsiSolverInterface& si) const
@@ -156,11 +171,17 @@ CglClique::createSetPackingSubMatrix(const OsiSolverInterface& si) const
 
    const CoinPackedMatrix& mcol = *si.getMatrixByCol();
    const int numrows = si.getNumRows();
+/*
+  Construct a back reference from original row index -> clique row index.
+  Rows not under consideration have value -1.
+*/
    int* clique = new int[numrows];
    std::fill(clique, clique+numrows, -1);
    for (i = 0; i < sp_numrows; ++i)
       clique[sp_orig_row_ind[i]] = i;
-
+/*
+  Count the number of entries in each row and column in the submatrix.
+*/
    for (j = 0; j < sp_numcols; ++j) {
       const CoinShallowPackedVector& vec = mcol.getVector(sp_orig_col_ind[j]);
       const int* ind = vec.getIndices();
@@ -171,7 +192,10 @@ CglClique::createSetPackingSubMatrix(const OsiSolverInterface& si) const
 	 }
       }
    }
-
+/*
+  Transform the vectors of row and column lengths into row and column start
+  vectors.
+*/
    std::partial_sum(sp_col_start, sp_col_start+sp_numcols, sp_col_start);
    std::rotate(sp_col_start, sp_col_start+sp_numcols,
 	       sp_col_start + (sp_numcols+1));
@@ -182,18 +206,15 @@ CglClique::createSetPackingSubMatrix(const OsiSolverInterface& si) const
    assert(nzcnt == sp_row_start[sp_numrows]);
 /*
   Now create the vectors with row indices for each column (sp_col_ind) and
-  column indices for each row (sp_row_ind). It turns out that
-  CoinIsOrthogonal assumes that the row indices for a given column are listed
-  in ascending order. This is *not* a solver-independent assumption! At best,
-  one can hope that the underlying solver will produce an index vector that's
-  either ascending or descending. Under that assumption, compare the first
-  and last entries and proceed accordingly. Eventually some solver will come
-  along that hands back an index vector in random order, and CoinIsOrthogonal
-  will break.  Until then, try and avoid the cost of a sort.
+  column indices for each row (sp_row_ind). It turns out that CoinIsOrthogonal
+  assumes that the row indices for a given column are listed in ascending
+  order. Try to guess whether the original matrix has entries in ascending or
+  descending order and fill accordingly, but sort to guarantee ascending
+  order.
 */
    sp_col_ind = new int[nzcnt];
    sp_row_ind = new int[nzcnt];
-   int last=0;
+   int last = 0;
    for (j = 0; j < sp_numcols; ++j) {
       const CoinShallowPackedVector& vec = mcol.getVector(sp_orig_col_ind[j]);
       const int len = vec.getNumElements();
@@ -216,10 +237,12 @@ CglClique::createSetPackingSubMatrix(const OsiSolverInterface& si) const
 	   }
 	}
       }
-      // sort
       std::sort(sp_col_ind+last,sp_col_ind+sp_col_start[j]);
       last=sp_col_start[j];
    }
+/*
+  Rotate one more time to restore correct row and column starts.
+*/
    std::rotate(sp_col_start, sp_col_start+sp_numcols,
 	       sp_col_start + (sp_numcols+1));
    sp_col_start[0] = 0;
@@ -232,6 +255,14 @@ CglClique::createSetPackingSubMatrix(const OsiSolverInterface& si) const
 
 /*****************************************************************************/
 
+/*
+  Keep in mind that all coefficients are 0 or 1, and 0's are kept in a packed
+  matrix. As soon as we hit a pair of matching indices, the vectors are not
+  orthogonal.
+
+  Note that the method also assumes that coefficients are sorted in ascending
+  order.
+*/
 static inline bool
 CoinIsOrthogonal(const int* first0, const int* last0,
 		 const int* first1, const int* last1)
@@ -263,10 +294,7 @@ CglClique::createFractionalGraph() const
    fnode *nodes = fgraph.nodes;
    int min_degree, max_degree, min_deg_node, max_deg_node;
 
-#  ifdef ZEROFAULT
-   // May be read below even if sp_numcols == 0
    nodes[0].degree = 0 ;
-#  endif
 
    int i, j, total_deg, old_total;
 
@@ -315,7 +343,10 @@ CglClique::createFractionalGraph() const
 /*****************************************************************************/
 
 /*===========================================================================*
- * Construct the node-node incidence matrix from the fractional graph.
+ * Construct the node-node incidence matrix from the set packing submatrix.
+ * Two columns are incident if they are not orthogonal (i.e., they are both
+ * present in some row). Note that node_node[k,k] = false; this is important
+ * during greedy clique formation.
  *===========================================================================*/
 int
 CglClique::createNodeNode() const

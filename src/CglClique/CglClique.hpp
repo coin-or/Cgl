@@ -8,187 +8,292 @@
 
 #include "CglCutGenerator.hpp"
 
-//class OsiCuts;
-//class OsiSolverInterface;
+/*! \brief Classical cliques
 
+  We're looking for violated classical clique constraints on binary variables:
+  \verbatim
+  SUM{j} x(j) = 1 or SUM{j} x(j) <= 1.
+  \endverbatim
+  The general approach is to identify binary variables with fractional values
+  in the current solution, form an adjacency graph on these variables, and
+  look for cliques in the adjacency graph. Two variables are adjacent if both
+  occur together in at least one suitable constraint. A suitable constraint is
+  defined as
+  - The constraint is an `=' or `<=' constraint with row upper bound of 1.0.
+  - All fractional binary variables have coefficients of 1.0.
+  - All other coefficients in the row are positive.
+
+  For an explanation of the algorithms, see, for example, Hoffman, K. and
+  Padberg, M., "Solving Airline Crew Scheduling Problems by Branch-and-Cut",
+  Management Science 39(6), June, 1993.
+*/
 class CglClique : public CglCutGenerator {
 
-    friend void CglCliqueUnitTest(const OsiSolverInterface * siP,
-				  const std::string mpdDir );
-public:
-    /// Copy constructor
-    CglClique(const CglClique& rhs);
-    /// Clone
-    virtual CglCutGenerator * clone() const;
-
-    /// Assignment operator
-    CglClique& operator=(const CglClique& rhs);
-   
-public:
-    
-    virtual void
-    generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
-		 const CglTreeInfo info = CglTreeInfo()) const;
-   
-    /**@name Constructors and destructors */
-    //@{
-    /** Default constructor.
-	If the setPacking argument is set to true then CglClique will assume that the
-	problem in the solverinterface passed to the generateCuts() method
-	describes a set packing problem, i.e.,
-	- all variables are binary
-	- the matrix is a 0-1 matrix
-	- all constraints are '= 1' or '<= 1'
-       
-	Otherwise the user can use the considerRows() method to set the list of
-	clique rows, that is,
-	- all coeffs corresponding to binary variables at fractional level is 1
-	- all other coeffs are non-negative
-	- the constraint is '= 1' or '<= 1'.
-
-	If the user does not set the list of clique rows then CglClique will
-	start the generateCuts() methods by scanning the matrix for them.
-	Also justOriginalRows can be set to true to limit clique creation
-    */
-    CglClique(bool setPacking = false, bool justOriginalRows = false);
-    /// Destructor
-    virtual ~CglClique() {}
-    /// Create C++ lines to get to current state
-    virtual std::string generateCpp( FILE * fp);
-
-    void considerRows(const int numRows, const int* rowInd);
+  friend void CglCliqueUnitTest(const OsiSolverInterface *siP,
+				const std::string mpdDir) ;
 
 public:
-    /** possible choices for selecting the next node in the star clique search
-     */
-    enum scl_next_node_method {
-	SCL_MIN_DEGREE,
-	SCL_MAX_DEGREE,
-	SCL_MAX_XJ_MAX_DEG
-    };
 
-    void setStarCliqueNextNodeMethod(scl_next_node_method method) {
-	scl_next_node_rule = method;
-    }
+  /*! \name Cut generation */
+  //@{
+  /*! \brief Generate cuts from cliques
 
-    void setStarCliqueCandidateLengthThreshold(int maxlen) {
-	scl_candidate_length_threshold = maxlen;
-    }
-    void setRowCliqueCandidateLengthThreshold(int maxlen) {
-	rcl_candidate_length_threshold = maxlen;
-    }
+    Generate cliques as requested and process them into cuts.
+  */
+  virtual void
+  generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
+	       const CglTreeInfo info = CglTreeInfo()) const ;
+  //@}
 
-    void setStarCliqueReport(bool yesno = true) { scl_report_result = yesno; }
-    void setRowCliqueReport(bool yesno = true) { rcl_report_result = yesno; }
+  /*! \brief Possible choices for selecting the next node in the star
+	     clique search.
 
-    void setDoStarClique(bool yesno = true) { do_star_clique = yesno; }
-    void setDoRowClique(bool yesno = true) { do_row_clique = yesno; }
+    Minimum degree is the classic choice. The default is maximum value, then
+    maximum degree.
+  */
+  enum scl_next_node_method {
+      SCL_MIN_DEGREE,		///< minimum degree
+      SCL_MAX_DEGREE,		///< maximum degree
+      SCL_MAX_XJ_MAX_DEG	///< maximum value, then maximum degree
+  } ;
 
-    void setMinViolation(double minviol) { petol = minviol; }
-    double getMinViolation() const { return petol; }
+  /*! \name Cut generation control */
+  //@{
+
+  /// Set method for selecting next node in star clique search
+  inline void setStarCliqueNextNodeMethod(scl_next_node_method method)
+  { scl_next_node_rule = method ; }
+
+  /*! \brief The maximal length of the candidate list to extend a row clique.
+  
+    See #scl_candidate_length_threshold.
+  */
+  inline void setStarCliqueCandidateLengthThreshold(int maxlen)
+  { scl_candidate_length_threshold = maxlen ; }
+
+  /*! \brief The maximal length of the candidate list to extend a star clique.
+  
+    See #rcl_candidate_length_threshold.
+  */
+  inline void setRowCliqueCandidateLengthThreshold(int maxlen)
+  { rcl_candidate_length_threshold = maxlen ; }
+
+  /// Control star clique formation
+  inline void setDoStarClique(bool yesno = true) { do_star_clique = yesno ; }
+  /// Control row clique formation
+  inline void setDoRowClique(bool yesno = true) { do_row_clique = yesno ; }
+
+  /*! \brief Set minimum acceptable violation of clique cuts
+
+    The default value is -1.0. If #petol = -1.0, whether by default or because
+    it's been set to -1.0, the actual value used will be the solver's primal
+    tolerance.
+  */
+  inline void setMinViolation(double minviol) { petol = minviol; }
+  /// Get minimum acceptable violation of clique cuts
+  inline double getMinViolation() const { return petol; }
+  //@}
+
+  /*! \name Constructors and destructors */
+  //@{
+  /*! \brief Default constructor.
+
+    If \p setPacking is set to true then CglClique will assume that the
+    problem describes a set packing problem, i.e.,
+      - all variables are binary
+      - the matrix is a 0-1 matrix
+      - all constraints are '= 1' or '<= 1'
+     
+    Otherwise, CglClique will start the #generateCuts method by scanning
+    the matrix for suitable rows.
+
+    \p justOriginalRows can be set to true to limit the constraints that are
+    considered when in the search tree; see #justOriginalRows_.
+  */
+  CglClique(bool setPacking = false, bool justOriginalRows = false) ;
+  /// Copy constructor
+  CglClique(const CglClique& rhs) ;
+  /// Clone
+  virtual CglCutGenerator * clone() const ;
+  /// Assignment operator
+  CglClique& operator=(const CglClique& rhs) ;
+ 
+  /// Destructor
+  virtual ~CglClique() {}
+  //@}
+
+  /*! \name Utility methods */
+  //@{
+  /// Control printing of detailed statistics on the star clique method
+  inline void setStarCliqueReport(bool yesno = true)
+  { scl_report_result = yesno ; }
+  /// Control printing of detailed statistics on the row clique method
+  inline void setRowCliqueReport(bool yesno = true)
+  { rcl_report_result = yesno ; }
+
+  /// Create C++ lines to get to current state
+  virtual std::string generateCpp( FILE * fp) ;
+  //@}
 
 private:
 
     struct frac_graph ;
     friend struct frac_graph ;
 
-    /** A node of the fractional graph. There is a node for every variable at
-	fractional level. */
+    /*! \brief A node of the fractional graph.
+    
+      There is a node for every variable at fractional level.
+    */
     struct fnode {
-	/** pointer into all_nbr */
-	int          *nbrs;
-	/** 1-x_i-x_j, needed for odd holes, in the same order as the adj list,
-	    pointer into all_edgecost */
-	double       *edgecosts;
-	/** degree of the node */
-	int           degree;
-	/** the fractional value of the variable corresponding to this node */
-	double        val;
-    };
+      /// Start of neighbours of this node in frac_graph::all_nbr
+      int *nbrs ;
+      /*! \brief 1-x_i-x_j, needed for odd holes
+      
+        Currently unused.
+      */
+      double *edgecosts ;
+      /// degree of the node
+      int degree ;
+      /// the fractional value of the variable corresponding to this node
+      double val ;
+    } ;
 
-    /** A graph corresponding to a fractional solution of an LP. Two nodes are
-	adjacent iff their columns are non-orthogonal. */
+    /*! \brief A graph corresponding to a fractional solution of an LP.
+    
+      Two nodes are adjacent iff their columns are non-orthogonal.
+    */
     struct frac_graph {
-	/** # of nodes = # of fractional values in the LP solution */
-	int    nodenum;
-	/** # of edges in the graph */
-	int    edgenum;
-	/** density= edgenum/(nodenum choose 2) */
-	double density;
-	int    min_deg_node;
-	int    min_degree;
-	int    max_deg_node;
-	int    max_degree;
-	/** The array of the nodes in the graph */
-	fnode  *nodes;
-	/** The array of all the neighbors. First the indices of the nodes
-	    adjacent to node 0 are listed, then those adjacent to node 1, etc. */
-	int    *all_nbr;
-	/** The array of the costs of the edges going to the neighbors */
-	double *all_edgecost;
+      /*! \brief The number of nodes in the graph
+      
+	The number of fractional values in the LP solution
+      */
+      int nodenum ;
+      /// The number of edges in the graph
+      int edgenum ;
+      /*! \brief density
+      
+        (actual edges)/(potential edges) = edgenum/(nodenum choose 2)
+      */
+      double density ;
+      /// Node with minimum degree
+      int min_deg_node ;
+      /// Minimum degree
+      int min_degree ;
+      /// Node with maximum degree
+      int max_deg_node ;
+      /// Maximum degree
+      int max_degree ;
+      /*! \brief The array of the nodes in the graph
 
-	frac_graph() :
-	    nodenum(0), edgenum(0), density(0),
-	    min_deg_node(0), min_degree(0), max_deg_node(0), max_degree(0),
-	    nodes(0), all_nbr(0), all_edgecost(0) {}
-    };
+        nodes[i] points to the start of the neighbours of i in #all_nbr
+      */
+      fnode *nodes ;
+      /*! \brief The array of all the neighbours.
+      
+        First the indices of the nodes adjacent to node 0 are listed, then
+	those adjacent to node 1, etc.
+      */
+      int *all_nbr ;
+      /*! \brief The array of the costs of the edges going to the neighbors
+      
+        Currently unused.
+      */
+      double *all_edgecost ;
+      /// Constructor
+      frac_graph() :
+	  nodenum(0), edgenum(0), density(0),
+	  min_deg_node(0), min_degree(0), max_deg_node(0), max_degree(0),
+	  nodes(0), all_nbr(0), all_edgecost(0) {}
+    } ;
 
 protected:
-    /** An indicator showing whether the whole matrix in the solverinterface is
-	a set packing problem or not */
+
+    /*! \brief True if the whole matrix is a set packing problem. */
     bool setPacking_;
-    /// True if just look at original rows
+    /*! \brief True to consider only original rows.
+
+      Note that this is ineffective at the root, where all rows will always be
+      considered.
+    */
     bool justOriginalRows_;
-    /** pieces of the set packing part of the solverinterface */
+
+    /// Number of clique rows under consideration
     mutable int sp_numrows;
+    /// Original row index for clique rows
     mutable int* sp_orig_row_ind;
+    /// Number of fractional binary variables
     mutable int sp_numcols;
+    /// Original column index for fractional binary variables
     mutable int* sp_orig_col_ind;
+    /*! \brief Solution value for fractional binary variables
+
+      Correlated with #sp_orig_col_ind.
+    */
     mutable double* sp_colsol;
+    /// Column starts for the set packing submatrix
     mutable int* sp_col_start;
+    /// Row indices for columns of the set packing submatrix
     mutable int* sp_col_ind;
+    /// Row starts for the set packing submatrix
     mutable int* sp_row_start;
+    /// Column indices for the rows of the set packing submatrix
     mutable int* sp_row_ind;
 
-    /** the intersection graph corresponding to the set packing problem */
+    /// The intersection graph corresponding to the set packing problem
     mutable frac_graph fgraph;
-    /** the node-node incidence matrix of the intersection graph. */
+    /*! \brief The node-node incidence matrix of the intersection graph.
+    
+      This is stored as a full sp_numcols x sp_numcols matrix.
+    */
     mutable bool* node_node;
 
-    /** The primal tolerance in the solverinterface. */
+    /*! \brief Minimum acceptable clique violation
+    
+      The default set by the constructor is -1.0. If petol is -1.0 when
+      #generateCuts is called (whether set by default or by the user), the
+      actual value used will be the solver's primal tolerance.
+    */
     mutable double petol;
 
-    /** data for the star clique algorithm */
-
-    /** Parameters */
+    /*! \name Clique control parameters */
     /**@{*/
-    /** whether to do the row clique algorithm or not. */
+    /** True to generate row cliques. */
     bool do_row_clique;
-    /** whether to do the star clique algorithm or not. */
+    /** True to generate star cliques. */
     bool do_star_clique;
 
     /** How the next node to be added to the star clique should be selected */
     scl_next_node_method scl_next_node_rule;
-    /** In the star clique method the maximal length of the candidate list
-	(those nodes that are in a star, i.e., connected to the center of the
-	star) to allow complete enumeration of maximal cliques. Otherwise a
-	greedy algorithm is used. */
+    /*! \brief Maximum number of candidates for complete enumeration of
+    	       star cliques.
+
+      In the star clique method, the maximal length of the candidate list
+      (those nodes that are in a star, i.e., connected to the center of the
+      star) to allow complete enumeration of all maximal cliques. If the
+      candidate list is longer, a greedy algorithm is used.
+    */
     int scl_candidate_length_threshold;
-    /** whether to give a detailed statistics on the star clique method */
+
+    /** True to report detailed statistics on the star clique method */
     bool scl_report_result;
 
-    /** In the row clique method the maximal length of the candidate list
-	(those nodes that can extend the row clique, i.e., connected to all
-	nodes in the row clique) to allow complete enumeration of maximal
-	cliques. Otherwise a greedy algorithm is used. */
+    /*! \brief Maximum number of candidates for complete enumeration of
+	       row cliques.
+     
+      In the row clique method, the maximal length of the candidate list
+      (those nodes that can extend the row clique, i.e., connected to all
+      nodes in the row clique) to allow complete enumeration of all maximal
+      cliques. If the candidate list is longer, a greedy algorithm is used.
+    */
     int rcl_candidate_length_threshold;
-    /** whether to give a detailed statistics on the row clique method */
+
+    /** True to report detailed statistics on the row clique method */
     bool rcl_report_result;
     /**@}*/
 
-    /** variables/arrays that are used across many methods */
+    /*! \name Variables/arrays that are used across many methods */
     /**@{*/
-    /** List of indices that must be in the to be created clique. This is just
+    /** List of indices that must be in the to-be-created clique. This is just
 	a pointer, it is never new'd and therefore does not need to be
 	delete[]'d either. */
     mutable const int* cl_perm_indices;
@@ -211,11 +316,23 @@ protected:
     /**@}*/
 
 private:
-    /** Scan through the variables and select those that are binary and are at
-	a fractional level. */
-    void selectFractionalBinaries(const OsiSolverInterface& si) const;
-    /** Scan through the variables and select those that are at a fractional
-	level. We already know that everything is binary. */
+    /*! \brief Scan through the variables and select those that are binary
+    	       and have a fractional value.
+
+      The definition of fractional is asymmetric: x* > tol1 and x* < tol2,
+      where tol1 is the solver's primal tolerance and tol2 is the value set
+      for #petol. It's possible this is an error; there's some special-case
+      code in this method that does not make sense in context.
+    */
+    void selectFractionalBinaries(const OsiSolverInterface &si) const;
+
+    /*! \brief Scan through the variables and select those that have a
+    	       fractional value.
+
+      This method assumes that all the variables are binary, hence it does not
+      check this. The definition of fractional is symmetric, x* > tol1 and
+      x* < tol2, tol1 = tol2 = solver's primal tolerance.
+    */
     void selectFractionals(const OsiSolverInterface& si) const;
     /**  */
     void selectRowCliques(const OsiSolverInterface& si,int numOriginalRows) const;
@@ -257,8 +374,18 @@ private:
     compiled with debugging. */
 void CglCliqueUnitTest(const OsiSolverInterface * siP,
 		       const std::string mpdDir);
-/// This works on a fake solver i.e. invented rows
+
 class CglProbing;
+/*! This works on a fake solver i.e. invented rows
+
+  In more words, you can load in an Osi (#fakeSolver_) of your choosing.
+  When the #generateCuts method is called, the loaded Osi is used, if
+  present. If it's not present, then the si supplied as a parameter to
+  #generatCuts will be used. If it, too, is absent, things will end badly.
+
+  CglFakeClique also conceals a CglProbing object, which is invoked iff the
+  loaded Osi is used.
+*/
 class CglFakeClique : public CglClique {
   
 public:
@@ -277,20 +404,15 @@ public:
   /**@name Constructors and destructors */
   //@{
   /** Default constructor.
-      If the setPacking argument is set to true then CglFakeClique will assume that the
+      If the setPacking argument is set to true then CglFakeClique will
+      assume that the
       problem in the solverinterface passed to the generateCuts() method
       describes a set packing problem, i.e.,
       - all variables are binary
       - the matrix is a 0-1 matrix
       - all constraints are '= 1' or '<= 1'
       
-      Otherwise the user can use the considerRows() method to set the list of
-      clique rows, that is,
-      - all coeffs corresponding to binary variables at fractional level is 1
-      - all other coeffs are non-negative
-      - the constraint is '= 1' or '<= 1'.
-      
-      If the user does not set the list of clique rows then CglFakeClique will
+      Otherwise, CglFakeClique will
       start the generateCuts() methods by scanning the matrix for them.
   */
   CglFakeClique(OsiSolverInterface * solver=NULL,bool setPacking = false);
