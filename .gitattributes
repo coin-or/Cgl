@@ -68,6 +68,8 @@ src/CglProbing/CglProbingProbe.cpp -text
 src/CglProbing/CglProbingRowCut.cpp -text
 src/CglProbing/CglProbingRowCut.hpp -text
 src/CglProbing/CglProbingTighten.cpp -text
+src/CglTreeProbingInfo.cpp -text
+src/CglTreeProbingInfo.hpp -text
 test/CglTestData/capPlan1.mps -text
 test/CglTestData/egout.mps -text
 test/CglTestData/l152lav.mps -text
