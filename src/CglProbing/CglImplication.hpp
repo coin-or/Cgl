@@ -18,51 +18,51 @@ public:
 
   /**@name Generate Cuts */
   //@{
-  /** Generate cuts from implication table
-  Insert generated cuts into the cut set cs.
+  /** Generate cuts from implication table.
+
+    Insert the generated cuts into the cut set cs.
   */
-  virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
-			     const CglTreeInfo info = CglTreeInfo()) const;
+  virtual void generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
+			    const CglTreeInfo info = CglTreeInfo()) const ;
+  //@}
+
+  /**@name Set implication */
+  //@{
+  /// Set implication
+  inline void setProbingInfo(CglTreeProbingInfo *info)
+  { probingInfo_ = info ; }
   //@}
 
   /**@name Constructors and destructors */
   //@{
   /// Default constructor 
-  CglImplication ();
+  CglImplication () ;
  
   /// Constructor with info
-  CglImplication (CglTreeProbingInfo * info);
+  CglImplication (CglTreeProbingInfo *info) ;
  
   /// Copy constructor 
-  CglImplication (
-    const CglImplication &);
+  CglImplication (const CglImplication &source) ;
 
   /// Clone
-  virtual CglCutGenerator * clone() const;
+  virtual CglCutGenerator *clone() const ;
 
   /// Assignment operator 
-  CglImplication &
-    operator=(
-    const CglImplication& rhs);
+  CglImplication &operator=(const CglImplication &rhs) ;
   
   /// Destructor 
-  virtual
-    ~CglImplication ();
+  virtual ~CglImplication () ;
+
   /// Create C++ lines to get to current state
-  virtual std::string generateCpp( FILE * fp);
-  //@}
-  /**@name Set implication */
-  //@{
-  /// Set implication
-  inline void setProbingInfo(CglTreeProbingInfo * info)
-  { probingInfo_=info;}
+  virtual std::string generateCpp( FILE *fp) ;
+
   //@}
 
 private:
   /**@name Private member data */
   //@{
   /// Pointer to tree probing info
-  CglTreeProbingInfo * probingInfo_;
+  CglTreeProbingInfo *probingInfo_ ;
   //@}
 };
 #endif

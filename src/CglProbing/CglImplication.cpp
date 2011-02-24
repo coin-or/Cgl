@@ -16,15 +16,14 @@
 #include "CglImplication.hpp"
 
 //-------------------------------------------------------------
-void
-CglImplication::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-				const CglTreeInfo info) const
+void CglImplication::generateCuts (const OsiSolverInterface &si, OsiCuts &cs,
+				   const CglTreeInfo info) const
 {
   if (probingInfo_) {
-    //int n1=cs.sizeRowCuts();
+    //int n1 = cs.sizeRowCuts();
     probingInfo_->generateCuts(si,cs,info);
-    //int n2=cs.sizeRowCuts();
-    //if (n2>n1)
+    //int n2 = cs.sizeRowCuts();
+    //if (n2 > n1)
     //printf("added %d cuts\n",n2-n1);
   }
 }
@@ -34,8 +33,7 @@ CglImplication::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 // Default Constructor 
 //-------------------------------------------------------------------
 CglImplication::CglImplication ()
-:
-CglCutGenerator(),
+  : CglCutGenerator(),
 probingInfo_(NULL)
 {
   // nothing to do here
@@ -43,11 +41,10 @@ probingInfo_(NULL)
 
 
 //-------------------------------------------------------------------
-// Constructor with info
+// Constructor with implication info
 //-------------------------------------------------------------------
-CglImplication::CglImplication (CglTreeProbingInfo * info)
-:
-CglCutGenerator(),
+CglImplication::CglImplication (CglTreeProbingInfo *info)
+  : CglCutGenerator(),
 probingInfo_(info)
 {
   // nothing to do here
@@ -57,10 +54,8 @@ probingInfo_(info)
 //-------------------------------------------------------------------
 // Copy constructor 
 //-------------------------------------------------------------------
-CglImplication::CglImplication (
-                  const CglImplication & source)
-:
-CglCutGenerator(source),
+CglImplication::CglImplication (const CglImplication &source)
+  : CglCutGenerator(source),
 probingInfo_(source.probingInfo_)
 {  
   // Nothing to do here
@@ -70,10 +65,9 @@ probingInfo_(source.probingInfo_)
 //-------------------------------------------------------------------
 // Clone
 //-------------------------------------------------------------------
-CglCutGenerator *
-CglImplication::clone() const
+CglCutGenerator *CglImplication::clone() const
 {
-  return new CglImplication(*this);
+  return (new CglImplication(*this)) ;
 }
 
 //-------------------------------------------------------------------
@@ -87,22 +81,20 @@ CglImplication::~CglImplication ()
 //----------------------------------------------------------------
 // Assignment operator 
 //-------------------------------------------------------------------
-CglImplication &
-CglImplication::operator=(
-                   const CglImplication& rhs)
+CglImplication &CglImplication::operator= (const CglImplication &rhs)
 {
   if (this != &rhs) {
-    CglCutGenerator::operator=(rhs);
-    probingInfo_=rhs.probingInfo_;
+    CglCutGenerator::operator=(rhs) ;
+    probingInfo_=rhs.probingInfo_ ;
   }
-  return *this;
+  return (*this) ;
 }
+
 // Create C++ lines to get to current state
-std::string
-CglImplication::generateCpp( FILE * fp) 
+std::string CglImplication::generateCpp (FILE *fp) 
 {
-  CglImplication other;
-  fprintf(fp,"0#include \"CglImplication.hpp\"\n");
-  fprintf(fp,"3  CglImplication implication;\n");
-  return "implication";
+  CglImplication other ;
+  fprintf(fp,"0#include \"CglImplication.hpp\"\n") ;
+  fprintf(fp,"3  CglImplication implication;\n") ;
+  return ("implication") ;
 }
