@@ -10,6 +10,7 @@
 
 #include "CglCutGenerator.hpp"
 #include "CglTreeInfo.hpp"
+#include "CglGeneralisedClique.hpp"
 
 /** Knapsack Cover Cut Generator Class */
 class CglKnapsackCover : public CglCutGenerator {

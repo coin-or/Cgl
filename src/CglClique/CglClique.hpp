@@ -375,16 +375,22 @@ private:
 void CglCliqueUnitTest(const OsiSolverInterface * siP,
 		       const std::string mpdDir);
 
+
+#ifdef CGL_FAKE_CLIQUE
+
 class CglProbing;
 /*! This works on a fake solver i.e. invented rows
 
   In more words, you can load in an Osi (#fakeSolver_) of your choosing.
   When the #generateCuts method is called, the loaded Osi is used, if
   present. If it's not present, then the si supplied as a parameter to
-  #generatCuts will be used. If it, too, is absent, things will end badly.
+  #generateCuts will be used. If it, too, is absent, things will end badly.
 
   CglFakeClique also conceals a CglProbing object, which is invoked iff the
   loaded Osi is used.
+
+  Disabled as of 110224 as I try to clean out suspect / partially implemented
+  code related to generalised cliques. -- lh, 110224 --
 */
 class CglFakeClique : public CglClique {
   
@@ -426,5 +432,7 @@ protected:
   /// Probing object
   mutable CglProbing * probing_;
 };
+
+#endif    // CGL_FAKE_CLIQUE
 
 #endif

@@ -26,7 +26,8 @@ libCgl_la_SOURCES = \
 	CglMessage.cpp CglMessage.hpp \
 	CglStored.cpp CglStored.hpp \
 	CglParam.cpp CglParam.hpp \
-	CglTreeInfo.cpp CglTreeInfo.hpp
+	CglTreeInfo.cpp CglTreeInfo.hpp \
+	CglGeneralisedClique.hpp
 
 # This is for libtool (on Windows)
 libCgl_la_LDFLAGS = $(LT_LDFLAGS)
@@ -62,6 +63,7 @@ includecoin_HEADERS = \
 	CglMessage.hpp \
 	CglStored.hpp \
 	CglParam.hpp \
+	CglGeneralisedClique.hpp \
 	CglTreeInfo.hpp
 
 #############################################################################

@@ -23,7 +23,6 @@ libCglProbing_la_SOURCES = \
 	CglProbingProbe.cpp \
 	CglProbingRowCut.cpp CglProbingRowCut.hpp \
 	CglProbingTighten.cpp \
-	CglImplication.cpp CglImplication.hpp \
 	CglProbingTest.cpp
 
 # This is for libtool (on Windows)
@@ -47,5 +46,5 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 # Here list all the header files that are required by a user of the library,
 # and that therefore should be installed in 'include/coin'
 includecoindir = $(includedir)/coin
-includecoin_HEADERS = CglProbing.hpp \
-		      CglImplication.hpp
+includecoin_HEADERS = CglProbing.hpp
+

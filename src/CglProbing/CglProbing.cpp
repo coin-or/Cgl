@@ -1,4 +1,3 @@
-
 /*
   Copyright (C) 2002, International Business Machines Corporation and others.
   All Rights Reserved.
@@ -23,22 +22,31 @@
 #include "CglProbingRowCut.hpp"
 #include "CglProbingDebug.hpp"
 
+/*
+  File local namespace for utilities
+*/
+namespace {
 
-typedef struct {double infeasibility;int sequence;} double_int_pair;
+/*
+  Helper class for sorting
+*/
+
+typedef struct {
+  double infeasibility ;
+  int sequence ;
+} double_int_pair ;
+
 class double_int_pair_compare {
 public:
-  bool operator() (double_int_pair x , double_int_pair y) const
+  inline bool operator() (double_int_pair x, double_int_pair y) const
   {
-    return ( x.infeasibility < y.infeasibility);
+    return ( x.infeasibility < y.infeasibility) ;
   }
-};
-
+} ;
 
 #if CGL_DEBUG > 0
-static int nPath=0;
+int nPath = 0 ;
 #endif
-
-namespace {
 
 /*
   Compare two sets of upper and lower bound arrays and generate column cuts.
@@ -123,6 +131,9 @@ void makeColCuts (int nCols, OsiCuts &cs,
 bool analyze (const OsiSolverInterface *solverX, char *intVar,
 	      double *lower, double *upper)
 {
+# if CGLPROBING_DEBUG > 0
+  std::cout << "Entering CglProbing::analyze." << std::endl ;
+# endif
   const double e20Inf = 1.0e20 ;
   const int changedToInt = 77 ;
 
@@ -452,6 +463,7 @@ bool analyze (const OsiSolverInterface *solverX, char *intVar,
   return feasible ;
 }
 
+
 /*
   Set up the working row copy.
   
@@ -518,10 +530,10 @@ CoinPackedMatrix *setupRowCopy (int mode, bool useObj,
   has the same number of columns as the constraint system in the solver. The
   asserts are sanity checks:
     * the column count could go bad because the user has changed the model
-      outside of CglProbing;
+      outside of CglProbing ;
     * rowLower and rowUpper are allocated to the number of rows in the model
       plus 1 (in case we want the objective), so we need to be sure there's
-      enough space;
+      enough space ;
     * the final check of row counts is simple internal consistency.
 
   TODO: Another good reason to hive off snapshot as a separate class.
@@ -903,7 +915,7 @@ bool groomModel (
 
 
 //-------------------------------------------------------------------
-// Generate disaggregation cuts
+// Generate column, disaggregation, and implication cuts
 //------------------------------------------------------------------- 
 
 /*
@@ -1386,7 +1398,7 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   ninfeas = tighten(colLower,colUpper,column,rowElements,
 		    rowStart,rowStartPos,rowLength,
 		    rowLower,rowUpper,nRows,nCols,
-		    intVar,2,primalTolerance_);
+		    intVar,2,primalTolerance_) ;
 /*
   If we've lost feasibility, do nothing more. Otherwise, record the new bounds
   as column cuts and continue with setup and probing.
@@ -1493,15 +1505,12 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
       }
 /*
   lookedAt_ now contains a list of indices of variables to probe. Rows
-  worth processing are tagged with -1 in markR. Do the probing, with or
-  without cliques.
+  worth processing are tagged with -1 in markR. Do the probing.
 */
-      if (!numberCliques_) {
-	ninfeas = probe(si,cs,colLower,colUpper,rowCopy,columnCopy,
-			rowStartPos,realRows,rowLower,rowUpper,
-			intVar,minR,maxR,markR,info,
-			useObj,useCutoff,cutoff) ;
-      }
+      ninfeas = probe(si,cs,colLower,colUpper,rowCopy,columnCopy,
+		      rowStartPos,realRows,rowLower,rowUpper,
+		      intVar,minR,maxR,markR,info,
+		      useObj,useCutoff,cutoff) ;
     }
   }
 /*
@@ -1583,15 +1592,15 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 void CglProbing::setMode(int mode)
 {
   if (mode >= 0 && mode < 3) {
-    mode_ &= ~15;
-    mode_ |= mode;
+    mode_ &= ~15 ;
+    mode_ |= mode ;
   }
 }
 
 // Return only the basic mode
 int CglProbing::getMode() const
 {
-  return mode_&15;
+  return mode_&15 ;
 }
 
 
@@ -1599,191 +1608,191 @@ int CglProbing::getMode() const
 void CglProbing::setMaxPass(int value)
 {
   if (value>0)
-    maxPass_=value;
+    maxPass_ = value ;
 }
 
 
 // Get maximum number of passes per node
 int CglProbing::getMaxPass() const
 {
-  return maxPass_;
+  return maxPass_ ;
 }
 
 
 // Set log level
 void CglProbing::setLogLevel(int value)
 {
-  if (value>=0)
-    logLevel_=value;
+  if (value >= 0)
+    logLevel_ = value ;
 }
 
 
 // Get log level
 int CglProbing::getLogLevel() const
 {
-  return logLevel_;
+  return logLevel_ ;
 }
 
 
 // Set maximum number of unsatisfied variables to look at
 void CglProbing::setMaxProbe(int value)
 {
-  if (value>=0)
-    maxProbe_=value;
+  if (value >= 0)
+    maxProbe_ = value ;
 }
 
 
 // Get maximum number of unsatisfied variables to look at
 int CglProbing::getMaxProbe() const
 {
-  return maxProbe_;
+  return maxProbe_ ;
 }
 
 
 // Set maximum number of variables to look at in one probe
 void CglProbing::setMaxLook(int value)
 {
-  if (value>=0)
-    maxStack_=value;
+  if (value >= 0)
+    maxStack_ = value ;
 }
 
 
 // Get maximum number of variables to look at in one probe
 int CglProbing::getMaxLook() const
 {
-  return maxStack_;
+  return maxStack_ ;
 }
 
 
 // Set maximum number of elements in row for scan
 void CglProbing::setMaxElements(int value)
 {
-  if (value>0)
-    maxElements_=value;
+  if (value > 0)
+    maxElements_ = value ;
 }
 
 
 // Get maximum number of elements in row for scan
 int CglProbing::getMaxElements() const
 {
-  return maxElements_;
+  return maxElements_ ;
 }
 
 
 // Set maximum number of passes per node (root node)
 void CglProbing::setMaxPassRoot(int value)
 {
-  if (value>0)
-    maxPassRoot_=value;
+  if (value > 0)
+    maxPassRoot_ = value ;
 }
 
 
 // Get maximum number of passes per node (root node)
 int CglProbing::getMaxPassRoot() const
 {
-  return maxPassRoot_;
+  return maxPassRoot_ ;
 }
 
 
 // Set maximum number of unsatisfied variables to look at (root node)
 void CglProbing::setMaxProbeRoot(int value)
 {
-  if (value>0)
-    maxProbeRoot_=value;
+  if (value > 0)
+    maxProbeRoot_ = value ;
 }
 
 
 // Get maximum number of unsatisfied variables to look at (root node)
 int CglProbing::getMaxProbeRoot() const
 {
-  return maxProbeRoot_;
+  return maxProbeRoot_ ;
 }
 
 
 // Set maximum number of variables to look at in one probe (root node)
 void CglProbing::setMaxLookRoot(int value)
 {
-  if (value>0)
-    maxStackRoot_=value;
+  if (value > 0)
+    maxStackRoot_ = value ;
 }
 
 
 // Get maximum number of variables to look at in one probe (root node)
 int CglProbing::getMaxLookRoot() const
 {
-  return maxStackRoot_;
+  return maxStackRoot_ ;
 }
 
 
 // Set maximum number of elements in row for scan (root node)
 void CglProbing::setMaxElementsRoot(int value)
 {
-  if (value>0)
-    maxElementsRoot_=value;
+  if (value > 0)
+    maxElementsRoot_ = value ;
 }
 
 
 // Get maximum number of elements in row for scan (root node)
 int CglProbing::getMaxElementsRoot() const
 {
-  return maxElementsRoot_;
+  return maxElementsRoot_ ;
 }
 
 
 // Set whether to use objective
 void CglProbing::setUsingObjective(int yesNo)
 {
-  usingObjective_=yesNo;
+  usingObjective_ = yesNo ;
 }
 
 
 // Get whether objective is being used
 int CglProbing::getUsingObjective() const
 {
-  return usingObjective_;
+  return usingObjective_ ;
 }
 
 
 // Decide whether to do row cuts
 void CglProbing::setRowCuts(int type)
 {
-  if (type>-5&&type<5)
-    rowCuts_=type;
+  if (type > -5 && type < 5)
+    rowCuts_ = type ;
 }
 
 
 // Returns row cuts generation type
 int CglProbing::rowCuts() const
 {
-  return rowCuts_;
+  return rowCuts_ ;
 }
 
 
 // Returns tight lower
 const double * CglProbing::tightLower() const
 {
-  return colLower_;
+  return colLower_ ;
 }
 
 
 // Returns tight upper
 const double * CglProbing::tightUpper() const
 {
-  return colUpper_;
+  return colUpper_ ;
 }
 
 
 // Returns relaxed Row lower
 const double * CglProbing::relaxedRowLower() const
 {
-  return rowLower_;
+  return rowLower_ ;
 }
 
 
 // Returns relaxed Row upper
 const double * CglProbing::relaxedRowUpper() const
 {
-  return rowUpper_;
+  return rowUpper_ ;
 }
 
 
@@ -1808,37 +1817,41 @@ maxElementsRoot_(10000),
 usingObjective_(0)
 {
 
-  numberRows_=0;
-  numberColumns_=0;
-  rowCopy_=NULL;
-  columnCopy_=NULL;
-  rowLower_=NULL;
-  rowUpper_=NULL;
-  colLower_=NULL;
-  colUpper_=NULL;
-  numberIntegers_=0;
-  number01Integers_=0;
-  numberThisTime_=0;
-  totalTimesCalled_=0;
-  lookedAt_=NULL;
-  cutVector_=NULL;
-  numberCliques_=0;
-  cliqueType_=NULL;
-  cliqueStart_=NULL;
-  cliqueEntry_=NULL;
-  oneFixStart_=NULL;
-  zeroFixStart_=NULL;
-  endFixStart_=NULL;
-  whichClique_=NULL;
-  cliqueRow_=NULL;
-  cliqueRowStart_=NULL;
-  tightenBounds_=NULL;
+  numberRows_ = 0 ;
+  numberColumns_ = 0 ;
+  rowCopy_ = NULL ;
+  columnCopy_ = NULL ;
+  rowLower_ = NULL ;
+  rowUpper_ = NULL ;
+  colLower_ = NULL ;
+  colUpper_ = NULL ;
+  numberIntegers_ = 0 ;
+  number01Integers_ = 0 ;
+  numberThisTime_ = 0 ;
+  totalTimesCalled_ = 0 ;
+  lookedAt_ = NULL ;
+  cutVector_ = NULL ;
+  tightenBounds_ = NULL ;
+
+# ifdef CLIQUE_ANALYSIS
+  numberCliques_=0 ;
+  cliqueType_=NULL ;
+  cliqueStart_=NULL ;
+  cliqueEntry_=NULL ;
+  oneFixStart_=NULL ;
+  zeroFixStart_=NULL ;
+  endFixStart_=NULL ;
+  whichClique_=NULL ;
+  cliqueRow_=NULL ;
+  cliqueRowStart_=NULL ;
+# endif
+
 }
 
 //-------------------------------------------------------------------
 // Copy constructor 
 //-------------------------------------------------------------------
-CglProbing::CglProbing (  const CglProbing & rhs)
+CglProbing::CglProbing (const CglProbing & rhs)
                                                               :
   CglCutGenerator(rhs),
   primalTolerance_(rhs.primalTolerance_),
@@ -1855,105 +1868,107 @@ CglProbing::CglProbing (  const CglProbing & rhs)
   maxElementsRoot_(rhs.maxElementsRoot_),
   usingObjective_(rhs.usingObjective_)
 {  
-  numberRows_=rhs.numberRows_;
-  numberColumns_=rhs.numberColumns_;
-  numberCliques_=rhs.numberCliques_;
+  numberRows_ = rhs.numberRows_ ;
+  numberColumns_ = rhs.numberColumns_ ;
   if (rhs.rowCopy_) {
-    rowCopy_= new CoinPackedMatrix(*(rhs.rowCopy_));
-    columnCopy_= new CoinPackedMatrix(*(rhs.columnCopy_));
-    rowLower_=new double[numberRows_];
-    CoinMemcpyN(rhs.rowLower_,numberRows_,rowLower_);
-    rowUpper_=new double[numberRows_];
-    CoinMemcpyN(rhs.rowUpper_,numberRows_,rowUpper_);
-    colLower_=new double[numberColumns_];
-    CoinMemcpyN(rhs.colLower_,numberColumns_,colLower_);
-    colUpper_=new double[numberColumns_];
-    CoinMemcpyN(rhs.colUpper_,numberColumns_,colUpper_);
-    int i;
-    numberIntegers_=rhs.numberIntegers_;
-    number01Integers_=rhs.number01Integers_;
-    cutVector_=new disaggregation [number01Integers_];
-    CoinMemcpyN(rhs.cutVector_,number01Integers_,cutVector_);
-    for (i=0;i<number01Integers_;i++) {
+    rowCopy_= new CoinPackedMatrix(*(rhs.rowCopy_)) ;
+    columnCopy_= new CoinPackedMatrix(*(rhs.columnCopy_)) ;
+    rowLower_ = new double[numberRows_] ;
+    CoinMemcpyN(rhs.rowLower_,numberRows_,rowLower_) ;
+    rowUpper_ = new double[numberRows_] ;
+    CoinMemcpyN(rhs.rowUpper_,numberRows_,rowUpper_) ;
+    colLower_ = new double[numberColumns_] ;
+    CoinMemcpyN(rhs.colLower_,numberColumns_,colLower_) ;
+    colUpper_ = new double[numberColumns_] ;
+    CoinMemcpyN(rhs.colUpper_,numberColumns_,colUpper_) ;
+    int i ;
+    numberIntegers_ = rhs.numberIntegers_ ;
+    number01Integers_ = rhs.number01Integers_ ;
+    cutVector_ = new disaggregation [number01Integers_] ;
+    CoinMemcpyN(rhs.cutVector_,number01Integers_,cutVector_) ;
+    for (i = 0 ; i < number01Integers_ ; i++) {
       if (cutVector_[i].index) {
-	cutVector_[i].index = CoinCopyOfArray(rhs.cutVector_[i].index,cutVector_[i].length);
+	cutVector_[i].index =
+	    CoinCopyOfArray(rhs.cutVector_[i].index,cutVector_[i].length) ;
       }
     }
   } else {
-    rowCopy_=NULL;
-    columnCopy_=NULL;
-    rowLower_=NULL;
-    rowUpper_=NULL;
-    colLower_=NULL;
-    colUpper_=NULL;
-    numberIntegers_=0;
-    number01Integers_=0;
-    cutVector_=NULL;
+    rowCopy_ = NULL ;
+    columnCopy_ = NULL ;
+    rowLower_ = NULL ;
+    rowUpper_ = NULL ;
+    colLower_ = NULL ;
+    colUpper_ = NULL ;
+    numberIntegers_ = 0 ;
+    number01Integers_ = 0 ;
+    cutVector_ = NULL ;
   }
-  numberThisTime_=rhs.numberThisTime_;
-  totalTimesCalled_=rhs.totalTimesCalled_;
+  numberThisTime_ = rhs.numberThisTime_ ;
+  totalTimesCalled_ = rhs.totalTimesCalled_ ;
   if (numberColumns_)
-    lookedAt_=CoinCopyOfArray(rhs.lookedAt_,numberColumns_);
+    lookedAt_ = CoinCopyOfArray(rhs.lookedAt_,numberColumns_) ;
   else
-    lookedAt_ = NULL;
+    lookedAt_ = NULL ;
+  if (rhs.tightenBounds_) {
+    assert (numberColumns_) ;
+    tightenBounds_ = CoinCopyOfArray(rhs.tightenBounds_,numberColumns_) ;
+  } else {
+    tightenBounds_ = NULL ;
+  }
+# ifdef CLIQUE_ANALYSIS
+  numberCliques_=rhs.numberCliques_ ;
   if (numberCliques_) {
-    cliqueType_ = new cliqueType [numberCliques_];
-    CoinMemcpyN(rhs.cliqueType_,numberCliques_,cliqueType_);
-    cliqueStart_ = new int [numberCliques_+1];
-    CoinMemcpyN(rhs.cliqueStart_,(numberCliques_+1),cliqueStart_);
-    int n = cliqueStart_[numberCliques_];
-    cliqueEntry_ = new cliqueEntry [n];
-    CoinMemcpyN(rhs.cliqueEntry_,n,cliqueEntry_);
-    oneFixStart_ = new int [numberColumns_];
-    CoinMemcpyN(rhs.oneFixStart_,numberColumns_,oneFixStart_);
-    zeroFixStart_ = new int [numberColumns_];
-    CoinMemcpyN(rhs.zeroFixStart_,numberColumns_,zeroFixStart_);
-    endFixStart_ = new int [numberColumns_];
-    CoinMemcpyN(rhs.endFixStart_,numberColumns_,endFixStart_);
-    int n2=-1;
+    cliqueType_ = new cliqueType [numberCliques_] ;
+    CoinMemcpyN(rhs.cliqueType_,numberCliques_,cliqueType_) ;
+    cliqueStart_ = new int [numberCliques_+1] ;
+    CoinMemcpyN(rhs.cliqueStart_,(numberCliques_+1),cliqueStart_) ;
+    int n = cliqueStart_[numberCliques_] ;
+    cliqueEntry_ = new cliqueEntry [n] ;
+    CoinMemcpyN(rhs.cliqueEntry_,n,cliqueEntry_) ;
+    oneFixStart_ = new int [numberColumns_] ;
+    CoinMemcpyN(rhs.oneFixStart_,numberColumns_,oneFixStart_) ;
+    zeroFixStart_ = new int [numberColumns_] ;
+    CoinMemcpyN(rhs.zeroFixStart_,numberColumns_,zeroFixStart_) ;
+    endFixStart_ = new int [numberColumns_] ;
+    CoinMemcpyN(rhs.endFixStart_,numberColumns_,endFixStart_) ;
+    int n2=-1 ;
     for (int i=numberColumns_-1;i>=0;i--) {
       if (oneFixStart_[i]>=0) {
-	n2=endFixStart_[i];
-	break;
+	n2=endFixStart_[i] ;
+	break ;
       }
     }
-    assert (n==n2);
-    whichClique_ = new int [n];
-    CoinMemcpyN(rhs.whichClique_,n,whichClique_);
+    assert (n==n2) ;
+    whichClique_ = new int [n] ;
+    CoinMemcpyN(rhs.whichClique_,n,whichClique_) ;
     if (rhs.cliqueRowStart_) {
-      cliqueRowStart_ = CoinCopyOfArray(rhs.cliqueRowStart_,numberRows_+1);
-      n=cliqueRowStart_[numberRows_];
-      cliqueRow_ = CoinCopyOfArray(rhs.cliqueRow_,n);
+      cliqueRowStart_ = CoinCopyOfArray(rhs.cliqueRowStart_,numberRows_+1) ;
+      n=cliqueRowStart_[numberRows_] ;
+      cliqueRow_ = CoinCopyOfArray(rhs.cliqueRow_,n) ;
     } else {
-      cliqueRow_=NULL;
-      cliqueRowStart_=NULL;
+      cliqueRow_=NULL ;
+      cliqueRowStart_=NULL ;
     }
   } else {
-    cliqueType_=NULL;
-    cliqueStart_=NULL;
-    cliqueEntry_=NULL;
-    oneFixStart_=NULL;
-    zeroFixStart_=NULL;
-    endFixStart_=NULL;
-    cliqueRow_=NULL;
-    cliqueRowStart_=NULL;
-    whichClique_=NULL;
+    cliqueType_=NULL ;
+    cliqueStart_=NULL ;
+    cliqueEntry_=NULL ;
+    oneFixStart_=NULL ;
+    zeroFixStart_=NULL ;
+    endFixStart_=NULL ;
+    cliqueRow_=NULL ;
+    cliqueRowStart_=NULL ;
+    whichClique_=NULL ;
   }
-  if (rhs.tightenBounds_) {
-    assert (numberColumns_);
-    tightenBounds_=CoinCopyOfArray(rhs.tightenBounds_,numberColumns_);
-  } else {
-    tightenBounds_=NULL;
-  }
+# endif    // CLIQUE_ANALYSIS
 }
 
 //-------------------------------------------------------------------
 // Clone
 //-------------------------------------------------------------------
-CglCutGenerator *
-CglProbing::clone() const
+CglCutGenerator *CglProbing::clone() const
 {
-  return new CglProbing(*this);
+  return new CglProbing(*this) ;
 }
 
 //-------------------------------------------------------------------
@@ -1962,29 +1977,31 @@ CglProbing::clone() const
 CglProbing::~CglProbing ()
 {
   // free memory
-  delete [] rowLower_;
-  delete [] rowUpper_;
-  delete [] colLower_;
-  delete [] colUpper_;
-  delete rowCopy_;
-  delete columnCopy_;
-  delete [] lookedAt_;
-  delete [] cliqueType_;
-  delete [] cliqueStart_;
-  delete [] cliqueEntry_;
-  delete [] oneFixStart_;
-  delete [] zeroFixStart_;
-  delete [] endFixStart_;
-  delete [] whichClique_;
-  delete [] cliqueRow_;
-  delete [] cliqueRowStart_;
+  delete [] rowLower_ ;
+  delete [] rowUpper_ ;
+  delete [] colLower_ ;
+  delete [] colUpper_ ;
+  delete rowCopy_ ;
+  delete columnCopy_ ;
+  delete [] lookedAt_ ;
   if (cutVector_) {
-    for (int i=0;i<number01Integers_;i++) {
-      delete [] cutVector_[i].index;
+    for (int i = 0 ; i < number01Integers_ ; i++) {
+      delete [] cutVector_[i].index ;
     }
-    delete [] cutVector_;
+    delete [] cutVector_ ;
   }
-  delete [] tightenBounds_;
+  delete [] tightenBounds_ ;
+# ifdef CLIQUE_ANALYSIS
+  delete [] cliqueType_ ;
+  delete [] cliqueStart_ ;
+  delete [] cliqueEntry_ ;
+  delete [] oneFixStart_ ;
+  delete [] zeroFixStart_ ;
+  delete [] endFixStart_ ;
+  delete [] whichClique_ ;
+  delete [] cliqueRow_ ;
+  delete [] cliqueRowStart_ ;
+# endif
 }
 
 //----------------------------------------------------------------
@@ -1995,133 +2012,139 @@ CglProbing::operator=(
                                          const CglProbing& rhs)
 {
   if (this != &rhs) {
-    CglCutGenerator::operator=(rhs);
-    primalTolerance_=rhs.primalTolerance_;
-    numberRows_=rhs.numberRows_;
-    numberColumns_=rhs.numberColumns_;
-    delete [] rowLower_;
-    delete [] rowUpper_;
-    delete [] colLower_;
-    delete [] colUpper_;
-    delete rowCopy_;
-    delete columnCopy_;
-    delete [] lookedAt_;
-    delete [] cliqueType_;
-    delete [] cliqueStart_;
-    delete [] cliqueEntry_;
-    delete [] oneFixStart_;
-    delete [] zeroFixStart_;
-    delete [] endFixStart_;
-    delete [] whichClique_;
-    delete [] cliqueRow_;
-    delete [] cliqueRowStart_;
-    delete [] tightenBounds_;
-    mode_=rhs.mode_;
-    rowCuts_=rhs.rowCuts_;
-    maxPass_=rhs.maxPass_;
-    logLevel_=rhs.logLevel_;
-    maxProbe_=rhs.maxProbe_;
-    maxStack_=rhs.maxStack_;
-    maxElements_ = rhs.maxElements_;
-    maxPassRoot_ = rhs.maxPassRoot_;
-    maxProbeRoot_ = rhs.maxProbeRoot_;
-    maxStackRoot_ = rhs.maxStackRoot_;
-    maxElementsRoot_ = rhs.maxElementsRoot_;
-    usingObjective_=rhs.usingObjective_;
-    numberCliques_=rhs.numberCliques_;
+    CglCutGenerator::operator=(rhs) ;
+    primalTolerance_ = rhs.primalTolerance_ ;
+    numberRows_ = rhs.numberRows_ ;
+    numberColumns_ = rhs.numberColumns_ ;
+    delete [] rowLower_ ;
+    delete [] rowUpper_ ;
+    delete [] colLower_ ;
+    delete [] colUpper_ ;
+    delete rowCopy_ ;
+    delete columnCopy_ ;
+    delete [] lookedAt_ ;
+    delete [] tightenBounds_ ;
+
+#   ifdef CLIQUE_ANALYSIS
+    delete [] cliqueType_ ;
+    delete [] cliqueStart_ ;
+    delete [] cliqueEntry_ ;
+    delete [] oneFixStart_ ;
+    delete [] zeroFixStart_ ;
+    delete [] endFixStart_ ;
+    delete [] whichClique_ ;
+    delete [] cliqueRow_ ;
+    delete [] cliqueRowStart_ ;
+#   endif
+
+    mode_ = rhs.mode_ ;
+    rowCuts_ = rhs.rowCuts_ ;
+    maxPass_ = rhs.maxPass_ ;
+    logLevel_ = rhs.logLevel_ ;
+    maxProbe_ = rhs.maxProbe_ ;
+    maxStack_ = rhs.maxStack_ ;
+    maxElements_ = rhs.maxElements_ ;
+    maxPassRoot_ = rhs.maxPassRoot_ ;
+    maxProbeRoot_ = rhs.maxProbeRoot_ ;
+    maxStackRoot_ = rhs.maxStackRoot_ ;
+    maxElementsRoot_ = rhs.maxElementsRoot_ ;
+    usingObjective_ = rhs.usingObjective_ ;
     if (rhs.rowCopy_) {
-      rowCopy_= new CoinPackedMatrix(*(rhs.rowCopy_));
-      columnCopy_= new CoinPackedMatrix(*(rhs.columnCopy_));
-      rowLower_=new double[numberRows_];
-      CoinMemcpyN(rhs.rowLower_,numberRows_,rowLower_);
-      rowUpper_=new double[numberRows_];
-      CoinMemcpyN(rhs.rowUpper_,numberRows_,rowUpper_);
-      colLower_=new double[numberColumns_];
-      CoinMemcpyN(rhs.colLower_,numberColumns_,colLower_);
-      colUpper_=new double[numberColumns_];
-      CoinMemcpyN(rhs.colUpper_,numberColumns_,colUpper_);
-      int i;
-      numberIntegers_=rhs.numberIntegers_;
-      number01Integers_=rhs.number01Integers_;
-      for (i=0;i<number01Integers_;i++) {
-        delete [] cutVector_[i].index;
+      rowCopy_= new CoinPackedMatrix(*(rhs.rowCopy_)) ;
+      columnCopy_= new CoinPackedMatrix(*(rhs.columnCopy_)) ;
+      rowLower_ = new double[numberRows_] ;
+      CoinMemcpyN(rhs.rowLower_,numberRows_,rowLower_) ;
+      rowUpper_ = new double[numberRows_] ;
+      CoinMemcpyN(rhs.rowUpper_,numberRows_,rowUpper_) ;
+      colLower_ = new double[numberColumns_] ;
+      CoinMemcpyN(rhs.colLower_,numberColumns_,colLower_) ;
+      colUpper_ = new double[numberColumns_] ;
+      CoinMemcpyN(rhs.colUpper_,numberColumns_,colUpper_) ;
+      numberIntegers_ = rhs.numberIntegers_ ;
+      number01Integers_ = rhs.number01Integers_ ;
+      for (int i = 0 ; i < number01Integers_ ; i++) {
+        delete [] cutVector_[i].index ;
       }
-      delete [] cutVector_;
-      cutVector_=new disaggregation [number01Integers_];
-      CoinMemcpyN(rhs.cutVector_,number01Integers_,cutVector_);
-      for (i=0;i<number01Integers_;i++) {
+      delete [] cutVector_ ;
+      cutVector_ = new disaggregation [number01Integers_] ;
+      CoinMemcpyN(rhs.cutVector_,number01Integers_,cutVector_) ;
+      for (int i = 0 ; i < number01Integers_ ; i++) {
         if (cutVector_[i].index) {
-          cutVector_[i].index = CoinCopyOfArray(rhs.cutVector_[i].index,cutVector_[i].length);
+          cutVector_[i].index =
+	      CoinCopyOfArray(rhs.cutVector_[i].index,cutVector_[i].length) ;
         }
       }
     } else {
-      rowCopy_=NULL;
-      columnCopy_=NULL;
-      rowLower_=NULL;
-      rowUpper_=NULL;
-      colLower_=NULL;
-      colUpper_=NULL;
-      numberIntegers_=0;
-      number01Integers_=0;
-      cutVector_=NULL;
+      rowCopy_ = NULL ;
+      columnCopy_ = NULL ;
+      rowLower_ = NULL ;
+      rowUpper_ = NULL ;
+      colLower_ = NULL ;
+      colUpper_ = NULL ;
+      numberIntegers_ = 0 ;
+      number01Integers_ = 0 ;
+      cutVector_ = NULL ;
     }
-    numberThisTime_=rhs.numberThisTime_;
-    totalTimesCalled_=rhs.totalTimesCalled_;
+    numberThisTime_ = rhs.numberThisTime_ ;
+    totalTimesCalled_ = rhs.totalTimesCalled_ ;
     if (numberColumns_)
-      lookedAt_=CoinCopyOfArray(rhs.lookedAt_,numberColumns_);
+      lookedAt_ = CoinCopyOfArray(rhs.lookedAt_,numberColumns_) ;
     else
-      lookedAt_ = NULL;
+      lookedAt_ = NULL ;
+    if (rhs.tightenBounds_) {
+      assert (numberColumns_) ;
+      tightenBounds_ = CoinCopyOfArray(rhs.tightenBounds_,numberColumns_) ;
+    } else {
+      tightenBounds_ = NULL ;
+    }
+#   ifdef CLIQUE_ANALYSIS
+    numberCliques_ = rhs.numberCliques_ ;
     if (numberCliques_) {
-      cliqueType_ = new cliqueType [numberCliques_];
-      CoinMemcpyN(rhs.cliqueType_,numberCliques_,cliqueType_);
-      cliqueStart_ = new int [numberCliques_+1];
-      CoinMemcpyN(rhs.cliqueStart_,(numberCliques_+1),cliqueStart_);
-      int n = cliqueStart_[numberCliques_];
-      cliqueEntry_ = new cliqueEntry [n];
-      CoinMemcpyN(rhs.cliqueEntry_,n,cliqueEntry_);
-      oneFixStart_ = new int [numberColumns_];
-      CoinMemcpyN(rhs.oneFixStart_,numberColumns_,oneFixStart_);
-      zeroFixStart_ = new int [numberColumns_];
-      CoinMemcpyN(rhs.zeroFixStart_,numberColumns_,zeroFixStart_);
-      endFixStart_ = new int [numberColumns_];
-      CoinMemcpyN(rhs.endFixStart_,numberColumns_,endFixStart_);
-      int n2=-1;
+      cliqueType_ = new cliqueType [numberCliques_] ;
+      CoinMemcpyN(rhs.cliqueType_,numberCliques_,cliqueType_) ;
+      cliqueStart_ = new int [numberCliques_+1] ;
+      CoinMemcpyN(rhs.cliqueStart_,(numberCliques_+1),cliqueStart_) ;
+      int n = cliqueStart_[numberCliques_] ;
+      cliqueEntry_ = new cliqueEntry [n] ;
+      CoinMemcpyN(rhs.cliqueEntry_,n,cliqueEntry_) ;
+      oneFixStart_ = new int [numberColumns_] ;
+      CoinMemcpyN(rhs.oneFixStart_,numberColumns_,oneFixStart_) ;
+      zeroFixStart_ = new int [numberColumns_] ;
+      CoinMemcpyN(rhs.zeroFixStart_,numberColumns_,zeroFixStart_) ;
+      endFixStart_ = new int [numberColumns_] ;
+      CoinMemcpyN(rhs.endFixStart_,numberColumns_,endFixStart_) ;
+      int n2=-1 ;
       for (int i=numberColumns_-1;i>=0;i--) {
 	if (oneFixStart_[i]>=0) {
-	  n2=endFixStart_[i];
-	  break;
+	  n2=endFixStart_[i] ;
+	  break ;
 	}
       }
-      assert (n==n2);
-      whichClique_ = new int [n];
-      CoinMemcpyN(rhs.whichClique_,n,whichClique_);
+      assert (n==n2) ;
+      whichClique_ = new int [n] ;
+      CoinMemcpyN(rhs.whichClique_,n,whichClique_) ;
       if (rhs.cliqueRowStart_) {
-        cliqueRowStart_ = CoinCopyOfArray(rhs.cliqueRowStart_,numberRows_+1);
-        n=cliqueRowStart_[numberRows_];
-        cliqueRow_ = CoinCopyOfArray(rhs.cliqueRow_,n);
+        cliqueRowStart_ = CoinCopyOfArray(rhs.cliqueRowStart_,numberRows_+1) ;
+        n=cliqueRowStart_[numberRows_] ;
+        cliqueRow_ = CoinCopyOfArray(rhs.cliqueRow_,n) ;
       } else {
-        cliqueRow_=NULL;
-        cliqueRowStart_=NULL;
+        cliqueRow_=NULL ;
+        cliqueRowStart_=NULL ;
       }
     } else {
-      cliqueType_=NULL;
-      cliqueStart_=NULL;
-      cliqueEntry_=NULL;
-      oneFixStart_=NULL;
-      zeroFixStart_=NULL;
-      endFixStart_=NULL;
-      whichClique_=NULL;
-      cliqueRow_=NULL;
-      cliqueRowStart_=NULL;
+      cliqueType_=NULL ;
+      cliqueStart_=NULL ;
+      cliqueEntry_=NULL ;
+      oneFixStart_=NULL ;
+      zeroFixStart_=NULL ;
+      endFixStart_=NULL ;
+      whichClique_=NULL ;
+      cliqueRow_=NULL ;
+      cliqueRowStart_=NULL ;
     }
-    if (rhs.tightenBounds_) {
-      assert (numberColumns_);
-      tightenBounds_=CoinCopyOfArray(rhs.tightenBounds_,numberColumns_);
-    } else {
-      tightenBounds_=NULL;
-    }
+#   endif
   }
-  return *this;
+  return *this ;
 }
 
 
@@ -2142,19 +2165,19 @@ CglProbing::mayGenerateRowCutsInTree() const
 }
 
 // Mark variables to be tightened
-void 
-CglProbing::tightenThese(const OsiSolverInterface & solver,int number, const int * which)
+void CglProbing::tightenThese (const OsiSolverInterface &solver, int number,
+			       const int * which)
 {
-  delete [] tightenBounds_;
-  int numberColumns = solver.getNumCols();
+  delete [] tightenBounds_ ;
+  int numberColumns = solver.getNumCols() ;
   if (numberColumns_)
-    assert (numberColumns_==numberColumns);
-  tightenBounds_ = new char [numberColumns];
-  memset(tightenBounds_,0,numberColumns);
+    assert (numberColumns_==numberColumns) ;
+  tightenBounds_ = new char [numberColumns] ;
+  memset(tightenBounds_,0,numberColumns) ;
   for (int i=0;i<number;i++) {
-    int k=which[i];
+    int k=which[i] ;
     if (k>=0&&k<numberColumns)
-      tightenBounds_[k]=1;
+      tightenBounds_[k]=1 ;
   }
 }
 
@@ -2163,61 +2186,61 @@ CglProbing::tightenThese(const OsiSolverInterface & solver,int number, const int
 std::string
 CglProbing::generateCpp( FILE * fp) 
 {
-  CglProbing other;
-  fprintf(fp,"0#include \"CglProbing.hpp\"\n");
-  fprintf(fp,"3  CglProbing probing;\n");
+  CglProbing other ;
+  fprintf(fp,"0#include \"CglProbing.hpp\"\n") ;
+  fprintf(fp,"3  CglProbing probing;\n") ;
   if (getMode()!=other.getMode())
-    fprintf(fp,"3  probing.setMode(%d);\n",getMode());
+    fprintf(fp,"3  probing.setMode(%d);\n",getMode()) ;
   else
-    fprintf(fp,"4  probing.setMode(%d);\n",getMode());
+    fprintf(fp,"4  probing.setMode(%d);\n",getMode()) ;
   if (getMaxPass()!=other.getMaxPass())
-    fprintf(fp,"3  probing.setMaxPass(%d);\n",getMaxPass());
+    fprintf(fp,"3  probing.setMaxPass(%d);\n",getMaxPass()) ;
   else
-    fprintf(fp,"4  probing.setMaxPass(%d);\n",getMaxPass());
+    fprintf(fp,"4  probing.setMaxPass(%d);\n",getMaxPass()) ;
   if (getLogLevel()!=other.getLogLevel())
-    fprintf(fp,"3  probing.setLogLevel(%d);\n",getLogLevel());
+    fprintf(fp,"3  probing.setLogLevel(%d);\n",getLogLevel()) ;
   else
-    fprintf(fp,"4  probing.setLogLevel(%d);\n",getLogLevel());
+    fprintf(fp,"4  probing.setLogLevel(%d);\n",getLogLevel()) ;
   if (getMaxProbe()!=other.getMaxProbe())
-    fprintf(fp,"3  probing.setMaxProbe(%d);\n",getMaxProbe());
+    fprintf(fp,"3  probing.setMaxProbe(%d);\n",getMaxProbe()) ;
   else
-    fprintf(fp,"4  probing.setMaxProbe(%d);\n",getMaxProbe());
+    fprintf(fp,"4  probing.setMaxProbe(%d);\n",getMaxProbe()) ;
   if (getMaxLook()!=other.getMaxLook())
-    fprintf(fp,"3  probing.setMaxLook(%d);\n",getMaxLook());
+    fprintf(fp,"3  probing.setMaxLook(%d);\n",getMaxLook()) ;
   else
-    fprintf(fp,"4  probing.setMaxLook(%d);\n",getMaxLook());
+    fprintf(fp,"4  probing.setMaxLook(%d);\n",getMaxLook()) ;
   if (getMaxElements()!=other.getMaxElements())
-    fprintf(fp,"3  probing.setMaxElements(%d);\n",getMaxElements());
+    fprintf(fp,"3  probing.setMaxElements(%d);\n",getMaxElements()) ;
   else
-    fprintf(fp,"4  probing.setMaxElements(%d);\n",getMaxElements());
+    fprintf(fp,"4  probing.setMaxElements(%d);\n",getMaxElements()) ;
   if (getMaxPassRoot()!=other.getMaxPassRoot())
-    fprintf(fp,"3  probing.setMaxPassRoot(%d);\n",getMaxPassRoot());
+    fprintf(fp,"3  probing.setMaxPassRoot(%d);\n",getMaxPassRoot()) ;
   else
-    fprintf(fp,"4  probing.setMaxPassRoot(%d);\n",getMaxPassRoot());
+    fprintf(fp,"4  probing.setMaxPassRoot(%d);\n",getMaxPassRoot()) ;
   if (getMaxProbeRoot()!=other.getMaxProbeRoot())
-    fprintf(fp,"3  probing.setMaxProbeRoot(%d);\n",getMaxProbeRoot());
+    fprintf(fp,"3  probing.setMaxProbeRoot(%d);\n",getMaxProbeRoot()) ;
   else
-    fprintf(fp,"4  probing.setMaxProbeRoot(%d);\n",getMaxProbeRoot());
+    fprintf(fp,"4  probing.setMaxProbeRoot(%d);\n",getMaxProbeRoot()) ;
   if (getMaxLookRoot()!=other.getMaxLookRoot())
-    fprintf(fp,"3  probing.setMaxLookRoot(%d);\n",getMaxLookRoot());
+    fprintf(fp,"3  probing.setMaxLookRoot(%d);\n",getMaxLookRoot()) ;
   else
-    fprintf(fp,"4  probing.setMaxLookRoot(%d);\n",getMaxLookRoot());
+    fprintf(fp,"4  probing.setMaxLookRoot(%d);\n",getMaxLookRoot()) ;
   if (getMaxElementsRoot()!=other.getMaxElementsRoot())
-    fprintf(fp,"3  probing.setMaxElementsRoot(%d);\n",getMaxElementsRoot());
+    fprintf(fp,"3  probing.setMaxElementsRoot(%d);\n",getMaxElementsRoot()) ;
   else
-    fprintf(fp,"4  probing.setMaxElementsRoot(%d);\n",getMaxElementsRoot());
+    fprintf(fp,"4  probing.setMaxElementsRoot(%d);\n",getMaxElementsRoot()) ;
   if (rowCuts()!=other.rowCuts())
-    fprintf(fp,"3  probing.setRowCuts(%d);\n",rowCuts());
+    fprintf(fp,"3  probing.setRowCuts(%d);\n",rowCuts()) ;
   else
-    fprintf(fp,"4  probing.setRowCuts(%d);\n",rowCuts());
+    fprintf(fp,"4  probing.setRowCuts(%d);\n",rowCuts()) ;
   if (getUsingObjective()!=other.getUsingObjective())
-    fprintf(fp,"3  probing.setUsingObjective(%d);\n",getUsingObjective());
+    fprintf(fp,"3  probing.setUsingObjective(%d);\n",getUsingObjective()) ;
   else
-    fprintf(fp,"4  probing.setUsingObjective(%d);\n",getUsingObjective());
+    fprintf(fp,"4  probing.setUsingObjective(%d);\n",getUsingObjective()) ;
   if (getAggressiveness()!=other.getAggressiveness())
-    fprintf(fp,"3  probing.setAggressiveness(%d);\n",getAggressiveness());
+    fprintf(fp,"3  probing.setAggressiveness(%d);\n",getAggressiveness()) ;
   else
-    fprintf(fp,"4  probing.setAggressiveness(%d);\n",getAggressiveness());
-  return "probing";
+    fprintf(fp,"4  probing.setAggressiveness(%d);\n",getAggressiveness()) ;
+  return "probing" ;
 }
 

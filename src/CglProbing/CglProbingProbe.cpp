@@ -1834,7 +1834,7 @@ int CglProbing::probe( const OsiSolverInterface &si,
 
   Major block #2: Main pass loop.
 
-  From CglProbingAnn: anyColumnCuts is set only in the case that we've
+  anyColumnCuts is set only in the case that we've
   fixed a variable by probing (i.e., one of the up or down probe resulted
   in infeasibility) and that probe entailed column cuts. Once set, it is
   never rescinded. In the reworked code, it's set as the return value of
@@ -3330,12 +3330,10 @@ int CglProbing::probe( const OsiSolverInterface &si,
   * If this is the up probe and we were feasible on this probe but not on
     the down pass, we're monotone.
   * If this is the second down probe, we were feasible on down, infeasible on
-    up (monotone) and repeated the down probe to recreate the bounds.
+    up (hence monotone down) and repeated the down probe to recreate the bounds.
 
   Either way, execute monotoneActions to capture the state and move on to the
   next variable. Terminate the probe loop by forcing iway = oneIterTooMany.
-
-  This if-then-else extends to the end of the down/up/down probe loop.
 
   TODO: There's something not right about this `second down pass' business.
         Why do we copy stackC to stackC0 on a feasible first pass? Surely that

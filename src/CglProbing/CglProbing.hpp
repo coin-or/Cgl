@@ -25,13 +25,13 @@ typedef struct {
     //unsigned int zeroOne:1 ;
 
     /// nonzero if fixing happens when this variable at 1
-    //unsigned int whenAtUB:1;
+    //unsigned int whenAtUB:1 ;
 
     /// nonzero if affected variable fixed to UB
-    //unsigned int affectedToUB:1;
+    //unsigned int affectedToUB:1 ;
 
     /// If 0-1 then 0-1 sequence, otherwise true
-    //unsigned int affected:29;
+    //unsigned int affected:29 ;
 
     /*! \brief index of affected variable
 
@@ -39,8 +39,8 @@ typedef struct {
       zeroOneInDisagg is true, index is an index in cutVector_; if
       false, it's a plain old variable index.
     */
-    unsigned int affected;
-  } disaggregationAction;
+    unsigned int affected ;
+  } disaggregationAction ;
 
 /*! \brief Probing Cut Generator
 
@@ -130,7 +130,7 @@ public:
     snapshot matrix exists, in which case the snapshot is used.
   */
   virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
-			     const CglTreeInfo info = CglTreeInfo()) const;
+			     const CglTreeInfo info = CglTreeInfo()) const ;
 			    
   /*! \brief Generate probing/disaggregation cuts and tighter bounds
 
@@ -138,26 +138,26 @@ public:
     The number of infeasibilities is returned. 
   */
   int generateCutsAndModify( const OsiSolverInterface & si, OsiCuts & cs, 
-			     CglTreeInfo * info);
+			     CglTreeInfo * info) ;
   //@}
 
   /**@name Get tighter column bounds */
   //@{
   /// Lower
-  const double * tightLower() const;
+  const double * tightLower() const ;
   /// Upper
-  const double * tightUpper() const;
+  const double * tightUpper() const ;
   /// Array which says tighten continuous
-  const char * tightenBounds() const
-  { return tightenBounds_;}
+  // const char * tightenBounds() const
+  // { return tightenBounds_;}
   //@}
 
   /**@name Get possible freed up row bounds - only valid after mode==3 */
   //@{
   /// Lower
-  const double * relaxedRowLower() const;
+  const double * relaxedRowLower() const ;
   /// Upper
-  const double * relaxedRowUpper() const;
+  const double * relaxedRowUpper() const ;
   //@}
 
   /*! \name Behavioural Options
@@ -187,9 +187,9 @@ public:
     
     See #mode_ for additional detail.
   */
-  void setMode(int mode);
+  void setMode(int mode) ;
   /// Get cut generation mode
-  int getMode() const;
+  int getMode() const ;
 
   /*! \brief Specify whether to generate row cuts
 
@@ -204,9 +204,9 @@ public:
     A negative value limits row cuts to the root; only variable fixing will be
     performed in the search tree.
   */
-  void setRowCuts(int type);
+  void setRowCuts(int type) ;
   /// Get the row cut generation setting
-  int rowCuts() const;
+  int rowCuts() const ;
 
   /*! \brief Inquire if row cuts can be generated other than at the root node
 
@@ -216,7 +216,7 @@ public:
      Provided so that a client can know if the constraint matrix will change
      in a search tree.
   */
-  virtual bool mayGenerateRowCutsInTree() const;
+  virtual bool mayGenerateRowCutsInTree() const ;
 
   /*! \brief Specify whether to use the objective as a constraint
 
@@ -228,9 +228,9 @@ public:
     Normally probing compares the estimated objective after forcing integrality
     to a cutoff value, when a cutoff is available. A value of -1 prevents this.
   */
-  void setUsingObjective(int yesNo);
+  void setUsingObjective(int yesNo) ;
   /// Get use of objective
-  int getUsingObjective() const;
+  int getUsingObjective() const ;
 
   //@}
 
@@ -240,46 +240,46 @@ public:
   */
   //@{
   /// Set maximum number of passes per node
-  void setMaxPass(int value);
+  void setMaxPass(int value) ;
   /// Get maximum number of passes per node
-  int getMaxPass() const;
+  int getMaxPass() const ;
   /// Set maximum number of passes per node  (root node)
-  void setMaxPassRoot(int value);
+  void setMaxPassRoot(int value) ;
   /// Get maximum number of passes per node (root node)
-  int getMaxPassRoot() const;
+  int getMaxPassRoot() const ;
   /*! \brief Set log level
   
     - 0: none
     - 1 - a bit
     - 2 - more details
   */
-  void setLogLevel(int value);
+  void setLogLevel(int value) ;
   /// Get log level
-  int getLogLevel() const;
+  int getLogLevel() const ;
   /// Set maximum number of unsatisfied variables to look at
-  void setMaxProbe(int value);
+  void setMaxProbe(int value) ;
   /// Get maximum number of unsatisfied variables to look at
-  int getMaxProbe() const;
+  int getMaxProbe() const ;
   /// Set maximum number of variables to look at in one probe
   /// Set maximum number of unsatisfied variables to look at (root node)
-  void setMaxProbeRoot(int value);
+  void setMaxProbeRoot(int value) ;
   /// Get maximum number of unsatisfied variables to look at (root node)
-  int getMaxProbeRoot() const;
-  void setMaxLook(int value);
+  int getMaxProbeRoot() const ;
+  void setMaxLook(int value) ;
   /// Get maximum number of variables to look at in one probe
-  int getMaxLook() const;
+  int getMaxLook() const ;
   /// Set maximum number of variables to look at in one probe (root node)
-  void setMaxLookRoot(int value);
+  void setMaxLookRoot(int value) ;
   /// Get maximum number of variables to look at in one probe (root node)
-  int getMaxLookRoot() const;
+  int getMaxLookRoot() const ;
   /// Set maximum number of elements in a row for it to be considered
-  void setMaxElements(int value);
+  void setMaxElements(int value) ;
   /// Get maximum number of elements in a row for it to be considered
-  int getMaxElements() const;
+  int getMaxElements() const ;
   /// Set maximum number of elements in row for it to be considered (root node)
-  void setMaxElementsRoot(int value);
+  void setMaxElementsRoot(int value) ;
   /// Get maximum number of elements in row for it to be considered (root node)
-  int getMaxElementsRoot() const;
+  int getMaxElementsRoot() const ;
   /// Set primal feasibility tolerance
   void setPrimalTolerance(double tol) { primalTolerance_ = tol ; }
   /// Get primal feasibility tolerance
@@ -299,32 +299,32 @@ public:
   /**@name Mark which continuous variables are to be tightened */
   //@{
   /// Mark variables to be tightened
-  void tightenThese(const OsiSolverInterface & solver, int number, const int * which);
+  void tightenThese(const OsiSolverInterface & solver, int number, const int * which) ;
   //@}
 
   /**@name Constructors and destructors */
   //@{
   /// Default constructor 
-  CglProbing ();
+  CglProbing () ;
  
   /// Copy constructor 
   CglProbing (
-    const CglProbing &);
+    const CglProbing &) ;
 
   /// Clone
-  virtual CglCutGenerator * clone() const;
+  virtual CglCutGenerator * clone() const ;
 
   /// Assignment operator 
   CglProbing &
     operator=(
-    const CglProbing& rhs);
+    const CglProbing& rhs) ;
   
   /// Destructor 
   virtual
-    ~CglProbing ();
+    ~CglProbing () ;
 
   /// Create C++ lines to get to current state
-  virtual std::string generateCpp( FILE * fp);
+  virtual std::string generateCpp( FILE * fp) ;
   //@}
       
 private:
@@ -340,7 +340,7 @@ private:
 	    const int *realRow, const double *rowLower, const double *rowUpper,
 	    const char *intVar, double *minR, double *maxR, int *markR, 
 	    CglTreeInfo *info,
-	    bool useObj, bool useCutoff, double cutoff) const;
+	    bool useObj, bool useCutoff, double cutoff) const ;
 
   /// Does probing and adding cuts (with cliques)
   int probeCliques(const OsiSolverInterface &si, 
@@ -350,7 +350,7 @@ private:
 	    const int *realRow, double *rowLower, double *rowUpper,
 	    char *intVar, double *minR, double *maxR, int *markR, 
             CglTreeInfo *info,
-	    bool useObj, bool useCutoff, double cutoff) const;
+	    bool useObj, bool useCutoff, double cutoff) const ;
 
   /*! Does probing and adding cuts for clique slacks
 
@@ -364,7 +364,7 @@ private:
 		   CoinPackedMatrix *columnCopy,
                     double * rowLower, double * rowUpper,
                     char * intVar, double * minR, double * maxR,int * markR,
-                     CglTreeInfo * info) const;
+                     CglTreeInfo * info) const ;
   */
   /** Does most of work of generateCuts 
       Returns number of infeasibilities */
@@ -372,9 +372,9 @@ private:
 			  OsiCuts & cs,
 			  double * rowLower, double * rowUpper,
 			  double * colLower, double * colUpper,
-                           CglTreeInfo * info) const;
+                           CglTreeInfo * info) const ;
   /// Sets up clique information for each row
-  void setupRowCliqueInformation(const OsiSolverInterface & si);
+  void setupRowCliqueInformation(const OsiSolverInterface & si) ;
   /*! \brief Tighten column bounds
   
      Use bound propagation to tighten column bounds. Can declare infeasibility
@@ -386,7 +386,7 @@ private:
 	      const int * rowLength,
               double *rowLower, double *rowUpper, 
               int nRows,int nCols,char * intVar,int maxpass,
-              double tolerance) const;
+              double tolerance) const ;
 
   /*! \brief Calculate constraint left-hand-side bounds
 
@@ -403,7 +403,7 @@ private:
 		     const CoinBigIndex *rowStart, const int *rowLength,
 		     double *rowLower, double *rowUpper, 
 		     double *minR, double *maxR, int *markR,
-		     int nRows) const;
+		     int nRows) const ;
   //@}
 
   // Private member data
@@ -423,14 +423,14 @@ private:
 	  one mutable pointer here and could simplify parameter passing
 	  in several places in the code.  -- lh, 100917 --
   */
-  CoinPackedMatrix * rowCopy_;
+  CoinPackedMatrix * rowCopy_ ;
   /*! \brief Column copy
   
     This is created only as part of a snapshot. More striking, as far as I can
     tell it's never used! (CglProbing indeed uses a column copy, but it's
     created and destroyed in gutsOfGenerateCut.) (lh, 101021)
   */
-  CoinPackedMatrix * columnCopy_;
+  CoinPackedMatrix * columnCopy_ ;
 
   /*! \brief Arbitrary bound to impose on rows and columns.
 
@@ -456,29 +456,29 @@ private:
     row bounds is when called as generateCutsAndModify, a non-const method.
   */
   /// Lower bounds on rows
-  double * rowLower_;
+  double * rowLower_ ;
   /// Upper bounds on rows
-  double * rowUpper_;
+  double * rowUpper_ ;
 
   /*
     These have to be mutable because generateCuts is a const method, and
     tightening bounds is one of the main activities of generateCuts.
   */ 
   /// Lower bounds on columns
-  mutable double * colLower_;
+  mutable double * colLower_ ;
   /// Upper bounds on columns
-  mutable double * colUpper_;
+  mutable double * colUpper_ ;
 
   /*
     Not entirely sure why these need to be mutable. Check. -- lh, 101007 --
   */
   /// Number of rows in snapshot (or when cliqueRow stuff computed)
-  mutable int numberRows_;
+  mutable int numberRows_ ;
   /// Number of columns in problem ( must == current)
-  mutable int numberColumns_;
+  mutable int numberColumns_ ;
 
   /// Tolerance to see if infeasible
-  double primalTolerance_;
+  double primalTolerance_ ;
 
   /*! \brief cut generation mode
 
@@ -491,14 +491,14 @@ private:
 	    return tightened row bounds as well as column bounds.
     - 0x10: set if want to extend cliques at root node
   */
-  int mode_;
+  int mode_ ;
 
   /*! \brief Row cuts flags
 
     Broadly, the possibilities are:
-    - generate row cuts that will be returned in an OsiCuts collection;
+    - generate row cuts that will be returned in an OsiCuts collection ;
     - generate row cuts that can replace (strengthen) rows in the original
-      constraint system, returned through a CglTreeInfo structure;
+      constraint system, returned through a CglTreeInfo structure ;
     - generate column cuts
     If the CglTreeInfo structure contains a strengthenRow vector, and you
     specify 0x4 here, no row cuts are returned in the cut collection, but rows
@@ -512,38 +512,38 @@ private:
     A negative value -n is interpreted as +n but only fixes variables unless
     at the root node
   */
-  mutable int rowCuts_;
+  mutable int rowCuts_ ;
 
   /// Maximum number of passes to do in probing
-  int maxPass_;
+  int maxPass_ ;
   /// Log level - 0 none, 1 - a bit, 2 - more details
-  int logLevel_;
+  int logLevel_ ;
   /// Maximum number of unsatisfied variables to probe
-  int maxProbe_;
+  int maxProbe_ ;
   /// Maximum number of variables to look at in one probe
-  int maxStack_;
+  int maxStack_ ;
   /// Maximum number of elements in row for scan
-  int maxElements_;
+  int maxElements_ ;
   /// Maximum number of passes to do in probing at root
-  int maxPassRoot_;
+  int maxPassRoot_ ;
   /// Maximum number of unsatisfied variables to probe at root
-  int maxProbeRoot_;
+  int maxProbeRoot_ ;
   /// Maximum number of variables to look at in one probe at root
-  int maxStackRoot_;
+  int maxStackRoot_ ;
   /// Maximum number of elements in row for scan at root
-  int maxElementsRoot_;
+  int maxElementsRoot_ ;
   /// Whether to include the objective as a constraint
-  int usingObjective_;
+  int usingObjective_ ;
   /// Number of integer variables
-  int numberIntegers_;
+  int numberIntegers_ ;
   /// Number of 0-1 integer variables
-  int number01Integers_;
+  int number01Integers_ ;
   /// Number looked at this time
-  mutable int numberThisTime_;
+  mutable int numberThisTime_ ;
   /*! \brief Total number of times called */
-  mutable int totalTimesCalled_;
+  mutable int totalTimesCalled_ ;
   /// Which ones looked at this time
-  mutable int * lookedAt_;
+  mutable int * lookedAt_ ;
 
   /*! \brief For disaggregation cuts and for building cliques
 
@@ -553,19 +553,23 @@ private:
   */
   typedef struct disaggregation_struct_tag {
     /// Integer variable column number (index of x<p>)
-    int sequence;
+    int sequence ;
     /// length of new value
-    int length;
+    int length ;
     /// columns whose bounds will be changed (indices of x<t>)
-    disaggregationAction *index;
-  } disaggregation;
+    disaggregationAction *index ;
+  } disaggregation ;
 
   /*! \brief Disaggregation cuts
 
     Initialised when probing starts, or when a snapshot is created.
   */
-  disaggregation *cutVector_;
+  disaggregation *cutVector_ ;
 
+  /// If not null and [i] != 0 then also tighten even if continuous
+  char *tightenBounds_ ;
+
+# ifdef CLIQUE_ANALYSIS
   /************************  Cliques  ************************/
   /*
     Cliques detected by CglProbing are always a single row and have a
@@ -574,7 +578,7 @@ private:
   */
 
   /// Number of cliques
-  int numberCliques_;
+  int numberCliques_ ;
 
   /*! \brief Clique type
 
@@ -589,20 +593,20 @@ private:
   */
   typedef struct {
     unsigned int equality:1; //  nonzero if clique row is an equality
-  } cliqueType;
+  } cliqueType ;
 
   /*! \brief Clique type
   
     See the description with the cliqueType structure.
   */
-  cliqueType *cliqueType_;
+  cliqueType *cliqueType_ ;
 
   /*! \brief Start of each clique
 
     Each entry points to the start of the block of entries for this clique
     in #cliqueEntry_.
   */
-  int *cliqueStart_;
+  int *cliqueStart_ ;
 
   /*! \brief Clique membership
 
@@ -610,7 +614,7 @@ private:
     in the clique. See cliqueEntry for a description of the information in each
     entry.
   */
-  cliqueEntry *cliqueEntry_;
+  cliqueEntry *cliqueEntry_ ;
 
   /*! \brief Start of strong-1 block for a variable
 
@@ -618,7 +622,7 @@ private:
     subblock for this variable in #whichClique_, or -1 if the variable is
     not in a clique.
   */
-  int * oneFixStart_;
+  int * oneFixStart_ ;
 
   /*! \brief Start of strong-0 block for a variable
 
@@ -626,7 +630,7 @@ private:
     subblock for this variable in #whichClique_, or -1 if the variable is
     not in a clique.
   */
-  int * zeroFixStart_;
+  int * zeroFixStart_ ;
 
   /*! \brief End of block for a variable
 
@@ -636,7 +640,7 @@ private:
     because there's no guarantee x<j> is in any clique; oneFixStart_[j] could
     well be -1. So we need an array to specify the end of each block.
   */
-  int * endFixStart_;
+  int * endFixStart_ ;
 
   /*! \brief Cross-reference variables back to cliques
 
@@ -645,7 +649,7 @@ private:
     #zeroFixStart_). Each entry is the index of a clique. See also
     #endFixStart_.
   */
-  int * whichClique_;
+  int * whichClique_ ;
 
   /*! \brief Preprocessed clique information for use when calculating row
 	     bounds.
@@ -660,13 +664,14 @@ private:
     #setupRowCliqueInformation at the end of #generateCutsAndModify, so only
     useable on subsequent passes. Seems to be a bit of a work in progress.
   */
-  cliqueEntry * cliqueRow_;
+  cliqueEntry * cliqueRow_ ;
   /// cliqueRow_ starts for each row
-  int * cliqueRowStart_;
-  /// If not null and [i] !=0 then also tighten even if continuous
-  char * tightenBounds_;
+  int * cliqueRowStart_ ;
+
+# endif   // CLIQUE_ANALYSIS
+
   //@}
-};
+} ;
 
 /*
   What we have here is dangerous, but efficient. (Vid. the commented-out
@@ -729,6 +734,6 @@ inline void setAffectedToUBInDisagg(disaggregationAction & dis,bool affectedToUB
     library should be compiled with optimization on, but this method should be
     compiled with debugging. */
 int CglProbingUnitTest(const OsiSolverInterface *siP,
-		       const std::string mpsDir);
+		       const std::string mpsDir) ;
 
 #endif

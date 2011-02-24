@@ -821,6 +821,11 @@ CglClique::generateCpp( FILE * fp)
   return "clique" ;
 }
 /*****************************************************************************/
+#ifdef CGL_FAKE_CLIQUE
+
+/*
+  This is used only by some disabled code in CbcModel::branchAndBound.
+*/
 
 #include "../CglProbing/CglProbing.hpp"
 CglFakeClique::CglFakeClique(OsiSolverInterface * solver, bool setPacking) :
@@ -903,3 +908,5 @@ CglFakeClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
     CglClique::generateCuts(si,cs,info) ;
   }
 }
+
+#endif   // CGL_FAKE_CLIQUE

@@ -11,70 +11,115 @@
 #include "CglCutGenerator.hpp"
 
 class CoinWarmStartBasis;
-class CglTreeProbingInfo;
-/** Stored Cut Generator Class */
+// class CglTreeProbingInfo;
+/*! \brief A container for storing cuts.
+
+  CglStored is a container for holding previously generated row
+  cuts that presents a standard CglCutGenerator interface. Calling
+  #generateCuts returns all cuts that meet the specified violation (see
+  #setRequiredViolation).
+
+  In addition to a collection of cuts, a CglStored object can hold a small
+  amount of miscellaneous information: an objective and solution and upper and
+  lower bound arrays.
+
+  More recently, there is an attempt to add a CglTreeProbingInfo object and
+  clique-based implication generation. It seems likely that this is not fully
+  functional.
+*/
 class CglStored : public CglCutGenerator {
  
 public:
     
   
-  /**@name Generate Cuts */
+  /*! \name Cut generation */
   //@{
-  /** Generate Mixed Integer Stored cuts for the model of the 
-      solver interface, si.
+  /*! \brief Retrieve stored row cuts that satisfy the specified violation.
 
-      Insert the generated cuts into OsiCut, cs.
+    Stored cuts that satisfy the specified violation are returned in the
+    container \p cs. Violation is evaluated based on the solution held in the
+    \p si, not the solution (if any) held by this object.
 
-      This generator just looks at previously stored cuts
-      and inserts any that are violated by enough
+    There is code that will attempt to generate implication cuts if a
+    CglTreeProbingInfo object is present. It seems likely this is not fully
+    functional.
+    
+    The \p info parameter is not used.
   */
-  virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
-			     const CglTreeInfo info = CglTreeInfo()) const;
-  //@}
-
-  /**@name Change criterion on whether to include cut.
-   Violations of more than this will be added to current cut list
-  (default 1.0e-5) */
-  //@{
-  /// Set
-  inline void setRequiredViolation(double value)
-  { requiredViolation_=value;}
-  /// Get
-  inline double getRequiredViolation() const
-  { return requiredViolation_;}
-  /// Takes over ownership of probing info
-  inline void setProbingInfo(CglTreeProbingInfo * info)
-  { probingInfo_ = info;}
-  //@}
-
-  /**@name Cut stuff */
-  //@{
-  /// Add cuts
-  void addCut(const OsiCuts & cs);
-  /// Add a row cut
-  void addCut(const OsiRowCut & cut);
-  /// Add a row cut from a packed vector
-  void addCut(double lb, double ub, const CoinPackedVector & vector);
-  /// Add a row cut from elements
-  void addCut(double lb, double ub, int size, const int * colIndices, const double * elements);
+  virtual void generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
+			    const CglTreeInfo info = CglTreeInfo()) const ;
+  /// Add a collection of row cuts to the container
+  void addCut(const OsiCuts & cs) ;
+  /// Add a row cut to the container
+  void addCut(const OsiRowCut & cut) ;
+  /// Add a row cut to the container
+  void addCut(double lb, double ub, const CoinPackedVector &vector) ;
+  /// Add a row cut to the container
+  void addCut(double lb, double ub, int size,
+  	      const int *colIndices, const double *elements) ;
+  /// Return the number of row cuts in the container
   inline int sizeRowCuts() const
-  { return cuts_.sizeRowCuts();}
-  const OsiRowCut * rowCutPointer(int index) const
-  { return cuts_.rowCutPtr(index);}
-  /// Save stuff
-  void saveStuff(double bestObjective, const double * bestSolution,
-		 const double * lower, const double * upper);
-  /// Best solution (or NULL)
-  inline const double * bestSolution() const
-  { return bestSolution_;}
-  /// Best objective
-  double bestObjective() const;
-  /// Tight lower bounds
-  const double * tightLower() const
-  { return bounds_;} 
+  { return (cuts_.sizeRowCuts()) ; }
+  /// Return a reference to the row cuts in the container
+  const OsiRowCut *rowCutPointer(int index) const
+  { return (cuts_.rowCutPtr(index)) ; }
+  //@}
+
+  /*! \name Cut generation control */
+  //@{
+  /// Set the violation threshold
+  inline void setRequiredViolation(double value)
+  { requiredViolation_ = value ; }
+  /// Get the violation threshold
+  inline double getRequiredViolation() const
+  { return (requiredViolation_) ; }
+  //@}
+
+  /*! \name Miscellaneous information
+
+    Null is returned if the requested information has not been loaded into
+    the object.
+
+    If the column size is <= 0, the solution and bound vectors are not copied
+    when the object is copied or cloned.
+  */
+  //@{
+  /// Set column size
+  inline void setColumnSize(int nCols)
+  { numberColumns_ = nCols ; }
+  /// Get column size
+  inline int getColumnSize()
+  { return (numberColumns_) ; }
+  /*! \brief Save miscellaneous information.
+
+    Intended for the objective value, primal solution, and lower and upper
+    column bounds. The vectors are copied. You must set the number of columns
+    (#setColumnSize or constructor) before calling this method.
+  */
+  void saveStuff(double bestObjective, const double *bestSolution,
+		 const double *lower, const double *upper) ;
+  /*! \brief Retrieve the stored objective
+
+    The default value is undefined.
+  */
+  double bestObjective() const ;
+  /// Retrieve the stored solution vector
+  inline const double *bestSolution() const
+  { return (bestSolution_) ; }
+  /// Retrieve the stored lower bounds
+  const double *tightLower() const
+  { return (bounds_) ; } 
   /// Tight upper bounds
-  const double * tightUpper() const
-  { return bounds_+numberColumns_;} 
+  const double *tightUpper() const
+  { return (bounds_+numberColumns_) ; } 
+# ifdef CLIQUE_ANALYSIS
+  /*! \brief Add a TreeProbingInfo object
+  
+    The CglStored object takes ownership of CglTreeProbingInfo object.
+  */
+  inline void setProbingInfo(CglTreeProbingInfo * info)
+  { probingInfo_ = info ; }
+# endif
   //@}
 
   /**@name Constructors and destructors */
@@ -85,7 +130,13 @@ public:
   /// Copy constructor 
   CglStored (const CglStored & rhs);
 
-  /// Constructor from file
+  /*! \brief Constructor from file
+
+    A handy way to make an arbitrary collection of cuts available for testing.
+    Quietly fails if the file cannot be opened.
+
+    Format? Undocumented, of course. What were you expecting?
+  */
   CglStored (const char * fileName);
 
   /// Clone
@@ -102,24 +153,24 @@ public:
       
 protected:
   
- // Protected member methods
-
-  // Protected member data
-
-  /**@name Protected member data */
-  //@{
-  /// Only add if more than this requiredViolation
+  /// Required violation to return a cut
   double requiredViolation_;
+# ifdef CLIQUE_ANALYSIS
   /// Pointer to probing information
   CglTreeProbingInfo * probingInfo_;
-  /// Cuts
+# endif
+  /*! \brief The cut collection
+  
+    Note that the implementation of CglStored assumes that this collection
+    will contain only row cuts.
+  */
   mutable OsiCuts cuts_;
-  /// Number of columns in model
+  /// Length of primal solution and column bound vectors
   int numberColumns_;
-  /// Best solution (objective at end)
+  /// Primal solution
   double * bestSolution_;
-  /// Tight bounds
+  /// Lower (#bounds_) and upper (#bounds_+#numberColumns_) column bounds
   double * bounds_;
-  //@}
+
 };
 #endif

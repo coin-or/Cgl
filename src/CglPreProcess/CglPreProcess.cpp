@@ -6,6 +6,17 @@
 // Turn off compiler warning about long names
 #  pragma warning(disable:4786)
 #endif
+
+// LOU
+// #define LOU_DEBUG 1
+
+/*
+  The symbol CLIQUE_ANALYSIS guards a few bits of code related to generalised
+  cliques that never quite reached working status. Effectively abandoned
+  around April, 2008.  This also renders heavyProbing meaningless.
+  -- lh, 110224 --
+*/
+
 #include <string>
 #include <cassert>
 #include <cmath>
@@ -34,6 +45,11 @@ OsiSolverInterface *
 CglPreProcess::preProcess(OsiSolverInterface & model, 
                        bool makeEquality, int numberPasses)
 {
+# if LOU__DEBUG > 0
+  std::cout
+    << "Entering preProcess, " << model.getNumRows() << " x "
+    << model.getNumCols() << ", " << numberPasses << " passes." << std::endl ;
+# endif
   // Tell solver we are in Branch and Cut
   model.setHintParam(OsiDoInBranchAndCut,true,OsiHintDo) ;
   // Default set of cut generators
@@ -51,6 +67,11 @@ CglPreProcess::preProcess(OsiSolverInterface & model,
   model.setHintParam(OsiDoInBranchAndCut,false,OsiHintDo) ;
   if (newSolver)
     newSolver->setHintParam(OsiDoInBranchAndCut,false,OsiHintDo) ;
+# if LOU_DEBUG > 0
+  std::cout
+    << "Leaving preProcess." << model.getNumRows() << " x " 
+    << model.getNumCols() << "." << std::endl ;
+# endif
   return newSolver;
 }
 static void outSingletons(int & nCol, int & nRow,
@@ -1052,6 +1073,39 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 				    int makeEquality, int numberPasses,
 				    int tuning)
 {
+# if LOU_DEBUG > 0
+  std::cout
+    << "Entering preProcessNonDefault, matrix "
+    << model.getNumRows() << " x " << model.getNumCols() << ", "
+    << numberPasses << " passes." << std::endl ;
+
+  const CoinPackedMatrix *mtx = model.getMatrixByRow() ;
+  int errs = 0 ;
+  errs = mtx->verifyMtx(2) ;
+  assert(errs == 0) ;
+
+# if 0
+  bool rcdActive = true ;
+  std::cout << "  Attempting to activate row cut debugger... " ;
+  model.activateRowCutDebugger("nw04") ;
+  if (model.getRowCutDebugger())
+    std::cout << "on optimal path." << std::endl ;
+  else if (model.getRowCutDebuggerAlways())
+    std::cout << "not on optimal path." << std::endl ;
+  else {
+    std::cout << "failure." << std::endl ;
+    rcdActive = false ;
+  }
+  if (rcdActive) {
+    const OsiRowCutDebugger *debugger = model.getRowCutDebuggerAlways() ;
+    debugger->printOptimalSolution(model) ;
+  }
+# else
+  bool rcdActive = false ;
+# endif
+
+# endif
+
   originalModel_ = & model;
   numberSolvers_ = numberPasses;
   model_ = new OsiSolverInterface * [numberSolvers_];
@@ -1927,6 +1981,30 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     // Extend if you want other solvers to keep solution
     bool keepSolution=solverName=="clp";
     presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-7,true,5,prohibited_,keepSolution,rowType_);
+#   if LOU_DEBUG > 0
+    std::cout << "    presolvedModel (init) " ;
+    if (presolvedModel) {
+      std::cout
+	<< presolvedModel->getNumRows() << "x"
+	<< presolvedModel->getNumCols() << "; ok." << std::endl ;
+    } else {
+      std::cout << " failed." << std::endl ;
+    }
+    if (rcdActive) {
+      std::cout << "    Checking against debugger ..." << std::endl ;
+      OsiRowCutDebugger *debugger = const_cast<OsiRowCutDebugger *>
+          (presolvedModel->getRowCutDebuggerAlways()) ;
+      if (debugger) {
+        const int *xlate = pinfo->originalColumns() ;
+	int n = presolvedModel->getNumCols() ;
+	debugger->redoSolution(n,xlate) ;
+	debugger->printOptimalSolution(*presolvedModel) ;
+      } else {
+        std::cout
+	  << "    Lost debugger after continuous presolve!" << std::endl ;
+      }
+    }
+#   endif
     oldModel->messageHandler()->setLogLevel(saveLogLevel);
     if (presolvedModel) {
       presolvedModel->messageHandler()->setLogLevel(saveLogLevel);
@@ -2079,6 +2157,9 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 #endif
     }
     for (int iPass=doInitialPresolve;iPass<numberSolvers_;iPass++) {
+#     if LOU_DEBUG > 0
+      std::cout << "  preProcessNonDefault: pass " << iPass << std::endl ;
+#     endif
       // Look at Vubs
       {
         const double * columnLower = oldModel->getColLower();
@@ -2248,6 +2329,28 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       //if (iPass)
       presolvedModel->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
       presolvedModel->initialSolve();
+#     if LOU_DEBUG > 0
+      std::cout << "    continuous relaxation " ;
+      if (presolvedModel->isProvenOptimal())
+        std::cout << "optimal z = " << presolvedModel->getObjValue() ;
+      else
+        std::cout << "not solved to optimality." ;
+      std::cout << "." << std::endl ;
+      if (rcdActive) {
+        std::cout << "    Checking against debugger ..." << std::endl ;
+	OsiRowCutDebugger *debugger = const_cast<OsiRowCutDebugger *>(
+	  presolvedModel->getRowCutDebuggerAlways()) ;
+	if (debugger) {
+	  const int *xlate = pinfo->originalColumns() ;
+	  int n = presolvedModel->getNumCols() ;
+	  debugger->redoSolution(n,xlate) ;
+	  debugger->printOptimalSolution(*presolvedModel) ;
+	} else {
+	  std::cout
+	    << "    Lost debugger after continuous presolve!" << std::endl ;
+	}
+      }
+#     endif
       numberIterationsPre_ += presolvedModel->getIterationCount();
       presolvedModel->setHintParam(OsiDoDualInInitial,saveTakeHint,saveStrength);
       if (!presolvedModel->isProvenOptimal()) {
@@ -2257,11 +2360,22 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       // maybe we can fix some
       int numberFixed = 
       reducedCostFix(*presolvedModel);
-#ifdef COIN_DEVELOP
-      if (numberFixed)
-	printf("%d variables fixed on reduced cost\n",numberFixed);
-#endif
+#     if LOU_DEBUG > 0
+      std::cout
+        << "      " << numberFixed << " fixed on reduced cost." << std::endl ;
+      std::cout
+        << "    before modified "
+	<< presolvedModel->getNumRows() << "x"
+	<< presolvedModel->getNumCols() << "." << std::endl ;
+#     endif
       OsiSolverInterface * newModel = modified(presolvedModel,constraints,numberChanges,iPass-doInitialPresolve,numberModifiedPasses);
+#     if LOU_DEBUG > 0
+      std::cout
+        << "    after modified "
+	<< newModel->getNumRows() << "x"
+	<< newModel->getNumCols() << "; "
+	<< ((!newModel)?"failed.":"ok.") << std::endl ;
+#     endif
       returnModel=newModel;
       if (!newModel) {
         break;
@@ -2271,9 +2385,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       //sprintf(name,"pre%2.2d.mps",iPass);
       //newModel->writeMpsNative(name, NULL, NULL,0,1,0);
       if (!numberChanges&&!numberFixed) {
-#ifdef COIN_DEVELOP
-	printf("exiting after pass %d of %d\n",iPass,numberSolvers_);
-#endif
+#       if LOU_DEBUG > 0
+	std::cout
+	  << "      no activity; exiting on pass " << iPass << " of "
+	  << numberSolvers_ << "." << std::endl ;
+#       endif
         numberSolvers_=iPass+1;
         break;
       }
@@ -2713,6 +2829,26 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     //exit(2);
   }
 #endif
+# if CGL_DEBUG > 0
+  std::cout << "Leaving preProcessNonDefault" ;
+  if (returnModel) {
+    if (rcdActive) {
+      if (returnModel->getRowCutDebugger()) {
+	std::cout << "; on optimal path." << std::endl ;
+	const OsiRowCutDebugger *debugger = returnModel->getRowCutDebugger() ;
+	debugger->printOptimalSolution(*returnModel) ;
+      } else if (returnModel->getRowCutDebuggerAlways()) {
+	std::cout << "; not on optimal path." << std::endl ;
+      } else {
+	std::cout << "; failure." << std::endl ;
+      }
+    } else {
+      std::cout << "." << std::endl ;
+    }
+  } else {
+    std::cout << "; no solution." << std::endl ;
+  }
+# endif
   return returnModel;
 }
 
@@ -3743,10 +3879,22 @@ CglPreProcess::modified(OsiSolverInterface * model,
     if (newModel->isBinary(iColumn))
       number01Integers++;
   }
+
+# if LOU_DEBUG > 0
+  std::cout
+    << "  entering modified, " << numberRows << " x "
+    << numberColumns << ", " << number01Integers << " binary." << std::endl ;
+  const CoinPackedMatrix *mtx = newModel->getMatrixByRow() ;
+  int errs = 0 ;
+  errs = mtx->verifyMtx(2) ;
+  assert(errs == 0) ;
+# endif
+
   OsiRowCut ** whichCut = new OsiRowCut * [numberRows+1];
   numberChanges=0;
   CoinThreadRandom randomGenerator;
-  CglTreeProbingInfo info(model);
+  // CglTreeProbingInfo info(model);
+  CglTreeInfo info ;
   info.level = 0;
   info.pass = 0;
   info.formulation_rows = numberRows;
@@ -3770,6 +3918,12 @@ CglPreProcess::modified(OsiSolverInterface * model,
     // Statistics
     int numberFixed=0;
     int numberTwo=twoCuts.sizeRowCuts();
+#     if LOU_DEBUG > 0
+      std::cout << "  modified: pass " << iPass << "." << std::endl ;
+      std::cout
+        << "    Two-cuts at start " << twoCuts.sizeRowCuts()
+	<< std::endl ;
+#     endif
     int numberStrengthened=0;
     info.pass = iPass;
     info.options=0;
@@ -3779,6 +3933,10 @@ CglPreProcess::modified(OsiSolverInterface * model,
       rebuilt   constraint system deleted and recreated (implies initialSolve)
     */
     for (int iGenerator=firstGenerator;iGenerator<lastGenerator;iGenerator++) {
+#     if LOU_DEBUG > 0
+      std::cout << "    generator " << iGenerator << ": " ;
+      std::string genName ;
+#     endif
       bool needResolve = false ;
       bool rebuilt = false ;
       OsiCuts cs;
@@ -3800,26 +3958,60 @@ CglPreProcess::modified(OsiSolverInterface * model,
         if ((dupRow||cliqueGen)&&(iPass/*||iBigPass*/))
             continue;
         probingCut = dynamic_cast<CglProbing *> (generator_[iGenerator]);
+#       if LOU_DEBUG > 0
+	if (dupRow)
+	  genName = "DuplicateRow" ;
+	else if (cliqueGen)
+	  genName = "Clique" ;
+	else if (probingCut)
+	  genName = "Probing" ;
+	else
+	  genName = "Unknown" ;
+	std::cout << genName << std::endl ;
+#	endif
 	if (!probingCut) {
 	  generator_[iGenerator]->generateCuts(*newModel,cs,info);
 	} else {
 	  info.options=64;
 	  probingCut->generateCutsAndModify(*newModel,cs,&info);
 	}
-#if 1 //def CLIQUE_ANALYSIS
+#       if LOU_DEBUG > 0
+	std::cout
+	  << "    " << genName << ": " << cs.sizeRowCuts() << " row cuts, "
+	  << cs.sizeColCuts() << " col cuts." << std::endl ;
+#	endif
+#ifdef CLIQUE_ANALYSIS
+	/* LOU_DEBUG
+	  But nothing actually happens here, because the second param to
+	  analyze defaults to 0, which means analyze() does nothing except
+	  return.
+	*/
 	if (probingCut) {
-	  //printf("ordinary probing\n");
+	  // printf("ordinary probing\n");
+#       if LOU_DEBUG > 0
+	  std::cout
+	    << "    CglTreeProbingInfo::analyze called." << std::endl ;
+#       endif
 	  info.analyze(*newModel);
 	} 
 #endif
         // If CglDuplicate may give us useless rows
         if (dupRow) {
           numberFromCglDuplicate = dupRow->numberOriginalRows();
+#       if LOU_DEBUG > 0
+	  std::cout
+	    << "    " << genName << "::duplicate called, "
+	    << numberFromCglDuplicate << " original rows." << std::endl ;
+#       endif
           duplicate = dupRow->duplicate();
         }
 	if (cliqueGen&&cs.sizeRowCuts()) {
 	  int n = cs.sizeRowCuts();
-	  printf("%d clique cuts\n",n);
+	  // printf("%d clique cuts\n",n);
+#	  if LOU_DEBUG > 0
+	  std::cout
+	    << "    " << genName << ": " << n << " clique cuts." << std::endl ;
+#	  endif
 	  OsiSolverInterface * copySolver = newModel->clone();
 	  numberRows=copySolver->getNumRows();
 	  copySolver->applyCuts(cs);
@@ -3912,7 +4104,16 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  //}
 	}
       } else {
-#if 0
+/*
+  Note that this is a noop given that cliques are not functional. We get here
+  when iGenerator < 0. If you're wondering how that could happen, see the
+  clause down at the end of the pass loop.
+*/
+#	if LOU_DEBUG > 0
+	std::cout
+	  << "Special Probing? Gen = " << iGenerator << "." << std::endl ;
+#       endif
+#ifdef CLIQUE_ANALYSIS
         // special probing
         CglProbing generator1;
         probingCut=&generator1;
@@ -3934,10 +4135,11 @@ CglPreProcess::modified(OsiSolverInterface * model,
           info.pass=4;
           CoinZeroN(whichCut,numberRows);
           generator1.generateCutsAndModify(*newModel,cs,&info);
-#ifdef CLIQUE_ANALYSIS
 	  printf("special probing\n");
+/*
+  This is just a noop because the default second parameter is false.
+*/
 	  info.analyze(*newModel);
-#endif
         } else {
           feasible=false;
         }
@@ -3950,6 +4152,11 @@ CglPreProcess::modified(OsiSolverInterface * model,
         if(whichCut[iRow])
           numberStrengthened++;
       }
+#     if LOU_DEBUG > 0
+      std::cout
+        << "    " << genName << ": strengthened " << numberStrengthened
+	<< std::endl ;
+#     endif
       // Also can we get rid of duplicate rows
       int numberDrop=0;
       for (iRow=0;iRow<numberFromCglDuplicate;iRow++) {
@@ -3958,18 +4165,29 @@ CglPreProcess::modified(OsiSolverInterface * model,
           newModel->setRowBounds(iRow,-COIN_DBL_MAX,COIN_DBL_MAX);
         }
       }
+#     if LOU_DEBUG > 0
+      std::cout
+	<< "    " << genName << ": " << numberDrop << " marked for drop."
+	<< std::endl ;
+#     endif
       const double * columnLower = newModel->getColLower();
       const double * columnUpper = newModel->getColUpper();
       if ((numberStrengthened||numberDrop)&&feasible) {
 	/*
-	  
-	Deleting all rows and rebuilding invalidates everything, initialSolve will
-	be required.
+	  Deleting all rows and rebuilding invalidates everything,
+	  initialSolve will be required.
 	*/
 	needResolve = true ;
 	rebuilt = true ;
         // Easier to recreate entire matrix
         const CoinPackedMatrix * rowCopy = newModel->getMatrixByRow();
+#       if LOU_DEBUG > 0
+	std::cout
+	  << "    verifying before rebuild." << std::endl ;
+	int errs = 0 ;
+	errs = rowCopy->verifyMtx(2) ;
+	assert(errs == 0) ;
+#       endif
         const int * column = rowCopy->getIndices();
         const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
         const int * rowLength = rowCopy->getVectorLengths(); 
@@ -3984,12 +4202,12 @@ CglPreProcess::modified(OsiSolverInterface * model,
           OsiRowCut * thisCut = whichCut[iRow];
           whichCut[iRow]=NULL;
           if (rowLower[iRow]>-1.0e20||rowUpper[iRow]<1.0e20) {
-#if 0
+#           if LOU_DEBUG > 0
 	    if (thisCut) {
-	      printf("Cut on row %d\n",iRow);
+	      printf("        Cut on row %d\n",iRow);
 	      thisCut->print();
 	    }
-#endif
+#           endif
             if (!thisCut) {
               // put in old row
               int start=rowStart[iRow];
@@ -4020,6 +4238,10 @@ CglPreProcess::modified(OsiSolverInterface * model,
 		}
 		if (k==end) {
 		  // see if singleton coefficient can be strengthened
+		  /*
+		    TODO: How does this differ from singleton processing in
+		    	  CglProbing?  -- lh, 110202 --
+		  */
 		  if ((nPosInt==1&&nNegInt>1)||(nNegInt==1&&nPosInt>1)) {
 		    double lo;
 		    double up;
@@ -4241,14 +4463,14 @@ CglPreProcess::modified(OsiSolverInterface * model,
               double upper = thisCut->ub();
               if (probingCut) {
                 int i;
-                int nFree=0;
+                int nFreeCut=0;
                 for ( i=0;i<n;i++) {
                   int iColumn = columnCut[i];
                   if (columnUpper[iColumn]>columnLower[iColumn]+1.0e-12)
-                    nFree++;
+                    nFreeCut++;
                 }
-                bool good = (n==nFree);
-		nFree=0;
+                bool good = (n==nFreeCut);
+		int nFree=0;
                 int n1=rowLength[iRow];
                 int start=rowStart[iRow];
                 for ( i=0;i<n1;i++) {
@@ -4256,10 +4478,16 @@ CglPreProcess::modified(OsiSolverInterface * model,
                   if (columnUpper[iColumn]>columnLower[iColumn]+1.0e-12)
                     nFree++;
                 }
+#		if LOU_DEBUG > 0
+		std::cout
+		  << "    " << " row " << iRow
+		  << ": cut " << n << "/" << nFree << ", orig "
+		  << n1 << "/" << nFree << "." << std::endl ;
+#		endif
                 if (n1!=nFree) 
 		  good=false;
                 if (good) {
-#if 0
+#		  if LOU_DEBUG > 0
                   printf("Original row %.8d %g <= ",iRow,rowLower[iRow]);
                   for ( i=0;i<n1;i++) 
 		    printf("%g * x%d ",rowElements[start+i],column[start+i]);
@@ -4268,7 +4496,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
                   for ( i=0;i<n;i++) 
 		    printf("%g * x%d ",elementCut[i],columnCut[i]);
                   printf("<= %g\n",upper);
-#endif
+#		  endif
                 } else {
                   // can't use
                   n=-1;
@@ -4323,6 +4551,15 @@ CglPreProcess::modified(OsiSolverInterface * model,
           del[iRow]=iRow;
         newModel->deleteRows(numberRows,del);
         newModel->addRows(build);
+#       if LOU_DEBUG > 0
+	std::cout
+	  << "    verifying after rebuild, before cuts; model "
+	  << newModel->getNumRows() << " x " << newModel->getNumCols()
+	  << "." << std::endl ;
+	mtx = newModel->getMatrixByRow() ;
+	errs = mtx->verifyMtx(2) ;
+	// assert(errs == 0) ;
+#       endif
         numberRows = newModel->getNumRows();
 	if (basis) {
 	  assert (numberRows==basis->getNumArtificial());
@@ -4333,6 +4570,15 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  newModel->applyCuts(cs);
 	delete [] keepRow;
         delete [] del;
+#       if LOU_DEBUG > 0
+	std::cout
+	  << "    verifying after rebuild and add row cuts, model "
+	  << newModel->getNumRows() << " x " << newModel->getNumCols()
+	  << "." << std::endl ;
+	mtx = newModel->getMatrixByRow() ;
+	errs = mtx->verifyMtx(2) ;
+	// assert(errs == 0) ;
+#       endif
 /*
   VIRTUOUS
 
@@ -4342,6 +4588,15 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	columnLower = newModel->getColLower();
 	columnUpper = newModel->getColUpper();
       }
+#     if LOU_DEBUG > 0
+      std::cout
+        << "    " << genName << ": after row cuts, " ;
+      if (!feasible) std::cout << "not " ;
+      std::cout << "feasible, resolve " ;
+      if (!needResolve) std::cout << "not " ;
+      std::cout << "required." << std::endl ;
+      int implCutsFromProbe = 0 ;
+#     endif
       if (!feasible)
         break;
       // now see if we have any x=y x+y=1
@@ -4356,11 +4611,28 @@ CglPreProcess::modified(OsiSolverInterface * model,
             twoCuts.insert(*thisCut);
           }
         }
+#       if LOU_DEBUG > 0
+	implCutsFromProbe = twoCuts.sizeRowCuts() ;
+        std::cout
+          << "    " << genName << ": filtered " << implCutsFromProbe
+	  << " implications from " << numberRowCuts << " row cuts."
+	  << std::endl ;
+#       endif
       }
+
+#     ifdef CLIQUE_ANALYSIS
+/*
+  This block processes clique information from CglProbing.
+*/
       if (probingCut) {
 	// we could look harder for infeasibilities 
 	assert (info.numberVariables()==numberColumns);
 	int number01 = info.numberIntegers();
+#	if LOU_DEBUG > 0
+	std::cout
+	  << "    " << genName << ": processing cliques from info."
+	  << std::endl ;
+#	endif
 	const cliqueEntry * entry = info.fixEntries();
 	const int * toZero = info.toZero();
 	const int * toOne = info.toOne();
@@ -4371,6 +4643,13 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	char * markUB = new char [number01];
 	memset(markUB,0,number01);
 	CoinRelFltEq equality;
+/*
+  It looks like what we're doing here is picking apart the clique and
+  generating individual implication cuts. Within a clique, a given variable
+  will have a strong direction, which will force the others. We should be
+  able to write the full set of implication cuts. That's what's done  in this
+  loop.
+*/
 	for (int k=0;k<number01;k++) {
 	  int start = toZero[k];
 	  int end = toOne[k];
@@ -4506,6 +4785,13 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	    }
 	  }
 	}
+#	if LOU_DEBUG > 0
+	std::cout
+	  << "      Bounds from cliques: " << numberBounds << std::endl ;
+	std::cout
+	  << "      Implications from cliques: "
+	  << twoCuts.sizeRowCuts()-implCutsFromProbe << std::endl ;
+#	endif
 	if (numberBounds) {
 	  CoinPackedVector lbs;
 	  CoinPackedVector ubs;
@@ -4529,8 +4815,18 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	delete [] markLB;
 	delete [] markUB;
       }
+/*
+  End block that processes cliques from probing cuts.
+*/
+#     endif
+
       // see if we have any column cuts
       int numberColumnCuts = cs.sizeColCuts() ;
+#     if LOU_DEBUG > 0
+      std::cout
+        << "    " << genName << ": processing " << numberColumnCuts
+	<< " col cuts." << std::endl ;
+#     endif
       int numberBounds=0;
       for (int k = 0;k<numberColumnCuts;k++) {
         OsiColCut * thisCut = cs.colCutPtr(k) ;
@@ -4547,12 +4843,18 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	const int * which ;
 	const double * values ;
 	n = lbs.getNumElements() ;
+#       if LOU_DEBUG > 0
+        std::cout << "      lb changes " << n << std::endl ;
+#       endif
 	which = lbs.getIndices() ;
 	values = lbs.getElements() ;
 	for (j = 0;j<n;j++) {
 	  int iColumn = which[j] ;
           if (values[j]>columnLower[iColumn]&&values[j]>-1.0e20) {
-            //printf("%d lower from %g to %g\n",iColumn,columnLower[iColumn],values[j]);
+#	    if LOU_DEBUG > 0
+            printf("\t%d lower from %g to %g\n",
+	    	   iColumn,columnLower[iColumn],values[j]);
+#	    endif
             newModel->setColLower(iColumn,values[j]) ;
             if (false) {
               OsiSolverInterface * xx = newModel->clone();
@@ -4571,12 +4873,18 @@ CglPreProcess::modified(OsiSolverInterface * model,
           }
 	}
 	n = ubs.getNumElements() ;
+#       if LOU_DEBUG > 0
+        std::cout << "      ub changes " << n << std::endl ;
+#       endif
 	which = ubs.getIndices() ;
 	values = ubs.getElements() ;
 	for (j = 0;j<n;j++) {
 	  int iColumn = which[j] ;
           if (values[j]<columnUpper[iColumn]&&values[j]<1.0e20) {
-            //printf("%d upper from %g to %g\n",iColumn,columnUpper[iColumn],values[j]);
+#	    if LOU_DEBUG > 0
+            printf("\t%d upper from %g to %g\n",
+	    	   iColumn,columnUpper[iColumn],values[j]);
+#	    endif
             newModel->setColUpper(iColumn,values[j]) ;
             if (false) {
               OsiSolverInterface * xx = newModel->clone();
@@ -4601,12 +4909,33 @@ CglPreProcess::modified(OsiSolverInterface * model,
         handler_->message(CGL_PROCESS_STATS,messages_)
           <<numberFixed<<numberBounds<<numberStrengthened<<numberTwo
           <<CoinMessageEol;
+#     if LOU_DEBUG > 0
+      std::cout
+        << "    " << genName << ": after row & col cuts, " ;
+      if (!feasible) std::cout << "not " ;
+      std::cout << "feasible, resolve " ;
+      if (!needResolve) std::cout << "not " ;
+      std::cout << "required." << std::endl ;
+#     endif
       if (!feasible)
         break;
       /*
-	If solution needs to be refreshed, do resolve or initialSolve as appropriate.
+	If solution needs to be refreshed, do resolve or initialSolve
+	as appropriate.
       */
       if (needResolve) {
+#       if LOU_DEBUG > 0
+	std::cout << "    verifying before " ;
+	if (rebuilt)
+	  std::cout << "initialSolve(), " ;
+	else
+	  std::cout << "resolve(), " ;
+	std::cout
+	  << "model " << newModel->getNumRows() << " x "
+	  << newModel->getNumCols() << "." << std::endl ;
+	mtx = newModel->getMatrixByRow() ;
+	mtx->verifyMtx(3) ;
+#       endif
 	if (rebuilt) {
 	  // basis shot to bits?
 	  //CoinWarmStartBasis *slack =
@@ -4631,10 +4960,29 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  //if (!feasible)
 	  //newModel->writeMpsNative("infeas.mps",NULL,NULL,2,1);
 	}
+#       if LOU_DEBUG > 0
+	std::cout << "    verifying after " ;
+	if (rebuilt)
+	  std::cout << "initialSolve(), " ;
+	else
+	  std::cout << "resolve(), " ;
+	std::cout
+	  << "model " << newModel->getNumRows() << " x "
+	  << newModel->getNumCols() << ", " ;
+	if (!feasible) std::cout << "not " ;
+	std::cout << "feasible." << std::endl ;
+	mtx = newModel->getMatrixByRow() ;
+	mtx->verifyMtx(3) ;
+#       endif
       }
       if (!feasible)
         break;
     }
+#   if LOU_DEBUG > 0
+    std::cout << "  end generator loop, pass " << iPass ;
+    if (!feasible) std::cout << " not" ;
+    std::cout << " feasible." << std::endl ;
+#   endif
     if (!feasible)
       break;
     numberChanges +=  numberChangedThisPass;
@@ -4649,6 +4997,9 @@ CglPreProcess::modified(OsiSolverInterface * model,
       }
     }
   }
+/*
+  End main pass loop.
+*/
   delete [] whichCut;
   int numberRowCuts = twoCuts.sizeRowCuts() ;
   if (numberRowCuts) {
@@ -4679,6 +5030,9 @@ CglPreProcess::modified(OsiSolverInterface * model,
     delete newModel;
     newModel=NULL;
   }
+# if LOU_DEBUG > 0
+  std::cout << "  leaving modified." << std::endl ;
+# endif
   return newModel;
 }
 

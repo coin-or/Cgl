@@ -58,7 +58,7 @@ LTLIBRARIES = $(noinst_LTLIBRARIES)
 libCglProbing_la_LIBADD =
 am_libCglProbing_la_OBJECTS = CglProbing.lo CglProbingDebug.lo \
 	CglProbingProbe.lo CglProbingRowCut.lo CglProbingTighten.lo \
-	CglImplication.lo CglProbingTest.lo
+	CglProbingTest.lo
 libCglProbing_la_OBJECTS = $(am_libCglProbing_la_OBJECTS)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -366,7 +366,6 @@ libCglProbing_la_SOURCES = \
 	CglProbingProbe.cpp \
 	CglProbingRowCut.cpp CglProbingRowCut.hpp \
 	CglProbingTighten.cpp \
-	CglImplication.cpp CglImplication.hpp \
 	CglProbingTest.cpp
 
 
@@ -392,9 +391,7 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 # Here list all the header files that are required by a user of the library,
 # and that therefore should be installed in 'include/coin'
 includecoindir = $(includedir)/coin
-includecoin_HEADERS = CglProbing.hpp \
-		      CglImplication.hpp
-
+includecoin_HEADERS = CglProbing.hpp
 all: all-am
 
 .SUFFIXES:
@@ -446,7 +443,6 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglImplication.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbing.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbingDebug.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglProbingProbe.Plo@am__quote@
