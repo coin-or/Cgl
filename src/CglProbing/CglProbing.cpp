@@ -1407,7 +1407,12 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
     makeColCuts(nCols,cs,intVar,colsol,si.getColLower(),si.getColUpper(),
 		si.getColSolution(),colLower,colUpper) ;
 #   if CGL_DEBUG > 0
-    CglProbingDebug::checkBounds(si,cs.getColCut(cs.sizeColCuts())) ;
+    std::cout
+      << "    tighten found " << cs.sizeColCuts() << " column cuts."
+      << std::endl ;
+    if (cs.sizeColCuts()) {
+      CglProbingDebug::checkBounds(si,cs.colCut((cs.sizeColCuts()-1))) ;
+    }
 #   endif
 /*
   We've calculated changes in column bounds due to propagation. To go further,
@@ -1568,7 +1573,7 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
     << "Leaving CglProbing::gutsOfGenerateCuts, "
     << cs.sizeRowCuts() << " row cuts, " << cs.sizeColCuts()
     << " col cuts, infeas " << ninfeas << std::endl ;
-  debugger = si.getRowCutDebugger() ;
+  const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
   if (debugger) {
     debugger->validateCuts(cs,0,cs.sizeCuts()) ;
 # if CGL_DEBUG > 2
