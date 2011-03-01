@@ -2011,7 +2011,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	  if (value<0.0) {
 	    elements[newSize]=value;
 	    column[newSize++]=iColumn;
-	  } else {
+	  } else if (value>0.0) {
 	    elements2[nOther]=value;
 	    column2[nOther++]=iColumn;
 	  }
