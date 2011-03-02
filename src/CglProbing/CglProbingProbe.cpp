@@ -442,17 +442,6 @@ void implicationCuts (int jProbe, double primalTol, int nCols,
 
   These cuts do not cast the probe value in concrete, so we can apply them
   whether or not the probe cuts off portions of the current solution.
-
-  It must be true that goingToTrueBound == 2 and justReplace == false when
-  this method is called.
-
-  TODO: If you look at the math, the critical thing to get the cut form
-	used here is that the old and new bounds on x<p> be separated by
-	one. E.g., for a down probe, (u<p>-u'<p>) = 1.  It looks to
-	me like goingToTrueBound might have been an attempt to guarantee this
-	condition, but the test is wrong, hence it's patched up with tweak
-	that essentially cuts this cut back to binary probing variables.
-	-- lh, 101214 --
 */
 void disaggCuts (int nstackC, unsigned int probeDir,
 		 double primalTolerance_, double disaggEffectiveness,
@@ -2021,15 +2010,18 @@ int CglProbing::probe( const OsiSolverInterface &si,
 	}
       }
 /*
-  awayFromBound isn't quite accurate --- we'll also set awayFromBound = 0
-  for a general integer variable at an integer value strictly within bounds.
-*/
-      int awayFromBound = 1 ;
-/*
   Have a look at the candidate probing variable. It must be integer, but
-  not necessarily binary. It's possible that previous activity may have
-  improved the bounds or even fixed it. We're not interested if the value
-  in the primal solution is no longer within bounds.
+  not necessarily binary. Failure is an algorithm error.
+
+  It's possible that previous activity may have improved the bounds or
+  even fixed the variable. We're not interested if the value in the primal
+  solution is no longer within bounds -- this variable has already been
+  swept up in bounds propagation. There's no need to try and use it to
+  initiate propagation.
+
+  The best way to understand the following blocks of code is to draw a
+  picture, marking out +/- tolerance to either side of l<j> or u<j> and
+  look at the values for down and up.
 */
       int j = lookedAt_[iLook] ;
       assert(intVar[j]) ;
@@ -2053,64 +2045,34 @@ int CglProbing::probe( const OsiSolverInterface &si,
       if (gap < 1.0e-8 || (xj > uj+tolerance) || (xj < lj-tolerance))
         continue ;
 /*
-  `Normalize' variables that are near (or past) their bounds.
-
-  In normal circumstances, u<j> - l<j> is at least 1, while tol will be
-  down around 10e-5 (given a primal tolerance of 10e-6, about as large as
-  you'd normally see). Then
-
-  l<j> < l<j>+tol < l<j>+2tol << u<j>-2tol < u<j>-tol < u<j>
-
-  For x<j> > u<j>-tol, (x<j>,u<j>,u<j>) => (u<j>-.1, l<j>, u<j>)
-  For x<j> < l<j>+tol, (x<j>,l<j>,l<j>) => (l<j>+.1, l<j>, u<j>)
-  For up == down,      (x<j>,v,v)       => (v+.1,v,v+1)
-
-  So we're forcing a spread of 1 between up and down, and moving x<j>
-  to something far enough (.1) from integer to avoid accuracy problems when
-  calculating movement. A side effect is that primal infeasibility is
-  corrected.
-
-  TODO: Why this structure? Another approach would be to test using up and
-  	down calculated just above. It works out pretty much the same if
-	you stick with variables of type double. Moving to int would likely
-	make it faster.  -- lh, 101127 --
-
-  TODO: Things will get seriously wierd if (u<j> - l<j>) <= 3tol. For
-        u<j>-tol < x<j> < l<j>+2tol, values will change. But the symmetric
-	case u<j>-2tol < x<j> < l<j>+tol will never change values because
-	of the order of the if statements. Clearly the code is not designed
-	to cope with this level of pathology.  -- lh, 101127 --
-  
-  TODO: It's worth noting that awayFromBound is never used.  -- lh, 101127 --
-
-  TODO: It's worth noting that the values set for xj are never used except
-	in a debug print.  -- lh, 101213 --
-
-  TODO: The final case below corresponds to l<j>+1 <= down == up < u<j>-1,
-	e.g., an interior integer value. Seems like we'd want to probe +1 and
-	-1. Presumably the code isn't set up to do this, so we arbitrarily
-	pick the up probe. Could the code be augmented to do the stronger
-	probe?  -- lh, 101127 --
+  `Normalize' variables that are near their bounds or interior integral; we
+  can spot them easily because down == up. We want to make sure we have a
+  spread of 1 between down and up, within the current bounds.
 */
-      if (xj >= uj-tolerance ||
-          xj <= lj+tolerance || up == down) {
-	awayFromBound = 0 ;
-	if (xj <= lj+2.0*tolerance) {
-	  xj = lj+1.0e-1 ;
-	  down = lj ;
-	  up = down+1.0 ;
-	} else if (xj >= uj-2.0*tolerance) {
-	  xj = uj-1.0e-1 ;
-	  up = uj ;
+      if (down == up) {
+        if (down == lj) {
+	  // at l<j>
+	  up = down+1 ;
+	} else if (down == uj) {
+	  // at u<j>
 	  down = up-1 ;
 	} else {
-          up = down+1.0 ;
-          xj = down+1.0e-1 ;
-        }
+	  // interior integer; arbitrarily go up
+	  up = down+1 ;
+	}
       }
-      assert (up <= uj) ;
-      assert (down >= lj) ;
-      assert (up > down) ;
+#     if CGL_DEBUG > 0
+      if (down < lj || up > uj || down == up) {
+	std::cout
+	  << "ERROR! Up and down probe values out of bounds or equal!"
+	  << std::endl
+	  << "    x<" << j << "> " << xj << ", l " << lj
+	  << ", u " << uj << ", down " << down << ", up " << up
+	  << "." << std::endl ;
+      }
+#     endif
+      assert(down >= lj && up <= uj && ((up-down) == 1)) ;
+
 #     if CGL_DEBUG > 0
       const bool downIsLower = (CoinAbs(down-lj) < 1.0e-7) ;
       const bool upIsUpper = (CoinAbs(up-uj) < 1.0e-7) ;
@@ -2151,54 +2113,44 @@ int CglProbing::probe( const OsiSolverInterface &si,
         stackC[0] = j ;
         markC[j] = way[iWay] ;
 /*
-  Calculate movement given the current direction. Given the setup above,
-  movement should be at least +/-1.
+  Calculate movement given the current direction. Also determine if this probe
+  is suitable for disaggregation cuts (new and old bounds must be distance 1
+  for the form generated by disaggCuts).
 
-  TODO: Notice we reset up or down yet again. Really, this shouldn't be
-  	necessary. For that matter, why did we bother with awayFromBound
-	immediately above? -- lh, 101127 --
-
-  TODO: The more I think about this, the less happy I am. Seems to me that
-  	neither colUpper or colLower can change during iterations of this
-	loop. If we discover monotone, we save tightened bounds and break.
-	If we don't discover monotone, we restore bounds and iterate. Let's
-	test that.  -- lh, 110105 --
-*/
-        double solMovement ;
-        double movement ;
-        int goingToTrueBound = 0 ;
-
-#	if CGL_DEBUG > 0
-	assert(lj == colLower[j]) ;
-	assert(uj == colUpper[j]) ;
-	assert(downIsLower == (CoinAbs(down-colLower[j]) < 1.0e-7)) ;
-	assert(upIsUpper == (CoinAbs(up-colUpper[j]) < 1.0e-7)) ;
-#	endif
-
-        if (way[iWay] == probeDown) {
-          movement = down-colUpper[j] ;
-          solMovement = down-colsol[j] ;
-          assert(movement < -0.99999) ;
-          if (CoinAbs(down-colLower[j]) < 1.0e-7) {
-            goingToTrueBound = 2 ;
-            down = colLower[j] ;
-          }
-        } else {
-          movement = up-colLower[j] ;
-          solMovement = up-colsol[j] ;
-          assert(movement > 0.99999) ;
-          if (CoinAbs(up-colUpper[j]) < 1.0e-7) {
-            goingToTrueBound = 2 ;
-            up = colUpper[j] ;
-          }
-        }
-/*
   Coding for goingToTrueBound is:
     0: We're somewhere in the interior of a general integer.
     1: We're heading for one of the bounds on a general integer.
     2: We're processing a binary variable (u<j>-l<j> = 1 and l<j> = 0).
-  You can view this next test as correcting for the fact that the previous
-  code assumes binary variables are all there is.
+*/
+        double solMovement ;
+        double movement ;
+        int goingToTrueBound = 1 ;
+
+#	if CGL_DEBUG > 0
+	assert(lj == colLower[j]) ;
+	assert(uj == colUpper[j]) ;
+	assert(downIsLower == (down == lj)) ;
+	assert(upIsUpper == (up == uj)) ;
+#	endif
+
+        if (way[iWay] == probeDown) {
+          movement = down-uj ;
+          solMovement = down-xj ;
+          assert(movement < -0.99999) ;
+          if (down != lj) {
+            goingToTrueBound = 0 ;
+          }
+        } else {
+          movement = up-lj ;
+          solMovement = up-xj ;
+          assert(movement > 0.99999) ;
+          if (up != uj) {
+            goingToTrueBound = 0 ;
+          }
+        }
+	if (goingToTrueBound && intVar[j] == 1)
+	  goingToTrueBound = 2 ;
+/*
 
   TODO: Now that I've figured out the math for the constraints generated
 	by disaggCuts (see typeset documentation), I see what's wrong
@@ -2210,8 +2162,6 @@ int CglProbing::probe( const OsiSolverInterface &si,
 	need to sort out a couple of other places where goingToTrueBound
 	controls behaviour.  -- lh, 101214 --
 */
-        if (goingToTrueBound && (colUpper[j]-colLower[j] > 1.5 || colLower[j]))
-          goingToTrueBound = 1 ;
 /*
   If the user doesn't want disaggregation cuts, pretend we're in the interior
   of a general integer variable.
