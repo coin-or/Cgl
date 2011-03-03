@@ -1930,6 +1930,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     oldModel->messageHandler()->setLogLevel(saveLogLevel);
     if (presolvedModel) {
       presolvedModel->messageHandler()->setLogLevel(saveLogLevel);
+      //presolvedModel->writeMps("new");
       // update prohibited and rowType
       update(pinfo,presolvedModel);
       if (!presolvedModel->getNumRows()) {
@@ -2255,8 +2256,19 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       numberIterationsPre_ += presolvedModel->getIterationCount();
       presolvedModel->setHintParam(OsiDoDualInInitial,saveTakeHint,saveStrength);
       if (!presolvedModel->isProvenOptimal()) {
-        returnModel=NULL;
-        break;
+	//presolvedModel->writeMps("bad");
+	CoinWarmStartBasis *slack =
+	  dynamic_cast<CoinWarmStartBasis *>(presolvedModel->getEmptyWarmStart()) ;
+	presolvedModel->setWarmStart(slack);
+	delete slack ;
+	presolvedModel->resolve();
+	if (!presolvedModel->isProvenOptimal()) {
+	  returnModel=NULL;
+	  //printf("infeasible\n");
+	  break;
+	} else {
+	  //printf("feasible on second try\n");
+	}
       }
       // maybe we can fix some
       int numberFixed = 
@@ -3507,6 +3519,7 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 	double value2 = floor(value+0.5);
 	// if test fails then empty integer
 	if (fabs(value-value2)<1.0e-3) {
+	  value2 = CoinMax(CoinMin(value2,columnUpper[iColumn]),columnLower[iColumn]);
 	  model->setColLower(iColumn,value2);
 	  model->setColUpper(iColumn,value2);
 	} else {
