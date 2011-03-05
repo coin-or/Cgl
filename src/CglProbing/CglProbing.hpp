@@ -9,6 +9,7 @@
 
 #include "CglCutGenerator.hpp"
 
+#ifdef CLIQUE_ANALYSIS
 /*! \brief Umm ... ???
   
   jjf: Only useful type of disaggregation is most normal. For now just done
@@ -41,80 +42,54 @@ typedef struct {
     */
     unsigned int affected ;
   } disaggregationAction ;
+#endif
 
 /*! \brief Probing Cut Generator
 
-  This is a simplification of probing ideas put into OSL about ten years
-  ago.  The only known documentation is a copy of a talk handout - we think
-  Robin Lougee has a copy!
+  CglProbing borrows a subset of probing ideas put into OSL about ten years
+  ago and extends them.  The only known documentation is a copy of a talk
+  handout - Robin Lougee and Lou Hafer have copies.
 
-  For selected integer variables (e.g. unsatisfied ones) the effect of
-  setting them up or down is investigated.  Setting a variable up may in turn
-  set other variables (continuous as well as integer).  There are various
+  For selected integer variables (probe variables, see #setMode), the effect
+  of changing bounds to force them up or down to the next integer is
+  investigated.  Changing a bound on the probe variable may in turn affect
+  other variables (continuous as well as integer).  There are various
   possible results:
-
-  1) It is shown that the problem is infeasible or can be fathomed by bound
-     in one or both directions. If one direction remains viable, we can
-     generate a column cut (and continue probing).
-
-  2) If both ways are feasible, it can happen that x -> 0 implies y -> 1
-     *and* x -> 1 implies y -> 1 (again a column cut).  More common
-     is that x -> 0 implies y -> 1 and x -> 1 implies y -> 0 and we can
-     substitute for y, which might lead later to more powerful cuts.
-
-     Sadly, this is not done in this code as there is no mechanism for
-     returning the information. This is a big TODO.
-
-     \todo
-     Actually, it *is* done in the code here, labelled as two-cuts, in
-     conjunction with CglPreProcess. It's just that John never bothered
-     to change the comment. Update this once I'm a bit further along in
-     the rewrite. -- lh, 110201 --
-
-  3) x -> 1 causes a constraint to become slack by some amount c.  We can
-     tighten the constraint ax + .... <= b (where a may be zero) to
-     (a+c)x + .... <= b.  If this cut is violated then it is generated.
-
-  4) Similarly, we can generate implied disaggregation cuts.
-
-  Note the following differences from cuts in OSL:
-
-  a) OSL had structures intended to make this faster.
-  b) The "chaining" in 2) was implemented.
-  c) Row cuts modified the original constraint rather than adding a cut.
-  d) This code can cope with general integer variables. Sort of. Sometimes
-     it trails off into a disabled dead end.
+  <ol>
+    <li>
+    It is shown that the problem is infeasible or can be fathomed by bound
+    in one or both directions. If one direction remains viable (monotone),
+    we can generate one or more column cuts and continue probing.
+    </li>
+    <li>
+    It can happen that x -> 0 implies y -> 1, or any of three similar
+    implications. This can be captured in a disaggregation cut.
+    </li>
+    <li>
+    If both ways are feasible, it can happen that x -> 0 implies y -> 1
+    *and* x -> 1 implies y -> 1 (or similar; again, a column cut).  More
+    common is that x -> 0 implies y -> 1 and x -> 1 implies y -> 0 (or
+    similar). This can be captured in an implication cut.
+    </li>
+    <li>
+    x -> 1 causes a constraint to become slack by some amount c.  We can
+    tighten the constraint ax + .... <= b (where a may be zero) to
+    (a+c)x + .... <= b. This is coefficient strengthening. During
+    preprocessing, it can be done in place, altering the coefficient in the
+    existing constraint.
+    </li>
+  </ol>
 
   \todo
-  c) is also untrue for the existing code, in the sense that CglPreProcess
-  will replace original rows with coefficient strengthening cuts. Again,
-  the comment was never updated. Update once I'm a bit further along in
-  the rewrite. -- lh, 110201 --
+  The reader will note that when an implication is discovered we could
+  directly substitute x for y, or vice versa, during preprocessing. This is
+  not done at present as there is no mechanism for returning the information.
 
   The generated cuts are inserted into an OsiCut object. Both row cuts and
   column cuts may be returned.
 
-  If a "snapshot" of the matrix exists then this will be used.  Presumably
-  this will give global cuts and will be faster.  No check is done to see if
-  cuts will be global. Otherwise use the current matrix held in the solver
-  interface.
-
-  The mode options are:
-
-  - 0: Only unsatisfied integer variables will be looked at.  If no
-       information exists for that variable then probing will be done so as a
-       by-product you may get a fixing or infeasibility.  This will be fast
-       and is only available if a snapshot exists (otherwise you get mode 1).
-       The bounds in the snapshot are the ones used.
-
-  - 1: Look at unsatisfied integer variables, using current bounds. All
-       unsatisfied integer variables will be probed.
-
-  - 2: Look at all integer variables, using current bounds. All integer
-       variables will be probed.
-
   In all modes, user specified limits (number of variables probed, types of
-  cuts generated, etc.) will be observed.
+  cuts generated, etc.) are (mostly) observed.
 */
 class CglProbing : public CglCutGenerator {
    friend int CglProbingUnitTest(const OsiSolverInterface *siP,
@@ -124,10 +99,10 @@ public:
 
   /*! \name Generate Cuts */
   //@{
-  /*! \brief Generate probing/disaggregation cuts
+  /*! \brief Probe and generate cuts
 
-    Cuts are generated for the constraint system held in \p si unless a
-    snapshot matrix exists, in which case the snapshot is used.
+    Cuts are generated for the constraint system held in \p si and returned in
+    \p cs.
   */
   virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
 			     const CglTreeInfo info = CglTreeInfo()) const ;
@@ -544,7 +519,10 @@ private:
   mutable int totalTimesCalled_ ;
   /// Which ones looked at this time
   mutable int * lookedAt_ ;
+  /// If not null and [i] != 0 then also tighten even if continuous
+  char *tightenBounds_ ;
 
+# ifdef CLIQUE_ANALYSIS
   /*! \brief For disaggregation cuts and for building cliques
 
     disaggregationAction has been reduced to a vector of indices, presumably
@@ -566,10 +544,6 @@ private:
   */
   disaggregation *cutVector_ ;
 
-  /// If not null and [i] != 0 then also tighten even if continuous
-  char *tightenBounds_ ;
-
-# ifdef CLIQUE_ANALYSIS
   /************************  Cliques  ************************/
   /*
     Cliques detected by CglProbing are always a single row and have a
@@ -673,6 +647,7 @@ private:
   //@}
 } ;
 
+#ifdef CLIQUE_ANALYSIS
 /*
   What we have here is dangerous, but efficient. (Vid. the commented-out
   bit fields in disaggregationAction).  Expropriate the top three bits of
@@ -726,7 +701,7 @@ inline bool affectedToUBInDisagg(const disaggregationAction & dis)
 { return (dis.affected&0x20000000)!=0;}
 inline void setAffectedToUBInDisagg(disaggregationAction & dis,bool affectedToUB)
 { dis.affected = (affectedToUB ? 0x20000000 : 0)|(dis.affected&0xdfffffff);}
-
+#endif
 //#############################################################################
 /** A function that tests the methods in the CglProbing class. The
     only reason for it not to be a member method is that this way it doesn't

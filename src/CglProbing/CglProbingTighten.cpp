@@ -282,7 +282,7 @@ void CglProbing::calcRowBounds (double *colLower, double * colUpper,
   int iflagu, iflagl ;
   double dmaxup, dmaxdown ;
 
-# if CGL_DEBUG > 0
+# if CGL_DEBUG > 1
   std::cout << "Entering CglProbing::calcRowBounds." << std::endl ;
 # endif
 /*
@@ -375,7 +375,7 @@ void CglProbing::calcRowBounds (double *colLower, double * colUpper,
 #   endif
   }
 
-# if CGL_DEBUG > 0
+# if CGL_DEBUG > 1
   std::cout << "Leaving CglProbing::calcRowBounds." << std::endl ;
 # endif
 

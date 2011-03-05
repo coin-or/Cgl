@@ -131,7 +131,7 @@ void makeColCuts (int nCols, OsiCuts &cs,
 bool analyze (const OsiSolverInterface *solverX, char *intVar,
 	      double *lower, double *upper)
 {
-# if CGLPROBING_DEBUG > 0
+# if CGL_DEBUG > 1
   std::cout << "Entering CglProbing::analyze." << std::endl ;
 # endif
   const double e20Inf = 1.0e20 ;
@@ -454,7 +454,7 @@ bool analyze (const OsiSolverInterface *solverX, char *intVar,
   delete [] ignore ;
   delete solver ;
 
-# if CGLPROBING_DEBUG > 0
+# if CGL_DEBUG > 1
   std::cout
     << "CglProbing::analyze: " << numberChanged
     << " variables could be made integer." << std::endl ;
@@ -482,7 +482,7 @@ CoinPackedMatrix *setupRowCopy (int mode, bool useObj,
 				const OsiSolverInterface &si,
 				double *rowLower, double *rowUpper)
 {
-# if CGL_DEBUG > 0
+# if CGL_DEBUG > 1
   std::cout << "Entering setupRowCopy, mode " << mode << ", " ;
   if (!rowCopy_) std::cout << "no " ;
   std::cout << "row copy." << std::endl ;
@@ -552,10 +552,15 @@ CoinPackedMatrix *setupRowCopy (int mode, bool useObj,
       rowUpper[nRows-1] = cutoff+offset ;
     }
   }
-# if CGL_DEBUG > 0
+# if CGL_DEBUG > 1
   if (rowCopy) {
-    std::cout << "  verifying matrix." << std::endl ;
-    rowCopy->verifyMtx(2) ;
+    int errs = rowCopy->verifyMtx(CGL_DEBUG) ;
+    if (errs > 0) {
+      std::cout
+        << "    generateCutsAndModify: verifyMtx failed post-cutgen, "
+	<< errs << " errors." << std::endl ;
+      assert (errs == 0) ;
+    }
   }
   std::cout << "Leaving setupRowCopy." << std::endl ;
 # endif
@@ -617,7 +622,7 @@ bool groomModel (
 		 const CglTreeInfo *info
 	        )
 {
-# if CGL_DEBUG > 0
+# if CGL_DEBUG > 1
   std::cout << "Entering groomModel." << std::endl ;
 # endif
 
@@ -908,6 +913,10 @@ bool groomModel (
   rowStart[nRows] = newSize ;
   rowCopy->setNumElements(newSize) ;
 
+# if CGL_DEBUG > 1
+  std::cout << "Leaving groomModel." << std::endl ;
+# endif
+
   return (true) ;
 } 
 
@@ -992,7 +1001,7 @@ void CglProbing::generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
 # if CGL_DEBUG > 0
   { int errs = 0 ;
     const CoinPackedMatrix *mtx = si.getMatrixByRow() ;
-    errs = mtx->verifyMtx(2) ;
+    errs = mtx->verifyMtx(CGL_DEBUG) ;
     if (errs > 0) {
       std::cout
         << "    generateCuts: verifyMtx failed, "
@@ -1099,13 +1108,11 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
   int nCols = si.getNumCols() ; 
   double *colLower = new double[nCols] ;
   double *colUpper = new double[nCols] ;
-/*
-  Do the work.
-*/
-# if CGL_DEBUG > 0
+
+# if CGL_DEBUG > 1
   { int errs = 0 ;
     const CoinPackedMatrix *mtx = si.getMatrixByRow() ;
-    errs = mtx->verifyMtx(3) ;
+    errs = mtx->verifyMtx(CGL_DEBUG) ;
     if (errs > 0) {
       std::cout
         << "    generateCutsAndModify: verifyMtx failed pre-cutgen, "
@@ -1114,16 +1121,17 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
     }
   }
 # endif
+
 /*
   Do the work. There's no guarantees about the state of the row and column
   bounds arrays if we come back infeasible.
 */
   int ninfeas = gutsOfGenerateCuts(si,cs,
 				   rowLower,rowUpper,colLower,colUpper,info) ;
-# if CGL_DEBUG > 0
+# if CGL_DEBUG > 1
   { int errs = 0 ;
     const CoinPackedMatrix *mtx = si.getMatrixByRow() ;
-    errs = mtx->verifyMtx(3) ;
+    errs = mtx->verifyMtx(CGL_DEBUG) ;
     if (errs > 0) {
       std::cout
         << "    generateCutsAndModify: verifyMtx failed post-cutgen, "
@@ -1214,6 +1222,12 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
     << "Entering CglProbing::gutsOfGenerateCuts, mode " << mode_ << ", " ;
   if (!info->inTree) std::cout << "not " ;
   std::cout << "in tree, pass " << info->pass << "." << std::endl ;
+  const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
+  if (debugger) {
+    std::cout << "  On optimal path." << std::endl ;
+  } else if (si.getRowCutDebuggerAlways()) {
+    std::cout << "  !! Not on optimal path!" << std::endl ;
+  }
 # endif
 
   int numberRowCutsBefore = cs.sizeRowCuts() ;
@@ -1573,7 +1587,7 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
     << "Leaving CglProbing::gutsOfGenerateCuts, "
     << cs.sizeRowCuts() << " row cuts, " << cs.sizeColCuts()
     << " col cuts, infeas " << ninfeas << std::endl ;
-  const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
+  debugger = si.getRowCutDebugger() ;
   if (debugger) {
     debugger->validateCuts(cs,0,cs.sizeCuts()) ;
 # if CGL_DEBUG > 2
@@ -1581,7 +1595,7 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
       (*oneCut)->print() ;
 # endif
   } else if (si.getRowCutDebuggerAlways()) {
-    std::cout << "  !! Not on optimal path." << std::endl ;
+    std::cout << "  !! Not on optimal path!" << std::endl ;
   }
 # endif
 
@@ -1835,10 +1849,10 @@ usingObjective_(0)
   numberThisTime_ = 0 ;
   totalTimesCalled_ = 0 ;
   lookedAt_ = NULL ;
-  cutVector_ = NULL ;
   tightenBounds_ = NULL ;
 
 # ifdef CLIQUE_ANALYSIS
+  cutVector_ = NULL ;
   numberCliques_=0 ;
   cliqueType_=NULL ;
   cliqueStart_=NULL ;
@@ -1886,9 +1900,10 @@ CglProbing::CglProbing (const CglProbing & rhs)
     CoinMemcpyN(rhs.colLower_,numberColumns_,colLower_) ;
     colUpper_ = new double[numberColumns_] ;
     CoinMemcpyN(rhs.colUpper_,numberColumns_,colUpper_) ;
-    int i ;
     numberIntegers_ = rhs.numberIntegers_ ;
     number01Integers_ = rhs.number01Integers_ ;
+#   ifdef CLIQUE_ANALYSIS
+    int i ;
     cutVector_ = new disaggregation [number01Integers_] ;
     CoinMemcpyN(rhs.cutVector_,number01Integers_,cutVector_) ;
     for (i = 0 ; i < number01Integers_ ; i++) {
@@ -1897,6 +1912,7 @@ CglProbing::CglProbing (const CglProbing & rhs)
 	    CoinCopyOfArray(rhs.cutVector_[i].index,cutVector_[i].length) ;
       }
     }
+#   endif
   } else {
     rowCopy_ = NULL ;
     columnCopy_ = NULL ;
@@ -1906,7 +1922,7 @@ CglProbing::CglProbing (const CglProbing & rhs)
     colUpper_ = NULL ;
     numberIntegers_ = 0 ;
     number01Integers_ = 0 ;
-    cutVector_ = NULL ;
+    // CLIQUE cutVector_ = NULL ;
   }
   numberThisTime_ = rhs.numberThisTime_ ;
   totalTimesCalled_ = rhs.totalTimesCalled_ ;
@@ -1989,12 +2005,14 @@ CglProbing::~CglProbing ()
   delete rowCopy_ ;
   delete columnCopy_ ;
   delete [] lookedAt_ ;
+# ifdef CLIQUE_ANALYSIS
   if (cutVector_) {
     for (int i = 0 ; i < number01Integers_ ; i++) {
       delete [] cutVector_[i].index ;
     }
     delete [] cutVector_ ;
   }
+# endif
   delete [] tightenBounds_ ;
 # ifdef CLIQUE_ANALYSIS
   delete [] cliqueType_ ;
@@ -2067,6 +2085,7 @@ CglProbing::operator=(
       CoinMemcpyN(rhs.colUpper_,numberColumns_,colUpper_) ;
       numberIntegers_ = rhs.numberIntegers_ ;
       number01Integers_ = rhs.number01Integers_ ;
+#     ifdef CLIQUE_ANALYSIS
       for (int i = 0 ; i < number01Integers_ ; i++) {
         delete [] cutVector_[i].index ;
       }
@@ -2079,6 +2098,7 @@ CglProbing::operator=(
 	      CoinCopyOfArray(rhs.cutVector_[i].index,cutVector_[i].length) ;
         }
       }
+#     endif
     } else {
       rowCopy_ = NULL ;
       columnCopy_ = NULL ;
@@ -2088,7 +2108,7 @@ CglProbing::operator=(
       colUpper_ = NULL ;
       numberIntegers_ = 0 ;
       number01Integers_ = 0 ;
-      cutVector_ = NULL ;
+      // CLIQUE cutVector_ = NULL ;
     }
     numberThisTime_ = rhs.numberThisTime_ ;
     totalTimesCalled_ = rhs.totalTimesCalled_ ;
