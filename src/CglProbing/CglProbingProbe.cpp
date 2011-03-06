@@ -57,21 +57,19 @@ const unsigned int infUpper = 0x8 ;
   The second down pass is used to restore the down probe state when down
   is feasible but up is not.
 
-  The first set (downIter, upIter, downIter2, oneIterTooMany) *must*
+  The first set (downIter, upIter, oneIterTooMany) *must*
   match the iteration number for the corresponding pass in the PROBE
   loop. The symbolic names make the code a bit easier to read.
 */
 const unsigned int downIter = 0 ;
 const unsigned int upIter = 1 ;
-const unsigned int downIter2 = 2 ;
-const unsigned int oneIterTooMany = 3 ;
+const unsigned int oneIterTooMany = 2 ;
 
 const unsigned int probeDown = tightenUpper ;
 const unsigned int probeUp = tightenLower ;
 
 const unsigned int downIterFeas = 0x1 ;
 const unsigned int upIterFeas = 0x2 ;
-const unsigned int downIter2Feas = 0x4 ;
 
 }  // end file-local namespace
 
@@ -2108,9 +2106,9 @@ int CglProbing::probe( const OsiSolverInterface &si,
   a mere 600 lines farther on.
 */
       unsigned int iWay ;
-      unsigned int way[] = { probeDown, probeUp, probeDown } ;
+      unsigned int way[] = { probeDown, probeUp } ;
       unsigned int feasValue[] =
-          { downIterFeas, upIterFeas, downIter2Feas } ;
+          { downIterFeas, upIterFeas } ;
       unsigned int feasRecord = 0 ;
       bool notFeasible = false ;
       int istackC = 0 ;
@@ -2164,18 +2162,17 @@ int CglProbing::probe( const OsiSolverInterface &si,
   polytope on the side that's getting looser!
 */
 	bool doDisaggCuts = (((rowCuts&0x01) != 0) && probeDistOne) ;
-
 	bool doCoeffStrengthen = (((rowCuts&0x02) != 0) &&
 	    (!justReplace || (justReplace && probeDistOne))) ;
 
 #       if CGL_DEBUG > 1
-	if (iWay == downIter || iWay == downIter2)
+	if (iWay == downIter)
 	  std::cout
-	    << "    down probe(" << iWay << "), old u " << colUpper[j]
+	    << "    down probe, old u " << colUpper[j]
 	    << ", new u " << colUpper[j]+movement ;
 	else
 	  std::cout
-	    << "    up probe(" << iWay << "), old l " << colLower[j]
+	    << "    up probe, old l " << colLower[j]
 	    << ", new l " << colLower[j]+movement ;
 	std::cout
 	    << ", move " << movement << ", soln " << colsol[j]
@@ -2196,37 +2193,23 @@ int CglProbing::probe( const OsiSolverInterface &si,
         assert (saveU[0] > saveL[0]) ;
         notFeasible = false ;
 /*
-  Recalculate the upper (down probe) or lower (up probe) bound. You can see
-  from the debug print that arbitrary integers are an afterthought in this
-  code.
-
-  TODO: And why not just set the bounds to down (colUpper) or up (colLower)?
-        We set movement = down-colUpper just above, and we've taken a lot of
-	care to groom up and down. This is pointless effort.  -- lh, 101214 --
+  Set the bounds and gap for the probe. Clean up the markC flags.
 */
         if (movement < 0.0) {
-          colUpper[j] += movement ;
-          colUpper[j] = floor(colUpper[j]+0.5) ;
-	  columnGap[j] = colUpper[j]-colLower[j]-primalTolerance_ ;
+          colUpper[j] = down ;
         } else {
-          colLower[j] += movement ;
-          colLower[j] = floor(colLower[j]+0.5) ;
-	  columnGap[j] = colUpper[j]-colLower[j]-primalTolerance_ ;
+          colLower[j] = up ;
         }
-/*
-  Is this variable now fixed?
-*/
-        if (CoinAbs(colUpper[j]-colLower[j]) < 1.0e-6)
+	columnGap[j] = colUpper[j]-colLower[j]-primalTolerance_ ;
+        if (CoinAbs(colUpper[j]-colLower[j]) < 1.0e-6) {
           markC[j] = tightenUpper|tightenLower ;
-/*
-  Clear the infinite bound bits (infUpper|infLower) and check again. Bounds
-  may have improved.
-*/
-	markC[j] &= ~(infUpper|infLower) ;
-	if (colUpper[j] > 1.0e10)
-	  markC[j] |= infUpper ;
-	if (colLower[j] < -1.0e10)
-	  markC[j] |= infLower ;
+	} else {
+	  markC[j] &= ~(infUpper|infLower) ;
+	  if (colUpper[j] > 1.0e10)
+	    markC[j] |= infUpper ;
+	  if (colLower[j] < -1.0e10)
+	    markC[j] |= infLower ;
+	}
         istackC = 0 ;
 /*
   Update row bounds to reflect the change in variable bound.
@@ -2234,13 +2217,13 @@ int CglProbing::probe( const OsiSolverInterface &si,
   TODO: Replacing code to update row bounds with updateRowBounds(). We'll
 	see how it looks.  -- lh, 101203 --
 */
-
-  if (!updateRowBounds(j,movement,columnStart,columnLength,row,columnElements,
-		       rowUpper,rowLower,nstackR,stackR,markR,
-		       minR,maxR,saveMin,saveMax)) {
-    notFeasible = true ;
-    istackC = 1 ;
-  }
+	if (!updateRowBounds(j,movement,columnStart,
+			     columnLength,row,columnElements,
+			     rowUpper,rowLower,nstackR,stackR,markR,
+			     minR,maxR,saveMin,saveMax)) {
+	  notFeasible = true ;
+	  istackC = 1 ;
+	}
 /*
   PROBE LOOP: BEGIN PROPAGATION
 
@@ -2257,8 +2240,6 @@ int CglProbing::probe( const OsiSolverInterface &si,
 
   TODO: stackC is clearly a queue. Allocation strategy is still unclear.
         -- lh, 101128 --
-
-  jjf:  could be istackC<maxStack?
 */
         while (istackC < nstackC && nstackC < maxStack && !notFeasible) {
 	  leftTotalStack-- ;
@@ -3223,61 +3204,10 @@ int CglProbing::probe( const OsiSolverInterface &si,
 	  feasRecord |= feasValue[iWay] ; 
 	}
 /*
-  PROBE LOOP: MONOTONE (BREAK AND KEEP)
+  PROBE LOOP: DOWN PROBE
 
-  We can't prove infeasibility. What's left? If we're at the end of the up
-  probe, we may know enough to prove monotonicity:
-
-  * If this is the up probe and we were feasible on this probe but not on
-    the down pass, we're monotone.
-  * If this is the second down probe, we were feasible on down, infeasible on
-    up (hence monotone down) and repeated the down probe to recreate the bounds.
-
-  Either way, execute monotoneActions to capture the state and move on to the
-  next variable. Terminate the probe loop by forcing iWay = oneIterTooMany.
-
-  TODO: There's something not right about this `second down pass' business.
-        Why do we copy stackC to stackC0 on a feasible first pass? Surely that
-	could be used to restore the state of the first down pass.
-	-- lh, 101128 --
-*/
-        if (iWay == downIter2 ||
-	    (iWay == upIter && feasRecord == upIterFeas)) {
-          nfixed++ ;
-	  bool retVal = monotoneActions(primalTolerance_,si,cs,
-	  				nstackC,stackC,intVar,
-					colLower,colsol,colUpper,
-					index,element) ;
-	  if (retVal) anyColumnCuts = true ;
-	  clearStacks(primalTolerance_,nstackC,stackC,markC,colLower,colUpper,
-	  	      nstackR,stackR,markR) ;
-	  break ;
-        }
-/*
-  PROBE LOOP: ITERATE
-
-  If we reach here, we have not proven infeasibility or monotonicity. We may
-  iterate the probe loop.
-
-  Cases remaining are:
-    a) End of the first down probe; in this case we will iterate regardless of
-       feasibility.
-    b) End of the up probe, up and down feasible; in this case we will not
-       iterate (we're done, cannot prove monotonicity).
-    c) End of the up probe, down feasible, up infeasible; in this case we will
-       iterate to restore the down feasible state.
-
-  TODO: I'm becoming more convinced that the second down probe iteration is
-	unnecessary. Given that we have stackC0, lo0, and up0, seems like
-	calling monotoneActions with lo0 = colLower, up0 = colUpper, and
-	stackC0 = stackC should do the trick.  -- lh, 101216 --
-
-  TODO: As I get the control flow sorted out a bit better, I should try to
-  	separate b) (which does not iterate) from a) and c).
-
-  The next block deals with the end of the first down probe. If the probe
-  is feasible, try singleton motion, disaggregation cuts, and coefficient
-  strengthening.
+  If this is the down probe, generate cuts if we're feasible and then set up
+  to iterate for the up probe.
 */
 	if (iWay == downIter) {
           if (!notFeasible) {
@@ -3314,72 +3244,94 @@ int CglProbing::probe( const OsiSolverInterface &si,
 	  		      saveL,saveU,colLower,colUpper,columnGap,
 			      nstackR,stackR,markR,
 			      saveMin,saveMax,minR,maxR) ;
-	}    // end of code to iterate after first down pass
+	  continue ;
+	}
+/*
+  PROBE LOOP: MONOTONE
+
+  We've done a down probe and an up probe. Outright infeasibility was
+  handled above, as was iteration after the down probe. We can only reach
+  here after the up probe, with at least one direction feasible. Check
+  first for monotonicity.
+  * If we are feasible up but not down probe, we're monotone up.
+  * If we were feasible down but not up, we're monotone down. This requires a
+    bit more work, as we need to back out the up probe state and reinstall the
+    down probe state.
+  Either way, we will capture the results and move on to the next variable.
+*/
+        assert(iWay == upIter &&
+	       ((feasRecord&(downIterFeas|upIterFeas)) != 0)) ;
+
+        if (feasRecord != (downIterFeas|upIterFeas)) {
+	  bool retVal ;
+          nfixed++ ;
+	  if (feasRecord == downIterFeas) {
+	    restoreRowColBounds(primalTolerance_,nstackC,stackC,markC,
+	    			saveL,saveU,colLower,colUpper,columnGap,
+				nstackR,stackR,markR,
+				saveMin,saveMax,minR,maxR) ;
+	    restoreRowColBounds(primalTolerance_,nstackC0,stackC0,markC,
+	    			lo0,up0,colLower,colUpper,columnGap,
+				0,0,0,0,0,0,0) ;
+	    retVal = monotoneActions(primalTolerance_,si,cs,
+				     nstackC0,stackC0,intVar,
+				     colLower,colsol,colUpper,
+				     index,element) ;
+	  } else {
+	    retVal = monotoneActions(primalTolerance_,si,cs,
+	  			     nstackC,stackC,intVar,
+				     colLower,colsol,colUpper,
+				     index,element) ;
+	  }
+	  if (retVal) anyColumnCuts = true ;
+	  clearStacks(primalTolerance_,nstackC,stackC,markC,colLower,colUpper,
+	  	      nstackR,stackR,markR) ;
+	  break ;
+        }
 /*
   PROBE LOOP: DOWN AND UP FEASIBLE
 
-  Cases remaining:
-    b) End of up probe, up and down feasible; in this case we will not
-       iterate.
-    c) End of up probe, down feasible, up infeasible; in this case we will
-       iterate to restore the down feasible state.
+  To reach here, this must be the up probe and both up and down probes are
+  feasible. Generate row singletons and disaggregation cuts (just as for a
+  feasible down probe), then call implicationCuts to look for cuts based on
+  both probes (binary probe only).
 
-  The next block deals with case b). We don't want to iterate the
-  down/up/down loop, so force iWay to oneIterTooMany. Then try singleton
-  motion, disaggregation cuts, and coefficient strengthening.
-*/
-	  else {
-	  if (iWay == upIter &&
-	      feasRecord == (downIterFeas|upIterFeas)) {
-	    iWay = oneIterTooMany ;
-
-	    singletonRows(j,primalTolerance_,useObj,si,rowCopy,markC,
-			  nstackC,stackC,saveL,saveU,
-			  colUpper,colLower,columnGap,
-			  nstackR,stackR,rowUpper,rowLower,maxR,minR) ;
-	    if (doDisaggCuts && !justReplace)
-	      disaggCuts(nstackC,probeUp,primalTolerance_,
-			 disaggEffectiveness,si,
-			 rowCut,stackC,colsol,colUpper,colLower,saveU,saveL,
-			 index,element) ;
-	    if (doCoeffStrengthen && !anyColumnCuts)
-	      strengthenCoeff(j,probeUp,primalTolerance_,justReplace,
-	      		      needEffectiveness,si,rowCut,
-			      rowCopy,colUpper,colLower,colsol,nstackR,stackR,
-			      rowUpper,rowLower,maxR,minR,realRows,
-			      element,index,info) ;
-	    int jProbe = j ;
-	    if (info->inTree || !(saveL[0] == 0.0 && saveU[0] == 1.0))
-	      jProbe = -1 ;
-/*
   TODO: In the case where we're running in `justReplace' mode, it'd be
-  appropriate to paritially disable this. Column cuts only. Pass in justReplace
-  as a parameter.  -- lh, 110303 --
-*/
-	    implicationCuts(jProbe,primalTolerance_,nCols,cs,si,intVar,colsol,
-	    		    nstackC,stackC,markC,colUpper,colLower,
-			    saveU,saveL,nstackC0,stackC0,up0,lo0,
-			    element,index) ;
-	  }    // end of code to handle up and down feasible.
-/*
-  PROBE LOOP: DOWN FEASIBLE, UP INFEASIBLE
+	appropriate to partially disable this. Column cuts only. Pass
+	in justReplace as a parameter.  -- lh, 110303 --
 
-  The only remaining case is down feasible, up infeasible, in which case we
-  need to reset to the initial state and run the down probe again. Surely
-  there must be a better way?
+  Then restore the bounds, because we can't keep these.
 */
-	    else {
-	    /* nothing to do any more */
-	  }
-/*
-  PROBE LOOP: RESTORE       Reset to the initial state.
-*/
-          restoreRowColBounds(primalTolerance_,nstackC,stackC,markC,
-	  		      saveL,saveU,colLower,colUpper,columnGap,
-			      nstackR,stackR,markR,
-			      saveMin,saveMax,minR,maxR) ;
+	assert(iWay == upIter && (feasRecord == (downIterFeas|upIterFeas))) ;
 
-	}       // end of PROBE: DOWN AND UP FEASIBLE
+	singletonRows(j,primalTolerance_,useObj,si,rowCopy,markC,
+		      nstackC,stackC,saveL,saveU,
+		      colUpper,colLower,columnGap,
+		      nstackR,stackR,rowUpper,rowLower,maxR,minR) ;
+	if (doDisaggCuts && !justReplace)
+	  disaggCuts(nstackC,probeUp,primalTolerance_,
+		     disaggEffectiveness,si,
+		     rowCut,stackC,colsol,colUpper,colLower,saveU,saveL,
+		     index,element) ;
+	if (doCoeffStrengthen && !anyColumnCuts)
+	  strengthenCoeff(j,probeUp,primalTolerance_,justReplace,
+			  needEffectiveness,si,rowCut,
+			  rowCopy,colUpper,colLower,colsol,nstackR,stackR,
+			  rowUpper,rowLower,maxR,minR,realRows,
+			  element,index,info) ;
+	int jProbe = j ;
+	if (info->inTree || !(saveL[0] == 0.0 && saveU[0] == 1.0))
+	  jProbe = -1 ;
+	implicationCuts(jProbe,primalTolerance_,nCols,cs,si,intVar,colsol,
+			nstackC,stackC,markC,colUpper,colLower,
+			saveU,saveL,nstackC0,stackC0,up0,lo0,
+			element,index) ;
+
+	restoreRowColBounds(primalTolerance_,nstackC,stackC,markC,
+			    saveL,saveU,colLower,colUpper,columnGap,
+			    nstackR,stackR,markR,
+			    saveMin,saveMax,minR,maxR) ;
+
       }     // PROBE LOOP: END
     }    // LOOKEDAT LOOP: END
 #   if CGL_DEBUG > 0
