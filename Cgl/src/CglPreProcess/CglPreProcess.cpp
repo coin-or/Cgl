@@ -1497,6 +1497,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	}
 	startModel_->setColSolution(newSolution);
 	delete [] newSolution;
+	//startModel_->writeMpsNative("new",NULL,NULL,0,1);
 	if (numberElements<10*CoinMin(numberColumns,100*numberY)) {
 	  handler_->message(CGL_ADDED_INTEGERS,messages_)
 	    <<numberY<<numberSOS<<numberElements
@@ -3456,9 +3457,7 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
       const double * columnUpper2 = modelM2->getColUpper();
       const double * columnLower = modelM->getColLower(); 
       const double * columnUpper = modelM->getColUpper();
-#ifdef COIN_DEVELOP
       const double * solutionM2 = modelM2->getColSolution();
-#endif
       for (iColumn=0;iColumn<numberColumns;iColumn++) {
 	int jColumn = originalColumns[iColumn];
 	if (!modelM2->isInteger(jColumn)) {
@@ -3486,6 +3485,18 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 	    }
 #endif
 	  }
+	} else {
+	  // integer - dupcol bounds may be odd so use solution
+	  double value = floor(solutionM2[jColumn]+0.5);
+	  if (value<columnLower2[jColumn]) {
+	    printf("changing lower bound for %d from %g to %g to allow feasibility\n",
+		   jColumn,columnLower2[jColumn],value);
+	    modelM2->setColLower(jColumn,value);
+	  } else if (value>columnUpper2[jColumn]) {
+	    printf("changing upper bound for %d from %g to %g to allow feasibility\n",
+		   jColumn,columnUpper2[jColumn],value);
+	    modelM2->setColUpper(jColumn,value);
+	  } 
 	}
       }
       delete modifiedModel_[iPass];;
