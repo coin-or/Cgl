@@ -1,6 +1,9 @@
 * text=auto !eol
 /AUTHORS -text
 Cgl/LICENSE -text
+Cgl/MSVisualStudio/v10/Cgl.sln -text
+Cgl/MSVisualStudio/v10/CglUnitTest/CglUnitTest.vcxproj -text
+Cgl/MSVisualStudio/v10/libCgl/libCgl.vcxproj -text
 Cgl/MSVisualStudio/v10alt/Cgl.sln -text
 Cgl/MSVisualStudio/v10alt/CglUnitTest.vcxproj -text
 Cgl/MSVisualStudio/v10alt/cgl.props -text
