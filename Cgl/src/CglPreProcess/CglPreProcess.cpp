@@ -1047,6 +1047,60 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
   delete [] count;
   return (totalNumberIntegers);
 }
+//#define CGL_WRITEMPS 
+#ifdef CGL_WRITEMPS
+extern double * debugSolution;
+extern int debugNumberColumns;
+static int mpsNumber=0;
+static void writeDebugMps(const OsiSolverInterface * solver,
+			  const char * where,
+			  OsiPresolve * pinfo)
+{ 
+  mpsNumber++;
+  char name[20];
+  sprintf(name,"presolve%2.2d.mps",mpsNumber);
+  printf("saving %s from %s\n",name,where);
+  solver->writeMpsNative(name,NULL,NULL,0,1,0);
+  if (pinfo&&debugSolution) {
+    int n = solver->getNumCols();
+    if (n<debugNumberColumns) {
+      const int * original = pinfo->originalColumns();
+      if (!original) {
+	printf("No original columns\n");
+	abort();
+      }
+      for (int i=0;i<n;i++) 
+	debugSolution[i]=debugSolution[original[i]];
+      debugNumberColumns=n;
+    }
+  }
+  if (debugSolution) {
+    OsiSolverInterface * newSolver = solver->clone();
+    const double * lower = newSolver->getColLower();
+    const double * upper = newSolver->getColUpper();
+    for (int i = 0; i<debugNumberColumns;i++) {
+      if (newSolver->isInteger(i)) {
+	double value = floor(debugSolution[i]+0.5);
+	if (value<lower[i]||value>upper[i]) {
+	  printf("Bad value %d - %g %g %g\n",i,lower[i],debugSolution[i],
+		 upper[i]);
+	} else {
+	  newSolver->setColLower(i,value);
+	  newSolver->setColUpper(i,value);
+	}
+      }
+    }
+    printf("Starting solve %d\n",mpsNumber);
+    newSolver->resolve();
+    printf("Ending solve %d - status %s obj %g\n",mpsNumber,
+	   newSolver->isProvenOptimal() ? "ok" : "bad",
+	   newSolver->getObjValue());
+    delete newSolver;
+  }
+}
+#else
+#define writeDebugMps(x,y,z)
+#endif
 OsiSolverInterface *
 CglPreProcess::preProcessNonDefault(OsiSolverInterface & model, 
 				    int makeEquality, int numberPasses,
@@ -1497,12 +1551,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	}
 	startModel_->setColSolution(newSolution);
 	delete [] newSolution;
-	//startModel_->writeMpsNative("new",NULL,NULL,0,1);
+	writeDebugMps(startModel_,"start",NULL);
 	if (numberElements<10*CoinMin(numberColumns,100*numberY)) {
 	  handler_->message(CGL_ADDED_INTEGERS,messages_)
 	    <<numberY<<numberSOS<<numberElements
 	    <<CoinMessageEol;
-	  //startModel_->writeMps("new");
 	  numberColumns += numberY;
 	  bool saveTakeHint;
 	  OsiHintStrength saveStrength;
@@ -1932,6 +1985,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     if (presolvedModel) {
       presolvedModel->messageHandler()->setLogLevel(saveLogLevel);
       //presolvedModel->writeMps("new");
+      writeDebugMps(presolvedModel,"ordinary",pinfo);
       // update prohibited and rowType
       update(pinfo,presolvedModel);
       if (!presolvedModel->getNumRows()) {
@@ -1962,9 +2016,9 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 */
   if (!infeas&&true) {
     // may be better to just do at end
-    //startModel2->writeMps("before-tighten");
+    writeDebugMps(startModel2,"before",NULL);
     infeas = tightenPrimalBounds(*startModel2);
-    //startModel2->writeMps("after-tighten");
+    writeDebugMps(startModel2,"after",NULL);
   }
   if (infeas) {
     handler_->message(CGL_INFEASIBLE,messages_)
@@ -2234,9 +2288,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       presolvedModel->messageHandler()->setLogLevel(saveLogLevel);
       // update prohibited and rowType
       update(pinfo,presolvedModel);
-      //char name[20];
-      //sprintf(name,"prex%2.2d.mps",iPass);
-      //presolvedModel->writeMpsNative(name, NULL, NULL,0,1,0);
+      writeDebugMps(presolvedModel,"ordinary2",pinfo);
       model_[iPass]=presolvedModel;
       presolve_[iPass]=pinfo;
       if (!presolvedModel->getNumRows()) {
@@ -2257,7 +2309,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       numberIterationsPre_ += presolvedModel->getIterationCount();
       presolvedModel->setHintParam(OsiDoDualInInitial,saveTakeHint,saveStrength);
       if (!presolvedModel->isProvenOptimal()) {
-	//presolvedModel->writeMps("bad");
+	writeDebugMps(presolvedModel,"bad2",NULL);
 	CoinWarmStartBasis *slack =
 	  dynamic_cast<CoinWarmStartBasis *>(presolvedModel->getEmptyWarmStart()) ;
 	presolvedModel->setWarmStart(slack);
@@ -2285,8 +2337,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       }
       modifiedModel_[iPass]=newModel;
       oldModel=newModel;
-      //sprintf(name,"pre%2.2d.mps",iPass);
-      //newModel->writeMpsNative(name, NULL, NULL,0,1,0);
+      writeDebugMps(newModel,"ordinary3",NULL);
       if (!numberChanges&&!numberFixed) {
 #ifdef COIN_DEVELOP
 	printf("exiting after pass %d of %d\n",iPass,numberSolvers_);
@@ -3489,12 +3540,12 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 	  // integer - dupcol bounds may be odd so use solution
 	  double value = floor(solutionM2[jColumn]+0.5);
 	  if (value<columnLower2[jColumn]) {
-	    printf("changing lower bound for %d from %g to %g to allow feasibility\n",
-		   jColumn,columnLower2[jColumn],value);
+	    //printf("changing lower bound for %d from %g to %g to allow feasibility\n",
+	    //	   jColumn,columnLower2[jColumn],value);
 	    modelM2->setColLower(jColumn,value);
 	  } else if (value>columnUpper2[jColumn]) {
-	    printf("changing upper bound for %d from %g to %g to allow feasibility\n",
-		   jColumn,columnUpper2[jColumn],value);
+	    //printf("changing upper bound for %d from %g to %g to allow feasibility\n",
+	    //	   jColumn,columnUpper2[jColumn],value);
 	    modelM2->setColUpper(jColumn,value);
 	  } 
 	}
@@ -5658,7 +5709,9 @@ CglBK::CglBK(const OsiSolverInterface & model, const char * rowType,
   numberRows_ = model.getNumRows() ;
   numberColumns_ = model.getNumCols() ;
   // Column copy of matrix
+#ifndef NDEBUG
   const double * element = model.getMatrixByCol()->getElements();
+#endif
   const int * row = model.getMatrixByCol()->getIndices();
   const CoinBigIndex * columnStart = model.getMatrixByCol()->getVectorStarts();
   const int * columnLength = model.getMatrixByCol()->getVectorLengths();
