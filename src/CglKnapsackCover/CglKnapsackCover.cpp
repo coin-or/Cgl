@@ -3816,7 +3816,8 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
 			  int minimumSize, int maximumSize, 
 				 bool /*extendCliques*/)
 {
-  int logLevel=1;
+  // Should be 0 unless you're debugging!
+  const int logLevel = 0 ;
   // get rid of what is there
   deleteCliques();
   CoinPackedMatrix matrixByRow(*si.getMatrixByRow());
@@ -3955,29 +3956,29 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
       }
     }
   }
-  if (numberCliques_<0) {
-    if (logLevel)
-      printf("*** Problem infeasible\n");
-  } else {
-    if (numberCliques_) {
-      if (logLevel>1)
-        printf("%d cliques of average size %g found, %d P1, %d M1\n",
-               numberCliques_,
-               (static_cast<double>(totalP1+totalM1))/
-	       (static_cast<double> (numberCliques_)),
-               totalP1,totalM1);
+  if (logLevel > 0) {
+    if (numberCliques_<0) {
+	printf("*** Problem infeasible\n");
     } else {
-      if (logLevel>1)
-        printf("No cliques found\n");
-    }
-    if (numberBig) {
-      if (logLevel>1)
-        printf("%d large cliques ( >= %d) found, total %d\n",
-	     numberBig,maximumSize,totalBig);
-    }
-    if (numberFixed) {
-      if (logLevel)
-        printf("%d variables fixed\n",numberFixed);
+      if (numberCliques_) {
+	if (logLevel>1)
+	  printf("%d cliques of average size %g found, %d P1, %d M1\n",
+		 numberCliques_,
+		 (static_cast<double>(totalP1+totalM1))/
+		 (static_cast<double> (numberCliques_)),
+		 totalP1,totalM1);
+      } else {
+	if (logLevel>1)
+	  printf("No cliques found\n");
+      }
+      if (numberBig) {
+	if (logLevel>1)
+	  printf("%d large cliques ( >= %d) found, total %d\n",
+	       numberBig,maximumSize,totalBig);
+      }
+      if (numberFixed) {
+	  printf("%d variables fixed\n",numberFixed);
+      }
     }
   }
   if (numberCliques_>0) {
