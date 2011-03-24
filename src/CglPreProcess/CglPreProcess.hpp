@@ -52,8 +52,9 @@ public:
   OsiSolverInterface * preProcess(OsiSolverInterface & model, 
                                   bool makeEquality=false, int numberPasses=5);
   /** preProcess problem - returning new problem.
-      If makeEquality true then <= cliques converted to ==.
-      Presolve will be done numberPasses times.
+
+      If makeEquality true then <= cliques converted to ==. Presolve will be
+      done numberPasses times.
 
       Returns NULL if infeasible
 
@@ -61,6 +62,29 @@ public:
       before calling it.  As an example use coding in preProcess
       If makeEquality is 1 add slacks to get cliques,
       if 2 add slacks to get sos (but only if looks plausible) and keep sos info
+
+      makeEquality (mostly guesses from reading the code):
+      - -2: Find cliques?
+      - -1: ??
+      -  0: no action
+      -  1: Add slacks to make equality cliques.
+      -  2: Add slacks to make SOS sets, but give up if faced with obstacles.
+      -  3: As 2, but don't give up easily?
+      -  4: Try to identify SOS in presence of overlaps? Identify continuous
+      	    variables that could be integer? More?
+      -  5: `All to GUB'
+
+      tuning (from the fastercoin.com NAQ and reading the code)
+      -   2: make some variables integer
+      -   4: make more variables integer
+      -   8: turn on initial continuous presolve
+      -  32: switch on some extra presolve options
+      -  64: try both clique replacement and dominated rows (if reasonable
+      	     number of plus 1's
+      - 128: use Bron-Kerbosch to replace large numbers of 2-cliques with
+	     maximal cliques
+      - 256: work harder to find dominated rows
+      - 512: try clique cuts but replace rather than add (?)
   */
   OsiSolverInterface * preProcessNonDefault(OsiSolverInterface & model, 
                                   int makeEquality=0, int numberPasses=5,
@@ -344,6 +368,9 @@ private:
   int numberRowType_;
   /** Options
       1 - original model had integer bounds before tightening
+      2 - don't do probing
+      4 - don't do duplicate rows
+      8 - don't do cliques
   */
   int options_;
   /** Row types (may be NULL) 
