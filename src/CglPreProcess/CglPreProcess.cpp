@@ -8,7 +8,8 @@
 #endif
 
 // LOU
-#define LOU_DEBUG 2
+
+// #define LOU_DEBUG 2
 
 /*
   The symbol CLIQUE_ANALYSIS guards a few bits of code related to generalised
@@ -1129,7 +1130,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 {
 # if LOU_DEBUG > 1
   std::cout
-    << "Entering iPP::preProcessNonDefault, matrix "
+    << "Entering IPP::preProcessNonDefault, matrix "
     << model.getNumRows() << " x " << model.getNumCols() << ", "
     << numberPasses << " passes, makeEq " << makeEquality
     << ", tuning " << tuning << "." << std::endl ;
