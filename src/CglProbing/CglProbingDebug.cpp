@@ -53,9 +53,8 @@ void checkBounds (const OsiSolverInterface &si, const OsiColCut &cut)
     for (i = 0 ; i < nIndex ; i++) {
       int iColumn = index[i] ;
       std::cout
-        << "    " << si.getColName(iColumn) << " (" << iColumn
-	<< ") lb = " << values[i] << ", opt = " << optimal[iColumn]
-	<< "." << std::endl ;
+        << "    x(" << iColumn << ") lb = " << values[i]
+	<< ", opt = " << optimal[iColumn] << "." << std::endl ;
       assert(values[i] <= optimal[iColumn]+1.0e-5) ;
     }
     const CoinPackedVector & ubs = cut.ubs() ;
@@ -65,9 +64,8 @@ void checkBounds (const OsiSolverInterface &si, const OsiColCut &cut)
     for (i = 0 ; i < nIndex ; i++) {
       int iColumn = index[i];
       std::cout
-        << "    " << si.getColName(iColumn) << " (" << iColumn
-	<< ") ub = " << values[i] << ", opt = " << optimal[iColumn]
-	<< "." << std::endl ;
+        << "    x(" << iColumn << ") ub = " << values[i]
+	<< ", opt = " << optimal[iColumn] << "." << std::endl ;
       assert(values[i] >= optimal[iColumn]-1.0e-5) ;
     }
   }
