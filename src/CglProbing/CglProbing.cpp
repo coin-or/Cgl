@@ -1090,7 +1090,7 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
   int saveRowCuts = rowCuts_ ;
   if (rowCuts_ < 0) {
     if (info->inTree)
-      rowCuts_ = 4 ;
+     rowCuts_ = 0x4 ;
     else
       rowCuts_ = -rowCuts_ ;
   }

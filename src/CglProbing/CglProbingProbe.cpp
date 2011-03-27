@@ -475,10 +475,10 @@ void disaggCuts (int nstackC, unsigned int probeDir,
   deltaProbe_p is then x*<p>-lu'<p>; we'll use it below to check that the
   cut is violated and effective.
 
-  (d,u)  -(u<t>-u'<t>)x<p> + x<t> <= u'<t> - u'<p>(u<t>-u'<t>)  d, u
-  (d,l)  -(l<t>-l'<t>)x<p> + x<t> >= l'<t> - u'<p>(l<t>-l'<t>)  d, l
-  (u,u)   (u<t>-u'<t>)x<p> + x<t> <= u'<t> + l'<p>(u<t>-u'<t>)  u, u
-  (u,l)   (l<t>-l'<t>)x<p> + x<t> >= l'<t> + l'<p>(l<t>-l'<t>)  u, l
+  (d,u)  -(u<t>-u'<t>)x<p> + x<t> <= u'<t> - u'<p>(u<t>-u'<t>)
+  (d,l)  -(l<t>-l'<t>)x<p> + x<t> >= l'<t> - u'<p>(l<t>-l'<t>)
+  (u,u)   (u<t>-u'<t>)x<p> + x<t> <= u'<t> + l'<p>(u<t>-u'<t>)
+  (u,l)   (l<t>-l'<t>)x<p> + x<t> >= l'<t> + l'<p>(l<t>-l'<t>)
 */
   if (probeDir == probeDown) {
     luPrime_p = colUpper[pndx] ;
@@ -517,8 +517,8 @@ void disaggCuts (int nstackC, unsigned int probeDir,
   Generate the upper disaggregation cut, if it's violated and the coefficients
   will be reasonable.
 
-    -(u<t>-u'<t>)x<p> + x<t> <= u'<t> - u'<p>(u<t>-u'<t>)  d, u
-     (u<t>-u'<t>)x<p> + x<t> <= u'<t> + l'<p>(u<t>-u'<t>)  u, u
+    -(u<t>-u'<t>)x<p> + x<t> <= u'<t> - u'<p>(u<t>-u'<t>)  d,u
+     (u<t>-u'<t>)x<p> + x<t> <= u'<t> + l'<p>(u<t>-u'<t>)  u,u
 
   The effectiveness is the improvement in x<p>.  For a down probe, x<p>
   should decrease (move closer to u'<p>); for an up probe, x<p> should
@@ -567,8 +567,8 @@ void disaggCuts (int nstackC, unsigned int probeDir,
 /*
   Generate the lower disaggregation cut.
 
-    -(l<t>-l'<t>)x<p> + x<t> >= l'<t> - u'<p>(l<t>-l'<t>)  d, l
-     (l<t>-l'<t>)x<p> + x<t> >= l'<t> + l'<p>(l<t>-l'<t>)  u, l
+    -(l<t>-l'<t>)x<p> + x<t> >= l'<t> - u'<p>(l<t>-l'<t>)  d,l
+     (l<t>-l'<t>)x<p> + x<t> >= l'<t> + l'<p>(l<t>-l'<t>)  u,l
 */
     deltaProbe_t = l_t-lPrime_t ;
     a_p = plusMinus*deltaProbe_t ;
@@ -691,6 +691,11 @@ bool updateRowBounds (int j, double movement,
     }
     assert (markR[irow] >= -1 && markR[irow]%10000 < nstackR) ;
 #   endif
+#   if CGL_DEBUG > 2
+    double minRstart = minR[irow] ;
+    double maxRstart = maxR[irow] ;
+#   endif
+
     if (markR[irow] == -1) {
       stackR[nstackR] = irow ;
       markR[irow] = nstackR ;
@@ -743,18 +748,19 @@ bool updateRowBounds (int j, double movement,
       }
     }
 #   if CGL_DEBUG > 2
-    if (saveMin[nstackR-1] != minR[irow]) {
+    if (minRstart != minR[irow]) {
       std::cout
 	<< "      row " << irow << " min "
-	<< saveMin[nstackR-1] << " -> " << minR[irow] << std::endl ;
+	<< minRstart << " -> " << minR[irow] << std::endl ;
     }
-    if (saveMax[nstackR-1] != maxR[irow]) {
+    if (maxRstart != maxR[irow]) {
       std::cout
 	<< "      row " << irow << " max "
-	<< saveMax[nstackR-1] << " -> " << maxR[irow] << std::endl ;
+	<< maxRstart << " -> " << maxR[irow] << std::endl ;
     }
 #   endif
   }
+
   return (feasible) ;
 }
 
@@ -794,6 +800,7 @@ void groomSoln (double direction, double primalTolerance, double *const djs,
 */
   for (int i = 0 ; i < nRows ; i++) {
     const CoinBigIndex kkstart = rowStart[i] ;
+    const CoinBigIndex kkendneg = rowStartPos[i] ;
     const CoinBigIndex kkend = kkstart+rowLength[i] ;
     double value = 0.0 ;
     CoinBigIndex kk = 0 ;
@@ -813,7 +820,7 @@ void groomSoln (double direction, double primalTolerance, double *const djs,
     value = 0.0 ;
 #endif
 
-    for (kk = kkstart ; kk < kkend ; kk++) {
+    for (kk = kkstart ; kk < kkendneg ; kk++) {
       int iColumn = column[kk] ;
       double gap = CoinMin(1.0e100,colUpper[iColumn]-colLower[iColumn]) ;
       value = CoinMin(value,gap*rowElements[kk]) ;
@@ -1414,17 +1421,16 @@ void strengthenCoeff (
     sum += aipPrime*xp ;
     double biPrime = DBL_MAX ;
     double blowiPrime = -DBL_MAX ;
-    double effectiveness = 0.0 ;
+    double violation = 0.0 ;
     bool genCut = false ;
     if (revisebi) {
       biPrime = rowUpper[irow]+deltaMul*delta ;
-      effectiveness = sum-biPrime ;
-      effectiveness = CoinMax(effectiveness,(sum-maxR[irow])/uGap) ;
+      violation = sum-biPrime ;
     } else {
       blowiPrime = rowLower[irow]+deltaMul*delta ;
-      effectiveness = blowiPrime-sum ;
-      effectiveness = CoinMax(effectiveness,(minR[irow]-sum)/lGap) ;
+      violation = blowiPrime-sum ;
     }
+    double effectiveness = violation ;
     if (!aipNonZero && aipPrimeNonZero)
       effectiveness = CoinMax(effectiveness,aipZeroEffectiveness) ;
     if (effectiveness > needEffectiveness) genCut = true ;
@@ -1433,6 +1439,19 @@ void strengthenCoeff (
   Are we going to generate the cut? If not, on to the next iteration.
 */
     if (!genCut) continue ;
+
+#   if CGL_DEBUG > 0
+    if (violation <= 0) {
+      std::cout
+        << "  NOT VIOLATED (strengthenCoeff): need " << needEffectiveness
+        << ", violation " << violation ;
+      if (!aipNonZero && aipPrimeNonZero)
+	std::cout << ", new aipPrime" ;
+      if (info->strengthenRow)
+	std::cout << ", strengthenRow" ;
+      std::cout << "." << std::endl ;
+    }
+#   endif
 /*
   Generate the coefficients. Copy all except a<ip>. Add a<ip>' at the end, if
   it's nonzero. (a<ip>' can be zero and still have a perfectly valid cut.)
@@ -1656,16 +1675,19 @@ void strengthenCoeff (
   system during preprocessing in gutsOfGenerateCuts.
 
 */
-int CglProbing::probe( const OsiSolverInterface &si, 
+int CglProbing::probe (const OsiSolverInterface &si, 
 		       OsiCuts &cs, 
 		       double *colLower, double *colUpper, 
-		       CoinPackedMatrix *rowCopy,
-		       CoinPackedMatrix *columnCopy,
-		       const CoinBigIndex *rowStartPos, const int *realRows, 
-		       const double *rowLower, const double *rowUpper,
-		       const char *intVar, double *minR, double *maxR, 
-		       int *markR, 
-                       CglTreeInfo *info,
+		       const CoinPackedMatrix *const rowCopy,
+		       const CoinPackedMatrix *const columnCopy,
+		       const CoinBigIndex *const rowStartPos,
+		       const int *const realRows, 
+		       const double *const rowLower,
+		       const double *const rowUpper,
+		       const char *const intVar,
+		       double *const minR, double *const maxR, 
+		       int *const markR, 
+                       CglTreeInfo *const info,
 		       bool useObj, bool useCutoff, double cutoff) const
 
 {
@@ -2042,6 +2064,8 @@ int CglProbing::probe( const OsiSolverInterface &si,
       double up = ceil(xj-tolerance) ;
       const double uj = colUpper[j] ;
       const double lj = colLower[j] ;
+      const bool binaryProbeVar = (lj == 0.0 && uj == 1.0) ;
+      const bool probeIsDichotomy = ((uj-lj) < 1.5) ;
       const double gap = columnGap[j] ;
 #     if CGL_DEBUG > 1
       std::cout
@@ -2154,16 +2178,27 @@ int CglProbing::probe( const OsiSolverInterface &si,
 	    probeDistOne = false ;
         }
 /*
-  About those `various circumstances'. The particular form of disaggregation
-  cut generated here is only correct if the probe tightens the bound by one.
+  About those `various circumstances'. Disaggregation cuts are mathematically
+  correct only across the dichotomy used to derive the cut. So we're in
+  trouble if there's any polytope outside those points.
 
-  Coefficient strengthening is a bit more subtle. The cut is always valid, but
-  if we're replacing (tilting) an existing constraint, there cannot be any
-  polytope on the side that's getting looser!
+  Implication cuts are also only valid across a dichotomy. The way the
+  current method is written, the row cuts are only valid for binary variables.
+  The variable controls row cuts, distinct from consensus bound changes.
+
+  Coefficient strengthening is a bit more subtle. The cut is always valid,
+  but if we're replacing (tilting) an existing constraint, there cannot be
+  any polytope on the side that's getting looser!
 */
-	bool doDisaggCuts = (((rowCuts&0x01) != 0) && probeDistOne) ;
-	bool doCoeffStrengthen = (((rowCuts&0x02) != 0) &&
-	    (!justReplace || (justReplace && probeDistOne))) ;
+	const bool doDisaggCuts =
+	    (((rowCuts&0x04) == 0) && ((rowCuts&0x01) != 0) &&
+	     !justReplace && probeIsDichotomy) ;
+	const bool doCoeffStrengthen =
+	    (((rowCuts&0x04) == 0) && ((rowCuts&0x02) != 0) &&
+	     (!justReplace || (justReplace && probeDistOne))) ;
+	const bool doSingletons = true ;
+	const bool doImplicationCuts =
+	    (((rowCuts&0x04) == 0) && !justReplace && binaryProbeVar) ;
 
 #       if CGL_DEBUG > 1
 	if (iWay == downIter)
@@ -2213,9 +2248,6 @@ int CglProbing::probe( const OsiSolverInterface &si,
         istackC = 0 ;
 /*
   Update row bounds to reflect the change in variable bound.
-
-  TODO: Replacing code to update row bounds with updateRowBounds(). We'll
-	see how it looks.  -- lh, 101203 --
 */
 	if (!updateRowBounds(j,movement,columnStart,
 			     columnLength,row,columnElements,
@@ -2271,10 +2303,6 @@ int CglProbing::probe( const OsiSolverInterface &si,
 	    CoinBigIndex iistart = rowStart[irow] ;
 	    const CoinBigIndex iistartPos = rowStartPos[irow] ;
 	    const CoinBigIndex iiend = iistart+rowLength[irow] ;
-	    double rowUp = rowUpper[irow] ;
-	    double rowUp2 = 0.0 ;
-	    bool doRowUpN ;
-	    bool doRowUpP ;
 /*
   So, is this row promising?
 
@@ -2311,7 +2339,10 @@ int CglProbing::probe( const OsiSolverInterface &si,
   For binary variables, of course, `shrink the domain' corresponds to fixing
   the variable.
 */
-
+	    double rowUp = rowUpper[irow] ;
+	    double rowUp2 = 0.0 ;
+	    bool doRowUpN ;
+	    bool doRowUpP ;
 	    if (rowUp < 1.0e10) {
 	      doRowUpN = true ;
 	      doRowUpP = true ;
@@ -2355,11 +2386,13 @@ int CglProbing::probe( const OsiSolverInterface &si,
 	    markR[irow] += 10000 ;
 /*
   LOU_DEBUG: see if we're processing again without a bound change.
+*/
+#           if CGL_DEBUG > 0
 	    if (markR[irow]/10000 > 1)
 	      std::cout
 		<< "REDUNDANT: processing " << irow
 		<< " for the " << markR[irow]/10000 << " time." << std::endl ;
-*/
+#           endif
 /*
   PROBE LOOP: WALK ROW
 
@@ -2528,7 +2561,7 @@ int CglProbing::probe( const OsiSolverInterface &si,
 			<< "        " << nstackC-1
 			<< " col " << kcol << " " << colsol[kcol]
 			<< " l " << saveL[nstackC-1]
-			<< " -> " << newLower << std::endl ;
+			<< " -> " << newLower << "; i " << irow << std::endl ;
 #		      endif
 /*
   Propagate the column bound change.
@@ -2536,8 +2569,6 @@ int CglProbing::probe( const OsiSolverInterface &si,
   TODO: Notice that we're not setting a variable here when we discover
         infeasibility; rather, we're setting the column bound to a ridiculous
 	value which will be discovered farther down.  -- lh, 101127 --
-  TODO: Replacing code to update row bounds with updateRowBounds(). We'll
-	see how it looks.  -- lh, 101203 --
 */
 		      if (CoinAbs(colUpper[kcol]-colLower[kcol]) < 1.0e-6) {
 			markC[kcol] = (tightenLower|tightenUpper) ;
@@ -2587,7 +2618,7 @@ int CglProbing::probe( const OsiSolverInterface &si,
 			<< "        " << nstackC-1
 			<< " col " << kcol << " " << colsol[kcol]
 			<< " u " << saveU[nstackC-1]
-			<< " -> " << newUpper << std::endl ;
+			<< " -> " << newUpper << "; i " << irow << std::endl ;
 #		      endif
 		      if (CoinAbs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
 			markC[kcol] = (tightenLower|tightenUpper); // say fixed
@@ -2688,7 +2719,7 @@ int CglProbing::probe( const OsiSolverInterface &si,
 			<< "        " << nstackC-1
 			<< " col " << kcol << " " << colsol[kcol]
 			<< " l " << saveL[nstackC-1]
-			<< " -> " << newLower << std::endl ;
+			<< " -> " << newLower << "; i " << irow << std::endl ;
 #		      endif
 		      if (CoinAbs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
 			markC[kcol]= (tightenLower|tightenUpper); // say fixed
@@ -2781,7 +2812,7 @@ int CglProbing::probe( const OsiSolverInterface &si,
 			<< "        " << nstackC-1
 			<< " col " << kcol << " " << colsol[kcol]
 			<< " u " << saveU[nstackC-1]
-			<< " -> " << newUpper << std::endl ;
+			<< " -> " << newUpper << "; i " << irow << std::endl ;
 #		      endif
 		      if (CoinAbs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
 			markC[kcol]= (tightenLower|tightenUpper); // say fixed
@@ -2903,7 +2934,7 @@ int CglProbing::probe( const OsiSolverInterface &si,
 			<< "        " << nstackC-1
 			<< " col " << kcol << " " << colsol[kcol]
 			<< " l " << saveL[nstackC-1]
-			<< " -> " << newLower << std::endl ;
+			<< " -> " << newLower << "; i " << irow << std::endl ;
 #		      endif
 		      if (CoinAbs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
 			markC[kcol]= (tightenLower|tightenUpper); // say fixed
@@ -2948,7 +2979,7 @@ int CglProbing::probe( const OsiSolverInterface &si,
 			<< "        " << nstackC-1
 			<< " col " << kcol << " " << colsol[kcol]
 			<< " u " << saveU[nstackC-1]
-			<< " -> " << newUpper << std::endl ;
+			<< " -> " << newUpper << "; i " << irow << std::endl ;
 #		      endif
 		      if (CoinAbs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
 			markC[kcol]= (tightenLower|tightenUpper); // say fixed
@@ -3038,7 +3069,7 @@ int CglProbing::probe( const OsiSolverInterface &si,
 			<< "        " << nstackC-1
 			<< " col " << kcol << " " << colsol[kcol]
 			<< " u " << saveU[nstackC-1]
-			<< " -> " << newUpper << std::endl ;
+			<< " -> " << newUpper << "; i " << irow << std::endl ;
 #		      endif
 		      if (CoinAbs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
 			markC[kcol]= (tightenLower|tightenUpper); // say fixed
@@ -3128,7 +3159,7 @@ int CglProbing::probe( const OsiSolverInterface &si,
 			<< "        " << nstackC-1
 			<< " col " << kcol << " " << colsol[kcol]
 			<< " l " << saveL[nstackC-1]
-			<< " -> " << newLower << std::endl ;
+			<< " -> " << newLower << "; i " << irow << std::endl ;
 #		      endif
 		      if (CoinAbs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
 			markC[kcol]= (tightenLower|tightenUpper); // say fixed
@@ -3211,11 +3242,12 @@ int CglProbing::probe( const OsiSolverInterface &si,
 */
 	if (iWay == downIter) {
           if (!notFeasible) {
-	    singletonRows(j,primalTolerance_,useObj,si,rowCopy,markC,
-			  nstackC,stackC,saveL,saveU,
-			  colUpper,colLower,columnGap,
-			  nstackR,stackR,rowUpper,rowLower,maxR,minR) ;
-	    if (doDisaggCuts && !justReplace)
+	    if (doSingletons)
+	      singletonRows(j,primalTolerance_,useObj,si,rowCopy,markC,
+			    nstackC,stackC,saveL,saveU,
+			    colUpper,colLower,columnGap,
+			    nstackR,stackR,rowUpper,rowLower,maxR,minR) ;
+	    if (doDisaggCuts)
 	      disaggCuts(nstackC,probeDown,primalTolerance_,
 			 disaggEffectiveness,si,rowCut,stackC,colsol,
 			 colUpper,colLower,saveU,saveL,index,element) ;
@@ -3296,19 +3328,16 @@ int CglProbing::probe( const OsiSolverInterface &si,
   feasible down probe), then call implicationCuts to look for cuts based on
   both probes (binary probe only).
 
-  TODO: In the case where we're running in `justReplace' mode, it'd be
-	appropriate to partially disable this. Column cuts only. Pass
-	in justReplace as a parameter.  -- lh, 110303 --
-
   Then restore the bounds, because we can't keep these.
 */
 	assert(iWay == upIter && (feasRecord == (downIterFeas|upIterFeas))) ;
 
-	singletonRows(j,primalTolerance_,useObj,si,rowCopy,markC,
-		      nstackC,stackC,saveL,saveU,
-		      colUpper,colLower,columnGap,
-		      nstackR,stackR,rowUpper,rowLower,maxR,minR) ;
-	if (doDisaggCuts && !justReplace)
+	if (doSingletons)
+	  singletonRows(j,primalTolerance_,useObj,si,rowCopy,markC,
+			nstackC,stackC,saveL,saveU,
+			colUpper,colLower,columnGap,
+			nstackR,stackR,rowUpper,rowLower,maxR,minR) ;
+	if (doDisaggCuts)
 	  disaggCuts(nstackC,probeUp,primalTolerance_,
 		     disaggEffectiveness,si,
 		     rowCut,stackC,colsol,colUpper,colLower,saveU,saveL,
@@ -3319,14 +3348,14 @@ int CglProbing::probe( const OsiSolverInterface &si,
 			  rowCopy,colUpper,colLower,colsol,nstackR,stackR,
 			  rowUpper,rowLower,maxR,minR,realRows,
 			  element,index,info) ;
-	int jProbe = j ;
-	if (info->inTree || !(saveL[0] == 0.0 && saveU[0] == 1.0))
-	  jProbe = -1 ;
-	implicationCuts(jProbe,primalTolerance_,nCols,cs,si,intVar,colsol,
-			nstackC,stackC,markC,colUpper,colLower,
-			saveU,saveL,nstackC0,stackC0,up0,lo0,
-			element,index) ;
-
+	if (probeIsDichotomy) {
+	  int jProbe = j ;
+	  if (!doImplicationCuts) jProbe = -1 ;
+	  implicationCuts(jProbe,primalTolerance_,nCols,cs,si,intVar,colsol,
+			  nstackC,stackC,markC,colUpper,colLower,
+			  saveU,saveL,nstackC0,stackC0,up0,lo0,
+			  element,index) ;
+        }
 	restoreRowColBounds(primalTolerance_,nstackC,stackC,markC,
 			    saveL,saveU,colLower,colUpper,columnGap,
 			    nstackR,stackR,markR,

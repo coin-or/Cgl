@@ -265,10 +265,10 @@ public:
   //@{
   /// Number looked at this time
   inline int numberThisTime() const
-  { return numberThisTime_;}
+  { return numberThisTime_; }
   /// Which ones looked at this time
-  inline const int * lookedAt() const
-  { return lookedAt_;}
+  inline const int *lookedAt() const
+  { return lookedAt_; }
   //@}
 
   /**@name Mark which continuous variables are to be tightened */
@@ -280,23 +280,19 @@ public:
   /**@name Constructors and destructors */
   //@{
   /// Default constructor 
-  CglProbing () ;
+  CglProbing() ;
  
   /// Copy constructor 
-  CglProbing (
-    const CglProbing &) ;
+  CglProbing(const CglProbing &) ;
 
   /// Clone
-  virtual CglCutGenerator * clone() const ;
+  virtual CglCutGenerator *clone() const ;
 
   /// Assignment operator 
-  CglProbing &
-    operator=(
-    const CglProbing& rhs) ;
+  CglProbing &operator=(const CglProbing& rhs) ;
   
   /// Destructor 
-  virtual
-    ~CglProbing () ;
+  virtual ~CglProbing () ;
 
   /// Create C++ lines to get to current state
   virtual std::string generateCpp( FILE * fp) ;
@@ -310,11 +306,15 @@ private:
   /// Does probing and adding cuts (without cliques)
   int probe(const OsiSolverInterface &si, 
 	    OsiCuts &cs, 
-	    double *colLower, double *colUpper, CoinPackedMatrix *rowCopy,
-	    CoinPackedMatrix *columnCopy, const CoinBigIndex *rowStartPos,
-	    const int *realRow, const double *rowLower, const double *rowUpper,
-	    const char *intVar, double *minR, double *maxR, int *markR, 
-	    CglTreeInfo *info,
+	    double *const colLower, double *const colUpper,
+	    const CoinPackedMatrix *const rowCopy,
+	    const CoinPackedMatrix *const columnCopy,
+	    const CoinBigIndex *const rowStartPos,
+	    const int *const realRow, const double *const rowLower,
+	    const double *const rowUpper,
+	    const char *const intVar,
+	    double *const minR, double *const maxR, int *const markR, 
+	    CglTreeInfo *const info,
 	    bool useObj, bool useCutoff, double cutoff) const ;
 
   /// Does probing and adding cuts (with cliques)
