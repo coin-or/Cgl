@@ -1106,6 +1106,29 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 				    int makeEquality, int numberPasses,
 				    int tuning)
 {
+#if 0
+   bool rcdActive = true ;
+   std::string modelName ;
+   model.getStrParam(OsiProbName,modelName) ;
+   std::cout
+     << "  Attempting to activate row cut debugger for "
+     << modelName << " ... " ;
+   writeDebugMps(&model,"IPP:preProcessNonDefault",0) ;
+   model.activateRowCutDebugger(modelName.c_str()) ;
+   if (model.getRowCutDebugger())
+     std::cout << "on optimal path." << std::endl ;
+   else if (model.getRowCutDebuggerAlways())
+     std::cout << "not on optimal path." << std::endl ;
+   else {
+     std::cout << "failure." << std::endl ;
+     rcdActive = false ;
+   }
+   if (rcdActive) {
+     const OsiRowCutDebugger *debugger = model.getRowCutDebuggerAlways() ;
+     std::cout << "  Optimal solution is:" << std::endl ;
+     debugger->printOptimalSolution(model) ;
+   }
+# endif
   originalModel_ = & model;
   numberSolvers_ = numberPasses;
   model_ = new OsiSolverInterface * [numberSolvers_];
@@ -3330,6 +3353,13 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
                         saveHint2,saveStrength2);
   OsiSolverInterface * clonedCopy=NULL;
   double saveObjectiveValue = modelIn.getObjValue();
+  if (!modelIn.isProvenOptimal()) {
+    CoinWarmStartBasis *slack =
+      dynamic_cast<CoinWarmStartBasis *>(modelIn.getEmptyWarmStart()) ;
+    modelIn.setWarmStart(slack);
+    delete slack ;
+    modelIn.resolve();
+  }
   if (modelIn.isProvenOptimal()) {
     OsiSolverInterface * modelM = &modelIn;
     // If some cuts add back rows
