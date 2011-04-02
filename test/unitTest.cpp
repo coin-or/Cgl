@@ -51,10 +51,16 @@
 // Function Prototypes. Function definitions is in this file.
 void testingMessage( const char * const msg );
 
-// Command line parameters are directories containing data files.
-// You must specify both mpsDir and testDir, in order.
-// If not specified, then "../../Data/Sample/" and
-// "CglTestData/" are used
+/*
+  Command line parameters are directories containing data files.
+
+    unitTest [ <mpsDir> [ <testDir> ] ]
+
+  You must specify mpsDir in order to specify testDir.
+
+    default mpsDir "../../Data/Sample" and
+    default testDir "CglTestData"
+*/
 
 int main (int argc, const char *argv[])
 {

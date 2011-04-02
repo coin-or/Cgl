@@ -21,6 +21,7 @@
 #include "CglProbing.hpp"
 #include "CglProbingRowCut.hpp"
 #include "CglProbingDebug.hpp"
+#include "CglPhic.hpp"
 
 /*
   File local namespace for utilities
@@ -104,7 +105,6 @@ void makeColCuts (int nCols, OsiCuts &cs,
 }
 
 
-
 /*
   This method will attempt to identify variables that will naturally take on
   integer values but were not originally identified as such, and mark them as
@@ -128,53 +128,44 @@ void makeColCuts (int nCols, OsiCuts &cs,
 	particular reason other than more information.  -- lh, 110211 --
 */
 
-bool analyze (const OsiSolverInterface *solverX, char *intVar,
-	      double *lower, double *upper)
+bool analyze (const OsiSolverInterface *const si, char *const intVar,
+	      double *const lbs, double *const ubs)
 {
 # if CGL_DEBUG > 1
   std::cout << "Entering CglProbing::analyze." << std::endl ;
 # endif
   const double e20Inf = 1.0e20 ;
   const int changedToInt = 77 ;
-
 /*
-  I don't see why we clone the solver here. There are no modifications to
-  anything except the parameters intVar, lower, and upper.
+  Acquire various data structures for ease of work: 
 */
-  OsiSolverInterface *solver = solverX->clone() ;
-  const double *objective = solver->getObjCoefficients() ;
-  int numberColumns = solver->getNumCols() ;
-  int numberRows = solver->getNumRows() ;
-  double direction = solver->getObjSense() ;
-  int iRow,iColumn ;
+  const int n = si->getNumCols() ;
+  const int m = si->getNumRows() ;
+  const double *const objective = si->getObjCoefficients() ;
+  const double objsense = si->getObjSense() ;
 
-/*
-  Nor do I understand why we make copies of the matrix. Two, in fact! Surely
-  we could ask the OSI for these. Aaaaah, but then we might be triggering
-  changes inside the OSI? Shouldn't matter, getMatrixBy* are const.
-*/
   // Row copy
-  CoinPackedMatrix matrixByRow(*solver->getMatrixByRow()) ;
-  const double *elementByRow = matrixByRow.getElements() ;
-  const int *column = matrixByRow.getIndices() ;
-  const CoinBigIndex *rowStart = matrixByRow.getVectorStarts() ;
-  const int *rowLength = matrixByRow.getVectorLengths() ;
+  const CoinPackedMatrix *const matrixByRow = si->getMatrixByRow() ;
+  const double *const elementByRow = matrixByRow->getElements() ;
+  const int *const colIndices = matrixByRow->getIndices() ;
+  const CoinBigIndex *const rowStarts = matrixByRow->getVectorStarts() ;
+  const int *const rowLens = matrixByRow->getVectorLengths() ;
 
   // Column copy
-  CoinPackedMatrix matrixByCol(*solver->getMatrixByCol()) ;
-  const double *element = matrixByCol.getElements() ;
-  const int *row = matrixByCol.getIndices() ;
-  const CoinBigIndex *columnStart = matrixByCol.getVectorStarts() ;
-  const int *columnLength = matrixByCol.getVectorLengths() ;
+  const CoinPackedMatrix *const matrixByCol = si->getMatrixByCol() ;
+  const double *const elementByCol = matrixByCol->getElements() ;
+  const int *const rowIndices = matrixByCol->getIndices() ;
+  const CoinBigIndex *const colStarts = matrixByCol->getVectorStarts() ;
+  const int *const colLens = matrixByCol->getVectorLengths() ;
 
-  const double * rowLower = solver->getRowLower() ;
-  const double * rowUpper = solver->getRowUpper() ;
+  const double *const rowLower = si->getRowLower() ;
+  const double *const rowUpper = si->getRowUpper() ;
 
-  char *ignore = new char [numberRows] ;
-  int *which = new int[numberRows] ;
-  double *changeRhs = new double[numberRows] ;
-  memset(changeRhs,0,numberRows*sizeof(double)) ;
-  memset(ignore,0,numberRows) ;
+  char *const ignore = new char [m] ;
+  int *const which = new int[m] ;
+  double *const changeRhs = new double[m] ;
+  CoinZeroN(changeRhs,m) ;
+  CoinZeroN(ignore,m) ;
 
   int numberChanged = 0 ;
   bool finished = false ;
@@ -185,15 +176,16 @@ bool analyze (const OsiSolverInterface *solverX, char *intVar,
     int saveNumberChanged = numberChanged ;
 /*
   Open loop to scan each constraint. With luck, we can conclude that some
-  variable must be integer. With less luck, the constraint will not prevent the
-  variable from being integer.
+  variable must be integer. With less luck, the constraint will not prevent
+  the variable from being integer.
 */
-    for (iRow = 0 ; iRow < numberRows ; iRow++) {
+    for (int i = 0 ; i < m ; i++) {
       int numberContinuous = 0 ;
       double value1 = 0.0,value2 = 0.0 ;
       bool allIntegerCoeff = true ;
       double sumFixed = 0.0 ;
-      int jColumn1 = -1,jColumn2 = -1 ;
+      int jColumn1 = -1 ;
+      int jColumn2 = -1 ;
 /*
   Scan the coefficients of the constraint and accumulate some information:
     * Contribution of fixed variables.
@@ -202,26 +194,27 @@ bool analyze (const OsiSolverInterface *solverX, char *intVar,
     * A boolean, allIntegerCoeff, true if all coefficients of unfixed
       integer variables are integer.
 */
-      for (CoinBigIndex j = rowStart[iRow] ;
-	   j < rowStart[iRow]+rowLength[iRow] ; j++) {
-        int jColumn = column[j] ;
-        double value = elementByRow[j] ;
-        if (upper[jColumn] > lower[jColumn]+1.0e-8) {
-          if (!intVar[jColumn]) {
+      const CoinBigIndex startRowi = rowStarts[i] ;
+      const CoinBigIndex endRowi = startRowi+rowLens[i] ;
+      for (CoinBigIndex jj = startRowi ; jj < endRowi ; jj++) {
+        int j = colIndices[jj] ;
+        double aij = elementByRow[jj] ;
+        if (ubs[j] > lbs[j]+1.0e-8) {
+          if (!intVar[j]) {
             if (numberContinuous == 0) {
-              jColumn1 = jColumn ;
-              value1 = value ;
+              jColumn1 = j ;
+              value1 = aij ;
             } else {
-              jColumn2 = jColumn ;
-              value2 = value ;
+              jColumn2 = j ;
+              value2 = aij ;
             }
             numberContinuous++ ;
           } else {
-            if (fabs(value-floor(value+0.5)) > 1.0e-12)
+            if (fabs(aij-floor(aij+0.5)) > 1.0e-12)
               allIntegerCoeff = false ;
           }
         } else {
-          sumFixed += lower[jColumn]*value ;
+          sumFixed += lbs[j]*aij ;
         }
       }
 /*
@@ -229,16 +222,16 @@ bool analyze (const OsiSolverInterface *solverX, char *intVar,
   fixed variables. Serendipitous cancellation is possible here (if unlikely).
   The fixed contribution could change a non-integer bound to an integer.
 */
-      double low = rowLower[iRow] ;
-      if (low > -e20Inf) {
-        low -= sumFixed ;
-        if (fabs(low-floor(low+0.5)) > 1.0e-12)
+      double blowi = rowLower[i] ;
+      if (blowi > -e20Inf) {
+        blowi -= sumFixed ;
+        if (fabs(blowi-floor(blowi+0.5)) > 1.0e-12)
           allIntegerCoeff = false ;
       }
-      double up = rowUpper[iRow] ;
-      if (up < e20Inf) {
-        up -= sumFixed ;
-        if (fabs(up-floor(up+0.5)) > 1.0e-12)
+      double bi = rowUpper[i] ;
+      if (bi < e20Inf) {
+        bi -= sumFixed ;
+        if (fabs(bi-floor(bi+0.5)) > 1.0e-12)
           allIntegerCoeff = false ;
       }
 /*
@@ -258,7 +251,7 @@ bool analyze (const OsiSolverInterface *solverX, char *intVar,
   passes?
 */
       if (numberContinuous == 1) {
-        if (low == up) {
+        if (blowi == bi) {
           if (fabs(value1) > 1.0e-3) {
             value1 = 1.0/value1 ;
             if (fabs(value1-floor(value1+0.5)) < 1.0e-12) {
@@ -270,7 +263,7 @@ bool analyze (const OsiSolverInterface *solverX, char *intVar,
           if (fabs(value1) > 1.0e-3) {
             value1 = 1.0/value1 ;
             if (fabs(value1-floor(value1+0.5)) < 1.0e-12) {
-              ignore[iRow] = 1 ;
+              ignore[i] = 1 ;
             }
           }
         }
@@ -299,31 +292,31 @@ bool analyze (const OsiSolverInterface *solverX, char *intVar,
   until fixed').
 */
       if (numberContinuous == 2) {
-        if (low == up) {
+        if (blowi == bi) {
           if (fabs(value1) == 1.0 && value1*value2 == -1.0 &&
-	      !lower[jColumn1] && !lower[jColumn2] &&
-	      columnLength[jColumn1] == 1 && columnLength[jColumn2] == 1) {
+	      !lbs[jColumn1] && !lbs[jColumn2] &&
+	      colLens[jColumn1] == 1 && colLens[jColumn2] == 1) {
             int n = 0 ;
             int i ;
             double objChange =
-		direction*(objective[jColumn1]+objective[jColumn2]) ;
-            double bound = CoinMin(upper[jColumn1],upper[jColumn2]) ;
+		objsense*(objective[jColumn1]+objective[jColumn2]) ;
+            double bound = CoinMin(ubs[jColumn1],ubs[jColumn2]) ;
             bound = CoinMin(bound,e20Inf) ;
 	    // Since column lengths are 1, there is no second coeff.
-            for (i = columnStart[jColumn1] ;
-		 i < columnStart[jColumn1]+columnLength[jColumn1] ; i++) {
-              int jRow = row[i] ;
-              double value = element[i] ;
-              if (jRow != iRow) {
+            for (i = colStarts[jColumn1] ;
+		 i < colStarts[jColumn1]+colLens[jColumn1] ; i++) {
+              int jRow = rowIndices[i] ;
+              double value = elementByCol[i] ;
+              if (jRow != i) {
                 which[n++] = jRow ;
                 changeRhs[jRow] = value ;
               }
             }
-            for (i = columnStart[jColumn2] ;
-		 i < columnStart[jColumn2]+columnLength[jColumn2] ; i++) {
-              int jRow = row[i] ;
-              double value = element[i] ;
-              if (jRow != iRow) {
+            for (i = colStarts[jColumn2] ;
+		 i < colStarts[jColumn2]+colLens[jColumn2] ; i++) {
+              int jRow = rowIndices[i] ;
+              double value = elementByCol[i] ;
+              if (jRow != i) {
                 if (!changeRhs[jRow]) {
                   which[n++] = jRow ;
                   changeRhs[jRow] = value ;
@@ -340,7 +333,7 @@ bool analyze (const OsiSolverInterface *solverX, char *intVar,
                 double value = changeRhs[jRow] ;
                 if (value) {
                   value *= bound ;
-                  if (rowLength[jRow] == 1) {
+                  if (rowLens[jRow] == 1) {
                     if (value>0.0) {
                       double rhs = rowLower[jRow] ;
                       if (rhs>0.0) {
@@ -356,7 +349,7 @@ bool analyze (const OsiSolverInterface *solverX, char *intVar,
                           good = false ;
                       }
                     }
-                  } else if (rowLength[jRow] == 2) {
+                  } else if (rowLens[jRow] == 2) {
                     if (value>0.0) {
                       if (rowLower[jRow]>-e20Inf)
                         good = false ;
@@ -390,27 +383,26 @@ bool analyze (const OsiSolverInterface *solverX, char *intVar,
   Check for variables x<j> with integer bounds l<j> and u<j> and no
   constraint that prevents x<j> from being integer.
 */
-    for (iColumn = 0 ; iColumn < numberColumns ; iColumn++) {
-      if (upper[iColumn] > lower[iColumn]+1.0e-8 && !intVar[iColumn]) {
+    for (int j = 0 ; j < n ; j++) {
+      if (ubs[j] > lbs[j]+1.0e-8 && !intVar[j]) {
         double value ;
-        value = upper[iColumn] ;
+        value = ubs[j] ;
         if (value < e20Inf && fabs(value-floor(value+0.5)) > 1.0e-12) 
           continue ;
-        value = lower[iColumn] ;
+        value = lbs[j] ;
         if (value > -e20Inf && fabs(value-floor(value+0.5)) > 1.0e-12) 
           continue ;
         bool integer = true ;
-        for (CoinBigIndex j = columnStart[iColumn] ;
-	     j < columnStart[iColumn]+columnLength[iColumn] ; j++) {
-          int iRow = row[j] ;
-          if (!ignore[iRow]) {
+        for (CoinBigIndex ii = colStarts[j] ;
+	     ii < colStarts[j]+colLens[j] ; ii++) {
+          if (!ignore[rowIndices[ii]]) {
             integer = false ;
             break ;
           }
         }
         if (integer) {
           numberChanged++ ;
-          intVar[iColumn] = changedToInt ;
+          intVar[j] = changedToInt ;
         }
       }
     }
@@ -424,26 +416,26 @@ bool analyze (const OsiSolverInterface *solverX, char *intVar,
   continuous (0). Otherwise, declare it general integer (2).
 */
   bool feasible = true ;
-  for (iColumn = 0 ; iColumn < numberColumns ; iColumn++) {
-    if (intVar[iColumn] == changedToInt) {
-      if (upper[iColumn] > e20Inf) {
-        upper[iColumn] = e20Inf ;
+  for (int j = 0 ; j < n ; j++) {
+    if (intVar[j] == changedToInt) {
+      if (ubs[j] > e20Inf) {
+        ubs[j] = e20Inf ;
       } else {
-        upper[iColumn] = floor(upper[iColumn]+1.0e-5) ;
+        ubs[j] = floor(ubs[j]+1.0e-5) ;
       }
-      if (lower[iColumn] < -e20Inf) {
-        lower[iColumn] = -e20Inf ;
+      if (lbs[j] < -e20Inf) {
+        lbs[j] = -e20Inf ;
       } else {
-        lower[iColumn] = ceil(lower[iColumn]-1.0e-5) ;
-        if (lower[iColumn] > upper[iColumn])
+        lbs[j] = ceil(lbs[j]-1.0e-5) ;
+        if (lbs[j] > ubs[j])
           feasible = false ;
       }
-      if (lower[iColumn] == 0.0 && upper[iColumn] == 1.0)
-        intVar[iColumn] = 1 ;
-      else if (lower[iColumn] == upper[iColumn])
-        intVar[iColumn] = 0 ;
+      if (lbs[j] == 0.0 && ubs[j] == 1.0)
+        intVar[j] = 1 ;
+      else if (lbs[j] == ubs[j])
+        intVar[j] = 0 ;
       else
-        intVar[iColumn] = 2 ;
+        intVar[j] = 2 ;
     }
   }
 /*
@@ -452,7 +444,6 @@ bool analyze (const OsiSolverInterface *solverX, char *intVar,
   delete [] which ;
   delete [] changeRhs ;
   delete [] ignore ;
-  delete solver ;
 
 # if CGL_DEBUG > 1
   std::cout
@@ -975,7 +966,9 @@ void CglProbing::generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
 
   TODO: The distinction between colLower, colUpper, vs. colLower_, colUpper_,
 	is that the latter can be accessed by the client after we return.
-	See generateCutsAndModify.
+	(tightLower, tightUpper). Similarly for rowLower_, rowUpper_. But I
+	have doubts about the implementation. (Necessary? Consistent?)
+	-- lh, 110330 --
 */
   int nRows = si.getNumRows() ; 
   double *rowLower = new double[nRows+1] ;
@@ -1013,7 +1006,7 @@ void CglProbing::generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
   }
 # endif
 /*
-  Infeasibility is indicated by a stylized infeasible column cut.
+  Infeasibility is indicated by returning a stylized infeasible column cut.
 
   If we're debugging, do a sanity check that this cut really is infeasible.
 */
@@ -1042,6 +1035,7 @@ void CglProbing::generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
   delete [] colUpper_ ;
   colLower_ = NULL ;
   colUpper_ = NULL ;
+
   rowCuts_ = saveRowCuts ;
 
 # if CGL_DEBUG > 0
@@ -1338,8 +1332,6 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   std::cout << "." << std::endl ;
 # endif
 
-/* EXTRA_PROBING_STUFF block (tighten using reduced cost) was here. */
-
 /*
   Create the working row copy from the si's model or from a snapshot (only if
   the user specified mode 0 and a snapshot exists). rowLower and rowUpper are
@@ -1406,13 +1398,22 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   double * minR = new double [nRows] ;
   double * maxR = new double [nRows] ;
 /*
-  End of setup. Start out by calling tighten to do bound propagation (two pass
-  limit).
-*/
+  End of setup. Setup and invoke bound propagation.
+
   ninfeas = tighten(colLower,colUpper,column,rowElements,
 		    rowStart,rowStartPos,rowLength,
 		    rowLower,rowUpper,nRows,nCols,
 		    intVar,2,primalTolerance_) ;
+*/
+  CglPhic *phic = new CglPhic(rowCopy,columnCopy,rowLower,rowUpper) ;
+  phic->setVerbosity(0) ;
+  phic->setParanoia(0) ;
+  phic->loanColBnds(colLower,colUpper) ;
+  phic->loanColType(intVar) ;
+  phic->initLhsBnds() ;
+  phic->initPropagation() ;
+  phic->tightenAbInitio() ;
+  phic->getRowLhsBnds(minR,maxR) ;
 /*
   If we've lost feasibility, do nothing more. Otherwise, record the new bounds
   as column cuts and continue with setup and probing.
@@ -1550,6 +1551,8 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   delete [] intVar ;
   delete [] rowStartPos ;
   delete [] realRows ;
+
+  delete phic ;
 
 /*
   jjf: put back unreasonable bounds on integer variables

@@ -1677,7 +1677,7 @@ void strengthenCoeff (
 */
 int CglProbing::probe (const OsiSolverInterface &si, 
 		       OsiCuts &cs, 
-		       double *colLower, double *colUpper, 
+		       double *const colLower, double *const colUpper, 
 		       const CoinPackedMatrix *const rowCopy,
 		       const CoinPackedMatrix *const columnCopy,
 		       const CoinBigIndex *const rowStartPos,
@@ -2114,20 +2114,14 @@ int CglProbing::probe (const OsiSolverInterface &si,
       const bool upIsUpper = (CoinAbs(up-uj) < 1.0e-7) ;
 #     endif
 /*
-  Set up to probe each variable down (1), up (2), down (1).
+  Set up to probe each variable down (1), then up (2).
 
-  The notion is that we'll set a bit (1, 2, 4) in the result record if we're
+  The notion is that we'll set a bit (1, 2) in the result record if we're
   feasible for a particular way. Way is defined as:
-    1: we're looking at movement between floor(x*<j>) and x*<j>, u<j>
-    2: we're looking at movement between ceil(x*<j>) and x*<j>, l<j>
-  As defined here, movement will be negative for way = 1.
-
-  Why do we have a second pass with way = 1? Glad you asked. About 1200
-  lines farther down, it finally becomes apparent that we execute the
-  final pass only when the initial down probe was feasible, but the up probe
-  was not. In a nutshell, we're restoring the state produced by the down
-  probe, which we'll then nail down in the section of code labelled `keep',
-  a mere 600 lines farther on.
+    1: we're doing a down probe, u<j> reduced to floor(x*<j>)
+    2: we're doing a up probe, l<j> increased to ceil(x*<j>)
+  As defined below, movement (new bound - old bound) is negative for a down
+  probe, positive for an up probe.
 */
       unsigned int iWay ;
       unsigned int way[] = { probeDown, probeUp } ;

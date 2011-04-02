@@ -205,8 +205,6 @@ int CglProbingUnitTest (const OsiSolverInterface *baseSiP,
     OsiCuts osicuts ;
     CglProbing test1 ;
     OsiSolverInterface  *siP = baseSiP->clone() ;
-    int nColCuts = -1 ;
-    int nRowCuts = -1 ;
 
     siP->setIntParam(OsiNameDiscipline,1) ;
 

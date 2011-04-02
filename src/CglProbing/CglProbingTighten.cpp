@@ -25,193 +25,152 @@ const double CglProbing::CGL_BOGUS_1E60_BOUND = 1.0e60 ;
   It may also declare rows to be redundant
 
   Returns the number of infeasible variables.
+
+  Very brute-force. All constraints are reexamined with every pass. L(i) and
+  U(i) are recomputed each time a constraint is processed.
+  
+  Updates colLower and colUpper. Can detect infeasibility due to constraint or
+  variable bounds.
+
+  'The paper' referred to in the original comments seems likely to be
+  Andersen, Erling D. and Knud D. Andersen, "Presolving in Linear
+  Programming," Mathematical Programming, Vol. 71, pp. 221–245, 1995.
 */
-int 
-CglProbing::tighten(double *colLower, double * colUpper,
-                    const int *column, const double *rowElements, 
-                    const CoinBigIndex *rowStart, 
-		    const CoinBigIndex * rowStartPos,const int * rowLength,
-                    double *rowLower, double *rowUpper, 
-                    int nRows,int nCols,char * intVar,int maxpass,
-                    double tolerance) const
+int CglProbing::tighten(double *const colLower, double *const colUpper,
+                    const int *const column, const double *const rowElements, 
+                    const CoinBigIndex *const rowStart, 
+		    const CoinBigIndex *const rowStartPos,
+		    const int *const rowLength,
+                    double *const rowLower, double *const rowUpper, 
+                    int nRows, int nCols, const char *const intVar,
+		    int maxpass, double tolerance) const
 {
-  int i,j,k ;
-  int dolrows;
+  int dolrows ;
   int nchange = 1 ;
   int jpass = 0 ;
   int ninfeas = 0 ;
 
-  // do without cliques and using sorted version
-  assert (rowStartPos);
-  while(nchange) {
-    nchange = 0; 
-    if (jpass==maxpass) break;
-    jpass++;
-    dolrows = (jpass & 1) == 1;
-    
-    for (i = 0; i < nRows; ++i) {
-      if (rowLower[i]>-1.0e20||rowUpper[i]<1.0e20) {
-	int iflagu = 0;
-	int iflagl = 0;
-	double dmaxup = 0.0;
-	double dmaxdown = 0.0;
-	double dbound = 0.0 ;
-	int krs = rowStart[i];
-	int krs2 = rowStartPos[i];
-	int kre = rowStart[i]+rowLength[i];
-	
-	/* ------------------------------------------------------------*/
-	/* Compute L(i) and U(i) */
-	/* ------------------------------------------------------------*/
-	for (k = krs; k < krs2; ++k) {
-	  double value=rowElements[k];
-	  int j = column[k];
-	  if (colUpper[j] < 1.0e12) 
-	    dmaxdown += colUpper[j] * value;
-	  else
-	    ++iflagl;
-	  if (colLower[j] > -1.0e12) 
-	    dmaxup += colLower[j] * value;
-	  else
-	    ++iflagu;
-	}
-	for (k = krs2; k < kre; ++k) {
-	  double value=rowElements[k];
-	  int j = column[k];
-	  if (colUpper[j] < 1.0e12) 
-	    dmaxup += colUpper[j] * value;
-	  else
-	    ++iflagu;
-	  if (colLower[j] > -1.0e12) 
-	    dmaxdown += colLower[j] * value;
-	  else
-	    ++iflagl;
-	}
-	if (iflagu)
-	  dmaxup=1.0e31;
-	if (iflagl)
-	  dmaxdown=-1.0e31;
-	if (dmaxup <= rowUpper[i] + tolerance && dmaxdown >= rowLower[i] - tolerance) {
-	  /*
-	   * The sum of the column maxs is at most the row ub, and
-	   * the sum of the column mins is at least the row lb;
-	   * this row says nothing at all.
-	   * I suspect that this corresponds to
-	   * an implied column singleton in the paper (viii, on p. 325),
-	   * where the singleton in question is the row slack.
-	   */
-	  ++nchange;
-	  rowLower[i]=-DBL_MAX;
-	  rowUpper[i]=DBL_MAX;
+  assert (rowStartPos) ;
+/*
+  Main loop: propagate until we converge or until the pass limit (maxpass) is
+  reached.
+*/
+  while (nchange && jpass < maxpass) {
+    nchange = 0 ; 
+    jpass++ ;
+    // Appears to force an alternation between working off bi and blowi.
+    dolrows = (jpass & 1) == 1 ;
+/*
+  Open a loop to process each row. We need at least one finite bound to work
+  with.
+*/
+    for (int i = 0 ; i < nRows ; ++i) {
+      if (rowLower[i] < -1.0e20 && rowUpper[i] > 1.0e20) continue ;
+
+      int iflagu = 0 ;
+      int iflagl = 0 ;
+      double dmaxup = 0.0 ;
+      double dmaxdown = 0.0 ;
+      double dbound = 0.0 ;
+      const CoinBigIndex starti = rowStart[i] ;
+      const CoinBigIndex startPosi = rowStartPos[i] ;
+      const CoinBigIndex endi = rowStart[i]+rowLength[i] ;
+/*
+  Compute L(i) and U(i) for the row. Remember that the constraint coefficients
+  are sorted, negative first, then positive.
+*/
+      for (CoinBigIndex jj = starti ; jj < startPosi ; ++jj) {
+	const double &value = rowElements[jj] ;
+	const int &j = column[jj] ;
+	if (colUpper[j] < 1.0e12) 
+	  dmaxdown += colUpper[j]*value ;
+	else
+	  ++iflagl ;
+	if (colLower[j] > -1.0e12) 
+	  dmaxup += colLower[j]*value ;
+	else
+	  ++iflagu ;
+      }
+      for (CoinBigIndex jj = startPosi ; jj < endi ; ++jj) {
+	const double &value = rowElements[jj] ;
+	const int &j = column[jj] ;
+	if (colUpper[j] < 1.0e12) 
+	  dmaxup += colUpper[j] * value ;
+	else
+	  ++iflagu ;
+	if (colLower[j] > -1.0e12) 
+	  dmaxdown += colLower[j] * value ;
+	else
+	  ++iflagl ;
+      }
+      if (iflagu) dmaxup = 1.0e31 ;
+      if (iflagl) dmaxdown = -1.0e31 ;
+/*
+  If bilow < L(i) <= U(i) < bi, the constraint is redundant. Make sure we
+  don't ever process it by forcing rowLower and rowUpper to infinity. 
+  If U(i) < bilow or L(i) > bi, we're infeasible.
+*/
+      if (dmaxup < rowLower[i]-tolerance ||
+	  dmaxdown > rowUpper[i]+tolerance) {
+	ninfeas++ ;
+	break ;
+      }
+      if (dmaxup <= rowUpper[i]+tolerance &&
+	  dmaxdown >= rowLower[i]-tolerance) {
+	++nchange ;
+	rowLower[i] = -DBL_MAX ;
+	rowUpper[i] = DBL_MAX ;
+	continue ;
+      }
+/*
+  See what kind of progress we can make. If the constraint has finite L(i) and
+  U(i), chose one or the other.
+
+  The reasonableness condition on rowUpper makes sense, but I don't see any
+  reason why rowLower must be positive. Particularly in view of the test
+  immediately below, where all we require is > -1e15.   -- lh, 110330 --
+*/
+      if (iflagu == 0 && rowLower[i] > 0.0 &&
+          iflagl == 0 && rowUpper[i] < 1e15) {
+	if (dolrows) {
+	  iflagu = 1 ;
 	} else {
-	  if (dmaxup < rowLower[i] -tolerance || dmaxdown > rowUpper[i]+tolerance) {
-	    ninfeas++;
-	    break;
-	  }
-	  /*        Finite U(i) */
-	  /* -------------------------------------------------------------*/
-	  /* below is deliberate mistake (previously was by chance) */
-	  /*        never do both */
-	  if (iflagu == 0 && rowLower[i] > 0.0 && iflagl == 0 && rowUpper[i] < 1e15) {
-	    if (dolrows) {
-	      iflagu = 1;
-	    } else {
-	      iflagl = 1;
-	    }
-	  }
-	  if (iflagu == 0 && rowLower[i] > -1e15) {
-	    for (k = krs; k < kre; ++k) {
-	      double value=rowElements[k];
-	      j = column[k];
-	      if (value > 0.0) {
-		if (colUpper[j] < 1.0e12) {
-		  dbound = colUpper[j] + (rowLower[i] - dmaxup) / value;
-		  if (dbound > colLower[j] + 1.0e-8) {
-		    /* we can tighten the lower bound */
-		    /* the paper mentions this as a possibility on p. 227 */
-		    colLower[j] = dbound;
-		    ++nchange;
-		    
-		    /* this may have fixed the variable */
-		    /* I believe that this roughly corresponds to a
-		     * forcing constraint in the paper (p. 226).
-		     * If there is a forcing constraint (with respect
-		     * to the original, untightened bounds), then in this 
-		     * loop we will go through all the columns and fix
-		     * each of them to their implied bound, rather than
-		     * determining that the row as a whole is forced
-		     * and just fixing them without doing computation for
-		     * each column (as in the paper).
-		     * By doing it this way, we can tighten bounds and
-		     * get forcing constraints for free.
-		     */
-		    if (colUpper[j] - colLower[j] <= tolerance) {
-		      /* --------------------------------------------------*/
-		      /*                check if infeasible !!!!! */
-		      /* --------------------------------------------------*/
-		      if (colUpper[j] - colLower[j] < -100.0*tolerance) {
-			ninfeas++;
-		      }
-		    }
-		  }
-		}
-	      } else {
-		if (colLower[j] > -1.0e12) {
-		  dbound = colLower[j] + (rowLower[i] - dmaxup) / value;
-		  if (dbound < colUpper[j] - 1.0e-8) {
-		    colUpper[j] = dbound;
-		    ++nchange;
-		    if (colUpper[j] - colLower[j] <= tolerance) {
-		      /* --------------------------------------------------*/
-		      /*                check if infeasible !!!!! */
-		      /* --------------------------------------------------*/
-		      if (colUpper[j] - colLower[j] < -100.0*tolerance) {
-			ninfeas++;
-		      }
-		    }
+	  iflagl = 1 ;
+	}
+      }
+/*
+  Work against blow<i>-U(i\t). Doesn't recognise an opportunity to move from
+  an infinite bound to a finite bound. Check for infeasibility based on
+  variable bounds.
+*/
+      if (iflagu == 0 && rowLower[i] > -1e15) {
+	for (CoinBigIndex jj = starti ; jj < endi ; ++jj) {
+	  const double &value = rowElements[jj] ;
+	  const int &j = column[jj] ;
+	  if (value > 0.0) {
+	    if (colUpper[j] < 1.0e12) {
+	      // tighten lower bound
+	      dbound = colUpper[j]+(rowLower[i]-dmaxup)/value ;
+	      if (dbound > colLower[j]+1.0e-8) {
+		colLower[j] = dbound ;
+		++nchange ;
+		if (colUpper[j]-colLower[j] <= tolerance) {
+		  if (colUpper[j]-colLower[j] < -100.0*tolerance) {
+		    ninfeas++ ;
 		  }
 		}
 	      }
 	    }
-	  }
-	  
-	  /* ----------------------------------------------------------------*/
-	  /*        Finite L(i) */
-	  /* ----------------------------------------------------------------*/
-	  if (iflagl == 0 && rowUpper[i] < 1e15) {
-	    for (k = krs; k < kre; ++k) {
-	      double value=rowElements[k];
-	      j = column[k];
-	      if (value < 0.0) {
-		if (colUpper[j] < 1.0e12) {
-		  dbound = colUpper[j] + (rowUpper[i] - dmaxdown) / value;
-		  if (dbound > colLower[j] + 1.0e-8) {
-		    colLower[j] = dbound;
-		    ++nchange;
-		    if (! (colUpper[j] - colLower[j] > tolerance)) {
-		      /* --------------------------------------------------*/
-		      /*                check if infeasible !!!!! */
-		      /* --------------------------------------------------*/
-		      if (colUpper[j] - colLower[j] < -100.0*tolerance) {
-			ninfeas++;
-		      }
-		    }
-		  }
-		} 
-	      } else {
-		if (colLower[j] > -1.0e12) {
-		  dbound = colLower[j] + (rowUpper[i] - dmaxdown) / value;
-		  if (dbound < colUpper[j] - 1.0e-8) {
-		    colUpper[j] = dbound;
-		    ++nchange;
-		    if (! (colUpper[j] - colLower[j] > tolerance)) {
-		      /* --------------------------------------------------*/
-		      /*                check if infeasible !!!!! */
-		      /* --------------------------------------------------*/
-		      if (colUpper[j] - colLower[j] < -100.0*tolerance) {
-			ninfeas++;
-		      }
-		    }
+	  } else {
+	    if (colLower[j] > -1.0e12) {
+	      // tighten upper bound
+	      dbound = colLower[j]+(rowLower[i]-dmaxup)/value ;
+	      if (dbound < colUpper[j] - 1.0e-8) {
+		colUpper[j] = dbound ;
+		++nchange ;
+		if (colUpper[j]-colLower[j] <= tolerance) {
+		  if (colUpper[j]-colLower[j] < -100.0*tolerance) {
+		    ninfeas++ ;
 		  }
 		}
 	      }
@@ -219,28 +178,73 @@ CglProbing::tighten(double *colLower, double * colUpper,
 	  }
 	}
       }
-    }
-    for (j = 0; j < nCols; ++j) {
+/*
+  Work against b<i>-L(i\t). Doesn't recognise an opportunity to move from
+  an infinite bound to a finite bound. Check for infeasibility based on
+  variable bounds.
+*/
+      if (iflagl == 0 && rowUpper[i] < 1e15) {
+	for (CoinBigIndex jj = starti; jj < endi; ++jj) {
+	  const double &value = rowElements[jj] ;
+	  const int &j = column[jj] ;
+	  if (value < 0.0) {
+	    if (colUpper[j] < 1.0e12) {
+	      dbound = colUpper[j]+(rowUpper[i]-dmaxdown)/value ;
+	      if (dbound > colLower[j]+1.0e-8) {
+		colLower[j] = dbound ;
+		++nchange ;
+		// Interesting variant from previous stanza
+		if (!(colUpper[j]-colLower[j] > tolerance)) {
+		  if (colUpper[j]-colLower[j] < -100.0*tolerance) {
+		    ninfeas++ ;
+		  }
+		}
+	      }
+	    } 
+	  } else {
+	    if (colLower[j] > -1.0e12) {
+	      dbound = colLower[j]+(rowUpper[i]-dmaxdown)/value ;
+	      if (dbound < colUpper[j]-1.0e-8) {
+		colUpper[j] = dbound ;
+		++nchange ;
+		if (!(colUpper[j]-colLower[j] > tolerance)) {
+		  if (colUpper[j]-colLower[j] < -100.0*tolerance) {
+		    ninfeas++ ;
+		  }
+		}
+	      }
+	    }
+	  }
+	}
+      }
+    }    // end of loop to scan all rows
+/*
+  Scan the columns. For integer variables, force the bounds to integral
+  values. Only count this as a change if we're just slightly below the integral
+  value. We could well end up changing 1.9 to 1.0, which arguably is the wrong
+  direction.
+
+  Seems like we could skip this if we're already infeasible. The utility of
+  the test for infeasibility here is questionable, but I can see where it
+  could happen.
+*/
+    for (int j = 0 ; j < nCols ; ++j) {
       if (intVar[j]) {
-	if (colUpper[j]-colLower[j]>1.0e-8) {
-	  if (floor(colUpper[j]+1.0e-4)<colUpper[j]) 
-	    nchange++;
-	  // clean up anyway
-	  colUpper[j]=floor(colUpper[j]+1.0e-4);
-	  if (ceil(colLower[j]-1.0e-4)>colLower[j]) 
-	    nchange++;
-	  // clean up anyway
-	  colLower[j]=ceil(colLower[j]-1.0e-4);
-	  if (colUpper[j]<colLower[j]) {
+	if (colUpper[j]-colLower[j] > 1.0e-8) {
+	  if (floor(colUpper[j]+1.0e-4) < colUpper[j]) nchange++ ;
+	  colUpper[j] = floor(colUpper[j]+1.0e-4) ;
+	  if (ceil(colLower[j]-1.0e-4) > colLower[j]) nchange++ ;
+	  colLower[j] = ceil(colLower[j]-1.0e-4) ;
+	  if (colUpper[j] < colLower[j]) {
 	    /*printf("infeasible\n");*/
-	    ninfeas++;
+	    ninfeas++ ;
 	  }
 	}
       }
     }
-    if (ninfeas) break;
-  }
-  return (ninfeas);
+    if (ninfeas) break ;
+  }    // end of 'propagate til done'
+  return (ninfeas) ;
 }
 
 
@@ -267,15 +271,20 @@ CglProbing::tighten(double *colLower, double * colUpper,
 	arbitrary 1e60 is set and the constraint is flagged as ok for
 	further processing. This is the root of the `improved' 1e60 bounds
 	on variables. Look for CGL_BOGUS_1E60_BOUND.  -- lh, 100924 --
+
+  TODO: Dusty! Uses int instead of CoinBigIndex.  -- lh, 110330 --
 */
 
-void CglProbing::calcRowBounds (double *colLower, double * colUpper,
-			        const int *column, const double *rowElements, 
-			        const CoinBigIndex *rowStart, 
-			        const int * rowLength,
-			        double *rowLower, double *rowUpper, 
-			        double * minR, double * maxR, int * markR,
-			        int nRows) const
+void CglProbing::calcRowBounds (const double *const colLower,
+				const double *const colUpper,
+			        const int *const column,
+				const double *const rowElements, 
+			        const CoinBigIndex *const rowStart, 
+			        const int *const rowLength,
+			        const double *const rowLower,
+				const double *const rowUpper, 
+			        double *const minR, double *const maxR,
+				int *const markR, int nRows) const
 {
   int i, j, k, kre ;
   int krs ;

@@ -355,13 +355,14 @@ private:
      Use bound propagation to tighten column bounds. Can declare infeasibility
      and  may also declare rows to be redundant
   */
-  int tighten(double *colLower, double * colUpper,
-              const int *column, const double *rowElements, 
-              const CoinBigIndex *rowStart,const CoinBigIndex * rowStartPos,
-	      const int * rowLength,
-              double *rowLower, double *rowUpper, 
-              int nRows,int nCols,char * intVar,int maxpass,
-              double tolerance) const ;
+  int tighten(double *const colLower, double *const colUpper,
+              const int *const column, const double *const rowElements, 
+              const CoinBigIndex *const rowStart,
+	      const CoinBigIndex *const rowStartPos,
+	      const int *const rowLength,
+              double *const rowLower, double *const rowUpper, 
+              int nRows, int nCols, const char *const intVar,
+	      int maxpass, double tolerance) const ;
 
   /*! \brief Calculate constraint left-hand-side bounds
 
@@ -373,11 +374,14 @@ private:
     - -2: constraint is not useful (both lhs bounds infinite).
     In practice, finite translates as `reasonable magnitude'.
   */
-  void calcRowBounds(double *colLower, double *colUpper,
-		     const int *column, const double *rowElements, 
-		     const CoinBigIndex *rowStart, const int *rowLength,
-		     double *rowLower, double *rowUpper, 
-		     double *minR, double *maxR, int *markR,
+  void calcRowBounds(const double *const colLower,
+  		     const double *const colUpper,
+		     const int *const column, const double *const rowElements, 
+		     const CoinBigIndex *const rowStart,
+		     const int *const rowLength,
+		     const double *const rowLower,
+		     const double *const rowUpper, 
+		     double *const minR, double *const maxR, int *const markR,
 		     int nRows) const ;
   //@}
 
@@ -438,6 +442,10 @@ private:
   /*
     These have to be mutable because generateCuts is a const method, and
     tightening bounds is one of the main activities of generateCuts.
+
+    Eh, I'm no longer so happy with this explanation. Modifying the arrays is
+    not the point, it's replacing the pointers. I need to track this down.
+    -- lh, 110330 --
   */ 
   /// Lower bounds on columns
   mutable double * colLower_ ;

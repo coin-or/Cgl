@@ -88,6 +88,12 @@ src/CglLandP/CglLandPValidator.cpp -text
 src/CglLandP/CglLandPValidator.hpp -text
 src/CglLandP/Makefile.am -text
 src/CglLandP/Makefile.in -text
+src/CglPhic/CglPhic.hpp -text
+src/CglPhic/CglPhicBase.cpp -text
+src/CglPhic/CglPhicPropagate.cpp -text
+src/CglPhic/Makefile.am -text
+src/CglPhic/Makefile.in -text
+src/CglPhic/bonsai_phic.c -text
 src/CglProbing/CglProbingDebug.cpp -text
 src/CglProbing/CglProbingDebug.hpp -text
 src/CglProbing/CglProbingProbe.cpp -text
