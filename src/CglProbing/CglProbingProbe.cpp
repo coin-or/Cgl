@@ -1675,20 +1675,20 @@ void strengthenCoeff (
   system during preprocessing in gutsOfGenerateCuts.
 
 */
-int CglProbing::probe (const OsiSolverInterface &si, 
-		       OsiCuts &cs, 
-		       double *const colLower, double *const colUpper, 
-		       const CoinPackedMatrix *const rowCopy,
-		       const CoinPackedMatrix *const columnCopy,
-		       const CoinBigIndex *const rowStartPos,
-		       const int *const realRows, 
-		       const double *const rowLower,
-		       const double *const rowUpper,
-		       const char *const intVar,
-		       double *const minR, double *const maxR, 
-		       int *const markR, 
-                       CglTreeInfo *const info,
-		       bool useObj, bool useCutoff, double cutoff) const
+bool CglProbing::probe (const OsiSolverInterface &si, 
+		        OsiCuts &cs, 
+		        double *const colLower, double *const colUpper, 
+		        const CoinPackedMatrix *const rowCopy,
+		        const CoinPackedMatrix *const columnCopy,
+		        const CoinBigIndex *const rowStartPos,
+		        const int *const realRows, 
+		        const double *const rowLower,
+		        const double *const rowUpper,
+		        const char *const intVar,
+		        double *const minR, double *const maxR, 
+		        int *const markR, 
+                        CglTreeInfo *const info,
+		        bool useObj, bool useCutoff, double cutoff) const
 
 {
 # if CGL_DEBUG > 0
@@ -3447,5 +3447,5 @@ int CglProbing::probe (const OsiSolverInterface &si,
   }
 # endif
 
-  return (ninfeas) ;
+  return (((ninfeas)?false:true)) ;
 }

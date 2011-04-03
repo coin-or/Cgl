@@ -466,17 +466,11 @@ bool analyze (const OsiSolverInterface *const si, char *const intVar,
 
 CoinPackedMatrix *setupRowCopy (int mode, bool useObj,
 				double cutoff, double offset,
-				const CoinPackedMatrix *rowCopy_,
-				int numberRows_, int numberColumns_,
-				const double *const rowLower_,
-				const double *const rowUpper_,
 				const OsiSolverInterface &si,
 				double *rowLower, double *rowUpper)
 {
 # if CGL_DEBUG > 1
-  std::cout << "Entering setupRowCopy, mode " << mode << ", " ;
-  if (!rowCopy_) std::cout << "no " ;
-  std::cout << "row copy." << std::endl ;
+  std::cout << "Entering setupRowCopy, mode " << mode << "." << std::endl ;
 # endif
 
   int nCols = si.getNumCols() ;
@@ -486,63 +480,34 @@ CoinPackedMatrix *setupRowCopy (int mode, bool useObj,
   Make the working copy from the model in the si. If we're using the
   objective, add in the objective coefficients.
 */
-  if (!rowCopy_) {
+  nRows = si.getNumRows(); 
 
-    nRows = si.getNumRows(); 
+  CoinMemcpyN(si.getRowLower(),nRows,rowLower) ;
+  CoinMemcpyN(si.getRowUpper(),nRows,rowUpper) ;
 
-    CoinMemcpyN(si.getRowLower(),nRows,rowLower) ;
-    CoinMemcpyN(si.getRowUpper(),nRows,rowUpper) ;
-
-    if (!useObj) {
-      rowCopy = new CoinPackedMatrix(*si.getMatrixByRow()) ;
-    } else {
-      rowCopy = new CoinPackedMatrix(*si.getMatrixByRow(),1,nCols,false) ;
-      const double *objective = si.getObjCoefficients() ;
-      const double objmul = si.getObjSense() ;
-      int *columns = new int[nCols] ;
-      double *elements = new double[nCols] ;
-      int kk = 0 ;
-      for (int j = 0 ; j < nCols ; j++) {
-	if (objective[j]) {
-	  elements[kk] = objmul*objective[j] ;
-	  columns[kk++] = j ;
-	}
-      }
-      rowCopy->appendRow(kk,columns,elements) ;
-      delete[] columns ;
-      delete[] elements ;
-      rowLower[nRows] = -DBL_MAX ;
-      rowUpper[nRows] = cutoff+offset ;
-      nRows++ ;
-    }
+  if (!useObj) {
+    rowCopy = new CoinPackedMatrix(*si.getMatrixByRow()) ;
   } else {
-/*
-  Make the working copy from the snapshot. It must be true that the snapshot
-  has the same number of columns as the constraint system in the solver. The
-  asserts are sanity checks:
-    * the column count could go bad because the user has changed the model
-      outside of CglProbing ;
-    * rowLower and rowUpper are allocated to the number of rows in the model
-      plus 1 (in case we want the objective), so we need to be sure there's
-      enough space ;
-    * the final check of row counts is simple internal consistency.
-
-  TODO: Another good reason to hive off snapshot as a separate class.
-	-- lh, 100917 --
-*/
-    assert(nCols == numberColumns_) ;
-    assert(nRows <= si.getNumRows()+1) ;
-    assert(rowCopy_->getNumRows() == numberRows_) ;
-
-    nRows = numberRows_ ;
-    rowCopy = new CoinPackedMatrix(*rowCopy_) ;
-    CoinMemcpyN(rowLower_,nRows,rowLower) ;
-    CoinMemcpyN(rowUpper_,nRows,rowUpper) ;
-    if (useObj) {
-      rowLower[nRows-1] = -DBL_MAX ;
-      rowUpper[nRows-1] = cutoff+offset ;
+    rowCopy = new CoinPackedMatrix(*si.getMatrixByRow(),1,nCols,false) ;
+    const double *objective = si.getObjCoefficients() ;
+    const double objmul = si.getObjSense() ;
+    int *columns = new int[nCols] ;
+    double *elements = new double[nCols] ;
+    int kk = 0 ;
+    for (int j = 0 ; j < nCols ; j++) {
+      if (objective[j]) {
+	elements[kk] = objmul*objective[j] ;
+	columns[kk++] = j ;
+      }
     }
+    rowCopy->appendRow(kk,columns,elements) ;
+    delete[] columns ;
+    delete[] elements ;
+    rowLower[nRows] = -DBL_MAX ;
+    rowUpper[nRows] = cutoff+offset ;
+    nRows++ ;
   }
+
 # if CGL_DEBUG > 1
   if (rowCopy) {
     int errs = rowCopy->verifyMtx(CGL_DEBUG) ;
@@ -555,6 +520,7 @@ CoinPackedMatrix *setupRowCopy (int mode, bool useObj,
   }
   std::cout << "Leaving setupRowCopy." << std::endl ;
 # endif
+
   return (rowCopy) ;
 }
 
@@ -597,21 +563,19 @@ CoinPackedMatrix *setupRowCopy (int mode, bool useObj,
   been disabled since r675 (2008). I've chopped it entirely. Something useful
   could be done along this line, but only after an initial round of bound
   propagation. Arguably, an initial round of bound propagation would help all
-  of CglProbing and should be done in any event.
+  of CglProbing (not to mention CglPreProcess) and should be done in any event.
 
   Returns true if we're good to proceed, false if the groomed model is not
   worth pursuing.
 */
 
-bool groomModel (
-		 bool useObj, int maxRowLen,
+bool groomModel ( bool useObj, int maxRowLen,
 		 const OsiSolverInterface &si, const char *const intVar,
 		 CoinPackedMatrix *rowCopy,
 		 double *const rowLower, double *const rowUpper,
 		 const double *const colLower, const double *const colUpper,
 		 int *&realRows, CoinBigIndex *&rowStartPos,
-		 const CglTreeInfo *info
-	        )
+		 const CglTreeInfo *info)
 {
 # if CGL_DEBUG > 1
   std::cout << "Entering groomModel." << std::endl ;
@@ -959,26 +923,12 @@ void CglProbing::generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
   working. Note that the row bound arrays are allocated with one extra
   position, in case we want to incorporate the objective as a constraint while
   working.
-
-  TODO: !rowCopy_ is used lots of places as surrogate for `we have no
-	snapshot'. Snapshot creation is user-initiated; it won't just
-	happen.   -- lh, 100924 --
-
-  TODO: The distinction between colLower, colUpper, vs. colLower_, colUpper_,
-	is that the latter can be accessed by the client after we return.
-	(tightLower, tightUpper). Similarly for rowLower_, rowUpper_. But I
-	have doubts about the implementation. (Necessary? Consistent?)
-	-- lh, 110330 --
 */
   int nRows = si.getNumRows() ; 
   double *rowLower = new double[nRows+1] ;
   double *rowUpper = new double[nRows+1] ;
 
   int nCols = si.getNumCols() ;
-  if (!rowCopy_) {
-    numberRows_ = nRows ;
-    numberColumns_ = nCols ;
-  }
   double *colLower = new double[nCols] ;
   double *colUpper = new double[nCols] ;
 /*
@@ -989,8 +939,8 @@ void CglProbing::generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
   Do the work. There's no guarantee about the state of the row and column
   bounds arrays if we come back infeasible.
 */
-  int ninfeas =
-	gutsOfGenerateCuts(si,cs,rowLower,rowUpper,colLower,colUpper,&info) ;
+  bool feasible = gutsOfGenerateCuts(si,cs,rowLower,rowUpper,
+  				     colLower,colUpper,&info) ;
 # if CGL_DEBUG > 0
   { int errs = 0 ;
     const CoinPackedMatrix *mtx = si.getMatrixByRow() ;
@@ -1010,7 +960,7 @@ void CglProbing::generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
 
   If we're debugging, do a sanity check that this cut really is infeasible.
 */
-  if (ninfeas) {
+  if (!feasible) {
     OsiRowCut rc ;
     rc.setLb(DBL_MAX) ;
     rc.setUb(0.0) ;   
@@ -1022,17 +972,15 @@ void CglProbing::generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
 #   endif
   }
 /*
-  Delete the working arrays and restore the row cut mode.
-
-  TODO: Why are we fiddling with colLower_, colUpper_? Track this down.
-        -- lh, 110212 --
+  Delete the working arrays and restore the row cut mode. Setting colLower_
+  and colUpper_ to NULL ensures that the client doesn't accidentally think it
+  has access to the tightened bound arrays. Contrast with the end of
+  generateCutsAndModify.
 */
   delete [] rowLower ;
   delete [] rowUpper ;
   delete [] colLower ;
   delete [] colUpper ;
-  delete [] colLower_ ;
-  delete [] colUpper_ ;
   colLower_ = NULL ;
   colUpper_ = NULL ;
 
@@ -1092,14 +1040,25 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
 /*
   Create working arrays for row and column bounds.
 
-  We need nRows+1 because we may use the objective function as a constraint
-  in the working system within gutsOfGenerateCuts.
+  We need nRows+1 in rowLower, rowUpper because we may use the objective
+  function as a constraint in the working system within gutsOfGenerateCuts.
+
+  Clear out old variable bounds arrays now, so we don't have to worry about it
+  later.
 */
   int nRows = si.getNumRows() ; 
   double *rowLower = new double[nRows+1] ;
   double *rowUpper = new double[nRows+1] ;
 
-  int nCols = si.getNumCols() ; 
+  int nCols = si.getNumCols() ;
+  if (colLower_) {
+    delete[] colLower_ ;
+    colLower_ = NULL ;
+  }
+  if (colUpper_) {
+    delete[] colUpper_ ;
+    colUpper_ = NULL ;
+  }
   double *colLower = new double[nCols] ;
   double *colUpper = new double[nCols] ;
 
@@ -1117,11 +1076,11 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
 # endif
 
 /*
-  Do the work. There's no guarantees about the state of the row and column
+  Do the work. There are no guarantees about the state of the row and column
   bounds arrays if we come back infeasible.
 */
-  int ninfeas = gutsOfGenerateCuts(si,cs,
-				   rowLower,rowUpper,colLower,colUpper,info) ;
+  bool feasible = gutsOfGenerateCuts(si,cs,rowLower,rowUpper,
+  				     colLower,colUpper,info) ;
 # if CGL_DEBUG > 1
   { int errs = 0 ;
     const CoinPackedMatrix *mtx = si.getMatrixByRow() ;
@@ -1139,7 +1098,7 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
 
   If we're debugging, check whether this is a plausible outcome.
 */
-  if (ninfeas) {
+  if (!feasible) {
     OsiRowCut rc ;
     rc.setLb(DBL_MAX) ;
     rc.setUb(0.0) ;   
@@ -1156,41 +1115,28 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
   rowCuts_ = saveRowCuts ;
   mode_ = saveMode ;
 /*
-  jjf: move bounds so can be used by user
-
-  Mode 3 is just like mode 2, except that the tightened row bounds will be
-  returned to the client.
-
   Don't replace bounds supplied by the client if we've gone infeasible.
   There's no guarantee of consistency in the values reported back from
   gutsOfGenerateCuts.
 */
-  if (mode_ == 3 && !ninfeas) {
-    delete [] rowLower_ ;
-    delete [] rowUpper_ ;
-    rowLower_ = rowLower ;
-    rowUpper_ = rowUpper ;
-  } else {
-    delete [] rowLower ;
-    delete [] rowUpper ;
-  }
-  if (!ninfeas) {
-    delete [] colLower_ ;
-    delete [] colUpper_ ;
+  delete[] rowLower ;
+  delete[] rowUpper ;
+
+  if (feasible) {
     colLower_ = colLower ;
     colUpper_ = colUpper ;
   } else {
-    delete [] colUpper ;
-    delete [] colLower ;
+    delete[] colUpper ;
+    delete[] colLower ;
   }
 
 # if CGL_DEBUG > 0
   std::cout
-    << "Leaving CglProbing::generateCutsAndModify, infeas "
-    << ninfeas << std::endl ;
+    << "Leaving CglProbing::generateCutsAndModify, "
+    << ((feasible)?"feasible":"infeasible") << "." << std::endl ;
 # endif
 
-  return (ninfeas) ;
+  return (static_cast<int>(feasible)) ;
 }
 
 
@@ -1204,11 +1150,11 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
   infeasible, there's no particular guarantee of consistency for these arrays
   and the content should not be used.
 */
-int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si, 
-				    OsiCuts &cs ,
-				    double *rowLower, double *rowUpper,
-                                    double *colLower, double *colUpper,
-                                    CglTreeInfo *info) const
+bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si, 
+				     OsiCuts &cs ,
+				     double *rowLower, double *rowUpper,
+                                     double *colLower, double *colUpper,
+                                     CglTreeInfo *info) const
 {
 
 # if CGL_DEBUG > 0
@@ -1226,7 +1172,6 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 
   int numberRowCutsBefore = cs.sizeRowCuts() ;
 
-  int ninfeas = 0 ;
   bool feasible = true ;
   int mode = mode_ ;
 
@@ -1290,7 +1235,7 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 #   endif
     if (!feasible) {
       delete[] intVar ;
-      return (1) ;
+      return (feasible) ;
     }
   }
 /*
@@ -1340,10 +1285,7 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   held in the si.
 */
   CoinPackedMatrix *rowCopy = setupRowCopy(mode,useObj,cutoff,
-  					   offset,rowCopy_,
-					   numberRows_,numberColumns_,
-					   rowLower_,rowUpper_,
-					   si,rowLower,rowUpper) ;
+  					   offset,si,rowLower,rowUpper) ;
   int nRows = rowCopy->getNumRows() ;
 /*
   Groom the rowCopy: delete useless rows, substitute for fixed variables, sort
@@ -1361,24 +1303,22 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 */
   int *realRows = 0 ;
   int *rowStartPos = 0 ;
-  feasible = groomModel(useObj,maxRowLen,si,intVar,rowCopy,rowLower,rowUpper,
-  			colLower,colUpper,realRows,rowStartPos,info) ;
+  bool worthProbing = groomModel(useObj,maxRowLen,si,intVar,
+  			       rowCopy,rowLower,rowUpper,
+			       colLower,colUpper,realRows,rowStartPos,info) ;
   nRows = rowCopy->getNumRows() ;
-  if (!feasible) {
+  if (!worthProbing) {
     delete[] intVar ;
     delete[] realRows ;
     delete[] rowStartPos ;
     delete rowCopy ;
-    return (0) ;
+    return (feasible) ;
   }
 /*
   Make a column-major copy, after we've winnowed the rows to the set we want
   to work with. The break out the internal arrays for subsequent use.
-
-  TODO: I'm asking myself, ``Why does the snapshot keep a colum-major
-	copy? It doesn't seem to be used.  -- lh, 101021 --
 */
-  CoinPackedMatrix * columnCopy = new CoinPackedMatrix(*rowCopy,0,0,true) ;
+  CoinPackedMatrix *columnCopy = new CoinPackedMatrix(*rowCopy,0,0,true) ;
   const int *column = rowCopy->getIndices() ;
   const CoinBigIndex *rowStart = rowCopy->getVectorStarts() ;
   const int *rowLength = rowCopy->getVectorLengths(); 
@@ -1394,16 +1334,11 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   Allocate the row processing record (markR) and the arrays that will hold
   row lhs bounds (minR, maxR).
 */
-  int * markR = new int [nRows] ;
-  double * minR = new double [nRows] ;
-  double * maxR = new double [nRows] ;
+  int *markR = new int [nRows] ;
+  double *minR = new double [nRows] ;
+  double *maxR = new double [nRows] ;
 /*
   End of setup. Setup and invoke bound propagation.
-
-  ninfeas = tighten(colLower,colUpper,column,rowElements,
-		    rowStart,rowStartPos,rowLength,
-		    rowLower,rowUpper,nRows,nCols,
-		    intVar,2,primalTolerance_) ;
 */
   CglPhic *phic = new CglPhic(rowCopy,columnCopy,rowLower,rowUpper) ;
   phic->setVerbosity(0) ;
@@ -1412,13 +1347,13 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   phic->loanColType(intVar) ;
   phic->initLhsBnds() ;
   phic->initPropagation() ;
-  phic->tightenAbInitio() ;
+  phic->tightenAbInitio(feasible) ;
   phic->getRowLhsBnds(minR,maxR) ;
 /*
   If we've lost feasibility, do nothing more. Otherwise, record the new bounds
   as column cuts and continue with setup and probing.
 */
-  if (!ninfeas) {
+  if (feasible) {
     makeColCuts(nCols,cs,intVar,colsol,si.getColLower(),si.getColUpper(),
 		si.getColSolution(),colLower,colUpper) ;
 #   if CGL_DEBUG > 0
@@ -1527,30 +1462,25 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   lookedAt_ now contains a list of indices of variables to probe. Rows
   worth processing are tagged with -1 in markR. Do the probing.
 */
-      ninfeas = probe(si,cs,colLower,colUpper,rowCopy,columnCopy,
-		      rowStartPos,realRows,rowLower,rowUpper,
-		      intVar,minR,maxR,markR,info,
-		      useObj,useCutoff,cutoff) ;
+      feasible = probe(si,cs,colLower,colUpper,rowCopy,columnCopy,
+		       rowStartPos,realRows,rowLower,rowUpper,
+		       intVar,minR,maxR,markR,info,
+		       useObj,useCutoff,cutoff) ;
     }
   }
 /*
   Done! Time to clean up and go home.
 */
-  delete [] markR ;
-  delete [] minR ;
-  delete [] maxR ;
+  delete[] markR ;
+  delete[] minR ;
+  delete[] maxR ;
 
   delete rowCopy ;
   delete columnCopy ;
 
-  if (rowCopy_) {
-    delete [] rowLower ;
-    delete [] rowUpper ;
-  }
-
-  delete [] intVar ;
-  delete [] rowStartPos ;
-  delete [] realRows ;
+  delete[] intVar ;
+  delete[] rowStartPos ;
+  delete[] realRows ;
 
   delete phic ;
 
@@ -1562,7 +1492,7 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 */
   const double *trueLower = si.getColLower() ;
   const double *trueUpper = si.getColUpper() ;
-  if (!ninfeas) {
+  if (feasible) {
     for (int i = 0 ; i < nCols ; i++) {
       if (intVarOriginal[i] == 2) {
 	if (colUpper[i] == CGL_REASONABLE_INTEGER_BOUND) 
@@ -1571,9 +1501,6 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 	  colLower[i] = trueLower[i] ;
       }
     }
-  } else {
-    memcpy(colLower,trueLower,nCols*sizeof(double)) ;
-    memcpy(colUpper,trueUpper,nCols*sizeof(double)) ;
   }
 /*
   If we're requested to set the global cut flag, do it.
@@ -1581,15 +1508,16 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   if (!info->inTree &&
       ((info->options&4) == 4 || ((info->options&8) && !info->pass))) {
     int numberRowCutsAfter = cs.sizeRowCuts() ;
-    for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++)
+    for (int i = numberRowCutsBefore ; i < numberRowCutsAfter ; i++)
       cs.rowCutPtr(i)->setGloballyValid() ;
   }
 
 # if CGL_DEBUG > 0
   std::cout
     << "Leaving CglProbing::gutsOfGenerateCuts, "
-    << cs.sizeRowCuts() << " row cuts, " << cs.sizeColCuts()
-    << " col cuts, infeas " << ninfeas << std::endl ;
+    << ((feasible)?"feasible":"infeasible")
+    << "; " << cs.sizeRowCuts() << " row cuts, " << cs.sizeColCuts()
+    << " col cuts." << std::endl ;
   debugger = si.getRowCutDebugger() ;
   if (debugger) {
     debugger->validateCuts(cs,0,cs.sizeCuts()) ;
@@ -1602,7 +1530,7 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   }
 # endif
 
-  return ninfeas ;
+  return (feasible) ;
 }
 
 
@@ -1613,16 +1541,14 @@ int CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 */
 void CglProbing::setMode(int mode)
 {
-  if (mode >= 0 && mode < 3) {
-    mode_ &= ~15 ;
-    mode_ |= mode ;
-  }
+  assert(1 <= mode && mode <= 2) ;
+    mode_ = mode ;
 }
 
-// Return only the basic mode
+// Return the mode
 int CglProbing::getMode() const
 {
-  return mode_&15 ;
+  return mode_ ;
 }
 
 
@@ -1804,19 +1730,6 @@ const double * CglProbing::tightUpper() const
 }
 
 
-// Returns relaxed Row lower
-const double * CglProbing::relaxedRowLower() const
-{
-  return rowLower_ ;
-}
-
-
-// Returns relaxed Row upper
-const double * CglProbing::relaxedRowUpper() const
-{
-  return rowUpper_ ;
-}
-
 
 //-------------------------------------------------------------------
 // Default Constructor 
@@ -1824,6 +1737,8 @@ const double * CglProbing::relaxedRowUpper() const
 CglProbing::CglProbing ()
 :
 CglCutGenerator(),
+numberRows_(0),
+numberColumns_(0),
 primalTolerance_(1.0e-07),
 mode_(1),
 rowCuts_(1),
@@ -1839,12 +1754,6 @@ maxElementsRoot_(10000),
 usingObjective_(0)
 {
 
-  numberRows_ = 0 ;
-  numberColumns_ = 0 ;
-  rowCopy_ = NULL ;
-  columnCopy_ = NULL ;
-  rowLower_ = NULL ;
-  rowUpper_ = NULL ;
   colLower_ = NULL ;
   colUpper_ = NULL ;
   numberIntegers_ = 0 ;
@@ -1852,21 +1761,6 @@ usingObjective_(0)
   numberThisTime_ = 0 ;
   totalTimesCalled_ = 0 ;
   lookedAt_ = NULL ;
-  tightenBounds_ = NULL ;
-
-# ifdef CLIQUE_ANALYSIS
-  cutVector_ = NULL ;
-  numberCliques_=0 ;
-  cliqueType_=NULL ;
-  cliqueStart_=NULL ;
-  cliqueEntry_=NULL ;
-  oneFixStart_=NULL ;
-  zeroFixStart_=NULL ;
-  endFixStart_=NULL ;
-  whichClique_=NULL ;
-  cliqueRow_=NULL ;
-  cliqueRowStart_=NULL ;
-# endif
 
 }
 
@@ -1876,6 +1770,8 @@ usingObjective_(0)
 CglProbing::CglProbing (const CglProbing & rhs)
                                                               :
   CglCutGenerator(rhs),
+  numberRows_(rhs.numberRows_),
+  numberColumns_(rhs.numberColumns_),
   primalTolerance_(rhs.primalTolerance_),
   mode_(rhs.mode_),
   rowCuts_(rhs.rowCuts_),
@@ -1890,101 +1786,23 @@ CglProbing::CglProbing (const CglProbing & rhs)
   maxElementsRoot_(rhs.maxElementsRoot_),
   usingObjective_(rhs.usingObjective_)
 {  
-  numberRows_ = rhs.numberRows_ ;
-  numberColumns_ = rhs.numberColumns_ ;
-  if (rhs.rowCopy_) {
-    rowCopy_= new CoinPackedMatrix(*(rhs.rowCopy_)) ;
-    columnCopy_= new CoinPackedMatrix(*(rhs.columnCopy_)) ;
-    rowLower_ = new double[numberRows_] ;
-    CoinMemcpyN(rhs.rowLower_,numberRows_,rowLower_) ;
-    rowUpper_ = new double[numberRows_] ;
-    CoinMemcpyN(rhs.rowUpper_,numberRows_,rowUpper_) ;
-    colLower_ = new double[numberColumns_] ;
-    CoinMemcpyN(rhs.colLower_,numberColumns_,colLower_) ;
-    colUpper_ = new double[numberColumns_] ;
-    CoinMemcpyN(rhs.colUpper_,numberColumns_,colUpper_) ;
-    numberIntegers_ = rhs.numberIntegers_ ;
-    number01Integers_ = rhs.number01Integers_ ;
-#   ifdef CLIQUE_ANALYSIS
-    int i ;
-    cutVector_ = new disaggregation [number01Integers_] ;
-    CoinMemcpyN(rhs.cutVector_,number01Integers_,cutVector_) ;
-    for (i = 0 ; i < number01Integers_ ; i++) {
-      if (cutVector_[i].index) {
-	cutVector_[i].index =
-	    CoinCopyOfArray(rhs.cutVector_[i].index,cutVector_[i].length) ;
-      }
-    }
-#   endif
-  } else {
-    rowCopy_ = NULL ;
-    columnCopy_ = NULL ;
-    rowLower_ = NULL ;
-    rowUpper_ = NULL ;
-    colLower_ = NULL ;
-    colUpper_ = NULL ;
-    numberIntegers_ = 0 ;
-    number01Integers_ = 0 ;
-    // CLIQUE cutVector_ = NULL ;
-  }
   numberThisTime_ = rhs.numberThisTime_ ;
   totalTimesCalled_ = rhs.totalTimesCalled_ ;
-  if (numberColumns_)
+  if (numberColumns_) {
     lookedAt_ = CoinCopyOfArray(rhs.lookedAt_,numberColumns_) ;
-  else
+    if (rhs.colLower_)
+      colLower_ = CoinCopyOfArray(rhs.colLower_,numberColumns_) ;
+    else
+      colLower_ = NULL ;
+    if (rhs.colUpper_)
+      colUpper_ = CoinCopyOfArray(rhs.colUpper_,numberColumns_) ;
+    else
+      colUpper_ = NULL ;
+  } else {
     lookedAt_ = NULL ;
-  if (rhs.tightenBounds_) {
-    assert (numberColumns_) ;
-    tightenBounds_ = CoinCopyOfArray(rhs.tightenBounds_,numberColumns_) ;
-  } else {
-    tightenBounds_ = NULL ;
+    colLower_ = NULL ;
+    colUpper_ = NULL ;
   }
-# ifdef CLIQUE_ANALYSIS
-  numberCliques_=rhs.numberCliques_ ;
-  if (numberCliques_) {
-    cliqueType_ = new cliqueType [numberCliques_] ;
-    CoinMemcpyN(rhs.cliqueType_,numberCliques_,cliqueType_) ;
-    cliqueStart_ = new int [numberCliques_+1] ;
-    CoinMemcpyN(rhs.cliqueStart_,(numberCliques_+1),cliqueStart_) ;
-    int n = cliqueStart_[numberCliques_] ;
-    cliqueEntry_ = new cliqueEntry [n] ;
-    CoinMemcpyN(rhs.cliqueEntry_,n,cliqueEntry_) ;
-    oneFixStart_ = new int [numberColumns_] ;
-    CoinMemcpyN(rhs.oneFixStart_,numberColumns_,oneFixStart_) ;
-    zeroFixStart_ = new int [numberColumns_] ;
-    CoinMemcpyN(rhs.zeroFixStart_,numberColumns_,zeroFixStart_) ;
-    endFixStart_ = new int [numberColumns_] ;
-    CoinMemcpyN(rhs.endFixStart_,numberColumns_,endFixStart_) ;
-    int n2=-1 ;
-    for (int i=numberColumns_-1;i>=0;i--) {
-      if (oneFixStart_[i]>=0) {
-	n2=endFixStart_[i] ;
-	break ;
-      }
-    }
-    assert (n==n2) ;
-    whichClique_ = new int [n] ;
-    CoinMemcpyN(rhs.whichClique_,n,whichClique_) ;
-    if (rhs.cliqueRowStart_) {
-      cliqueRowStart_ = CoinCopyOfArray(rhs.cliqueRowStart_,numberRows_+1) ;
-      n=cliqueRowStart_[numberRows_] ;
-      cliqueRow_ = CoinCopyOfArray(rhs.cliqueRow_,n) ;
-    } else {
-      cliqueRow_=NULL ;
-      cliqueRowStart_=NULL ;
-    }
-  } else {
-    cliqueType_=NULL ;
-    cliqueStart_=NULL ;
-    cliqueEntry_=NULL ;
-    oneFixStart_=NULL ;
-    zeroFixStart_=NULL ;
-    endFixStart_=NULL ;
-    cliqueRow_=NULL ;
-    cliqueRowStart_=NULL ;
-    whichClique_=NULL ;
-  }
-# endif    // CLIQUE_ANALYSIS
 }
 
 //-------------------------------------------------------------------
@@ -2001,33 +1819,9 @@ CglCutGenerator *CglProbing::clone() const
 CglProbing::~CglProbing ()
 {
   // free memory
-  delete [] rowLower_ ;
-  delete [] rowUpper_ ;
   delete [] colLower_ ;
   delete [] colUpper_ ;
-  delete rowCopy_ ;
-  delete columnCopy_ ;
   delete [] lookedAt_ ;
-# ifdef CLIQUE_ANALYSIS
-  if (cutVector_) {
-    for (int i = 0 ; i < number01Integers_ ; i++) {
-      delete [] cutVector_[i].index ;
-    }
-    delete [] cutVector_ ;
-  }
-# endif
-  delete [] tightenBounds_ ;
-# ifdef CLIQUE_ANALYSIS
-  delete [] cliqueType_ ;
-  delete [] cliqueStart_ ;
-  delete [] cliqueEntry_ ;
-  delete [] oneFixStart_ ;
-  delete [] zeroFixStart_ ;
-  delete [] endFixStart_ ;
-  delete [] whichClique_ ;
-  delete [] cliqueRow_ ;
-  delete [] cliqueRowStart_ ;
-# endif
 }
 
 //----------------------------------------------------------------
@@ -2042,26 +1836,9 @@ CglProbing::operator=(
     primalTolerance_ = rhs.primalTolerance_ ;
     numberRows_ = rhs.numberRows_ ;
     numberColumns_ = rhs.numberColumns_ ;
-    delete [] rowLower_ ;
-    delete [] rowUpper_ ;
     delete [] colLower_ ;
     delete [] colUpper_ ;
-    delete rowCopy_ ;
-    delete columnCopy_ ;
     delete [] lookedAt_ ;
-    delete [] tightenBounds_ ;
-
-#   ifdef CLIQUE_ANALYSIS
-    delete [] cliqueType_ ;
-    delete [] cliqueStart_ ;
-    delete [] cliqueEntry_ ;
-    delete [] oneFixStart_ ;
-    delete [] zeroFixStart_ ;
-    delete [] endFixStart_ ;
-    delete [] whichClique_ ;
-    delete [] cliqueRow_ ;
-    delete [] cliqueRowStart_ ;
-#   endif
 
     mode_ = rhs.mode_ ;
     rowCuts_ = rhs.rowCuts_ ;
@@ -2075,102 +1852,12 @@ CglProbing::operator=(
     maxStackRoot_ = rhs.maxStackRoot_ ;
     maxElementsRoot_ = rhs.maxElementsRoot_ ;
     usingObjective_ = rhs.usingObjective_ ;
-    if (rhs.rowCopy_) {
-      rowCopy_= new CoinPackedMatrix(*(rhs.rowCopy_)) ;
-      columnCopy_= new CoinPackedMatrix(*(rhs.columnCopy_)) ;
-      rowLower_ = new double[numberRows_] ;
-      CoinMemcpyN(rhs.rowLower_,numberRows_,rowLower_) ;
-      rowUpper_ = new double[numberRows_] ;
-      CoinMemcpyN(rhs.rowUpper_,numberRows_,rowUpper_) ;
-      colLower_ = new double[numberColumns_] ;
-      CoinMemcpyN(rhs.colLower_,numberColumns_,colLower_) ;
-      colUpper_ = new double[numberColumns_] ;
-      CoinMemcpyN(rhs.colUpper_,numberColumns_,colUpper_) ;
-      numberIntegers_ = rhs.numberIntegers_ ;
-      number01Integers_ = rhs.number01Integers_ ;
-#     ifdef CLIQUE_ANALYSIS
-      for (int i = 0 ; i < number01Integers_ ; i++) {
-        delete [] cutVector_[i].index ;
-      }
-      delete [] cutVector_ ;
-      cutVector_ = new disaggregation [number01Integers_] ;
-      CoinMemcpyN(rhs.cutVector_,number01Integers_,cutVector_) ;
-      for (int i = 0 ; i < number01Integers_ ; i++) {
-        if (cutVector_[i].index) {
-          cutVector_[i].index =
-	      CoinCopyOfArray(rhs.cutVector_[i].index,cutVector_[i].length) ;
-        }
-      }
-#     endif
-    } else {
-      rowCopy_ = NULL ;
-      columnCopy_ = NULL ;
-      rowLower_ = NULL ;
-      rowUpper_ = NULL ;
-      colLower_ = NULL ;
-      colUpper_ = NULL ;
-      numberIntegers_ = 0 ;
-      number01Integers_ = 0 ;
-      // CLIQUE cutVector_ = NULL ;
-    }
     numberThisTime_ = rhs.numberThisTime_ ;
     totalTimesCalled_ = rhs.totalTimesCalled_ ;
     if (numberColumns_)
       lookedAt_ = CoinCopyOfArray(rhs.lookedAt_,numberColumns_) ;
     else
       lookedAt_ = NULL ;
-    if (rhs.tightenBounds_) {
-      assert (numberColumns_) ;
-      tightenBounds_ = CoinCopyOfArray(rhs.tightenBounds_,numberColumns_) ;
-    } else {
-      tightenBounds_ = NULL ;
-    }
-#   ifdef CLIQUE_ANALYSIS
-    numberCliques_ = rhs.numberCliques_ ;
-    if (numberCliques_) {
-      cliqueType_ = new cliqueType [numberCliques_] ;
-      CoinMemcpyN(rhs.cliqueType_,numberCliques_,cliqueType_) ;
-      cliqueStart_ = new int [numberCliques_+1] ;
-      CoinMemcpyN(rhs.cliqueStart_,(numberCliques_+1),cliqueStart_) ;
-      int n = cliqueStart_[numberCliques_] ;
-      cliqueEntry_ = new cliqueEntry [n] ;
-      CoinMemcpyN(rhs.cliqueEntry_,n,cliqueEntry_) ;
-      oneFixStart_ = new int [numberColumns_] ;
-      CoinMemcpyN(rhs.oneFixStart_,numberColumns_,oneFixStart_) ;
-      zeroFixStart_ = new int [numberColumns_] ;
-      CoinMemcpyN(rhs.zeroFixStart_,numberColumns_,zeroFixStart_) ;
-      endFixStart_ = new int [numberColumns_] ;
-      CoinMemcpyN(rhs.endFixStart_,numberColumns_,endFixStart_) ;
-      int n2=-1 ;
-      for (int i=numberColumns_-1;i>=0;i--) {
-	if (oneFixStart_[i]>=0) {
-	  n2=endFixStart_[i] ;
-	  break ;
-	}
-      }
-      assert (n==n2) ;
-      whichClique_ = new int [n] ;
-      CoinMemcpyN(rhs.whichClique_,n,whichClique_) ;
-      if (rhs.cliqueRowStart_) {
-        cliqueRowStart_ = CoinCopyOfArray(rhs.cliqueRowStart_,numberRows_+1) ;
-        n=cliqueRowStart_[numberRows_] ;
-        cliqueRow_ = CoinCopyOfArray(rhs.cliqueRow_,n) ;
-      } else {
-        cliqueRow_=NULL ;
-        cliqueRowStart_=NULL ;
-      }
-    } else {
-      cliqueType_=NULL ;
-      cliqueStart_=NULL ;
-      cliqueEntry_=NULL ;
-      oneFixStart_=NULL ;
-      zeroFixStart_=NULL ;
-      endFixStart_=NULL ;
-      whichClique_=NULL ;
-      cliqueRow_=NULL ;
-      cliqueRowStart_=NULL ;
-    }
-#   endif
   }
   return *this ;
 }
@@ -2191,24 +1878,6 @@ CglProbing::mayGenerateRowCutsInTree() const
 {
   return rowCuts_ > 0 ;
 }
-
-// Mark variables to be tightened
-void CglProbing::tightenThese (const OsiSolverInterface &solver, int number,
-			       const int * which)
-{
-  delete [] tightenBounds_ ;
-  int numberColumns = solver.getNumCols() ;
-  if (numberColumns_)
-    assert (numberColumns_==numberColumns) ;
-  tightenBounds_ = new char [numberColumns] ;
-  memset(tightenBounds_,0,numberColumns) ;
-  for (int i=0;i<number;i++) {
-    int k=which[i] ;
-    if (k>=0&&k<numberColumns)
-      tightenBounds_[k]=1 ;
-  }
-}
-
 
 // Create C++ lines to get to current state
 std::string

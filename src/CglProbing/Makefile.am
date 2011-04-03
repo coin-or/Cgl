@@ -33,7 +33,8 @@ libCglProbing_la_LDFLAGS = $(LT_LDFLAGS)
 # "top_srcdir" refers to the basic directory for the main package that is
 # being compiled.
 AM_CPPFLAGS = $(COINUTILS_CFLAGS) $(OSI_CFLAGS) \
-	-I`$(CYGPATH_W) $(srcdir)/..`
+	-I`$(CYGPATH_W) $(srcdir)/..` \
+	-I`$(CYGPATH_W) $(srcdir)/../CglPhic`
 
 # This line is necessary to allow VPATH compilation with MS compilers
 # on Cygwin

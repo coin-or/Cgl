@@ -9,41 +9,6 @@
 
 #include "CglCutGenerator.hpp"
 
-#ifdef CLIQUE_ANALYSIS
-/*! \brief Umm ... ???
-  
-  jjf: Only useful type of disaggregation is most normal. For now just done
-       for 0-1 variables. Can be used for building cliques
-
-  See the comments with the methods at the end of the file that fake the bit
-  fields by borrowing the top three bits of affected.
-
-  What John considers `most normal' remains to be discovered.
-  -- lh, 110211 --
-*/
-typedef struct {
-    /// nonzero if affected variable is 0-1
-    //unsigned int zeroOne:1 ;
-
-    /// nonzero if fixing happens when this variable at 1
-    //unsigned int whenAtUB:1 ;
-
-    /// nonzero if affected variable fixed to UB
-    //unsigned int affectedToUB:1 ;
-
-    /// If 0-1 then 0-1 sequence, otherwise true
-    //unsigned int affected:29 ;
-
-    /*! \brief index of affected variable
-
-      Bits (31:29) are overloaded with status codes. If the bit for
-      zeroOneInDisagg is true, index is an index in cutVector_; if
-      false, it's a plain old variable index.
-    */
-    unsigned int affected ;
-  } disaggregationAction ;
-#endif
-
 /*! \brief Probing Cut Generator
 
   CglProbing borrows a subset of probing ideas put into OSL about ten years
@@ -99,40 +64,32 @@ public:
 
   /*! \name Generate Cuts */
   //@{
-  /*! \brief Probe and generate cuts
+  /*! \brief Generate probing/disaggregation cuts and tighter bounds
 
     Cuts are generated for the constraint system held in \p si and returned in
     \p cs.
   */
-  virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
-			     const CglTreeInfo info = CglTreeInfo()) const ;
+  virtual void generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
+			    const CglTreeInfo info = CglTreeInfo()) const ;
 			    
   /*! \brief Generate probing/disaggregation cuts and tighter bounds
 
-    New relaxed row bounds and tightened column bounds are generated.
-    The number of infeasibilities is returned. 
+    Cuts are generated for the constraint system held in \p si and returned in
+    \p cs. In addition, the client will have access to the tightened variable
+    bound arrays through #tightLower and #tightUpper.
+
+    Return value is 0 for feasible, 1 for infeasible.
   */
-  int generateCutsAndModify( const OsiSolverInterface & si, OsiCuts & cs, 
-			     CglTreeInfo * info) ;
+  int generateCutsAndModify(const OsiSolverInterface &si, OsiCuts &cs, 
+			    CglTreeInfo *info) ;
   //@}
 
   /**@name Get tighter column bounds */
   //@{
   /// Lower
-  const double * tightLower() const ;
+  const double *tightLower() const ;
   /// Upper
-  const double * tightUpper() const ;
-  /// Array which says tighten continuous
-  // const char * tightenBounds() const
-  // { return tightenBounds_;}
-  //@}
-
-  /**@name Get possible freed up row bounds - only valid after mode==3 */
-  //@{
-  /// Lower
-  const double * relaxedRowLower() const ;
-  /// Upper
-  const double * relaxedRowUpper() const ;
+  const double *tightUpper() const ;
   //@}
 
   /*! \name Behavioural Options
@@ -145,21 +102,11 @@ public:
 
     The mode options are:
 
-    - 0: Only unsatisfied integer variables will be looked at.  If no
-	 information exists for that variable then probing will be done so as
-	 a by-product you "may" get a fixing or infeasibility.  This will be
-	 fast and is only available if a snapshot exists (otherwise as 1).
-	 The bounds in the snapshot are the ones used.
-
     - 1: Look at unsatisfied integer variables, using current bounds.
 	 Probing will be done on all looked at.
-
     - 2: Look at all integer variables, using current bounds.
 	 Probing will be done on all.
 
-    - 3: As mode 2, but will also return tightened row bounds when called
-	 through #generateCutsAndModify.
-    
     See #mode_ for additional detail.
   */
   void setMode(int mode) ;
@@ -303,66 +250,34 @@ private:
  // Private member methods
   /**@name probe */
   //@{
-  /// Does probing and adding cuts (without cliques)
-  int probe(const OsiSolverInterface &si, 
-	    OsiCuts &cs, 
-	    double *const colLower, double *const colUpper,
-	    const CoinPackedMatrix *const rowCopy,
-	    const CoinPackedMatrix *const columnCopy,
-	    const CoinBigIndex *const rowStartPos,
-	    const int *const realRow, const double *const rowLower,
-	    const double *const rowUpper,
-	    const char *const intVar,
-	    double *const minR, double *const maxR, int *const markR, 
-	    CglTreeInfo *const info,
-	    bool useObj, bool useCutoff, double cutoff) const ;
+  /*! \brief Probe and generate cuts
 
-  /// Does probing and adding cuts (with cliques)
-  int probeCliques(const OsiSolverInterface &si, 
-	    OsiCuts & cs, 
-	    double *colLower, double *colUpper, CoinPackedMatrix *rowCopy,
-	    CoinPackedMatrix *columnCopy,
-	    const int *realRow, double *rowLower, double *rowUpper,
-	    char *intVar, double *minR, double *maxR, int *markR, 
-            CglTreeInfo *info,
-	    bool useObj, bool useCutoff, double cutoff) const ;
-
-  /*! Does probing and adding cuts for clique slacks
-
-    Doesn't seem to be used. Let's see what happens when it's not present.
-    -- lh, 110211 --
-
-  int probeSlacks( const OsiSolverInterface & si, 
-                    const OsiRowCutDebugger * debugger, 
-                    OsiCuts & cs, 
-                    double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
-		   CoinPackedMatrix *columnCopy,
-                    double * rowLower, double * rowUpper,
-                    char * intVar, double * minR, double * maxR,int * markR,
-                     CglTreeInfo * info) const ;
+    This method does the heavy lifting. Given a set of variables to probe, do
+    the probing and generate cuts. Returns false if the problem is infeasible.
   */
-  /** Does most of work of generateCuts 
-      Returns number of infeasibilities */
-  int gutsOfGenerateCuts( const OsiSolverInterface & si, 
-			  OsiCuts & cs,
-			  double * rowLower, double * rowUpper,
-			  double * colLower, double * colUpper,
-                           CglTreeInfo * info) const ;
-  /// Sets up clique information for each row
-  void setupRowCliqueInformation(const OsiSolverInterface & si) ;
-  /*! \brief Tighten column bounds
-  
-     Use bound propagation to tighten column bounds. Can declare infeasibility
-     and  may also declare rows to be redundant
+  bool probe(const OsiSolverInterface &si, 
+	     OsiCuts &cs, 
+	     double *const colLower, double *const colUpper,
+	     const CoinPackedMatrix *const rowCopy,
+	     const CoinPackedMatrix *const columnCopy,
+	     const CoinBigIndex *const rowStartPos,
+	     const int *const realRow, const double *const rowLower,
+	     const double *const rowUpper,
+	     const char *const intVar,
+	     double *const minR, double *const maxR, int *const markR, 
+	     CglTreeInfo *const info,
+	     bool useObj, bool useCutoff, double cutoff) const ;
+
+  /*! \brief Core method for overall control of probing.
+
+    Common worker for generateCuts and generateCutsAndModify. Does common
+    setup and calls #probe.  Returns false if the problem is infeasible.
   */
-  int tighten(double *const colLower, double *const colUpper,
-              const int *const column, const double *const rowElements, 
-              const CoinBigIndex *const rowStart,
-	      const CoinBigIndex *const rowStartPos,
-	      const int *const rowLength,
-              double *const rowLower, double *const rowUpper, 
-              int nRows, int nCols, const char *const intVar,
-	      int maxpass, double tolerance) const ;
+  bool gutsOfGenerateCuts(const OsiSolverInterface &si, 
+			  OsiCuts &cs,
+			  double *rowLower, double *rowUpper,
+			  double *colLower, double *colUpper,
+                          CglTreeInfo *info) const ;
 
   /*! \brief Calculate constraint left-hand-side bounds
 
@@ -390,27 +305,6 @@ private:
   /**@name Private member data */
   //@{
 
-  struct disaggregation_struct_tag ;
-  friend struct CglProbing::disaggregation_struct_tag ;
-
-  /*! \brief Row copy
-  
-    This is created only as part of a snapshot.
-
-    \todo The more I browse in CglProbing, the more it seems to me that
-	  it'd be a good idea to create a snapshot object. Then we'd have
-	  one mutable pointer here and could simplify parameter passing
-	  in several places in the code.  -- lh, 100917 --
-  */
-  CoinPackedMatrix * rowCopy_ ;
-  /*! \brief Column copy
-  
-    This is created only as part of a snapshot. More striking, as far as I can
-    tell it's never used! (CglProbing indeed uses a column copy, but it's
-    created and destroyed in gutsOfGenerateCut.) (lh, 101021)
-  */
-  CoinPackedMatrix * columnCopy_ ;
-
   /*! \brief Arbitrary bound to impose on rows and columns.
 
     This really shouldn't be necessary, but it's wired in and will require
@@ -419,6 +313,7 @@ private:
     -- lh, 101124 --
   */
   static const double CGL_REASONABLE_INTEGER_BOUND ;
+
   /*! \brief Arbitrarily large bound to impose on rows.
 
     This one is completely bogus. It gets installed as a lower or upper
@@ -431,21 +326,10 @@ private:
   static const double CGL_BOGUS_1E60_BOUND ;
 
   /*
-    These don't have to be mutable because the only time probing tightens
-    row bounds is when called as generateCutsAndModify, a non-const method.
-  */
-  /// Lower bounds on rows
-  double * rowLower_ ;
-  /// Upper bounds on rows
-  double * rowUpper_ ;
-
-  /*
-    These have to be mutable because generateCuts is a const method, and
-    tightening bounds is one of the main activities of generateCuts.
-
-    Eh, I'm no longer so happy with this explanation. Modifying the arrays is
-    not the point, it's replacing the pointers. I need to track this down.
-    -- lh, 110330 --
+    These are vestigial at this point. I'm keeping them around on the premise
+    that after generateCutsAndModify it will be useful to set these to point
+    to the working colLower and colUpper. Not yet sure I want to keep them as
+    mutable.  -- lh, 110402 --
   */ 
   /// Lower bounds on columns
   mutable double * colLower_ ;
@@ -454,6 +338,8 @@ private:
 
   /*
     Not entirely sure why these need to be mutable. Check. -- lh, 101007 --
+    Possibly because they're modified to reflect the size of the working copy?
+    -- lh, 110402 --
   */
   /// Number of rows in snapshot (or when cliqueRow stuff computed)
   mutable int numberRows_ ;
@@ -463,16 +349,11 @@ private:
   /// Tolerance to see if infeasible
   double primalTolerance_ ;
 
-  /*! \brief cut generation mode
+  /*! \brief Probing mode
 
-    The basic mode is the first hex digit. Higher bits are variations.
-  
-    - 0x00: lazy using snapshot
-    - 0x01: just unsatisfied integer variables
-    - 0x02: all integer variables
-    - 0x03: as 0x02, but when called as generateCutsAndModify will
-	    return tightened row bounds as well as column bounds.
-    - 0x10: set if want to extend cliques at root node
+    Determines which variables will be probed. Coded as:
+    - 1: just unsatisfied integer variables
+    - 2: all integer variables
   */
   int mode_ ;
 
@@ -527,189 +408,10 @@ private:
   mutable int totalTimesCalled_ ;
   /// Which ones looked at this time
   mutable int * lookedAt_ ;
-  /// If not null and [i] != 0 then also tighten even if continuous
-  char *tightenBounds_ ;
-
-# ifdef CLIQUE_ANALYSIS
-  /*! \brief For disaggregation cuts and for building cliques
-
-    disaggregationAction has been reduced to a vector of indices, presumably
-    the variables x<t> where u<t> or l<t> was changed by a probe on x<p>.
-    -- lh, 110211 --
-  */
-  typedef struct disaggregation_struct_tag {
-    /// Integer variable column number (index of x<p>)
-    int sequence ;
-    /// length of new value
-    int length ;
-    /// columns whose bounds will be changed (indices of x<t>)
-    disaggregationAction *index ;
-  } disaggregation ;
-
-  /*! \brief Disaggregation cuts
-
-    Initialised when probing starts, or when a snapshot is created.
-  */
-  disaggregation *cutVector_ ;
-
-  /************************  Cliques  ************************/
-  /*
-    Cliques detected by CglProbing are always a single row and have a
-    very stylised form. See the description with cliqueEntry in
-    CglTreeInfo.hpp.
-  */
-
-  /// Number of cliques
-  int numberCliques_ ;
-
-  /*! \brief Clique type
-
-    Currently a single flag indicating if the relevant row is an equality.
-
-    \todo See if there's any indication that this will become more complex
-    in the future. If so, it's good to leave it as a defined type. If this
-    is all there'll ever be, make it a boolean. Or a char, which would give
-    7 bits for future expansion. Almost certainly a single-bit field is extra
-    work.
-    -- lh, 100924 --
-  */
-  typedef struct {
-    unsigned int equality:1; //  nonzero if clique row is an equality
-  } cliqueType ;
-
-  /*! \brief Clique type
-  
-    See the description with the cliqueType structure.
-  */
-  cliqueType *cliqueType_ ;
-
-  /*! \brief Start of each clique
-
-    Each entry points to the start of the block of entries for this clique
-    in #cliqueEntry_.
-  */
-  int *cliqueStart_ ;
-
-  /*! \brief Clique membership
-
-    Contains one block of entries for each clique, specifying the variables
-    in the clique. See cliqueEntry for a description of the information in each
-    entry.
-  */
-  cliqueEntry *cliqueEntry_ ;
-
-  /*! \brief Start of strong-1 block for a variable
-
-    One entry per variable. An entry contains the index of the strong-1
-    subblock for this variable in #whichClique_, or -1 if the variable is
-    not in a clique.
-  */
-  int * oneFixStart_ ;
-
-  /*! \brief Start of strong-0 block for a variable
-
-    One entry per variable. An entry contains the index of the strong-0
-    subblock for this variable in #whichClique_, or -1 if the variable is
-    not in a clique.
-  */
-  int * zeroFixStart_ ;
-
-  /*! \brief End of block for a variable
-
-    One entry per variable. An entry contains the index one past the end of
-    the block for a variable in #whichClique_. Note that it's not necessarily
-    true that oneFixStart_[j] is one past the end of the block for x<j-1>
-    because there's no guarantee x<j> is in any clique; oneFixStart_[j] could
-    well be -1. So we need an array to specify the end of each block.
-  */
-  int * endFixStart_ ;
-
-  /*! \brief Cross-reference variables back to cliques
-
-    Divided into blocks for each variable; each block is divided into a
-    strong-1 subblock (see #oneFixStart_) and a strong-0 subblock (see
-    #zeroFixStart_). Each entry is the index of a clique. See also
-    #endFixStart_.
-  */
-  int * whichClique_ ;
-
-  /*! \brief Preprocessed clique information for use when calculating row
-	     bounds.
-  
-    See the explanation with #setupRowCliqueInformation. For each row, there's
-    a block of entries, in the order in which columns are referenced in the
-    row. Each entry specifies the strong direction for the variable, and a
-    locally-valid clique id that identifies variables in the row that are part
-    of the same clique.
-
-    When is this valid? That's a bit unclear. Created by
-    #setupRowCliqueInformation at the end of #generateCutsAndModify, so only
-    useable on subsequent passes. Seems to be a bit of a work in progress.
-  */
-  cliqueEntry * cliqueRow_ ;
-  /// cliqueRow_ starts for each row
-  int * cliqueRowStart_ ;
-
-# endif   // CLIQUE_ANALYSIS
 
   //@}
 } ;
 
-#ifdef CLIQUE_ANALYSIS
-/*
-  What we have here is dangerous, but efficient. (Vid. the commented-out
-  bit fields in disaggregationAction).  Expropriate the top three bits of
-  an integer index as status indicators. Here's my 110212 guess as to the
-  meaning, given probing variable x<p>, affected variable x<t>.
-
-  affectedInDisagg	(28:0)	index of x<t>
-  zeroOneInDisagg	  (31)	x<t> is binary
-  atUBInDisagg		  (30)	x<t> forced to u<t>
-  whenAtUB		  (29)	up probe for x<p>
-
-  The math for a disaggregation cut says that there are four possibilities:
-    * down probe on x<p> tightens ub u<t> on target x<t>
-    * down probe on x<p> tightens lb l<t> on target x<t>
-    * up probe on x<p> tightens ub u<t> on target x<t>
-    * up probe on x<p> tightens lb l<t> on target x<t>
-  In the current implementation, x<p> will be binary. x<t> need not be
-  binary. This set of attributes are capable of capturing the variations.
-
-  The variants for zeroOneInDisagg reflect evolution in the code. It started
-  with the assumption that x<p> and x<t> are both binary. But the math for
-  a disaggregation cut doesn't require either one to be binary. The code
-  was evolving to allow x<t> to be general integer, but the particular
-  bit of code where these methods are used was not yet ready (in fact,
-  my guess is that it was still buggy and under development when it was
-  effectively abandoned 080428 r629).
-
-  -- lh, 110211 --
-*/
-
-inline int affectedInDisagg(const disaggregationAction & dis)
-{ return dis.affected&0x1fffffff;}
-inline void setAffectedInDisagg(disaggregationAction & dis,
-					   int affected)
-{ dis.affected = affected|(dis.affected&0xe0000000);}
-#ifdef NDEBUG
-inline bool zeroOneInDisagg(const disaggregationAction & )
-{ return true;}
-#else
-inline bool zeroOneInDisagg(const disaggregationAction & dis)
-//{ return (dis.affected&0x80000000)!=0;}
-{ assert ((dis.affected&0x80000000)!=0); return true;}
-#endif
-inline void setZeroOneInDisagg(disaggregationAction & dis,bool zeroOne)
-{ dis.affected = (zeroOne ? 0x80000000 : 0)|(dis.affected&0x7fffffff);}
-inline bool whenAtUBInDisagg(const disaggregationAction & dis)
-{ return (dis.affected&0x40000000)!=0;}
-inline void setWhenAtUBInDisagg(disaggregationAction & dis,bool whenAtUB)
-{ dis.affected = (whenAtUB ? 0x40000000 : 0)|(dis.affected&0xbfffffff);}
-inline bool affectedToUBInDisagg(const disaggregationAction & dis)
-{ return (dis.affected&0x20000000)!=0;}
-inline void setAffectedToUBInDisagg(disaggregationAction & dis,bool affectedToUB)
-{ dis.affected = (affectedToUB ? 0x20000000 : 0)|(dis.affected&0xdfffffff);}
-#endif
 //#############################################################################
 /** A function that tests the methods in the CglProbing class. The
     only reason for it not to be a member method is that this way it doesn't
