@@ -113,7 +113,6 @@ public:
   */
   inline void loanColType(const char *const colType) { intVar_ = colType ; }
 
-
   /// Retrieve variable bound changes as packed vectors
   void getVarBoundChanges(CoinPackedVector &lbs, CoinPackedVector &ubs) ;
 
@@ -161,9 +160,10 @@ public:
 
     This method attempts to tighten constraint and variable bounds in the
     system as it exists. It will select a promising subset of constraints (if
-    such exist) and attempt to generate and propagate bound changes.
+    such exist) and attempt to generate and propagate bound changes. The
+    parameter \p feas will be set on return to indicate feasibility.
   */
-  void tightenAbInitio() ;
+  void tightenAbInitio(bool &feas) ;
 
   /// Add a constraint to the set of constraints waiting to be processed.
   void addToPending(int i, double delta, double metric) ;
@@ -253,10 +253,11 @@ private:
     Controls the amount of output:
     -  0: catatonic
     -  1: summary messages
-    -  2: add changes to bounds on variables
-    -  3: add changes to bounds on rows
-    -  4: add constraints queued for processing
-    -  5: add processing traces
+    -  2: print a list of changed variable bounds
+    -  3: print revisions to bounds on variables
+    -  4: print revisions to bounds on rows
+    -  5: print constraints queued for processing
+    -  6: add additional processing traces
     Anything above 1 is likely too much unless you're debugging.
   */
   int verbosity_ ;
@@ -266,9 +267,10 @@ private:
     -  0: all clients are careful, conscientious, and perfect
     -  1: everyone makes the occasional mistake
     -  2: trust no one
-    -  3: trust no one, not even myself
-    Defaults to 0 and that's where you should leave it unless you're
-    debugging.
+    -  3: trust no one, not even myself!
+
+    Defaults to 0; 1 is useful for application development. Higher values are
+    useful for debugging CglPhic. 
   */
   int paranoia_ ;
   //@}
@@ -318,9 +320,10 @@ private:
   /*! \brief Variable type
 
     Coded as:
-    - 0: continuous
-    - 1: binary
-    - 2: general integer
+    - 0: continuous ('c')
+    - 1: binary ('b')
+    - 2: general integer ('g')
+    The character is shown in various print statements.
   */
   const char *intVar_ ;
   //@}
@@ -412,6 +415,8 @@ private:
   struct CglPhicBndChg {
     /// Variable index
     int ndx_ ;
+    /// Variable type
+    int type_ ;
     /// Number of revisions to lower bound
     int revl_ ;
     /// Original lower bound
@@ -425,6 +430,9 @@ private:
     /// New lower bound
     double nu_ ;
   } ;
+
+  friend std::ostream& operator<< (std::ostream &out,
+  				   CglPhic::CglPhicBndChg chg) ;
 
   /// Capacity of #varBndChgs_
   int szeVarBndChgs_ ;
@@ -452,5 +460,11 @@ private:
   form is "(x(j),bnd)".
 */
 std::ostream& operator<< (std::ostream &out, CglPhic::CglPhicConBnd lhs) ;
+/*! \brief Print a bound change record
+
+  The form is "x(j) [oldlj,olduj] --#lj revs,uj revs#-> [newlj,newuj]" where
+  revs are the number of times the bound was revised.
+*/
+std::ostream& operator<< (std::ostream &out, CglPhic::CglPhicBndChg chg) ;
 
 #endif

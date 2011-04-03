@@ -210,6 +210,7 @@ void CglPhic::changeVarBound (int j, char bnd, double nbndj, bool &feas)
     numVarBndChgs_++ ;
     hasChanged_[j] = chgNdx+1 ;
     varBndChgs_[chgNdx].ndx_ = j ;
+    varBndChgs_[chgNdx].type_ = intVar_[j] ;
     varBndChgs_[chgNdx].revl_ = 0 ;
     varBndChgs_[chgNdx].ol_ = colL_[j] ;
     varBndChgs_[chgNdx].nl_ = colL_[j] ;
@@ -396,8 +397,8 @@ void CglPhic::changeVarBound (int j, char bnd, double nbndj, bool &feas)
       assert(deltaLi == 0.0 && deltaUi == 0.0) ;
       calcLhsBnds(i) ;
     }
-    if (verbosity_ >= 5) {
-      std::cout << "          r(" << i << "): " ;
+    if (verbosity_ >= 4) {
+      std::cout << "        r(" << i << "): " ;
       if (fullRecalc) {
         std::cout << "(recalc)" ;
       } else {
@@ -414,12 +415,43 @@ void CglPhic::changeVarBound (int j, char bnd, double nbndj, bool &feas)
       std::cout << " L " << Li << " U " << Ui << std::endl ; 
     }
 /*
-  Are we still feasible?
+  Are we still feasible? Apparent loss of feasibility requires a more careful
+  check. Recalculate the row bound, then do a toleranced check.
 */
-    if ((Ui.infCnt_ == 0  && Ui.bnd_ < blowi) ||
+    if ((Ui.infCnt_ == 0 && Ui.bnd_ < blowi) ||
         (Li.infCnt_ == 0 && Li.bnd_ > bi)) {
-      feas = false ;
-      return ;
+      if (verbosity_ >= 1) {
+        std::cout
+	  << "            " << "apparent loss of feasibility, r("
+	  << i << "); rechecking ..." << std::endl ;
+      }
+      calcLhsBnds(i) ;
+      if (paranoia_ >= 3) {
+	if (Ui.infCnt_ != 0 || Li.infCnt_ != 0) {
+	  std::cout
+	    << "ERROR: infinity count changed for row bound!" << std::endl ;
+	  assert (false) ;
+	}
+      }
+      if (Li.bnd_-bi > feasTol_) {
+        feas = false ;
+	if (verbosity_ >= 1)
+	  std::cout
+	    << "      " << "r(" << i << ") infeasible; " << Li
+	    << " > b<" << i << "> = " << bi << ", infeas "
+	    << Li.bnd_-bi << ", tol " << feasTol_ << "." << std::endl ;
+      } else if (blowi-Ui.bnd_ > feasTol_) {
+        feas = false ;
+	if (verbosity_ >= 1)
+	  std::cout
+	    << "      " << "r(" << i << ") infeasible; " << Ui
+	    << " < blow<" << i << "> = " << blowi << ", infeas "
+	    << blowi-Ui.bnd_ << ", tol " << feasTol_ << "." << std::endl ;
+      } else {
+        if (verbosity_ >= 1)
+	  std::cout << "            " << "false alarm." << std::endl ;
+      }
+      if (!feas) return ;
     }
 /*
   Is this change worth propagating?
@@ -486,6 +518,12 @@ bool CglPhic::tightenVu (int t, double gap, double ait, double corr)
   if ((o_ut-n_ut) > zeroTol_) {
     if ((o_lt-n_ut) > feasTol_) {
       feas = false ;
+      if (verbosity_ >= 1)
+	std::cout
+	  << "      " << "x(" << t << ") infeasible; "
+	  << n_ut << " = u(" << t << ") < l(" << t << ") = " << o_lt
+	  << ", infeas = " << o_lt-n_ut << ", tol = " << feasTol_
+	  << "." << std::endl ;
     } else {
       changeVarBound(t,'u',n_ut,feas) ;
     }
@@ -530,6 +568,12 @@ bool CglPhic::tightenVl (int t, double gap, double ait, double corr)
   if ((n_lt-o_lt) > zeroTol_) {
     if ((n_lt-o_ut) > feasTol_) {
       feas = false ;
+      if (verbosity_ >= 1)
+	std::cout
+	  << "      " << "x(" << t << ") infeasible; "
+	  << n_lt << " = l(" << t << ") > u(" << t << ") = " << o_ut
+	  << ", infeas = " << n_lt-o_ut << ", tol = " << feasTol_
+	  << "." << std::endl ;
     } else {
       changeVarBound(t,'l',n_lt,feas) ;
     }
@@ -691,7 +735,7 @@ void CglPhic::propagate (bool &feas)
   metric is calculated using looseness and gap. See the typeset documentation
   for details.
 */
-void CglPhic::tightenAbInitio ()
+void CglPhic::tightenAbInitio (bool &feas)
 {
   if (verbosity_ >= 1) {
     std::cout << "  " << "Ab initio bound tightening ..." ;
@@ -788,15 +832,20 @@ void CglPhic::tightenAbInitio ()
 /*
   Ok, we're loaded and ready to go ...
 */
-  bool feas = false ;
+  feas = false ;
   propagate(feas) ;
 /*
   Report the results.
 */
   if (verbosity_ >= 1) {
-    if (verbosity_ >= 2) std::cout << std::endl ;
+    if (verbosity_ >= 2) std::cout << std::endl << "  " ;
     std::cout
-      << " done; tightened bounds on " << numVarBndChgs_
-      << " variables." << std::endl ;
+      << ((feas)?"feasible":"infeasible") << "; tightened bounds on "
+      << numVarBndChgs_ << " variables." << std::endl ;
+    if (verbosity_ >= 2) {
+      std::cout << "    Variable bound changes:" << std::endl ;
+      for (int k = 0 ; k < numVarBndChgs_ ; k++)
+        std::cout << "      " << varBndChgs_[k] << std::endl ;
+    }
   }
 }

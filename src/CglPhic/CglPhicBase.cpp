@@ -60,7 +60,7 @@ const int dfltRevLimit = 10 ;
 */
 CglPhic::CglPhic ()
   : zeroTol_(dfltZeroTol),
-    feasTol_(dfltZeroTol),
+    feasTol_(dfltFeasTol),
     propTol_(dfltPropTol),
     infty_(dfltInfinity),
     revLimit_(dfltRevLimit),
@@ -108,7 +108,7 @@ CglPhic::CglPhic (const CoinPackedMatrix *const rowMtx,
 		  const CoinPackedMatrix *const colMtx,
 		  const double *const rhsLower, const double *const rhsUpper)
   : zeroTol_(dfltZeroTol),
-    feasTol_(dfltZeroTol),
+    feasTol_(dfltFeasTol),
     propTol_(dfltPropTol),
     infty_(dfltInfinity),
     revLimit_(dfltRevLimit),
@@ -161,6 +161,7 @@ CglPhic::~CglPhic ()
  if (ourColMtx_) delete colMtx_ ;
  delete[] lhsL_ ;
  delete[] lhsU_ ;
+ delete[] info_ ;
  if (ourColL_) delete[] colL_ ;
  if (ourColU_) delete[] colU_ ;
  delete[] pending_ ;
@@ -388,9 +389,9 @@ void CglPhic::calcLhsBnds (int i)
 /*
   And a bit of debug printing
 */
-  if (verbosity_ >= 5) {
+  if (verbosity_ >= 4) {
     std::cout
-      << "          " << "init " << rhsL_[i] << " < " << Li << " <= r(" << i
+      << "        " << "init " << rhsL_[i] << " < " << Li << " <= r(" << i
       << ") <= " << Ui << " < " << rhsU_[i] << ", l1 " << l1norm << ", pGap "
       << posGap << ", nGap " << negGap << std::endl ;
   }
@@ -477,17 +478,32 @@ void CglPhic::getVarBoundChanges (CoinPackedVector &lbs,
 /*
   Print method for a constraint bound.
 */
-std::ostream& operator<< (std::ostream &str, CglPhic::CglPhicConBnd lhs)
+std::ostream& operator<< (std::ostream &strm, CglPhic::CglPhicConBnd lhs)
 {
-  str << "(" ;
+  strm << "(" ;
   if (lhs.infCnt_ < 0)
-    str << "x(" << (-lhs.infCnt_)-1 << ")" ;
+    strm << "x(" << (-lhs.infCnt_)-1 << ")" ;
   else if (lhs.infCnt_ == 0 || lhs.infCnt_ >= 2)
-    str << lhs.infCnt_ ;
+    strm << lhs.infCnt_ ;
   else
-    str << "invalid!" ;
-  str << "," << lhs.bnd_ << ")" ;
+    strm << "invalid!" ;
+  strm << "," << lhs.bnd_ << ")" ;
 
-  return (str) ;
+  return (strm) ;
 }
 
+/*
+  Print method for a variable bound change record.
+*/
+std::ostream& operator<< (std::ostream &strm, CglPhic::CglPhicBndChg chg)
+{
+  char typlet[3] = {'c','b','g'} ;
+  strm
+    << "x(" << chg.ndx_ << ") " << typlet[chg.type_]
+    << " [" << chg.ol_ << "," << chg.ou_ << "] --#"
+    << chg.revl_ << "," << chg.revu_
+    << "#-> [" << chg.nl_ << "," << chg.nu_ << "]" ;
+
+  return (strm) ;
+}
+    
