@@ -157,7 +157,7 @@ int CglPhic::getFromPending ()
   For variable x<j>, bnd should be 'l' or 'u', and nbndj the new bound value.
   Loss of feasibility is reported back through feas.
 */
-void CglPhic::changeVarBound (int j, char bnd, double nbndj, bool &feas)
+void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
 {
   assert(bnd == 'l' || bnd == 'u') ;
   assert(0 <= j && j < n_) ;
@@ -195,12 +195,12 @@ void CglPhic::changeVarBound (int j, char bnd, double nbndj, bool &feas)
   one. Then (after the logging print) update the bounds arrays and change
   record.
 */
-  int chgNdx = hasChanged_[j] ;
+  int chgNdx = varHasChanged_[j] ;
   if (!chgNdx) {
     if (numVarBndChgs_ >= szeVarBndChgs_) {
       int newSze = szeVarBndChgs_+(szeVarBndChgs_/2)+10 ;
       newSze = CoinMax(newSze,n_) ;
-      CglPhicBndChg *newVarBndChgs = new CglPhicBndChg [newSze] ;
+      CglPhicVarBndChg *newVarBndChgs = new CglPhicVarBndChg [newSze] ;
       CoinMemcpyN(varBndChgs_,szeVarBndChgs_,newVarBndChgs) ;
       delete[] varBndChgs_ ;
       varBndChgs_ = newVarBndChgs ;
@@ -208,7 +208,7 @@ void CglPhic::changeVarBound (int j, char bnd, double nbndj, bool &feas)
     }
     chgNdx = numVarBndChgs_ ;
     numVarBndChgs_++ ;
-    hasChanged_[j] = chgNdx+1 ;
+    varHasChanged_[j] = chgNdx+1 ;
     varBndChgs_[chgNdx].ndx_ = j ;
     varBndChgs_[chgNdx].type_ = intVar_[j] ;
     varBndChgs_[chgNdx].revl_ = 0 ;
@@ -217,24 +217,24 @@ void CglPhic::changeVarBound (int j, char bnd, double nbndj, bool &feas)
     varBndChgs_[chgNdx].revu_ = 0 ;
     varBndChgs_[chgNdx].ou_ = colU_[j] ;
     varBndChgs_[chgNdx].nu_ = colU_[j] ;
-    hasChanged_[j] = chgNdx+1 ;
+    varHasChanged_[j] = chgNdx+1 ;
   } else {
     chgNdx-- ;
   }
 
   if (verbosity_ >= 5) {
-    CglPhicBndChg &chg = varBndChgs_[chgNdx] ;
+    CglPhicVarBndChg &chg = varBndChgs_[chgNdx] ;
     char vartypelet[3] = {'c','b','g'} ;
     int vartype = static_cast<int>(intVar_[j]) ;
     std::cout
-      << "    " << "x(" << j << ") " << vartypelet[vartype]
+      << "          " << "x<" << j << "> " << vartypelet[vartype]
       << " [" << chg.ol_ << "," << chg.ou_ << "] " ;
     if (deltal)
       std::cout
-	<< "lb # " << chg.revl_+1 << ": " << colL_[j] << " -> " << nbndj ;
+	<< "lb #" << chg.revl_+1 << ": " << colL_[j] << " -> " << nbndj ;
     else
       std::cout
-	<< "ub # " << chg.revu_+1 << ": " << colU_[j] << " -> " << nbndj ;
+	<< "ub #" << chg.revu_+1 << ": " << colU_[j] << " -> " << nbndj ;
     std::cout << "  delta " << delta << std::endl ;
   }
 
@@ -259,8 +259,8 @@ void CglPhic::changeVarBound (int j, char bnd, double nbndj, bool &feas)
     if (CoinAbs(aij) < zeroTol_) continue ;
     const double &blowi = rhsL_[i] ;
     const double &bi = rhsU_[i] ;
-    CglPhicConBnd &Li = lhsL_[i] ;
-    CglPhicConBnd &Ui = lhsU_[i] ;
+    CglPhicLhsBnd &Li = lhsL_[i] ;
+    CglPhicLhsBnd &Ui = lhsU_[i] ;
 /*
   Which lhs bound will change?
   * U<i> changes if (a<ij> > 0 && delta(u<j>)) || (a<ij> < 0 && delta(l<j>))
@@ -525,7 +525,7 @@ bool CglPhic::tightenVu (int t, double gap, double ait, double corr)
 	  << ", infeas = " << o_lt-n_ut << ", tol = " << feasTol_
 	  << "." << std::endl ;
     } else {
-      changeVarBound(t,'u',n_ut,feas) ;
+      chgColBnd(t,'u',n_ut,feas) ;
     }
   }
   return (feas) ;
@@ -575,7 +575,7 @@ bool CglPhic::tightenVl (int t, double gap, double ait, double corr)
 	  << ", infeas = " << n_lt-o_ut << ", tol = " << feasTol_
 	  << "." << std::endl ;
     } else {
-      changeVarBound(t,'l',n_lt,feas) ;
+      chgColBnd(t,'l',n_lt,feas) ;
     }
   }
   return (feas) ;
@@ -596,7 +596,7 @@ bool CglPhic::tightenVl (int t, double gap, double ait, double corr)
   * finiteLGap && a<it> > 0  =>  l<t>
   * finiteLGap && a<it> < 0  =>  u<t>
   Once we've nailed down the case, call the appropriate tighten method, with
-  appropriate parameters. If the bound is tightened, changeVarBound will be
+  appropriate parameters. If the bound is tightened, chgColBnd will be
   invoked to propagate the change.
 
   There's one additional complication: It may be that L<i> or U<i> contains a
@@ -614,8 +614,8 @@ void CglPhic::processRow (int i, bool &feas)
   }
   feas = true ;
 
-  const CglPhicConBnd &Li = lhsL_[i] ;
-  const CglPhicConBnd &Ui = lhsU_[i] ;
+  const CglPhicLhsBnd &Li = lhsL_[i] ;
+  const CglPhicLhsBnd &Ui = lhsU_[i] ;
 
   assert(Li.infCnt_ <= 0 || Ui.infCnt_ <= 0) ;
 
@@ -698,12 +698,12 @@ void CglPhic::processRow (int i, bool &feas)
 /*
   This method propagates bound changes over the set of pending constraints.
   The pending set must be loaded with an initial set of constraints by one
-  or more direct calls to addToPending; one or more calls to changeVarBound;
+  or more direct calls to addToPending; one or more calls to chgColBnd;
   or a call to tightenAbInitio (which will also make the call to propagate).
 
   The main loop removes a constraint from the pending set and processes
   it to see if it's possible to tighten bounds on any of the variables
-  involved in the constraint. When a bound is tightened, changeVarBound is
+  involved in the constraint. When a bound is tightened, chgColBnd is
   called to walk the column and tighten bounds on constraints entangled
   with the variable.  This, in turn, will add constraints to the pending
   set for further processing.

@@ -9,6 +9,13 @@
 /*
   This file contains class boilerplate, setup, initialisation, and reporting
   methods.
+
+  TODO: Arguably the content of CglPhicConInfo should be captured as part of
+	the original row lhs information. This would allow restoration of
+	row lhs information from the change record. Currently we need to
+	recalculate because we've lost the norm and gaps (they are
+	recalculated along with the lhs bounds at the recalculation interval,
+	but are not saved in the change record).
 */
 
 #if defined(_MSC_VER)
@@ -98,7 +105,7 @@ CglPhic::CglPhic ()
     szeVarBndChgs_(0),
     numVarBndChgs_(0),
     varBndChgs_(0),
-    hasChanged_(0)
+    varHasChanged_(0)
 { }
 
 /*
@@ -146,7 +153,7 @@ CglPhic::CglPhic (const CoinPackedMatrix *const rowMtx,
     szeVarBndChgs_(0),
     numVarBndChgs_(0),
     varBndChgs_(0),
-    hasChanged_(0)
+    varHasChanged_(0)
 {
   loanSystem(rowMtx,colMtx,rhsLower,rhsUpper) ;
 }
@@ -167,7 +174,7 @@ CglPhic::~CglPhic ()
  delete[] pending_ ;
  delete[] isPending_ ;
  delete[] varBndChgs_ ;
- delete[] hasChanged_ ;
+ delete[] varHasChanged_ ;
 }
 
 
@@ -365,8 +372,8 @@ void CglPhic::calcLhsBnds (int i)
 /*
   Clean up and fill in the bound and info entries.
 */
-  CglPhicConBnd &Li = lhsL_[i] ;
-  CglPhicConBnd &Ui = lhsU_[i] ;
+  CglPhicLhsBnd &Li = lhsL_[i] ;
+  CglPhicLhsBnd &Ui = lhsU_[i] ;
   CglPhicConInfo &infoi = info_[i] ;
 
   Li.bnd_ = bndL ;
@@ -408,8 +415,8 @@ void CglPhic::initLhsBnds ()
 /*
   Allocate fresh bound and info arrays if we need them.
 */
-  if (!lhsL_) lhsL_ = new CglPhicConBnd [m_] ;
-  if (!lhsU_) lhsU_ = new CglPhicConBnd [m_] ;
+  if (!lhsL_) lhsL_ = new CglPhicLhsBnd [m_] ;
+  if (!lhsU_) lhsU_ = new CglPhicLhsBnd [m_] ;
   if (!info_) info_ = new CglPhicConInfo [m_] ;
 /*
   Step through the major vectors and calculate measures and bounds.
@@ -453,32 +460,267 @@ void CglPhic::initPropagation ()
   if (newSize > szeVarBndChgs_) {
     szeVarBndChgs_ = newSize ;
     delete[] varBndChgs_ ;
-    varBndChgs_ = new CglPhicBndChg [szeVarBndChgs_] ;
+    varBndChgs_ = new CglPhicVarBndChg [szeVarBndChgs_] ;
   }
-  if (!hasChanged_) hasChanged_ = new int [n_] ;
-  CoinZeroN(hasChanged_,n_) ;
+  if (!varHasChanged_) varHasChanged_ = new int [n_] ;
+  CoinZeroN(varHasChanged_,n_) ;
   numVarBndChgs_ = 0 ;
 }
 
 
 /*
-  Report out column bound changes as a pair of CoinPackedVectors.
+  Clear propagation data structures.
 */
-void CglPhic::getVarBoundChanges (CoinPackedVector &lbs,
-				  CoinPackedVector &ubs)
+void CglPhic::clearPropagation ()
 {
+  numPending_ = 0 ;
+  CoinZeroN(isPending_,m_) ;
+  numVarBndChgs_ = 0 ;
+  CoinZeroN(varHasChanged_,n_) ;
+  numLhsBndChgs_ = 0 ;
+  CoinZeroN(lhsHasChanged_,m_) ;
+}
+
+
+/*
+  Report out column bound changes as a pair of CoinPackedVectors. Very
+  convenient for constructing a column cut.
+*/
+void CglPhic::getColBndChgs (CoinPackedVector &lbs, CoinPackedVector &ubs)
+{
+  lbs.clear() ;
+  ubs.clear() ;
   for (int ndx = 0 ; ndx < numVarBndChgs_ ; ndx++) {
-    const CglPhicBndChg &chgRec = varBndChgs_[ndx] ;
+    const CglPhicVarBndChg &chgRec = varBndChgs_[ndx] ;
     if (chgRec.revl_ > 0) lbs.insert(chgRec.ndx_,chgRec.nl_) ;
     if (chgRec.revu_ > 0) ubs.insert(chgRec.ndx_,chgRec.nu_) ;
   }
 }
 
+/*
+  Report out column bound changes as a vector of CglPhicBndPair entries. This
+  happens to be convenient for some tasks. It's dead easy to construct this
+  vector from inside, but difficult once the changes have been separated into
+  a pair of packed vectors. Turns out that it's also handy on occasion to have
+  a correlated array with the original bounds. And then there's the matter of
+  controlling what bound changes you want to see. The arrays that are reported
+  out may well be longer than necessary (there seems little point in
+  reallocating them, as the length is generally small to begin with).
+*/
+int CglPhic::getColBndChgs (CglPhic::CglPhicBndPair **newBnds,
+			    CglPhic::CglPhicBndPair **oldBnds,
+			    bool binVar, bool intVar, bool conVar)
+{
+  assert(newBnds || oldBnds) ;
+  if (newBnds) (*newBnds) = new CglPhicBndPair [numVarBndChgs_] ;
+  if (oldBnds) (*oldBnds) = new CglPhicBndPair [numVarBndChgs_] ;
+  int outNdx = 0 ;
+  for (int chgNdx = 0 ; chgNdx < numVarBndChgs_ ; chgNdx++) {
+    const CglPhicVarBndChg &chgRec = varBndChgs_[chgNdx] ;
+    const int &j = chgRec.ndx_ ;
+    const char &vartype = intVar_[j] ;
+    if (!((binVar && vartype == 1) ||
+    	  (intVar && vartype == 2) || (conVar && vartype == 0))) continue ;
+    if (newBnds) {
+      CglPhicBndPair &newBnd = (*newBnds)[outNdx] ;
+      newBnd.ndx_ = chgRec.ndx_ ;
+      newBnd.lb_ = chgRec.nl_ ;
+      newBnd.changed_ = 0 ;
+      if (chgRec.revl_ > 0) newBnd.changed_ |= 0x01 ;
+      newBnd.ub_ = chgRec.nu_ ;
+      if (chgRec.revu_ > 0) newBnd.changed_ |= 0x02 ;
+    }
+    if (oldBnds) {
+      CglPhicBndPair &oldBnd = (*oldBnds)[outNdx] ;
+      oldBnd.ndx_ = chgRec.ndx_ ;
+      oldBnd.changed_ = 0 ;
+      oldBnd.lb_ = chgRec.ol_ ;
+      oldBnd.ub_ = chgRec.ou_ ;
+    }
+    outNdx++ ;
+  }
+  return (outNdx) ;
+}
+
+/*
+  Report out row lhs bound changes as a pair of CoinPackedVectors. There's a
+  loss of information here: any amount of infinity translates into an infinite
+  bound.
+*/
+void CglPhic::getRowLhsBndChgs (CoinPackedVector &lhsLChgs,
+				CoinPackedVector &lhsUChgs)
+{
+  lhsLChgs.clear() ;
+  lhsUChgs.clear() ;
+  for (int ndx = 0 ; ndx < numLhsBndChgs_ ; ndx++) {
+    const CglPhicLhsBndChg &chgRec = lhsBndChgs_[ndx] ;
+    const int &i = chgRec.ndx_ ;
+    if (chgRec.revL_ > 0) {
+      if (chgRec.nL_.infCnt_ != 0)
+        lhsLChgs.insert(i,-infty_) ;
+      else
+        lhsLChgs.insert(i,chgRec.nL_.bnd_) ;
+    }
+    if (chgRec.revU_ > 0) {
+      if (chgRec.nU_.infCnt_ != 0)
+        lhsUChgs.insert(i,infty_) ;
+      else
+        lhsUChgs.insert(i,chgRec.nU_.bnd_) ;
+    }
+  }
+}
+
+/*
+  Report out row lhs bound changes as a vector of CglPhicBndPair entries.
+  There's a loss of information here: any amount of infinity translates into
+  an infinite bound. Just as for getColBndChgs, this is often a convenient
+  form and it's easy to do from inside.
+*/
+int CglPhic::getRowLhsBndChgs (CglPhic::CglPhicBndPair **newBnds,
+			       CglPhic::CglPhicBndPair **oldBnds)
+{
+  assert(newBnds || oldBnds) ;
+  if (newBnds) (*newBnds) = new CglPhicBndPair [numLhsBndChgs_] ;
+  if (oldBnds) (*oldBnds) = new CglPhicBndPair [numLhsBndChgs_] ;
+  for (int ndx = 0 ; ndx < numLhsBndChgs_ ; ndx++) {
+    const CglPhicLhsBndChg &chgRec = lhsBndChgs_[ndx] ;
+    if (newBnds) {
+      CglPhicBndPair &newBnd = (*newBnds)[ndx] ;
+      newBnd.ndx_ = chgRec.ndx_ ;
+      newBnd.changed_ = 0 ;
+      if (chgRec.nL_.infCnt_ != 0)
+	newBnd.lb_ = -infty_ ;
+      else
+	newBnd.lb_ = chgRec.nL_.bnd_ ;
+      if (chgRec.revL_ > 0) newBnd.changed_ |= 0x01 ; 
+      if (chgRec.nU_.infCnt_ != 0)
+	newBnd.ub_ = infty_ ;
+      else
+	newBnd.ub_ = chgRec.nU_.bnd_ ;
+      if (chgRec.revU_ > 0) newBnd.changed_ |= 0x02 ;
+    }
+    if (oldBnds) {
+      CglPhicBndPair &oldBnd = (*oldBnds)[ndx] ;
+      oldBnd.ndx_ = chgRec.ndx_ ;
+      oldBnd.changed_ = 0 ;
+      if (chgRec.oL_.infCnt_ != 0)
+	oldBnd.lb_ = -infty_ ;
+      else
+	oldBnd.lb_ = chgRec.oL_.bnd_ ;
+      if (chgRec.oU_.infCnt_ != 0)
+	oldBnd.ub_ = -infty_ ;
+      else
+	oldBnd.ub_ = chgRec.oU_.bnd_ ;
+    }
+  }
+  return (numLhsBndChgs_) ;
+}
+
+/*
+  Revert the current set of bound changes (column, row, or both).
+
+  The general notion here is that it's more efficient to back out the current
+  set of bounds changes from within CglPhic, where we have complete access to
+  the variable and constraint bound change records. There are two common
+  reasons for this:
+    * Revert the propagator state to an original state. Unless the bounds
+      changes are particularly sweeping, it's more efficient to back out
+      individual changes.
+    * Revert loaned column bounds to an original state before reclaiming them.
+  It's considerably more work to back out row lhs bounds, because the
+  propagator doesn't keep complete information. A complete scan of each row is
+  required.
+*/
+void CglPhic::revert (bool revertColBnds, bool revertRowBnds)
+{
+  if (verbosity_ >= 1) {
+    std::cout << "          "
+      << "reverting " << numVarBndChgs_ << " var bnds." << std::endl ;
+  }
+  if (revertColBnds) {
+    for (int k = numVarBndChgs_ ; k >= 0 ; k--) {
+      CglPhicVarBndChg &chg = varBndChgs_[k] ;
+      if (verbosity_ >= 1) {
+        std::cout << "            " << chg << std::endl ;
+      }
+      int j = chg.ndx_ ;
+      assert(0 <= j && j < n_) ;
+      colL_[j] = chg.ol_ ;
+      colU_[j] = chg.ou_ ;
+      varHasChanged_[j] = 0 ;
+    }
+    numVarBndChgs_ = 0 ;
+  }
+  if (verbosity_ >= 1) {
+    std::cout << "          "
+      << "reverting " << numLhsBndChgs_ << " lhs bnds." << std::endl ;
+  }
+  if (revertRowBnds) {
+    for (int k = numLhsBndChgs_ ; k >= 0 ; k--) {
+      CglPhicLhsBndChg &chg = lhsBndChgs_[k] ;
+      if (verbosity_ >= 1) {
+        std::cout << "            " << chg << std::endl ;
+      }
+      int i = chg.ndx_ ;
+      assert(0 <= i && i < m_) ;
+      calcLhsBnds(i) ;
+      lhsHasChanged_[i] = 0 ;
+    }
+    numLhsBndChgs_ = 0 ;
+  }
+}
+
+
+/*
+  Edit in a set of changes to column bounds. The result is once again
+  considered to be the original bounds.  Valid only if there are no
+  current changes. This avoids answering the question `What happens if an edit
+  and a change collide?'
+*/
+void CglPhic::editColBnds (const CoinPackedVector *const lbs,
+			   const CoinPackedVector *const ubs)
+{
+  assert(lbs || ubs) ;
+  assert(numVarBndChgs_ == 0) ;
+
+  if (lbs) {
+    const int *const indices = lbs->getIndices() ;
+    const double *const bnds = lbs->getElements() ;
+    const int numBnds = lbs->getNumElements() ;
+    for (int k = 0 ; k < numBnds ; k++) {
+      const int &j = indices[k] ;
+      colL_[j] = bnds[k] ;
+    }
+  }
+  if (ubs) {
+    const int *const indices = ubs->getIndices() ;
+    const double *const bnds = ubs->getElements() ;
+    const int numBnds = ubs->getNumElements() ;
+    for (int k = 0 ; k < numBnds ; k++) {
+      const int &j = indices[k] ;
+      colU_[j] = bnds[k] ;
+    }
+  }
+}
+
+void CglPhic::editColBnds (int len,
+			   const CglPhic::CglPhicBndPair *const newBnds)
+{
+  assert(newBnds) ;
+  assert(numVarBndChgs_ == 0) ;
+
+  for (int k = 0 ; k < len ; k++) {
+    const CglPhicBndPair &newBnd = newBnds[k] ;
+    const int &j = newBnd.ndx_ ;
+    colL_[j] = newBnd.lb_ ;
+    colU_[j] = newBnd.ub_ ;
+  }
+}
 
 /*
   Print method for a constraint bound.
 */
-std::ostream& operator<< (std::ostream &strm, CglPhic::CglPhicConBnd lhs)
+std::ostream& operator<< (std::ostream &strm, CglPhic::CglPhicLhsBnd lhs)
 {
   strm << "(" ;
   if (lhs.infCnt_ < 0)
@@ -495,7 +737,7 @@ std::ostream& operator<< (std::ostream &strm, CglPhic::CglPhicConBnd lhs)
 /*
   Print method for a variable bound change record.
 */
-std::ostream& operator<< (std::ostream &strm, CglPhic::CglPhicBndChg chg)
+std::ostream& operator<< (std::ostream &strm, CglPhic::CglPhicVarBndChg chg)
 {
   char typlet[3] = {'c','b','g'} ;
   strm
@@ -506,4 +748,16 @@ std::ostream& operator<< (std::ostream &strm, CglPhic::CglPhicBndChg chg)
 
   return (strm) ;
 }
-    
+
+/*
+  Print method for a constraint lhs bound change record.
+*/
+std::ostream& operator<< (std::ostream &strm, CglPhic::CglPhicLhsBndChg chg)
+{
+  strm
+    << "r(" << chg.ndx_ << ") {" << chg.oL_ << "," << chg.oU_
+    << "} --#" << chg.revL_ << "," << chg.revU_
+    << "#-> {" << chg.nL_ << "," << chg.nU_ << "}" ;
+
+  return (strm) ;
+}

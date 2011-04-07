@@ -552,10 +552,6 @@ CoinPackedMatrix *setupRowCopy (int mode, bool useObj,
   gone to some trouble back in gutsOfGenerateCuts to use the objective only
   if there's a reasonable cutoff. Let's not second guess the decision here.
 
-  While we're here, we will sort the coefficients of each row so that all
-  negative coefficients precede all positive coefficients. Record the break
-  points in rowStartPos.
-
   An alternate code block for deleting constraints on bounds would delete
   any constraint where an infinite (1.0e3 :-) bound on a variable would
   lead to an infinite row LB or UB. This is a recipe for deleting the
@@ -567,22 +563,26 @@ CoinPackedMatrix *setupRowCopy (int mode, bool useObj,
 
   Returns true if we're good to proceed, false if the groomed model is not
   worth pursuing.
+
+  TODO: Remove the code that sorts coefficients in a row so that negative
+	precedes positive. Used to be used in the propagation code over
+	in probe(), but no longer. Keep it in place just to minimise the bugs
+	as I do the conversion to CglPhic.  -- lh, 110405 --
+
 */
 
-bool groomModel ( bool useObj, int maxRowLen,
+bool groomModel (bool useObj, int maxRowLen,
 		 const OsiSolverInterface &si, const char *const intVar,
 		 CoinPackedMatrix *rowCopy,
 		 double *const rowLower, double *const rowUpper,
 		 const double *const colLower, const double *const colUpper,
-		 int *&realRows, CoinBigIndex *&rowStartPos,
-		 const CglTreeInfo *info)
+		 int *&realRows, const CglTreeInfo *info)
 {
 # if CGL_DEBUG > 1
   std::cout << "Entering groomModel." << std::endl ;
 # endif
 
   realRows = 0 ;
-  rowStartPos = 0 ;
 
   const double weakRhs = 1.0e20 ;
   const double strengthenRhs = 1.0e10 ;
@@ -827,7 +827,7 @@ bool groomModel ( bool useObj, int maxRowLen,
   CoinBigIndex newSize = 0 ;
   int *columnPos = new int [nCols] ;
   double *elementsPos = new double [nCols] ;
-  rowStartPos = new CoinBigIndex [nRows] ;
+  CoinBigIndex *rowStartPos = new CoinBigIndex [nRows] ;
   for (int i = 0 ; i < nRows ; i++) {
     double offset = 0.0 ;
     const CoinBigIndex rstarti = rowStart[i] ;
@@ -865,6 +865,7 @@ bool groomModel ( bool useObj, int maxRowLen,
   }
   delete [] columnPos ;
   delete [] elementsPos ;
+  delete [] rowStartPos ;
   rowStart[nRows] = newSize ;
   rowCopy->setNumElements(newSize) ;
 
@@ -1205,7 +1206,9 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   Put reasonable bounds on general integer variables.
   TODO: Here's another source of bogus bounds, distinct from 1e20!
 	-- lh, 101009 --
+        Should no longer be necessary.  -- lh, 110406 --
 */
+# if 0
   int numberIntegers = 0 ;
   for (int i = 0 ; i < nCols ; i++) {
     if (intVar[i]) {
@@ -1218,6 +1221,7 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
       }
     }
   }
+# endif
 /*
   If we're at the root of the search tree, scan the constraint system to see
   if there are naturally integer variables that are not declared as integer.
@@ -1295,60 +1299,40 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   up and go home while it's relatively easy.
 
   realRows is the cross-reference between rows in rowCopy and rows of the
-  original model. rowStartPos is the first positive coefficient in a row.
+  original model.
 
   Note that the number of rows in the local copy is almost certainly not the
   same as the number of rows in the system held in the si. You can't just copy
   rowLower and rowUpper; they must be translated if realRows exists.
 */
   int *realRows = 0 ;
-  int *rowStartPos = 0 ;
   bool worthProbing = groomModel(useObj,maxRowLen,si,intVar,
-  			       rowCopy,rowLower,rowUpper,
-			       colLower,colUpper,realRows,rowStartPos,info) ;
+				 rowCopy,rowLower,rowUpper,
+				 colLower,colUpper,realRows,info) ;
   nRows = rowCopy->getNumRows() ;
   if (!worthProbing) {
     delete[] intVar ;
     delete[] realRows ;
-    delete[] rowStartPos ;
     delete rowCopy ;
     return (feasible) ;
   }
 /*
   Make a column-major copy, after we've winnowed the rows to the set we want
-  to work with. The break out the internal arrays for subsequent use.
+  to work with.
 */
   CoinPackedMatrix *columnCopy = new CoinPackedMatrix(*rowCopy,0,0,true) ;
-  const int *column = rowCopy->getIndices() ;
-  const CoinBigIndex *rowStart = rowCopy->getVectorStarts() ;
-  const int *rowLength = rowCopy->getVectorLengths(); 
-  const double *rowElements = rowCopy->getElements() ;
 /*
-  Allocate an array to hold indices of the columns we will probe.
+  We now have row- and column-major copies of the working constraint system.
+  Set up and invoke bound propagation to tighten up the row and column bounds.
 */
-  if (!lookedAt_) {
-    lookedAt_ = new int[nCols] ;
-  }
-  numberThisTime_ = 0 ;
-/*
-  Allocate the row processing record (markR) and the arrays that will hold
-  row lhs bounds (minR, maxR).
-*/
-  int *markR = new int [nRows] ;
-  double *minR = new double [nRows] ;
-  double *maxR = new double [nRows] ;
-/*
-  End of setup. Setup and invoke bound propagation.
-*/
-  CglPhic *phic = new CglPhic(rowCopy,columnCopy,rowLower,rowUpper) ;
-  phic->setVerbosity(0) ;
-  phic->setParanoia(0) ;
-  phic->loanColBnds(colLower,colUpper) ;
-  phic->loanColType(intVar) ;
-  phic->initLhsBnds() ;
-  phic->initPropagation() ;
-  phic->tightenAbInitio(feasible) ;
-  phic->getRowLhsBnds(minR,maxR) ;
+  CglPhic phic(rowCopy,columnCopy,rowLower,rowUpper) ;
+  phic.setVerbosity(10) ;
+  phic.setParanoia(10) ;
+  phic.loanColBnds(colLower,colUpper) ;
+  phic.loanColType(intVar) ;
+  phic.initLhsBnds() ;
+  phic.initPropagation() ;
+  phic.tightenAbInitio(feasible) ;
 /*
   If we've lost feasibility, do nothing more. Otherwise, record the new bounds
   as column cuts and continue with setup and probing.
@@ -1365,26 +1349,10 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
     }
 #   endif
 /*
-  We've calculated changes in column bounds due to propagation. To go further,
+  We've tightened up the initial system as best we can. To go further,
   we need to be able to probe.
 */
-    if (maxProbe > 0) {    // block extends to end of if (mode)
-      numberThisTime_ = 0 ;
-/*
-  Calculate L<i> and U<i> for each row. If one or both are suitable to
-  process further, markR[i] is set to -1. If both are too large to warrant
-  further processing, markR[i] is set to -2.
-
-  TODO: Why not do this as part of tighten()? Tighten must calculate row
-	bounds in order to propagate column bounds. It's not like we're
-	saving any work, other than transcribing the bounds into minR and
-	maxR. On a purely mechanical level, tighten does not fill in minR,
-	maxR, markR.  -- lh, 100923 --
-
-*/
-      calcRowBounds(colLower,colUpper,column,rowElements,
-		    rowStart,rowLength,rowLower,rowUpper,
-		    minR,maxR,markR,nRows) ;
+    if (maxProbe > 0) {
 /*
   Decide what to look at. Mode 1 is unsatisfied variables only; mode 2 is all
   variables.
@@ -1397,11 +1365,15 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   small when infeasibility is large, so large negative values are variables
   that are close to integrality.
 */
+      numberThisTime_ = 0 ;
+      if (!lookedAt_) {
+	lookedAt_ = new int[nCols] ;
+      }
       if (mode == 1) {
 	const double *colsol = si.getColSolution() ;
 	double_int_pair *array = new double_int_pair [nCols] ;
 #       ifdef ZEROFAULT
-	std::memset(array,0,sizeof(double_int_pair)*nCols) ;
+	CoinZeroN(array,nCols) ;
 #	endif
 	double multiplier = -1.0 ;
 /*
@@ -1428,7 +1400,6 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 */
 	if (info->inTree || (info->pass&1) != 0)
 	  multiplier = 1.0 ;
-	// const int * columnLength = si.getMatrixByCol()->getVectorLengths() ;
 	for (int i = 0 ; i < nCols ; i++) {
 	  if (intVar[i] && (colUpper[i]-colLower[i]) > 1.0e-8) {
 	    double away = fabs(0.5-(colsol[i]-floor(colsol[i]))) ;
@@ -1459,37 +1430,29 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 	}
       }
 /*
-  lookedAt_ now contains a list of indices of variables to probe. Rows
-  worth processing are tagged with -1 in markR. Do the probing.
+  lookedAt_ now contains a list of indices of variables to probe. Do the
+  probing.
 */
-      feasible = probe(si,cs,colLower,colUpper,rowCopy,columnCopy,
-		       rowStartPos,realRows,rowLower,rowUpper,
-		       intVar,minR,maxR,markR,info,
-		       useObj,useCutoff,cutoff) ;
+      feasible = probe(si,cs,phic,realRows,info,useObj,useCutoff,cutoff) ;
     }
   }
 /*
   Done! Time to clean up and go home.
 */
-  delete[] markR ;
-  delete[] minR ;
-  delete[] maxR ;
-
   delete rowCopy ;
   delete columnCopy ;
 
   delete[] intVar ;
-  delete[] rowStartPos ;
   delete[] realRows ;
-
-  delete phic ;
-
 /*
   jjf: put back unreasonable bounds on integer variables
 
   TODO: If we're infeasible, is this necessary? Better to just not use the
 	bounds.   -- lh, 110217 --
+
+	Should no longer be necessary, period.  -- lh, 110406 --
 */
+# if 0
   const double *trueLower = si.getColLower() ;
   const double *trueUpper = si.getColUpper() ;
   if (feasible) {
@@ -1502,6 +1465,7 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
       }
     }
   }
+# endif
 /*
   If we're requested to set the global cut flag, do it.
 */

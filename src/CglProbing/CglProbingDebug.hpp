@@ -19,7 +19,7 @@
   and nothing else. Values greater than zero enable debugging output, the
   methods declared below, and increasingly expensive checks.
 */
-#define CGL_DEBUG 0
+#define CGL_DEBUG 2
 
 #if defined(CGL_DEBUG)
 # ifdef NDEBUG

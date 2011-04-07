@@ -16,6 +16,7 @@
 #include "CglProbing.hpp"
 #include "CglProbingDebug.hpp"
 
+#if 0
 
 const double CglProbing::CGL_REASONABLE_INTEGER_BOUND = 1.23456789e10 ;
 const double CglProbing::CGL_BOGUS_1E60_BOUND = 1.0e60 ;
@@ -162,4 +163,4 @@ void CglProbing::calcRowBounds (const double *const colLower,
 
 }
 
-
+#endif

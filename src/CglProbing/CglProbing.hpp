@@ -8,6 +8,10 @@
 #include <string>
 
 #include "CglCutGenerator.hpp"
+#include "CglPhic.hpp"
+
+class CglProbingRowCut ;
+
 
 /*! \brief Probing Cut Generator
 
@@ -255,16 +259,9 @@ private:
     This method does the heavy lifting. Given a set of variables to probe, do
     the probing and generate cuts. Returns false if the problem is infeasible.
   */
-  bool probe(const OsiSolverInterface &si, 
-	     OsiCuts &cs, 
-	     double *const colLower, double *const colUpper,
-	     const CoinPackedMatrix *const rowCopy,
-	     const CoinPackedMatrix *const columnCopy,
-	     const CoinBigIndex *const rowStartPos,
-	     const int *const realRow, const double *const rowLower,
-	     const double *const rowUpper,
-	     const char *const intVar,
-	     double *const minR, double *const maxR, int *const markR, 
+  bool probe(const OsiSolverInterface &si,
+	     OsiCuts &cs, CglPhic &phic,
+	     const int *const realRows,
 	     CglTreeInfo *const info,
 	     bool useObj, bool useCutoff, double cutoff) const ;
 
@@ -279,25 +276,62 @@ private:
 			  double *colLower, double *colUpper,
                           CglTreeInfo *info) const ;
 
-  /*! \brief Calculate constraint left-hand-side bounds
+  /*! \brief Generate implication cuts
 
-    Calculate lower and upper bounds on the constraint lhs based on variable
-    lower and upper bounds. The new bounds are loaded into minR and maxR.
-    The array markR will be set as:
-    - -1: constraint is useful for further propagation (at least one lhs
-          bound finite)
-    - -2: constraint is not useful (both lhs bounds infinite).
-    In practice, finite translates as `reasonable magnitude'.
+    See the hardcopy documentation and comments at the top of the method.
   */
-  void calcRowBounds(const double *const colLower,
-  		     const double *const colUpper,
-		     const int *const column, const double *const rowElements, 
-		     const CoinBigIndex *const rowStart,
-		     const int *const rowLength,
-		     const double *const rowLower,
-		     const double *const rowUpper, 
-		     double *const minR, double *const maxR, int *const markR,
-		     int nRows) const ;
+  int implicationCuts(int p, int n,
+  		      OsiCuts &cs, const OsiSolverInterface &si, CglPhic &phic,
+		      const char *const intVar, const double *const colsol,
+		      int numDnProbeBnds, 
+		      const CglPhic::CglPhicBndPair *const dnProbeBnds,
+		      int numUpProbeBnds,
+		      const CglPhic::CglPhicBndPair *const upProbeBnds) const ;
+  /*! \brief Generate disaggregation cuts
+
+    See the hardcopy documentation and comments at the top of the method.
+  */
+  void disaggCuts(int p, unsigned int probeDir, double disaggEffectiveness,
+  		  const OsiSolverInterface &si, const double *const colsol,
+		  int bndLen, const CglPhic::CglPhicBndPair *const newBnds,
+		  const CglPhic::CglPhicBndPair *const oldBnds,
+		  CglProbingRowCut &rowCut,
+		  int *const index, double *const element) const ;
+
+  /*! \brief Generate coefficient strengthening cuts
+
+    See the hardcopy documentation and comments at the top of the method.
+  */
+  void strengthenCoeff(int p, unsigned int probeDir,
+		      bool justReplace, double needEffectiveness,
+		      const OsiSolverInterface &si,
+		      CglProbingRowCut &rowCut, const CglPhic &phic,
+		      const double *const colsol,
+		      int numVarChgs,
+		      const CglPhic::CglPhicBndPair *const varBndChgs,
+		      int numLhsChgs,
+		      const CglPhic::CglPhicBndPair *const lhsBndChgs,
+		      const int *const realRows, double *const element,
+		      int *const index, CglTreeInfo *const info) const ;
+
+  /*! \brief Capture variable bound changes for monotone probe
+
+    See the hardcopy documentation and comments at the top of the method.
+  */
+  bool monotoneActions(const OsiSolverInterface &si, OsiCuts &cs,
+		       const char *const intVar, int bndLen,
+		       const CglPhic::CglPhicBndPair *const varBndChgs,
+		       const CglPhic::CglPhicBndPair *const origBnds,
+		       const double *const colsol,
+		       int *const index, double *const element) const ;
+
+  /*! \brief Capture variable bound changes for monotone probe
+
+    See the hardcopy documentation and comments at the top of the method.
+  */
+  void singletonRows(int jProbe, bool useObj, const OsiSolverInterface &si,
+  		     CglPhic &phic, int numChgs,
+		     const CglPhic::CglPhicBndPair *const lhsBndChgs) const ;
   //@}
 
   // Private member data
@@ -380,8 +414,12 @@ private:
 
   /// Maximum number of passes to do in probing
   int maxPass_ ;
-  /// Log level - 0 none, 1 - a bit, 2 - more details
+  /// Log level (keep for the nonce)
   int logLevel_ ;
+  /// Verbosity level - 0 none, 1 - a bit, 2 - more details
+  int verbosity_ ;
+  /// Paranoia
+  int paranoia_ ;
   /// Maximum number of unsatisfied variables to probe
   int maxProbe_ ;
   /// Maximum number of variables to look at in one probe

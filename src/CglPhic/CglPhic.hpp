@@ -79,9 +79,21 @@ public:
   		  const CoinPackedMatrix *const colMtx,
 		  const double *const rhsLower, const double *const rhsUpper) ;
 
+  /// Return const pointers to the constraint system
+  inline void getSystem(const CoinPackedMatrix *&rowMtx,
+  			const CoinPackedMatrix *&colMtx,
+			const double *&rhsLower,
+			const double *&rhsUpper) const
+  { rowMtx = rowMtx_ ;
+    colMtx = colMtx_ ;
+    rhsLower = rhsL_ ;
+    rhsUpper = rhsU_ ;
+  }
+
   /*! \brief Loan variable bounds arrays to the propagator
 
-    These will be changed; handy if you just need the updated bounds arrays.
+    These will be modified with tightened bounds. Handy if you already have
+    bounds arrays suitable for use.
   */
   void loanColBnds(double *const colLower, double *const colUpper) ;
 
@@ -93,19 +105,112 @@ public:
 
   /*! \brief Return pointers to the modified variable bounds arrays
 
-    If you loaned variable bounds arrays to the propagator, you'll get back
-    the same arrays.
+    If you loaned variable bounds arrays to the propagator with #loanColBnds,
+    you'll get back the same arrays, so there's no need to ask.
   */
   inline void getColBnds(double *&colLower, double *&colUpper) const
   { colLower = colL_ ;
     colUpper = colU_ ; }
 
+  /*! \brief Retrieve variable bound changes as packed vectors
+
+    The vectors are suitable as inputs for #editColBnds.
+  */
+  void getColBndChgs(CoinPackedVector &lbs, CoinPackedVector &ubs) ;
+
+  /*! \brief Apply a set of changes to the variable bounds arrays
+
+    Changes are supplied as a pair of packed vectors (viz. #getVarBndChanges)
+  */
+  void editColBnds(const CoinPackedVector *const lbs,
+  		   const CoinPackedVector *const ubs) ;
+
+  /*! \brief Paired bound structure
+
+    It's often handy to get both both bounds together for a given row or
+    column, even when only one has changed.
+  */
+  struct CglPhicBndPair {
+    /// index
+    int ndx_ ;
+    /// changes (bit set): 0x1 if lower bound is changed, 0x2 for upper
+    int changed_ ;
+    /// lower bound
+    double lb_ ;
+    /// upper bound
+    double ub_ ;
+  } ;
+
+  /*! \brief Retrieve a vector of bound changes for variables where one or
+  	     both bounds have changed.
+
+    The pointers \p newBnds and \p oldBnds will point to correlated vectors of
+    bound pairs with the tightened and original bounds, respectively. The
+    return value of the method is the length of each vector. If \p newBnds or
+    \p oldBnds is 0, the corresponding vector is not returned.
+    
+    By default, all changed bounds are returned. The boolean values \p
+    binVars, \p intVars, and \p conVars can be used to control inclusion
+    for binary, general integer, and continuous variables, respectively.
+  */
+  int getColBndChgs(CglPhicBndPair **newBnds, CglPhicBndPair **oldBnds,
+  		    bool binVars = true, bool intVars = true,
+		    bool conVars = true) ;
+
+  /*! \brief Apply a set of changes to the variable bounds arrays
+
+    Changes are supplied as a vector of CglPhicBndPair entries of length
+    \p len.
+  */
+  void editColBnds(int len, const CglPhicBndPair *const newBnds) ;
+
+  /*! \brief Return the row lhs lower bound for the specified row.
+
+    Returns the finite lhs bound L(i) if it exists, -infinity otherwise.
+    If the internal lhs bound arrays are not initialised, returns -infinity.
+  */
+  inline double getRowLhsLB (int i) const
+  { double retval = -infty_ ;
+    if (lhsL_ && lhsL_[i].infCnt_ == 0) retval = lhsL_[i].bnd_ ;
+    return (retval) ;
+  }
+      
+  /*! \brief Return the row lhs upper bound for the specified row.
+
+    Returns the finite lhs bound U(i) if it exists, infinity otherwise.
+    If the internal lhs bound arrays are not initialised, returns infinity.
+  */
+  inline double getRowLhsUB (int i) const
+  { double retval = infty_ ;
+    if (lhsU_ && lhsU_[i].infCnt_ == 0) retval = lhsU_[i].bnd_ ;
+    return (retval) ;
+  }
+
   /*! \brief Return copies of the constraint lhs bounds arrays
   
+    The information returned is incomplete, in the sense that it does not
+    have separate finite and infinite contributions (cf. #CglPhicLhsBnd).
     If either \p lhsLower or \p lhsUpper is 0, an array of length #m_ will be
     supplied.
   */
   void getRowLhsBnds(double *&lhsLower, double *&lhsUpper) const ;
+
+  /*! \brief Retrieve variable bound changes as packed vectors
+
+    As with #getRowLhsBnds, there's a loss of information.
+  */
+  void getRowLhsBndChgs (CoinPackedVector &Lbs, CoinPackedVector &Ubs) ;
+
+  /*! \brief Retrieve a vector of row lhs bound changes for constraints where
+  	     one or both bounds have changed.
+
+    The pointers \p newBnds and \p oldBnds will point to correlated vectors of
+    bound pairs with the tightened and original bounds, respectively. The
+    return value of the method is the length of each vector. If \p newBnds or
+    \p oldBnds is 0, the corresponding vector is not returned.
+  */
+  int getRowLhsBndChgs(CglPhicBndPair **newBnds, CglPhicBndPair **oldBnds) ;
+
 
   /*! \brief Loan variable type array to the propagator
 
@@ -113,8 +218,8 @@ public:
   */
   inline void loanColType(const char *const colType) { intVar_ = colType ; }
 
-  /// Retrieve variable bound changes as packed vectors
-  void getVarBoundChanges(CoinPackedVector &lbs, CoinPackedVector &ubs) ;
+  /// Return a pointer to the variable type array
+  inline void getColType(const char *&colType) { colType = intVar_ ; }
 
   //@}
 
@@ -129,6 +234,12 @@ public:
 
   /// Initialise propagation data structures
   void initPropagation() ;
+
+  /*! \brief Clear propagation data structures
+
+    This clears the pending set and bound change records.
+  */
+  void clearPropagation() ;
 
   /// Attempt to tighten the upper bound on a variable
   bool tightenVu(int t, double gap, double ait, double corr) ;
@@ -146,7 +257,7 @@ public:
     the constraint is added to the pending set for further processing. The
     parameter \p feas will be set on return to indicate feasibility.
   */
-  void changeVarBound(int j, char bnd, double nbndj, bool &feas) ;
+  void chgColBnd(int j, char bnd, double nbndj, bool &feas) ;
 
   /*! \brief Propagate bound changes
 
@@ -155,6 +266,14 @@ public:
     indicate feasibility.
   */
   void propagate (bool &feas) ;
+
+  /*! \brief Revert bound changes
+
+    This method will revert the current set of bound changes. The two
+    parameters control whether variable bounds or constraint lhs bounds (or
+    both) are reverted.
+  */
+  void revert (bool revertColBnds, bool revertRowBnds) ;
 
   /*! \brief Tighten up the existing system
 
@@ -342,7 +461,7 @@ private:
     accumulates. The bound must be periodically recalculated to minimise this
     error. Revs_ keeps track.
   */
-  struct CglPhicConBnd {
+  struct CglPhicLhsBnd {
     /// number of times this bound has been revised
     int revs_ ;
     /* \brief number of infinities contributing to the bound
@@ -356,9 +475,9 @@ private:
   } ;
 
   /// Row lhs lower bounds array
-  CglPhicConBnd *lhsL_ ;
+  CglPhicLhsBnd *lhsL_ ;
   /// Row lhs upper bounds array
-  CglPhicConBnd *lhsU_ ;
+  CglPhicLhsBnd *lhsU_ ;
 
   /*! \brief Constraint characteristics
 
@@ -407,12 +526,48 @@ private:
   /// The constraint currently in process
   int inProcess_ ;
 
-  /*! \brief Bound change record
+  /*! \brief Constraint lhs bound change record
+
+    For a given constraint, tracks changes to the lhs bounds. Created when a
+    bound is first tightened.
+  */
+  struct CglPhicLhsBndChg {
+    /// Constraint index
+    int ndx_ ;
+    /// Number of revisions to lower bound
+    int revL_ ;
+    /// Original lower bound
+    CglPhicLhsBnd oL_ ;
+    /// New lower bound
+    CglPhicLhsBnd nL_ ;
+    /// Number of revisions to upper bound
+    int revU_ ;
+    /// Original lower bound
+    CglPhicLhsBnd oU_ ;
+    /// New lower bound
+    CglPhicLhsBnd nU_ ;
+  } ;
+
+  /// Capacity of #lhsBndChgs_
+  int szeLhsBndChgs_ ;
+  /// Number of constraint lhs change records
+  int numLhsBndChgs_ ;
+  /// Constraint lhs bound change records
+  CglPhicLhsBndChg *lhsBndChgs_ ;
+  /*! \brief Cross-reference from constraint index to change record
+
+    Contains (index+1) of the entry in #lhsBndChgs_, or zero if there's no
+    change record.
+  */
+  int *lhsHasChanged_ ;
+
+
+  /*! \brief Variable bound change record
 
     For a given variable, tracks changes to the bounds. Created when a bound
-    if first tightened.
+    is first tightened.
   */
-  struct CglPhicBndChg {
+  struct CglPhicVarBndChg {
     /// Variable index
     int ndx_ ;
     /// Variable type
@@ -431,26 +586,29 @@ private:
     double nu_ ;
   } ;
 
-  friend std::ostream& operator<< (std::ostream &out,
-  				   CglPhic::CglPhicBndChg chg) ;
-
   /// Capacity of #varBndChgs_
   int szeVarBndChgs_ ;
-  /// Number of change records
+  /// Number of variable bound change records
   int numVarBndChgs_ ;
   /// Variable bound change records
-  CglPhicBndChg *varBndChgs_ ;
+  CglPhicVarBndChg *varBndChgs_ ;
   /*! \brief Cross-reference from variable index to change record
 
     Contains (index+1) of the entry in #varBndChgs_, or zero if there's no
     change record.
   */
-  int *hasChanged_ ;
+  int *varHasChanged_ ;
 
   //@}
 
   friend std::ostream& operator<< (std::ostream &out,
-				   CglPhic::CglPhicConBnd lhs) ;
+				   CglPhic::CglPhicLhsBnd lhs) ;
+
+  friend std::ostream& operator<< (std::ostream &out,
+  				   CglPhic::CglPhicLhsBndChg chg) ;
+
+  friend std::ostream& operator<< (std::ostream &out,
+  				   CglPhic::CglPhicVarBndChg chg) ;
 
 } ;
 
@@ -459,12 +617,12 @@ private:
   Usually, "(infCnt,bnd)". When there is a single infinity remaining, the
   form is "(x(j),bnd)".
 */
-std::ostream& operator<< (std::ostream &out, CglPhic::CglPhicConBnd lhs) ;
+std::ostream& operator<< (std::ostream &out, CglPhic::CglPhicLhsBnd lhs) ;
 /*! \brief Print a bound change record
 
   The form is "x(j) [oldlj,olduj] --#lj revs,uj revs#-> [newlj,newuj]" where
   revs are the number of times the bound was revised.
 */
-std::ostream& operator<< (std::ostream &out, CglPhic::CglPhicBndChg chg) ;
+std::ostream& operator<< (std::ostream &out, CglPhic::CglPhicVarBndChg chg) ;
 
 #endif
