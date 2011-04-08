@@ -12,10 +12,6 @@
 #  pragma warning(disable:4786)
 #endif
 
-#define PROBING100 0
-
-// #define PRINT_DEBUG
-// #undef NDEBUG
 
 #include "CoinPackedMatrix.hpp"
 #include "CglProbing.hpp"
@@ -1013,17 +1009,19 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
 				       CglTreeInfo *info) 
 {
 # if CGL_DEBUG > 0
-  std::cout
-    << "Entering CglProbing::generateCutsAndModify, matrix " << si.getNumRows()
-    << " x " << si.getNumCols() << "." << std::endl ;
+  verbosity_ = 10 ;
+  paranoia_ = 10 ;
+  if (verbosity_ >= 1)
+    std::cout
+      << "Entering CglProbing::generateCutsAndModify, matrix "
+      << si.getNumRows() << " x " << si.getNumCols() << "." << std::endl ;
+
   const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
-  if (debugger) {
+  if (debugger && verbosity_ >= 1) {
     std::cout << "On optimal path " << nPath << std::endl ;
     nPath++ ;
   }
-# if CGL_DEBUG > 3
-  dumpSoln(si) ;
-# endif
+  if (verbosity_ >= 3) CglProbingDebug::dumpSoln(si) ;
 # endif
 
 /*
@@ -1063,10 +1061,11 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
   double *colLower = new double[nCols] ;
   double *colUpper = new double[nCols] ;
 
-# if CGL_DEBUG > 1
-  { int errs = 0 ;
+# if CGL_DEBUG > 0
+  if (paranoia_ > 0) {
+    int errs = 0 ;
     const CoinPackedMatrix *mtx = si.getMatrixByRow() ;
-    errs = mtx->verifyMtx(CGL_DEBUG) ;
+    errs = mtx->verifyMtx(paranoia_) ;
     if (errs > 0) {
       std::cout
         << "    generateCutsAndModify: verifyMtx failed pre-cutgen, "
@@ -1082,10 +1081,11 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
 */
   bool feasible = gutsOfGenerateCuts(si,cs,rowLower,rowUpper,
   				     colLower,colUpper,info) ;
-# if CGL_DEBUG > 1
-  { int errs = 0 ;
+# if CGL_DEBUG > 0
+  if (paranoia_ > 0) {
+    int errs = 0 ;
     const CoinPackedMatrix *mtx = si.getMatrixByRow() ;
-    errs = mtx->verifyMtx(CGL_DEBUG) ;
+    errs = mtx->verifyMtx(paranoia_) ;
     if (errs > 0) {
       std::cout
         << "    generateCutsAndModify: verifyMtx failed post-cutgen, "
@@ -1105,9 +1105,11 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
     rc.setUb(0.0) ;   
     cs.insert(rc) ;
 #   if CGL_DEBUG > 0
-    const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
-    if (debugger)
-      assert(!debugger->invalidCut(rc)) ; 
+    if (paranoia_ > 0) {
+      const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
+      if (debugger)
+	assert(!debugger->invalidCut(rc)) ;
+    }
 #   endif
   }
 /*
@@ -1132,9 +1134,10 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
   }
 
 # if CGL_DEBUG > 0
-  std::cout
-    << "Leaving CglProbing::generateCutsAndModify, "
-    << ((feasible)?"feasible":"infeasible") << "." << std::endl ;
+  if (verbosity_ >= 1)
+    std::cout
+      << "Leaving CglProbing::generateCutsAndModify, "
+      << ((feasible)?"feasible":"infeasible") << "." << std::endl ;
 # endif
 
   return (static_cast<int>(feasible)) ;
@@ -1159,15 +1162,20 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 {
 
 # if CGL_DEBUG > 0
-  std::cout
-    << "Entering CglProbing::gutsOfGenerateCuts, mode " << mode_ << ", " ;
-  if (!info->inTree) std::cout << "not " ;
-  std::cout << "in tree, pass " << info->pass << "." << std::endl ;
+  if (verbosity_ >= 1) {
+    std::cout
+      << "Entering CglProbing::gutsOfGenerateCuts, mode " << mode_ << ", " ;
+    if (!info->inTree) std::cout << "not " ;
+    std::cout << "in tree, pass " << info->pass << "." << std::endl ;
+  }
+
   const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
   if (debugger) {
-    std::cout << "  On optimal path." << std::endl ;
+    if (verbosity_ >= 1)
+      std::cout << "  On optimal path." << std::endl ;
   } else if (si.getRowCutDebuggerAlways()) {
-    std::cout << "  !! Not on optimal path!" << std::endl ;
+    if (verbosity_ >= 1)
+      std::cout << "  !! Not on optimal path!" << std::endl ;
   }
 # endif
 
@@ -1193,36 +1201,14 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   CoinMemcpyN(si.getColUpper(),nCols,colUpper) ;
   const double *colsol = si.getColSolution() ;
 /*
-  Stage 1: Preliminary Processing (Common setup?)
+  Stage 1: Preliminary Processing
 
-  During Stage 1 we'll set `reasonable' bounds on variables and constraints,
-  get rid of constraints that are judged unsuitable for further probing (too
-  dense, or not amenable to propagation or implication), and do one bit of
-  really simple coefficient tightening. At the end of Stage 1, we'll have a
-  row- and column-major copy of the reduced and strengthened constraint
-  system.
-*/
-/*
-  Put reasonable bounds on general integer variables.
-  TODO: Here's another source of bogus bounds, distinct from 1e20!
-	-- lh, 101009 --
-        Should no longer be necessary.  -- lh, 110406 --
-*/
-# if 0
-  int numberIntegers = 0 ;
-  for (int i = 0 ; i < nCols ; i++) {
-    if (intVar[i]) {
-      numberIntegers++ ;
-      if (intVar[i] == 2) {
-	if (colsol[i] < 1.0e10 && colUpper[i] > 1.0e12) 
-	  colUpper[i] = CGL_REASONABLE_INTEGER_BOUND ;
-	if (colsol[i] > -1.0e10 && colLower[i] < -1.0e12) 
-	  colLower[i] = -CGL_REASONABLE_INTEGER_BOUND ;
-      }
-    }
-  }
-# endif
-/*
+  During Stage 1 we'll get rid of constraints that are judged unsuitable for
+  further probing (too dense, or not amenable to propagation or implication),
+  and do one bit of really simple coefficient tightening. At the end of Stage
+  1, we'll have a row- and column-major copy of the reduced and strengthened
+  constraint system.
+
   If we're at the root of the search tree, scan the constraint system to see
   if there are naturally integer variables that are not declared as integer.
   Convert them to integer type.
@@ -1232,13 +1218,17 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 */
   if (!info->inTree && !info->pass) {
     feasible = analyze(&si,intVar,colLower,colUpper) ;
-#   if CGL_DEBUG > 1
-    std::cout
-     << "  Analyze completed; " << ((feasible)?"feasible":"infeasible")
-     << "." << std::endl ;
+#   if CGL_DEBUG > 0
+    if (verbosity_ >= 1)
+      std::cout
+       << "  Analyze completed; " << ((feasible)?"feasible":"infeasible")
+       << "." << std::endl ;
 #   endif
     if (!feasible) {
       delete[] intVar ;
+      delete[] colLower ;
+      colLower_ = 0 ;
+      delete[] colUpper ;
       return (feasible) ;
     }
   }
@@ -1338,6 +1328,7 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   as column cuts and continue with setup and probing.
 */
   if (feasible) {
+    phic.clearPropagation() ;
     makeColCuts(nCols,cs,intVar,colsol,si.getColLower(),si.getColUpper(),
 		si.getColSolution(),colLower,colUpper) ;
 #   if CGL_DEBUG > 0
@@ -1699,23 +1690,24 @@ const double * CglProbing::tightUpper() const
 // Default Constructor 
 //-------------------------------------------------------------------
 CglProbing::CglProbing ()
-:
-CglCutGenerator(),
-numberRows_(0),
-numberColumns_(0),
-primalTolerance_(1.0e-07),
-mode_(1),
-rowCuts_(1),
-maxPass_(3),
-logLevel_(0),
-maxProbe_(100),
-maxStack_(50),
-maxElements_(1000),
-maxPassRoot_(3),
-maxProbeRoot_(100),
-maxStackRoot_(50),
-maxElementsRoot_(10000),
-usingObjective_(0)
+  : CglCutGenerator(),
+    numberRows_(0),
+    numberColumns_(0),
+    primalTolerance_(1.0e-07),
+    mode_(1),
+    rowCuts_(1),
+    maxPass_(3),
+    logLevel_(0),
+    verbosity_(0),
+    paranoia_(0),
+    maxProbe_(100),
+    maxStack_(50),
+    maxElements_(1000),
+    maxPassRoot_(3),
+    maxProbeRoot_(100),
+    maxStackRoot_(50),
+    maxElementsRoot_(10000),
+    usingObjective_(0)
 {
 
   colLower_ = NULL ;
@@ -1732,23 +1724,24 @@ usingObjective_(0)
 // Copy constructor 
 //-------------------------------------------------------------------
 CglProbing::CglProbing (const CglProbing & rhs)
-                                                              :
-  CglCutGenerator(rhs),
-  numberRows_(rhs.numberRows_),
-  numberColumns_(rhs.numberColumns_),
-  primalTolerance_(rhs.primalTolerance_),
-  mode_(rhs.mode_),
-  rowCuts_(rhs.rowCuts_),
-  maxPass_(rhs.maxPass_),
-  logLevel_(rhs.logLevel_),
-  maxProbe_(rhs.maxProbe_),
-  maxStack_(rhs.maxStack_),
-  maxElements_(rhs.maxElements_),
-  maxPassRoot_(rhs.maxPassRoot_),
-  maxProbeRoot_(rhs.maxProbeRoot_),
-  maxStackRoot_(rhs.maxStackRoot_),
-  maxElementsRoot_(rhs.maxElementsRoot_),
-  usingObjective_(rhs.usingObjective_)
+  : CglCutGenerator(rhs),
+    numberRows_(rhs.numberRows_),
+    numberColumns_(rhs.numberColumns_),
+    primalTolerance_(rhs.primalTolerance_),
+    mode_(rhs.mode_),
+    rowCuts_(rhs.rowCuts_),
+    maxPass_(rhs.maxPass_),
+    logLevel_(rhs.logLevel_),
+    verbosity_(rhs.verbosity_),
+    paranoia_(rhs.paranoia_),
+    maxProbe_(rhs.maxProbe_),
+    maxStack_(rhs.maxStack_),
+    maxElements_(rhs.maxElements_),
+    maxPassRoot_(rhs.maxPassRoot_),
+    maxProbeRoot_(rhs.maxProbeRoot_),
+    maxStackRoot_(rhs.maxStackRoot_),
+    maxElementsRoot_(rhs.maxElementsRoot_),
+    usingObjective_(rhs.usingObjective_)
 {  
   numberThisTime_ = rhs.numberThisTime_ ;
   totalTimesCalled_ = rhs.totalTimesCalled_ ;
@@ -1808,6 +1801,8 @@ CglProbing::operator=(
     rowCuts_ = rhs.rowCuts_ ;
     maxPass_ = rhs.maxPass_ ;
     logLevel_ = rhs.logLevel_ ;
+    verbosity_ = rhs.verbosity_ ;
+    paranoia_ = rhs.paranoia_ ;
     maxProbe_ = rhs.maxProbe_ ;
     maxStack_ = rhs.maxStack_ ;
     maxElements_ = rhs.maxElements_ ;

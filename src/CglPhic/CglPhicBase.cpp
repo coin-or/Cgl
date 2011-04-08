@@ -102,6 +102,10 @@ CglPhic::CglPhic ()
     pending_(0),
     isPending_(0),
     inProcess_(0),
+    szeLhsBndChgs_(0),
+    numLhsBndChgs_(0),
+    lhsBndChgs_(0),
+    lhsHasChanged_(0),
     szeVarBndChgs_(0),
     numVarBndChgs_(0),
     varBndChgs_(0),
@@ -150,6 +154,10 @@ CglPhic::CglPhic (const CoinPackedMatrix *const rowMtx,
     pending_(0),
     isPending_(0),
     inProcess_(0),
+    szeLhsBndChgs_(0),
+    numLhsBndChgs_(0),
+    lhsBndChgs_(0),
+    lhsHasChanged_(0),
     szeVarBndChgs_(0),
     numVarBndChgs_(0),
     varBndChgs_(0),
@@ -465,6 +473,18 @@ void CglPhic::initPropagation ()
   if (!varHasChanged_) varHasChanged_ = new int [n_] ;
   CoinZeroN(varHasChanged_,n_) ;
   numVarBndChgs_ = 0 ;
+/*
+  And again, for the data structures that record row lhs bound changes.
+*/
+  newSize = CoinMin(m_/4+10,m_) ;
+  if (newSize > szeLhsBndChgs_) {
+    szeLhsBndChgs_ = newSize ;
+    delete[] lhsBndChgs_ ;
+    lhsBndChgs_ = new CglPhicLhsBndChg [szeLhsBndChgs_] ;
+  }
+  if (!lhsHasChanged_) lhsHasChanged_ = new int [m_] ;
+  CoinZeroN(lhsHasChanged_,m_) ;
+  numLhsBndChgs_ = 0 ;
 }
 
 
@@ -473,6 +493,8 @@ void CglPhic::initPropagation ()
 */
 void CglPhic::clearPropagation ()
 {
+  if (verbosity_ >= 2)
+    std::cout << "    clearing pending set and change records." << std::endl ;
   numPending_ = 0 ;
   CoinZeroN(isPending_,m_) ;
   numVarBndChgs_ = 0 ;
@@ -483,7 +505,90 @@ void CglPhic::clearPropagation ()
 
 
 /*
-  Report out column bound changes as a pair of CoinPackedVectors. Very
+  Create a variable bound change record.
+
+  First find the existing change record, or make one. Then (after the logging
+  print) update the bounds arrays and change record.
+*/
+void CglPhic::recordVarBndChg (int j, char bnd, double nbndj)
+{
+  assert(0 <= j && j < n_) ;
+  assert(bnd == 'l' || bnd == 'u') ;
+
+  const bool deltal = (bnd == 'l') ;
+
+  int chgNdx = varHasChanged_[j] ;
+/*
+  If there's no existing change record, create one, initialising it with the
+  current bounds.
+*/
+  if (!chgNdx) {
+    if (numVarBndChgs_ >= szeVarBndChgs_) {
+      int newSze = szeVarBndChgs_+(szeVarBndChgs_/2)+10 ;
+      newSze = CoinMax(newSze,n_) ;
+      CglPhicVarBndChg *newVarBndChgs = new CglPhicVarBndChg [newSze] ;
+      CoinMemcpyN(varBndChgs_,szeVarBndChgs_,newVarBndChgs) ;
+      delete[] varBndChgs_ ;
+      varBndChgs_ = newVarBndChgs ;
+      szeVarBndChgs_ = newSze ;
+    }
+    chgNdx = numVarBndChgs_ ;
+    numVarBndChgs_++ ;
+    varHasChanged_[j] = chgNdx+1 ;
+    varBndChgs_[chgNdx].ndx_ = j ;
+    varBndChgs_[chgNdx].type_ = intVar_[j] ;
+    varBndChgs_[chgNdx].revl_ = 0 ;
+    varBndChgs_[chgNdx].ol_ = colL_[j] ;
+    varBndChgs_[chgNdx].nl_ = colL_[j] ;
+    varBndChgs_[chgNdx].revu_ = 0 ;
+    varBndChgs_[chgNdx].ou_ = colU_[j] ;
+    varBndChgs_[chgNdx].nu_ = colU_[j] ;
+    varHasChanged_[j] = chgNdx+1 ;
+  } else {
+    chgNdx-- ;
+  }
+  CglPhicVarBndChg &chg = varBndChgs_[chgNdx] ;
+
+  if (verbosity_ >= 5) {
+    char vartypelet[3] = {'c','b','g'} ;
+    int vartype = static_cast<int>(intVar_[j]) ;
+    double delta = 0.0 ;
+    if (deltal) {
+      if (chg.ol_ > -infty_)
+	delta = nbndj-chg.ol_ ;
+      else
+	delta = nbndj ;
+    } else {
+      if (chg.ou_ < infty_)
+	delta = nbndj-chg.ou_ ;
+      else
+	delta = nbndj ;
+    }
+    std::cout
+      << "          " << "x<" << j << "> " << vartypelet[vartype]
+      << " [" << chg.ol_ << "," << chg.ou_ << "] " ;
+    if (deltal)
+      std::cout
+	<< "lb #" << chg.revl_+1 << ": " << colL_[j] << " -> " << nbndj ;
+    else
+      std::cout
+	<< "ub #" << chg.revu_+1 << ": " << colU_[j] << " -> " << nbndj ;
+    std::cout << "  delta " << delta << std::endl ;
+  }
+
+  if (deltal) {
+    colL_[j] = nbndj ;
+    chg.revl_++ ;
+    chg.nl_ = nbndj ;
+  } else {
+    colU_[j] = nbndj ;
+    chg.revu_++ ;
+    chg.nu_ = nbndj ;
+  }
+}
+
+/*
+  Report out variable bound changes as a pair of CoinPackedVectors. Very
   convenient for constructing a column cut.
 */
 void CglPhic::getColBndChgs (CoinPackedVector &lbs, CoinPackedVector &ubs)
@@ -541,6 +646,83 @@ int CglPhic::getColBndChgs (CglPhic::CglPhicBndPair **newBnds,
   }
   return (outNdx) ;
 }
+
+/*
+  Create a row lhs bound change record.
+
+  First find the existing change record, or make one. Then (after the logging
+  print) update the bounds arrays and change record.
+
+  The code 'B' triggers a full recalculation of both lhs bounds.
+*/
+void CglPhic::recordLhsBndChg (int i, bool fullRecalc, char bnd,
+			       CglPhicLhsBnd &nbndi)
+{
+  assert(0 <= i && i < m_) ;
+  assert(bnd == 'L' || bnd == 'U' || bnd == 'B') ;
+
+  const bool deltaL = (bnd == 'L') ;
+  const bool deltaU = !deltaL ;
+
+  int chgNdx = lhsHasChanged_[i] ;
+/*
+  If there's no existing change record, create one, initialising it with the
+  current bounds.
+*/
+  if (!chgNdx) {
+    if (numLhsBndChgs_ >= szeLhsBndChgs_) {
+      int newSze = szeLhsBndChgs_+(szeLhsBndChgs_/2)+10 ;
+      newSze = CoinMax(newSze,m_) ;
+      CglPhicLhsBndChg *newLhsBndChgs = new CglPhicLhsBndChg [newSze] ;
+      CoinMemcpyN(lhsBndChgs_,szeLhsBndChgs_,newLhsBndChgs) ;
+      delete[] lhsBndChgs_ ;
+      lhsBndChgs_ = newLhsBndChgs ;
+      szeLhsBndChgs_ = newSze ;
+    }
+    chgNdx = numLhsBndChgs_ ;
+    numLhsBndChgs_++ ;
+    lhsHasChanged_[i] = chgNdx+1 ;
+    lhsBndChgs_[chgNdx].ndx_ = i ;
+    lhsBndChgs_[chgNdx].revL_ = 0 ;
+    lhsBndChgs_[chgNdx].oL_ = lhsL_[i] ;
+    lhsBndChgs_[chgNdx].nL_ = lhsL_[i] ;
+    lhsBndChgs_[chgNdx].revU_ = 0 ;
+    lhsBndChgs_[chgNdx].oU_ = lhsU_[i] ;
+    lhsBndChgs_[chgNdx].nU_ = lhsU_[i] ;
+    lhsHasChanged_[i] = chgNdx+1 ;
+  } else {
+    chgNdx-- ;
+  }
+  CglPhicLhsBndChg &chg = lhsBndChgs_[chgNdx] ;
+
+  if (verbosity_ >= 5) {
+    std::cout
+      << "         " <<  "r(" << i << ") {" << chg.oL_ << "," << chg.oU_
+      << "} " ;
+    if (fullRecalc) std::cout << "*" ;
+    if (deltaL)
+      std::cout
+	<< "L #" << chg.revL_+1 << ": " << lhsL_[i] << " -> " << nbndi ;
+    else
+      std::cout
+	<< "U #" << chg.revU_+1 << ": " << lhsU_[i] << " -> " << nbndi ;
+  }
+  if (fullRecalc) {
+    calcLhsBnds(i) ;
+  } else if (deltaL) {
+    lhsL_[i] = nbndi ;
+  } else {
+    lhsU_[i] = nbndi ;
+  }
+  if (deltaL) {
+    chg.revL_++ ;
+    chg.nL_ = nbndi ;
+  } else {
+    chg.revU_++ ;
+    chg.nU_ = nbndi ;
+  }
+}
+
 
 /*
   Report out row lhs bound changes as a pair of CoinPackedVectors. There's a
@@ -638,7 +820,7 @@ void CglPhic::revert (bool revertColBnds, bool revertRowBnds)
       << "reverting " << numVarBndChgs_ << " var bnds." << std::endl ;
   }
   if (revertColBnds) {
-    for (int k = numVarBndChgs_ ; k >= 0 ; k--) {
+    for (int k = (numVarBndChgs_-1) ; k >= 0 ; k--) {
       CglPhicVarBndChg &chg = varBndChgs_[k] ;
       if (verbosity_ >= 1) {
         std::cout << "            " << chg << std::endl ;
@@ -656,7 +838,7 @@ void CglPhic::revert (bool revertColBnds, bool revertRowBnds)
       << "reverting " << numLhsBndChgs_ << " lhs bnds." << std::endl ;
   }
   if (revertRowBnds) {
-    for (int k = numLhsBndChgs_ ; k >= 0 ; k--) {
+    for (int k = (numLhsBndChgs_-1) ; k >= 0 ; k--) {
       CglPhicLhsBndChg &chg = lhsBndChgs_[k] ;
       if (verbosity_ >= 1) {
         std::cout << "            " << chg << std::endl ;
@@ -741,7 +923,7 @@ std::ostream& operator<< (std::ostream &strm, CglPhic::CglPhicVarBndChg chg)
 {
   char typlet[3] = {'c','b','g'} ;
   strm
-    << "x(" << chg.ndx_ << ") " << typlet[chg.type_]
+    << "x<" << chg.ndx_ << "> " << typlet[chg.type_]
     << " [" << chg.ol_ << "," << chg.ou_ << "] --#"
     << chg.revl_ << "," << chg.revu_
     << "#-> [" << chg.nl_ << "," << chg.nu_ << "]" ;

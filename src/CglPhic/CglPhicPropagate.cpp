@@ -191,62 +191,9 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
   }
   assert((deltal && (delta > 0)) || (deltau && (delta < 0)) || toFinite) ;
 /*
-  Change the variable's bound. First find the existing change record, or make
-  one. Then (after the logging print) update the bounds arrays and change
-  record.
+  Create/update a change record and change the bound in colLower or colUpper.
 */
-  int chgNdx = varHasChanged_[j] ;
-  if (!chgNdx) {
-    if (numVarBndChgs_ >= szeVarBndChgs_) {
-      int newSze = szeVarBndChgs_+(szeVarBndChgs_/2)+10 ;
-      newSze = CoinMax(newSze,n_) ;
-      CglPhicVarBndChg *newVarBndChgs = new CglPhicVarBndChg [newSze] ;
-      CoinMemcpyN(varBndChgs_,szeVarBndChgs_,newVarBndChgs) ;
-      delete[] varBndChgs_ ;
-      varBndChgs_ = newVarBndChgs ;
-      szeVarBndChgs_ = newSze ;
-    }
-    chgNdx = numVarBndChgs_ ;
-    numVarBndChgs_++ ;
-    varHasChanged_[j] = chgNdx+1 ;
-    varBndChgs_[chgNdx].ndx_ = j ;
-    varBndChgs_[chgNdx].type_ = intVar_[j] ;
-    varBndChgs_[chgNdx].revl_ = 0 ;
-    varBndChgs_[chgNdx].ol_ = colL_[j] ;
-    varBndChgs_[chgNdx].nl_ = colL_[j] ;
-    varBndChgs_[chgNdx].revu_ = 0 ;
-    varBndChgs_[chgNdx].ou_ = colU_[j] ;
-    varBndChgs_[chgNdx].nu_ = colU_[j] ;
-    varHasChanged_[j] = chgNdx+1 ;
-  } else {
-    chgNdx-- ;
-  }
-
-  if (verbosity_ >= 5) {
-    CglPhicVarBndChg &chg = varBndChgs_[chgNdx] ;
-    char vartypelet[3] = {'c','b','g'} ;
-    int vartype = static_cast<int>(intVar_[j]) ;
-    std::cout
-      << "          " << "x<" << j << "> " << vartypelet[vartype]
-      << " [" << chg.ol_ << "," << chg.ou_ << "] " ;
-    if (deltal)
-      std::cout
-	<< "lb #" << chg.revl_+1 << ": " << colL_[j] << " -> " << nbndj ;
-    else
-      std::cout
-	<< "ub #" << chg.revu_+1 << ": " << colU_[j] << " -> " << nbndj ;
-    std::cout << "  delta " << delta << std::endl ;
-  }
-
-  if (deltal) {
-    colL_[j] = nbndj ;
-    varBndChgs_[chgNdx].revl_++ ;
-    varBndChgs_[chgNdx].nl_ = nbndj ;
-  } else {
-    colU_[j] = nbndj ;
-    varBndChgs_[chgNdx].revu_++ ;
-    varBndChgs_[chgNdx].nu_ = nbndj ;
-  }
+  recordVarBndChg(j,bnd,nbndj) ;
 /*
   Set up a loop to walk the column
 */
@@ -259,8 +206,8 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
     if (CoinAbs(aij) < zeroTol_) continue ;
     const double &blowi = rhsL_[i] ;
     const double &bi = rhsU_[i] ;
-    CglPhicLhsBnd &Li = lhsL_[i] ;
-    CglPhicLhsBnd &Ui = lhsU_[i] ;
+    CglPhicLhsBnd newLi = lhsL_[i] ;
+    CglPhicLhsBnd newUi = lhsU_[i] ;
 /*
   Which lhs bound will change?
   * U<i> changes if (a<ij> > 0 && delta(u<j>)) || (a<ij> < 0 && delta(l<j>))
@@ -298,12 +245,12 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
     bool updatedUi = false ;
     if ((blowi > -infty_) && changeUi) {
       if (!toFinite) {
-	if (Ui.infCnt_ == 0) {
-	  if (Ui.revs_ < revLimit_) {
+	if (newUi.infCnt_ == 0) {
+	  if (newUi.revs_ < revLimit_) {
 	    deltaUi = aij*delta ;
 	    if (CoinAbs(deltaUi) > zeroTol_) {
-	      Ui.bnd_ += deltaUi ;
-	      Ui.revs_++ ;
+	      newUi.bnd_ += deltaUi ;
+	      newUi.revs_++ ;
 	      updatedUi = true ;
 	    }
 	  } else {
@@ -312,37 +259,37 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
 	  }
 	}
       } else {
-        assert(Ui.infCnt_ != 0) ;
-        if (Ui.infCnt_ > 2) {
-	  Ui.infCnt_-- ;
-	} else if (Ui.infCnt_ == 2) {
+        assert(newUi.infCnt_ != 0) ;
+        if (newUi.infCnt_ > 2) {
+	  newUi.infCnt_-- ;
+	} else if (newUi.infCnt_ == 2) {
 	  fullRecalc = true ;
 	} else {
 	  if (paranoia_ >= 3) {
-	    if (!(0 <= (-Ui.infCnt_)-1) && ((-Ui.infCnt_)-1 < m_)) {
+	    if (!(0 <= (-newUi.infCnt_)-1) && ((-newUi.infCnt_)-1 < m_)) {
 	      std::cout
 	        << "INV FAIL: (U) single infinity fails 0 <= "
-		<< (-Ui.infCnt_)-1 << " < " << m_ << std::endl ;
+		<< (-newUi.infCnt_)-1 << " < " << m_ << std::endl ;
 	      assert(false) ;
 	    }
 	  }
 	  deltaUi = aij*delta ;
 	  if (CoinAbs(deltaUi) < zeroTol_) deltaUi = 0 ;
-	  Ui.infCnt_ = 0 ;
-	  Ui.bnd_ += deltaUi ;
-	  Ui.revs_++ ;
+	  newUi.infCnt_ = 0 ;
+	  newUi.bnd_ += deltaUi ;
+	  newUi.revs_++ ;
 	}
 	updatedUi = true ;
       }
     }
     if ((bi < infty_) && changeLi) {
       if (!toFinite) {
-	if (Li.infCnt_ == 0) {
-	  if (Li.revs_ < revLimit_) {
+	if (newLi.infCnt_ == 0) {
+	  if (newLi.revs_ < revLimit_) {
 	    deltaLi = aij*delta ;
 	    if (CoinAbs(deltaLi) > zeroTol_) {
-	      Li.bnd_ += deltaUi ;
-	      Li.revs_++ ;
+	      newLi.bnd_ += deltaUi ;
+	      newLi.revs_++ ;
 	      updatedLi = true ;
 	    }
 	  } else {
@@ -351,73 +298,69 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
 	  }
 	}
       } else {
-        assert(Li.infCnt_ != 0) ;
-        if (Li.infCnt_ > 2) {
-	  Li.infCnt_-- ;
-	} else if (Li.infCnt_ == 2) {
+        assert(newLi.infCnt_ != 0) ;
+        if (newLi.infCnt_ > 2) {
+	  newLi.infCnt_-- ;
+	} else if (newLi.infCnt_ == 2) {
 	  fullRecalc = true ;
 	} else {
 	  if (paranoia_ >= 3) {
-	    if (!(0 <= (-Li.infCnt_)-1) && ((-Li.infCnt_)-1 < m_)) {
+	    if (!(0 <= (-newLi.infCnt_)-1) && ((-newLi.infCnt_)-1 < m_)) {
 	      std::cout
 	        << "INV FAIL: (L) single infinity fails 0 <= "
-		<< (-Li.infCnt_)-1 << " < " << m_ << std::endl ;
+		<< (-newLi.infCnt_)-1 << " < " << m_ << std::endl ;
 	      assert(false) ;
 	    }
 	  }
 	  deltaLi = aij*delta ;
 	  if (CoinAbs(deltaLi) < zeroTol_) deltaLi = 0 ;
-	  Li.infCnt_ = 0 ;
-	  Li.bnd_ += deltaLi ;
-	  Li.revs_++ ;
+	  newLi.infCnt_ = 0 ;
+	  newLi.bnd_ += deltaLi ;
+	  newLi.revs_++ ;
 	}
 	updatedLi = true ;
       }
     }
     if (!(updatedLi || updatedUi)) continue ;
 
+
     if (paranoia_ >= 3) {
+      if (updatedLi && updatedUi) {
+	std::cout
+	  << "INVARIANT FAIL: updating both Li and Ui!" << std::endl ;
+	assert(false) ;
+      }
       if (updatedLi && !(toFinite || (deltaLi >= 0.0))) {
 	std::cout
-	  << "INV FAIL: update Li, aij " << aij << ", delta " << delta
+	  << "INVARIANT FAIL: update Li, aij " << aij << ", delta " << delta
 	  << ", deltaLi " << deltaLi << std::endl ;
 	assert(false) ;
       }
       if (updatedUi && !(toFinite || (deltaUi <= 0.0))) {
 	std::cout
-	  << "INV FAIL: update Ui, aij " << aij << ", delta " << delta
+	  << "INVARIANT FAIL: update Ui, aij " << aij << ", delta " << delta
 	  << ", deltaUi " << deltaUi << std::endl ;
 	assert(false) ;
       }
     }
 /*
-  Do we need to do a full recalculation?
+  Make a record of the change and change the bound in lhsL or lhsU. If we're
+  actually infeasible, we do a bit of extra work by doing this prior to the
+  feasibility check, but it makes the whole update process much easier if we
+  can bury a full recalculation within the call to recordLhsBndChg.
 */
-    if (fullRecalc) {
-      assert(deltaLi == 0.0 && deltaUi == 0.0) ;
-      calcLhsBnds(i) ;
-    }
-    if (verbosity_ >= 4) {
-      std::cout << "        r(" << i << "): " ;
-      if (fullRecalc) {
-        std::cout << "(recalc)" ;
-      } else {
-        if (updatedLi) {
-	  std::cout
-	    << "(L#" << Li.revs_ << " [" << ((toFinite)?"-1":"0")
-	    << "," << deltaLi << "])" ;
-        } else {
-	  std::cout
-	    << "(U#" << Ui.revs_ << " [" << ((toFinite)?"-1":"0")
-	    << "," << deltaUi << "])" ;
-        }
-      }
-      std::cout << " L " << Li << " U " << Ui << std::endl ; 
+    if (updatedLi) {
+      recordLhsBndChg(i,fullRecalc,'L',newLi) ;
+    } else {
+      recordLhsBndChg(i,fullRecalc,'U',newUi) ;
     }
 /*
   Are we still feasible? Apparent loss of feasibility requires a more careful
-  check. Recalculate the row bound, then do a toleranced check.
+  check. Recalculate the row bound (unless we just did that), then do a
+  toleranced check.
 */
+    const CglPhicLhsBnd &Li = lhsL_[i] ;
+    const CglPhicLhsBnd &Ui = lhsU_[i] ;
     if ((Ui.infCnt_ == 0 && Ui.bnd_ < blowi) ||
         (Li.infCnt_ == 0 && Li.bnd_ > bi)) {
       if (verbosity_ >= 1) {
@@ -425,7 +368,7 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
 	  << "            " << "apparent loss of feasibility, r("
 	  << i << "); rechecking ..." << std::endl ;
       }
-      calcLhsBnds(i) ;
+      if (!fullRecalc) calcLhsBnds(i) ;
       if (paranoia_ >= 3) {
 	if (Ui.infCnt_ != 0 || Li.infCnt_ != 0) {
 	  std::cout

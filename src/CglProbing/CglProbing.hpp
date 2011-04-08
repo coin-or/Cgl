@@ -55,7 +55,8 @@ class CglProbingRowCut ;
   not done at present as there is no mechanism for returning the information.
 
   The generated cuts are inserted into an OsiCut object. Both row cuts and
-  column cuts may be returned.
+  column cuts may be returned. When called as #generateCutsAndModify, the
+  client can also retrieve vectors with tightened variable bounds.
 
   In all modes, user specified limits (number of variables probed, types of
   cuts generated, etc.) are (mostly) observed.
@@ -86,13 +87,22 @@ public:
   */
   int generateCutsAndModify(const OsiSolverInterface &si, OsiCuts &cs, 
 			    CglTreeInfo *info) ;
-  //@}
 
-  /**@name Get tighter column bounds */
-  //@{
-  /// Lower
+  /*! \brief Return a pointer to vector of tightened variable lower bounds
+  
+    Valid after a call to #generateCutsAndModify, if the problem is feasible.
+    If CglProbing indicates infeasibility, this array is not available. Given
+    that probing aborts as soon as possible after determining the problem is
+    infeasible, the values would be meaningless.
+  */
   const double *tightLower() const ;
-  /// Upper
+  /*! \brief Return a pointer to vector of tightened variable upper bounds
+  
+    Valid after a call to #generateCutsAndModify, if the problem is feasible.
+    If CglProbing indicates infeasibility, this array is not available. Given
+    that probing aborts as soon as possible after determining the problem is
+    infeasible, the values would be meaningless.
+  */
   const double *tightUpper() const ;
   //@}
 
@@ -158,7 +168,15 @@ public:
   /// Get use of objective
   int getUsingObjective() const ;
 
+  /// Number looked at this time
+  inline int numberThisTime() const
+  { return numberThisTime_; }
+  /// Which ones looked at this time
+  inline const int *lookedAt() const
+  { return lookedAt_; }
+
   //@}
+
 
   /*! \name Generator Limits
   
@@ -173,15 +191,6 @@ public:
   void setMaxPassRoot(int value) ;
   /// Get maximum number of passes per node (root node)
   int getMaxPassRoot() const ;
-  /*! \brief Set log level
-  
-    - 0: none
-    - 1 - a bit
-    - 2 - more details
-  */
-  void setLogLevel(int value) ;
-  /// Get log level
-  int getLogLevel() const ;
   /// Set maximum number of unsatisfied variables to look at
   void setMaxProbe(int value) ;
   /// Get maximum number of unsatisfied variables to look at
@@ -210,22 +219,23 @@ public:
   void setPrimalTolerance(double tol) { primalTolerance_ = tol ; }
   /// Get primal feasibility tolerance
   double getPrimalTolerance() { return (primalTolerance_) ; }
-  //@}
-
-  /**@name Get information back from probing */
-  //@{
-  /// Number looked at this time
-  inline int numberThisTime() const
-  { return numberThisTime_; }
-  /// Which ones looked at this time
-  inline const int *lookedAt() const
-  { return lookedAt_; }
-  //@}
-
-  /**@name Mark which continuous variables are to be tightened */
-  //@{
-  /// Mark variables to be tightened
-  void tightenThese(const OsiSolverInterface & solver, int number, const int * which) ;
+  /*! \brief Set log level
+  
+    - 0: none
+    - 1 - a bit
+    - 2 - more details
+  */
+  void setLogLevel(int value) ;
+  /// Get log level
+  int getLogLevel() const ;
+  /// Set verbosity
+  inline void setVerbosity(int value) { verbosity_ = value ; }
+  /// Get verbosity
+  inline int getVerbosity() { return (verbosity_) ; }
+  /// Set paranoia
+  inline void setParanoia(int value) { paranoia_ = value ; }
+  /// Get verbosity
+  inline int getParanoia() { return (paranoia_) ; }
   //@}
 
   /**@name Constructors and destructors */
@@ -339,41 +349,24 @@ private:
   /**@name Private member data */
   //@{
 
-  /*! \brief Arbitrary bound to impose on rows and columns.
+  /*! \brief Lower bounds on variables
 
-    This really shouldn't be necessary, but it's wired in and will require
-    a fair bit of work to remove. As the code is broken up, it needs to be
-    available across multiple files, so hide it as a private constant.
-    -- lh, 101124 --
+    Holds a pointer to the working vector during probing and allows the client
+    to retrieve tightened bounds.
   */
-  static const double CGL_REASONABLE_INTEGER_BOUND ;
+  mutable double *colLower_ ;
+  /*! \brief Upper bounds on variables
 
-  /*! \brief Arbitrarily large bound to impose on rows.
-
-    This one is completely bogus. It gets installed as a lower or upper
-    row bound in tighten2 if the existing row bound is larger than 1e20,
-    or if a column bound exceeds 1e12.
-    
-    This bound leaks out of CglProbing as bogus `improved' bounds on
-    variables, and that's a problem.
+    Holds a pointer to the working vector during probing and allows the client
+    to retrieve tightened bounds.
   */
-  static const double CGL_BOGUS_1E60_BOUND ;
-
-  /*
-    These are vestigial at this point. I'm keeping them around on the premise
-    that after generateCutsAndModify it will be useful to set these to point
-    to the working colLower and colUpper. Not yet sure I want to keep them as
-    mutable.  -- lh, 110402 --
-  */ 
-  /// Lower bounds on columns
-  mutable double * colLower_ ;
-  /// Upper bounds on columns
-  mutable double * colUpper_ ;
+  mutable double *colUpper_ ;
 
   /*
     Not entirely sure why these need to be mutable. Check. -- lh, 101007 --
     Possibly because they're modified to reflect the size of the working copy?
     -- lh, 110402 --
+    Likely obsolete, unless I want to repurpose them  -- lh, 110407 --
   */
   /// Number of rows in snapshot (or when cliqueRow stuff computed)
   mutable int numberRows_ ;

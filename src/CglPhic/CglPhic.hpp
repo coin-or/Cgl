@@ -192,6 +192,10 @@ public:
     have separate finite and infinite contributions (cf. #CglPhicLhsBnd).
     If either \p lhsLower or \p lhsUpper is 0, an array of length #m_ will be
     supplied.
+
+    It's necessary to actually allocate copies here (as opposed to #getColBnds,
+    which just returns pointers). If you just need one or two entries, use
+    #getRowLhsLB or #getRowLhsUB.
   */
   void getRowLhsBnds(double *&lhsLower, double *&lhsUpper) const ;
 
@@ -246,6 +250,26 @@ public:
 
   /// Attempt to tighten the lower bound on a variable
   bool tightenVl(int t, double gap, double ait, double corr) ;
+
+  /*! \brief Create a variable bound change record
+
+    Set \p bnd = 'l' for a change to the lower bound, 'u' for a change to the
+    upper bound.
+  */
+  void recordVarBndChg(int j, char bnd, double nbndj) ;
+
+  private:
+    struct CglPhicLhsBnd ;
+  public:
+
+  /*! \brief Create a row lhs bound change record
+
+    Set \p bnd = 'L' for a change to the lower bound, 'U' for a change to the
+    upper bound.  Set \p fullRecalc  to true to trigger recalculation of both
+    L(i) and U(i); in this case, the value supplied for nbndi is unused.
+  */
+  void recordLhsBndChg (int i, bool fullRecalc,
+			char bnd, CglPhicLhsBnd &nbndi) ;
 
   /// Process a single constraint to propagate changes in the lhs bounds
   void processRow (int i, bool &feas) ;
