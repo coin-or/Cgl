@@ -41,23 +41,19 @@ public:
   }
 } ;
 
-#if CGL_DEBUG > 0
-int nPath = 0 ;
-#endif
+}  // end file local namespace
 
 /*
   Compare two sets of upper and lower bound arrays and generate column cuts.
 */
 
-void makeColCuts (int nCols, OsiCuts &cs,
-		  const char *const intVar,
-		  const double *const colsol,
-		  const double *const origlbs,
-		  const double *const origubs,
-		  const double *const soln,
-		  double *const newlbs,
-		  double *const newubs
-		 )
+void CglProbing::makeColCuts (int nCols, OsiCuts &cs,
+			      const char *const intVar,
+			      const double *const origsol,
+			      const double *const origlbs,
+			      const double *const origubs,
+			      const double *const newlbs,
+			      const double *const newubs) const
 {
   int numberChanged = 0 ;
   int ifCut = 0 ;
@@ -69,15 +65,13 @@ void makeColCuts (int nCols, OsiCuts &cs,
 */
   for (int i = 0 ; i < nCols ; ++i) {
     if (intVar[i]) {
-      newubs[i] = CoinMin(origubs[i],floor(newubs[i]+1.0e-4)) ;
       if (newubs[i] < origubs[i]-1.0e-8) {
-	if (newubs[i] < colsol[i]-1.0e-8) ifCut++ ;
+	if (newubs[i] < origsol[i]-1.0e-8) ifCut++ ;
 	ubs.insert(i,newubs[i]) ;
 	numberChanged++ ;
       }
-      newlbs[i] = CoinMax(origlbs[i],ceil(newlbs[i]-1.0e-4)) ;
       if (newlbs[i] > origlbs[i]+1.0e-8) {
-	if (newlbs[i] > colsol[i]+1.0e-8) ifCut++ ;
+	if (newlbs[i] > origsol[i]+1.0e-8) ifCut++ ;
 	lbs.insert(i,newlbs[i]) ;
 	numberChanged++ ;
       }
@@ -124,38 +118,40 @@ void makeColCuts (int nCols, OsiCuts &cs,
 	particular reason other than more information.  -- lh, 110211 --
 */
 
-bool analyze (const OsiSolverInterface *const si, char *const intVar,
-	      double *const lbs, double *const ubs)
+bool CglProbing::analyze (const OsiSolverInterface &si,
+			  char *const intVar,
+			  double *const lbs, double *const ubs) const
 {
-# if CGL_DEBUG > 1
-  std::cout << "Entering CglProbing::analyze." << std::endl ;
+# if CGL_DEBUG > 0
+  if (verbosity_ >= 3)
+    std::cout << "    " << "start analyze." << std::endl ;
 # endif
   const double e20Inf = 1.0e20 ;
   const int changedToInt = 77 ;
 /*
   Acquire various data structures for ease of work: 
 */
-  const int n = si->getNumCols() ;
-  const int m = si->getNumRows() ;
-  const double *const objective = si->getObjCoefficients() ;
-  const double objsense = si->getObjSense() ;
+  const int n = si.getNumCols() ;
+  const int m = si.getNumRows() ;
+  const double *const objective = si.getObjCoefficients() ;
+  const double objsense = si.getObjSense() ;
 
   // Row copy
-  const CoinPackedMatrix *const matrixByRow = si->getMatrixByRow() ;
+  const CoinPackedMatrix *const matrixByRow = si.getMatrixByRow() ;
   const double *const elementByRow = matrixByRow->getElements() ;
   const int *const colIndices = matrixByRow->getIndices() ;
   const CoinBigIndex *const rowStarts = matrixByRow->getVectorStarts() ;
   const int *const rowLens = matrixByRow->getVectorLengths() ;
 
   // Column copy
-  const CoinPackedMatrix *const matrixByCol = si->getMatrixByCol() ;
+  const CoinPackedMatrix *const matrixByCol = si.getMatrixByCol() ;
   const double *const elementByCol = matrixByCol->getElements() ;
   const int *const rowIndices = matrixByCol->getIndices() ;
   const CoinBigIndex *const colStarts = matrixByCol->getVectorStarts() ;
   const int *const colLens = matrixByCol->getVectorLengths() ;
 
-  const double *const rowLower = si->getRowLower() ;
-  const double *const rowUpper = si->getRowUpper() ;
+  const double *const rowLower = si.getRowLower() ;
+  const double *const rowUpper = si.getRowUpper() ;
 
   char *const ignore = new char [m] ;
   int *const which = new int[m] ;
@@ -215,8 +211,7 @@ bool analyze (const OsiSolverInterface *const si, char *const intVar,
       }
 /*
   See if the row bounds are integer after adjusting for the contribution of
-  fixed variables. Serendipitous cancellation is possible here (if unlikely).
-  The fixed contribution could change a non-integer bound to an integer.
+  fixed variables.
 */
       double blowi = rowLower[i] ;
       if (blowi > -e20Inf) {
@@ -241,10 +236,6 @@ bool analyze (const OsiSolverInterface *const si, char *const intVar,
   If a<ij> is of the form 1/k, k integer, then x<j> can be integer. Put another
   way, this constraint will not prevent integrality and we can ignore it in
   further processing.  An equality forces integrality.
-
-  So, for an equality with one continuous variable, shouldn't we mark the
-  variable as `cannot be declared integer' so we don't waste time in subsequent
-  passes?
 */
       if (numberContinuous == 1) {
         if (blowi == bi) {
@@ -253,6 +244,14 @@ bool analyze (const OsiSolverInterface *const si, char *const intVar,
             if (fabs(value1-floor(value1+0.5)) < 1.0e-12) {
               numberChanged++ ;
               intVar[jColumn1] = changedToInt ;
+#	      if CGL_DEBUG > 0
+	      if (verbosity_ > 2) {
+	      	std::cout
+		  << "    " << "x<" << jColumn1 << "> can be integer; "
+		  << "Single continuous variable in integer equality."
+		  << std::endl ;
+	      }
+#	      endif
             }
           }
         } else {
@@ -399,6 +398,13 @@ bool analyze (const OsiSolverInterface *const si, char *const intVar,
         if (integer) {
           numberChanged++ ;
           intVar[j] = changedToInt ;
+#	  if CGL_DEBUG > 0
+	  if (verbosity_ > 2) {
+	    std::cout
+	      << "    " << "x<" << j << "> can be integer; "
+	      << "no constraint prevents it." << std::endl ;
+	  }
+#	  endif
         }
       }
     }
@@ -441,13 +447,18 @@ bool analyze (const OsiSolverInterface *const si, char *const intVar,
   delete [] changeRhs ;
   delete [] ignore ;
 
-# if CGL_DEBUG > 1
-  std::cout
-    << "CglProbing::analyze: " << numberChanged
-    << " variables could be made integer." << std::endl ;
+# if CGL_DEBUG > 0
+  if (verbosity_ >= 3) {
+    std::cout
+      << "    " << "end analyze, " << ((feasible)?"feasible":"infeasible") ;
+    if (numberChanged)
+      std::cout
+        << ", " << numberChanged << " variables could be made integer" ;
+    std::cout << "." << std::endl ;
+  }
 # endif
 
-  return feasible ;
+  return (feasible) ;
 }
 
 
@@ -460,13 +471,16 @@ bool analyze (const OsiSolverInterface *const si, char *const intVar,
   has specified mode 0 (work from snapshot), we silently correct it.
 */
 
-CoinPackedMatrix *setupRowCopy (int mode, bool useObj,
-				double cutoff, double offset,
-				const OsiSolverInterface &si,
-				double *rowLower, double *rowUpper)
+CoinPackedMatrix *CglProbing::setupRowCopy (int mode, bool useObj,
+					    double cutoff, double offset,
+					    const OsiSolverInterface &si,
+					    double *const rowLower,
+					    double *const rowUpper) const
 {
-# if CGL_DEBUG > 1
-  std::cout << "Entering setupRowCopy, mode " << mode << "." << std::endl ;
+# if CGL_DEBUG > 0
+  if (verbosity_ >= 3)
+    std::cout << "    "
+      << "    " << "start setupRowCopy, mode " << mode << "." << std::endl ;
 # endif
 
   int nCols = si.getNumCols() ;
@@ -504,17 +518,23 @@ CoinPackedMatrix *setupRowCopy (int mode, bool useObj,
     nRows++ ;
   }
 
-# if CGL_DEBUG > 1
-  if (rowCopy) {
-    int errs = rowCopy->verifyMtx(CGL_DEBUG) ;
-    if (errs > 0) {
-      std::cout
-        << "    generateCutsAndModify: verifyMtx failed post-cutgen, "
-	<< errs << " errors." << std::endl ;
-      assert (errs == 0) ;
+# if CGL_DEBUG > 0
+  if (paranoia_ > 0) {
+    if (rowCopy) {
+      int errs = rowCopy->verifyMtx(paranoia_) ;
+      if (errs > 0) {
+	std::cout
+	  << "    generateCutsAndModify: verifyMtx failed post-cutgen, "
+	  << errs << " errors." << std::endl ;
+	assert (errs == 0) ;
+      }
+    } else {
+      std::cout << "ERROR! Failed to create working row copy!" << std::endl ;
+      assert (false) ;
     }
   }
-  std::cout << "Leaving setupRowCopy." << std::endl ;
+  if (verbosity_ >= 3)
+    std::cout << "    " << "end setupRowCopy." << std::endl ;
 # endif
 
   return (rowCopy) ;
@@ -567,15 +587,19 @@ CoinPackedMatrix *setupRowCopy (int mode, bool useObj,
 
 */
 
-bool groomModel (bool useObj, int maxRowLen,
-		 const OsiSolverInterface &si, const char *const intVar,
-		 CoinPackedMatrix *rowCopy,
-		 double *const rowLower, double *const rowUpper,
-		 const double *const colLower, const double *const colUpper,
-		 int *&realRows, const CglTreeInfo *info)
+bool CglProbing::groomModel (bool useObj, int maxRowLen,
+			     const OsiSolverInterface &si,
+			     const char *const intVar,
+			     CoinPackedMatrix *rowCopy,
+			     double *const rowLower, double *const rowUpper,
+			     const double *const colLower,
+			     const double *const colUpper,
+			     int *&realRows,
+			     const CglTreeInfo *const info) const
 {
-# if CGL_DEBUG > 1
-  std::cout << "Entering groomModel." << std::endl ;
+# if CGL_DEBUG > 0
+  if (verbosity_ >= 3)
+  std::cout << "    " << "start groomModel." << std::endl ;
 # endif
 
   realRows = 0 ;
@@ -702,11 +726,13 @@ bool groomModel (bool useObj, int maxRowLen,
 	double value = elements[jj] ;
 	if (value > 0.0) {
 	  elements[jj] -= bi ;
-#         if CGL_DEBUG > 1
-	  std::cout
-	    << "      row " << i << ": decrease a<" << i << ","
-	    << column[jj] << "> from " << value << " to "
-	    << elements[jj] << "." << std::endl ;
+#         if CGL_DEBUG > 0
+	  if (verbosity_ >= 2) {
+	    std::cout
+	      << "      r(" << i << "): decrease a<" << i << ","
+	      << column[jj] << "> from " << value << " to "
+	      << elements[jj] << "." << std::endl ;
+	  }
 #	  endif
 	}
 	effectiveness += fabs(value) ;
@@ -718,11 +744,13 @@ bool groomModel (bool useObj, int maxRowLen,
 	double value = elements[jj] ;
 	if (value < 0.0) {
 	  elements[jj] -= blowi ;
-#         if CGL_DEBUG > 1
-	  std::cout
-	    << "      row " << i << ": increase a<" << i << ","
-	    << column[jj] << "> from " << value << " to "
-	    << elements[jj] << "." << std::endl ;
+#         if CGL_DEBUG > 0
+	  if (verbosity_ >= 2) {
+	    std::cout
+	      << "      r(" << i << "): increase a<" << i << ","
+	      << column[jj] << "> from " << value << " to "
+	      << elements[jj] << "." << std::endl ;
+	  }
 #	  endif
 	}
 	effectiveness += fabs(value) ;
@@ -793,8 +821,9 @@ bool groomModel (bool useObj, int maxRowLen,
 */
   if (!nKeep) {
 #   if CGL_DEBUG > 0
-      std::cout
-	<< "  All rows unsuitable for probing! Cleaning up." << std::endl ;
+      if (verbosity_ >= 1)
+	std::cout
+	  << "  All rows unsuitable for probing! Cleaning up." << std::endl ;
 #   endif
     delete[] realRows ;
     return (false) ;
@@ -865,15 +894,13 @@ bool groomModel (bool useObj, int maxRowLen,
   rowStart[nRows] = newSize ;
   rowCopy->setNumElements(newSize) ;
 
-# if CGL_DEBUG > 1
-  std::cout << "Leaving groomModel." << std::endl ;
+# if CGL_DEBUG > 0
+  if (verbosity_ >= 3)
+    std::cout << "    " << "end groomModel." << std::endl ;
 # endif
 
   return (true) ;
 } 
-
-}  // end file local namespace
-
 
 //-------------------------------------------------------------------
 // Generate column, disaggregation, and implication cuts
@@ -887,22 +914,14 @@ void CglProbing::generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
 {
 
 # if CGL_DEBUG > 0
-  std::cout
-    << "Entering CglProbing::generateCuts, matrix " << si.getNumRows()
-    << " x " << si.getNumCols() << "." << std::endl ;
-/*
-  Note that the debugger must be activated before generateCuts is called.
-  Even then, getRowCutDebugger will return a pointer only if we're on the
-  optimal path.
-*/
-  const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
-  if (debugger) {
-    std::cout << "On optimal path " << nPath << std::endl ;
-    nPath++ ;
-  }
-# if CGL_DEBUG > 3
-  dumpSoln(si) ;
-# endif
+  verbosity_ = 3 ;
+  paranoia_ = 1 ;
+  if (verbosity_ >= 3)
+    std::cout
+      << "CglProbing::generateCuts, matrix " << si.getNumRows()
+      << " x " << si.getNumCols() << "." << std::endl ;
+  CglProbingDebug::checkForRowCutDebugger(si,paranoia_,verbosity_) ;
+  if (verbosity_ >= 3) CglProbingDebug::dumpSoln(si) ;
 # endif
 /*
   Enforce the rule that a negative value prohibits row cut generation in the
@@ -939,9 +958,10 @@ void CglProbing::generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
   bool feasible = gutsOfGenerateCuts(si,cs,rowLower,rowUpper,
   				     colLower,colUpper,&info) ;
 # if CGL_DEBUG > 0
-  { int errs = 0 ;
+  if (paranoia_ > 0) {
+    int errs = 0 ;
     const CoinPackedMatrix *mtx = si.getMatrixByRow() ;
-    errs = mtx->verifyMtx(CGL_DEBUG) ;
+    errs = mtx->verifyMtx(paranoia_) ;
     if (errs > 0) {
       std::cout
         << "    generateCuts: verifyMtx failed, "
@@ -963,9 +983,11 @@ void CglProbing::generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
     rc.setUb(0.0) ;   
     cs.insert(rc) ;
 #   if CGL_DEBUG > 0
-    const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
-    if (debugger)
-      assert(!debugger->invalidCut(rc)) ; 
+    if (paranoia_ > 0) {
+      const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
+      if (debugger)
+	assert(!debugger->invalidCut(rc)) ; 
+    }
 #   endif
   }
 /*
@@ -984,7 +1006,15 @@ void CglProbing::generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
   rowCuts_ = saveRowCuts ;
 
 # if CGL_DEBUG > 0
-  std::cout << "Leaving CglProbing::generateCuts." << std::endl ;
+  if (verbosity_ >= 1) {
+    std::cout
+      << "  " << "end probing: " << ((feasible)?"feasible":"infeasible") ;
+    if (cs.sizeCuts() > 0)
+      std::cout
+        << ", " << cs.sizeRowCuts() << " row cuts"
+	<< ", " << cs.sizeColCuts() << " col cuts" ;
+    std::cout << "." << std::endl ;
+  }
 # endif
 
   return ;
@@ -1009,18 +1039,13 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
 				       CglTreeInfo *info) 
 {
 # if CGL_DEBUG > 0
-  verbosity_ = 10 ;
-  paranoia_ = 10 ;
-  if (verbosity_ >= 1)
+  verbosity_ = 3 ;
+  paranoia_ = 1 ;
+  if (verbosity_ >= 3)
     std::cout
-      << "Entering CglProbing::generateCutsAndModify, matrix "
-      << si.getNumRows() << " x " << si.getNumCols() << "." << std::endl ;
-
-  const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
-  if (debugger && verbosity_ >= 1) {
-    std::cout << "On optimal path " << nPath << std::endl ;
-    nPath++ ;
-  }
+      << "CglProbing::generateCuts, matrix " << si.getNumRows()
+      << " x " << si.getNumCols() << "." << std::endl ;
+  CglProbingDebug::checkForRowCutDebugger(si,paranoia_,verbosity_) ;
   if (verbosity_ >= 3) CglProbingDebug::dumpSoln(si) ;
 # endif
 
@@ -1134,10 +1159,15 @@ int CglProbing::generateCutsAndModify (const OsiSolverInterface &si,
   }
 
 # if CGL_DEBUG > 0
-  if (verbosity_ >= 1)
+  if (verbosity_ >= 1) {
     std::cout
-      << "Leaving CglProbing::generateCutsAndModify, "
-      << ((feasible)?"feasible":"infeasible") << "." << std::endl ;
+      << "  " << "end probing: " << ((feasible)?"feasible":"infeasible") ;
+    if (cs.sizeCuts() > 0)
+      std::cout
+        << ", " << cs.sizeRowCuts() << " row cuts"
+	<< ", " << cs.sizeColCuts() << " col cuts" ;
+    std::cout << "." << std::endl ;
+  }
 # endif
 
   return (static_cast<int>(feasible)) ;
@@ -1162,20 +1192,11 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 {
 
 # if CGL_DEBUG > 0
-  if (verbosity_ >= 1) {
+  if (verbosity_ >= 3) {
     std::cout
-      << "Entering CglProbing::gutsOfGenerateCuts, mode " << mode_ << ", " ;
+      << "  start gutsOfGenerateCuts, mode " << mode_ << ", " ;
     if (!info->inTree) std::cout << "not " ;
     std::cout << "in tree, pass " << info->pass << "." << std::endl ;
-  }
-
-  const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
-  if (debugger) {
-    if (verbosity_ >= 1)
-      std::cout << "  On optimal path." << std::endl ;
-  } else if (si.getRowCutDebuggerAlways()) {
-    if (verbosity_ >= 1)
-      std::cout << "  !! Not on optimal path!" << std::endl ;
   }
 # endif
 
@@ -1199,7 +1220,7 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 */
   CoinMemcpyN(si.getColLower(),nCols,colLower) ;
   CoinMemcpyN(si.getColUpper(),nCols,colUpper) ;
-  const double *colsol = si.getColSolution() ;
+  const double *const colsol = si.getColSolution() ;
 /*
   Stage 1: Preliminary Processing
 
@@ -1217,13 +1238,7 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   uncomplicated.
 */
   if (!info->inTree && !info->pass) {
-    feasible = analyze(&si,intVar,colLower,colUpper) ;
-#   if CGL_DEBUG > 0
-    if (verbosity_ >= 1)
-      std::cout
-       << "  Analyze completed; " << ((feasible)?"feasible":"infeasible")
-       << "." << std::endl ;
-#   endif
+    feasible = analyze(si,intVar,colLower,colUpper) ;
     if (!feasible) {
       delete[] intVar ;
       delete[] colLower ;
@@ -1254,21 +1269,24 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   bool useObj = (cutoff_available && (usingObjective_ >= 1)) ;
   bool useCutoff = (cutoff_available && (usingObjective_ >= 0)) ;
 # if CGL_DEBUG > 1
-  std::cout << "  cutoff " ;
-  if (!cutoff_available)
-    std::cout << "not available" ;
-  else
-    std::cout << cutoff ;
-  std::cout << ", offset " << offset << "." << std::endl ;
-  if (useCutoff)
-    std::cout << "  using cutoff" ;
-  else
-    std::cout << "  not using cutoff" ;
-  if (useObj)
-    std::cout << ", using objective as constraint" ;
-  else
-    std::cout << ", not using objective as constraint" ;
-  std::cout << "." << std::endl ;
+  if (verbosity_ > 3) {
+    std::cout << "      " << "cutoff " ;
+    if (!cutoff_available)
+      std::cout << "not available" ;
+    else
+      std::cout << cutoff ;
+    std::cout << ", offset " << offset << "." << std::endl ;
+    std::cout << "      " ;
+    if (useCutoff)
+      std::cout << "using cutoff" ;
+    else
+      std::cout << "  not using cutoff" ;
+    if (useObj)
+      std::cout << ", using objective as constraint" ;
+    else
+      std::cout << ", not using objective as constraint" ;
+    std::cout << "." << std::endl ;
+  }
 # endif
 
 /*
@@ -1316,8 +1334,8 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   Set up and invoke bound propagation to tighten up the row and column bounds.
 */
   CglPhic phic(rowCopy,columnCopy,rowLower,rowUpper) ;
-  phic.setVerbosity(10) ;
-  phic.setParanoia(10) ;
+  phic.setVerbosity(verbosity_) ;
+  phic.setParanoia(3) ;
   phic.loanColBnds(colLower,colUpper) ;
   phic.loanColType(intVar) ;
   phic.initLhsBnds() ;
@@ -1330,13 +1348,16 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   if (feasible) {
     phic.clearPropagation() ;
     makeColCuts(nCols,cs,intVar,colsol,si.getColLower(),si.getColUpper(),
-		si.getColSolution(),colLower,colUpper) ;
+		colLower,colUpper) ;
 #   if CGL_DEBUG > 0
-    std::cout
-      << "    tighten found " << cs.sizeColCuts() << " column cuts."
-      << std::endl ;
-    if (cs.sizeColCuts()) {
-      CglProbingDebug::checkBounds(si,cs.colCut((cs.sizeColCuts()-1))) ;
+    if (verbosity_ > 3) {
+      std::cout
+	<< "      " << "initial tighten found " << cs.sizeColCuts()
+	<< " column cuts." << std::endl ;
+    }
+    if (cs.sizeColCuts() && paranoia_ > 0) {
+      assert(CglProbingDebug::checkBounds(si,
+			cs.colCut((cs.sizeColCuts()-1)),verbosity_) == 0) ;
     }
 #   endif
 /*
@@ -1361,19 +1382,16 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 	lookedAt_ = new int[nCols] ;
       }
       if (mode == 1) {
-	const double *colsol = si.getColSolution() ;
 	double_int_pair *array = new double_int_pair [nCols] ;
 #       ifdef ZEROFAULT
 	CoinZeroN(array,nCols) ;
 #	endif
-	double multiplier = -1.0 ;
+	const double multiplier =
+	    ((info->inTree || (info->pass&1) != 0))?1.0:-1.0 ;
 /*
   Examine unfixed integer variables and record the ones that are unsatisfied
-  (i.e., not at an integral value).
-
-  TODO: Why do we change the sign of the infeasibility between even and odd
-	passes at the root? Best guess is that it reverses the order in which
-	integer variables are processed. -- lh, 100923 --
+  (i.e., not at an integral value). The multiplier serves to reverse the sort
+  order on alternate calls.
 
   TODO: the constant .49999 is actually a hardwired integer feasibility
 	tolerance of 1e-5. This should be a parameter; better, an attribute
@@ -1382,29 +1400,19 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 	to zero, nearly integral are large and negative). But the comparison
 	method (double_int_pair_compare) isn't used elsewhere, so maybe this
 	can be simplified.  -- lh, 100924 --
-
-  TODO: Note that if we're at the root, we look at all variables.
-	-- lh, 100924 --
-
-  TODO: At one time, numberThisTime_ was capped at maxProbe, but that's
-	disabled. Enforced elsewhere?  -- lh, 100924 --
 */
-	if (info->inTree || (info->pass&1) != 0)
-	  multiplier = 1.0 ;
-	for (int i = 0 ; i < nCols ; i++) {
-	  if (intVar[i] && (colUpper[i]-colLower[i]) > 1.0e-8) {
-	    double away = fabs(0.5-(colsol[i]-floor(colsol[i]))) ;
+	for (int j = 0 ; j < nCols ; j++) {
+	  if (intVar[j] && (colUpper[j]-colLower[j]) > 1.0e-8) {
+	    double away = fabs(0.5-(colsol[j]-floor(colsol[j]))) ;
 	    if (away < 0.49999 || !info->inTree) {
 	      //array[numberThisTime_].infeasibility = away ;
 	      array[numberThisTime_].infeasibility = away*multiplier ;
 	      //array[numberThisTime_].infeasibility = -columnLength[i] ;
-	      array[numberThisTime_++].sequence = i ;
+	      array[numberThisTime_++].sequence = j ;
 	    }
 	  }
 	}
-	// printf("maxP %d num %d\n",maxProbe,numberThisTime_) ;
 	std::sort(array,array+numberThisTime_,double_int_pair_compare()) ;
-	// numberThisTime_ = CoinMin(numberThisTime_,maxProbe) ;
 	for (int i = 0 ; i < numberThisTime_ ; i++) {
 	  lookedAt_[i] = array[i].sequence ;
 	}
@@ -1420,6 +1428,14 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 	  }
 	}
       }
+#     if CGL_DEBUG > 0
+      if (verbosity_ >= 3) {
+        std::cout
+	  << "      " << "probing " << numberThisTime_ ;
+	if (mode == 1 && info->inTree) std::cout << " unsatisfied" ;
+	std::cout << " variables." << std::endl ;
+      }
+#     endif
 /*
   lookedAt_ now contains a list of indices of variables to probe. Do the
   probing.
@@ -1436,28 +1452,6 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   delete[] intVar ;
   delete[] realRows ;
 /*
-  jjf: put back unreasonable bounds on integer variables
-
-  TODO: If we're infeasible, is this necessary? Better to just not use the
-	bounds.   -- lh, 110217 --
-
-	Should no longer be necessary, period.  -- lh, 110406 --
-*/
-# if 0
-  const double *trueLower = si.getColLower() ;
-  const double *trueUpper = si.getColUpper() ;
-  if (feasible) {
-    for (int i = 0 ; i < nCols ; i++) {
-      if (intVarOriginal[i] == 2) {
-	if (colUpper[i] == CGL_REASONABLE_INTEGER_BOUND) 
-	  colUpper[i] = trueUpper[i] ;
-	if (colLower[i] == -CGL_REASONABLE_INTEGER_BOUND) 
-	  colLower[i] = trueLower[i] ;
-      }
-    }
-  }
-# endif
-/*
   If we're requested to set the global cut flag, do it.
 */
   if (!info->inTree &&
@@ -1468,20 +1462,20 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
   }
 
 # if CGL_DEBUG > 0
-  std::cout
-    << "Leaving CglProbing::gutsOfGenerateCuts, "
-    << ((feasible)?"feasible":"infeasible")
-    << "; " << cs.sizeRowCuts() << " row cuts, " << cs.sizeColCuts()
-    << " col cuts." << std::endl ;
-  debugger = si.getRowCutDebugger() ;
-  if (debugger) {
-    debugger->validateCuts(cs,0,cs.sizeCuts()) ;
-# if CGL_DEBUG > 2
-    for (OsiCuts::iterator oneCut = cs.begin() ; oneCut != cs.end() ; oneCut++)
-      (*oneCut)->print() ;
-# endif
-  } else if (si.getRowCutDebuggerAlways()) {
-    std::cout << "  !! Not on optimal path!" << std::endl ;
+  if (verbosity_ >= 3) {
+    std::cout
+      << "      " << "end gutsOfGenerateCuts, "
+      << ((feasible)?"feasible":"infeasible")
+      << "; " << cs.sizeRowCuts() << " row cuts, " << cs.sizeColCuts()
+      << " col cuts." << std::endl ;
+  }
+  if (paranoia_ > 0) {
+    const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
+    if (debugger) debugger->validateCuts(cs,0,cs.sizeCuts()) ;
+  }
+  if (verbosity_ >= 2 && (cs.sizeCuts() > 0)) {
+    for (OsiCuts::iterator cut = cs.begin() ; cut != cs.end() ; cut++)
+      (*cut)->print() ;
   }
 # endif
 
@@ -1491,8 +1485,6 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 
 /*
   Set mode
-
-  Take care to change only the basic mode, without affecting higher bits.
 */
 void CglProbing::setMode(int mode)
 {

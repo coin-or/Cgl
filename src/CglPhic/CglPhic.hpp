@@ -396,10 +396,10 @@ private:
     Controls the amount of output:
     -  0: catatonic
     -  1: summary messages
-    -  2: print a list of changed variable bounds
-    -  3: print revisions to bounds on variables
-    -  4: print revisions to bounds on rows
-    -  5: print constraints queued for processing
+    -  2: summary list of changed variable bounds
+    -  3: execution trace; revisions to bounds on variables
+    -  4: revisions to row lhs bounds
+    -  5: pending set activity
     -  6: add additional processing traces
     Anything above 1 is likely too much unless you're debugging.
   */
@@ -407,7 +407,7 @@ private:
   /*! \brief paranoia
 
     Controls the level of paranoia:
-    -  0: all clients are careful, conscientious, and perfect
+    -  0: it's a perfect world
     -  1: everyone makes the occasional mistake
     -  2: trust no one
     -  3: trust no one, not even myself!

@@ -288,7 +288,7 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
 	  if (newLi.revs_ < revLimit_) {
 	    deltaLi = aij*delta ;
 	    if (CoinAbs(deltaLi) > zeroTol_) {
-	      newLi.bnd_ += deltaUi ;
+	      newLi.bnd_ += deltaLi ;
 	      newLi.revs_++ ;
 	      updatedLi = true ;
 	    }
@@ -363,36 +363,57 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
     const CglPhicLhsBnd &Ui = lhsU_[i] ;
     if ((Ui.infCnt_ == 0 && Ui.bnd_ < blowi) ||
         (Li.infCnt_ == 0 && Li.bnd_ > bi)) {
-      if (verbosity_ >= 1) {
+      double infLow = 0.0 ;
+      double infUp  = 0.0 ;
+      if (Ui.infCnt_ == 0 && Ui.bnd_ < blowi)
+        infLow = blowi-Ui.bnd_ ;
+      if (Li.infCnt_ == 0 && Li.bnd_ > bi)
+        infUp = Li.bnd_-bi ;
+      if (verbosity_ >= 3) {
         std::cout
 	  << "            " << "apparent loss of feasibility, r("
-	  << i << "); rechecking ..." << std::endl ;
+	  << i << ")" ;
+	if (infLow != 0.0)
+	  std::cout
+	    << "; U " << Ui.bnd_ << " < blow " << blowi << " by " << infLow ;
+	if (infUp != 0.0)
+	  std::cout
+	    << "; L " << Li.bnd_ << " > b " << bi << " by " << infUp ;
+	std::cout << "; rechecking ..." ;
       }
       if (!fullRecalc) calcLhsBnds(i) ;
       if (paranoia_ >= 3) {
 	if (Ui.infCnt_ != 0 || Li.infCnt_ != 0) {
 	  std::cout
+	    << std::endl
 	    << "ERROR: infinity count changed for row bound!" << std::endl ;
 	  assert (false) ;
 	}
       }
       if (Li.bnd_-bi > feasTol_) {
         feas = false ;
-	if (verbosity_ >= 1)
+	if (verbosity_ >= 3)
 	  std::cout
+	    << std::endl
 	    << "      " << "r(" << i << ") infeasible; " << Li
 	    << " > b<" << i << "> = " << bi << ", infeas "
 	    << Li.bnd_-bi << ", tol " << feasTol_ << "." << std::endl ;
       } else if (blowi-Ui.bnd_ > feasTol_) {
         feas = false ;
-	if (verbosity_ >= 1)
+	if (verbosity_ >= 3)
 	  std::cout
+	    << std::endl
 	    << "      " << "r(" << i << ") infeasible; " << Ui
 	    << " < blow<" << i << "> = " << blowi << ", infeas "
 	    << blowi-Ui.bnd_ << ", tol " << feasTol_ << "." << std::endl ;
       } else {
-        if (verbosity_ >= 1)
-	  std::cout << "            " << "false alarm." << std::endl ;
+        if (verbosity_ >= 3)
+	  std::cout << " false alarm." << std::endl ;
+	if (paranoia_ >= 3 && (infLow > feasTol_ || infUp > feasTol_)) {
+	  std::cout
+	    << "ERROR: unacceptable error in lhs bounds." << std::endl ;
+	  assert(false) ;
+	}
       }
       if (!feas) return ;
     }
@@ -653,7 +674,10 @@ void CglPhic::processRow (int i, bool &feas)
 */
 void CglPhic::propagate (bool &feas)
 {
-  if (verbosity_ >= 1) std::cout << "  " << "propagating ... " ;
+  if (verbosity_ >= 3) {
+    if (verbosity_ >= 4) std::cout << "   " ;
+    std::cout << " propagating ... " ;
+  }
 /*
   Open a loop to remove a constraint from the pending set and process it for
   changes to variable bounds.
@@ -680,9 +704,9 @@ void CglPhic::propagate (bool &feas)
 */
 void CglPhic::tightenAbInitio (bool &feas)
 {
-  if (verbosity_ >= 1) {
-    std::cout << "  " << "Ab initio bound tightening ..." ;
-    if (verbosity_ > 1) std::cout << std::endl ;
+  if (verbosity_ >= 3) {
+    std::cout << "    " << "Ab initio bound tightening ..." ;
+    if (verbosity_ >= 4) std::cout << std::endl ;
   }
 /*
   Open a loop to step through the rows.
@@ -780,15 +804,15 @@ void CglPhic::tightenAbInitio (bool &feas)
 /*
   Report the results.
 */
-  if (verbosity_ >= 1) {
-    if (verbosity_ >= 2) std::cout << std::endl << "  " ;
+  if (verbosity_ >= 3) {
+    if (verbosity_ >= 4) std::cout << std::endl << "    " ;
     std::cout
       << ((feas)?"feasible":"infeasible") << "; tightened bounds on "
       << numVarBndChgs_ << " variables." << std::endl ;
-    if (verbosity_ >= 2) {
-      std::cout << "    Variable bound changes:" << std::endl ;
-      for (int k = 0 ; k < numVarBndChgs_ ; k++)
-        std::cout << "      " << varBndChgs_[k] << std::endl ;
-    }
+  }
+  if (verbosity_ >= 2 && numVarBndChgs_ > 0) {
+    std::cout << "    Variable bound changes:" << std::endl ;
+    for (int k = 0 ; k < numVarBndChgs_ ; k++)
+      std::cout << "      " << varBndChgs_[k] << std::endl ;
   }
 }

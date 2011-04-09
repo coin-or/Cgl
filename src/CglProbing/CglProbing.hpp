@@ -261,20 +261,10 @@ public:
       
 private:
   
- // Private member methods
-  /**@name probe */
-  //@{
-  /*! \brief Probe and generate cuts
-
-    This method does the heavy lifting. Given a set of variables to probe, do
-    the probing and generate cuts. Returns false if the problem is infeasible.
+  /*! \name Private member methods
+      \brief Worker methods that perform probing, analysis, and cut generation.
   */
-  bool probe(const OsiSolverInterface &si,
-	     OsiCuts &cs, CglPhic &phic,
-	     const int *const realRows,
-	     CglTreeInfo *const info,
-	     bool useObj, bool useCutoff, double cutoff) const ;
-
+  //@{
   /*! \brief Core method for overall control of probing.
 
     Common worker for generateCuts and generateCutsAndModify. Does common
@@ -285,6 +275,51 @@ private:
 			  double *rowLower, double *rowUpper,
 			  double *colLower, double *colUpper,
                           CglTreeInfo *info) const ;
+
+  /*! \brief Look for variables that are naturally integer but not declared
+  	     as integer.
+  */
+  bool analyze(const OsiSolverInterface &si, char *const intVar,
+  	       double *const lbs, double *const ubs) const ;
+
+  /*! \brief Compare two sets of variable bound arrays and generate column
+  	     cuts.
+  */
+  void makeColCuts(int nCols, OsiCuts &cs, const char *const intVar,
+  		   const double *const origsol, 
+		   const double *const origlbs, const double *const origubs,
+		   const double *const newlbs, const double *const newubs) const ;
+
+  /*! \brief Create working row-major copy of constraint system.  */
+
+  CoinPackedMatrix *setupRowCopy(int mode, bool useObj,
+  				 double cutoff, double offset,
+				 const OsiSolverInterface &si,
+				 double *const rowLower,
+				 double *const rowUpper) const ;
+
+  /*! \brief Groom the working system
+
+    General cleanup: physically remove rows that are unsuitable for
+    probing; do a bit of coefficient strengthening; substitute for fixed
+    variables.
+  */
+  bool groomModel(bool useObj, int maxRowLen, const OsiSolverInterface &si,
+  		  const char *const intVar, CoinPackedMatrix *rowCopy,
+		  double *const rowLower, double *const rowUpper,
+		  const double *const colLower, const double *const colUpper,
+		  int *&realRows, const CglTreeInfo *const info) const ;
+
+  /*! \brief Probe and generate cuts
+
+    This method does the heavy lifting. Given a set of variables to probe, do
+    the probing and generate cuts. Returns false if the problem is infeasible.
+  */
+  bool probe(const OsiSolverInterface &si,
+	     OsiCuts &cs, CglPhic &phic,
+	     const int *const realRows,
+	     CglTreeInfo *const info,
+	     bool useObj, bool useCutoff, double cutoff) const ;
 
   /*! \brief Generate implication cuts
 
@@ -410,9 +445,13 @@ private:
   /// Log level (keep for the nonce)
   int logLevel_ ;
   /// Verbosity level - 0 none, 1 - a bit, 2 - more details
-  int verbosity_ ;
+  mutable int verbosity_ ;
   /// Paranoia
-  int paranoia_ ;
+  mutable int paranoia_ ;
+  /// Presence/absence of row cut debugger
+  bool haveDebugger_ ;
+  /// On optimal path
+  bool onOptimalPath_ ;
   /// Maximum number of unsatisfied variables to probe
   int maxProbe_ ;
   /// Maximum number of variables to look at in one probe

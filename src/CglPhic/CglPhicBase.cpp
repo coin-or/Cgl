@@ -183,6 +183,8 @@ CglPhic::~CglPhic ()
  delete[] isPending_ ;
  delete[] varBndChgs_ ;
  delete[] varHasChanged_ ;
+ delete[] lhsBndChgs_ ;
+ delete[] lhsHasChanged_ ;
 }
 
 
@@ -417,8 +419,8 @@ void CglPhic::calcLhsBnds (int i)
 */
 void CglPhic::initLhsBnds ()
 {
-  if (verbosity_ >= 1)
-    std::cout << "  " << "Initialising row info and lhs bounds ... " ;
+  if (verbosity_ >= 3)
+    std::cout << "    " << "Initialising row info and lhs bounds ... " ;
   assert(colL_ && colU_ && rowMtx_) ;
 /*
   Allocate fresh bound and info arrays if we need them.
@@ -433,7 +435,7 @@ void CglPhic::initLhsBnds ()
   for (int i = 0 ; i < m_ ; i++) {
     calcLhsBnds(i) ;
   }
-  if (verbosity_ >= 1) {
+  if (verbosity_ >= 3) {
     if (verbosity_ >= 5) std::cout << "    " ;
     std::cout << "done." << std::endl ;
   }
@@ -697,7 +699,7 @@ void CglPhic::recordLhsBndChg (int i, bool fullRecalc, char bnd,
 
   if (verbosity_ >= 5) {
     std::cout
-      << "         " <<  "r(" << i << ") {" << chg.oL_ << "," << chg.oU_
+      << "          " <<  "r(" << i << ") {" << chg.oL_ << "," << chg.oU_
       << "} " ;
     if (fullRecalc) std::cout << "*" ;
     if (deltaL)
@@ -706,6 +708,7 @@ void CglPhic::recordLhsBndChg (int i, bool fullRecalc, char bnd,
     else
       std::cout
 	<< "U #" << chg.revU_+1 << ": " << lhsU_[i] << " -> " << nbndi ;
+    std::cout << std::endl ;
   }
   if (fullRecalc) {
     calcLhsBnds(i) ;
@@ -815,14 +818,14 @@ int CglPhic::getRowLhsBndChgs (CglPhic::CglPhicBndPair **newBnds,
 */
 void CglPhic::revert (bool revertColBnds, bool revertRowBnds)
 {
-  if (verbosity_ >= 1) {
+  if (verbosity_ >= 3) {
     std::cout << "          "
       << "reverting " << numVarBndChgs_ << " var bnds." << std::endl ;
   }
   if (revertColBnds) {
     for (int k = (numVarBndChgs_-1) ; k >= 0 ; k--) {
       CglPhicVarBndChg &chg = varBndChgs_[k] ;
-      if (verbosity_ >= 1) {
+      if (verbosity_ >= 4) {
         std::cout << "            " << chg << std::endl ;
       }
       int j = chg.ndx_ ;
@@ -833,14 +836,14 @@ void CglPhic::revert (bool revertColBnds, bool revertRowBnds)
     }
     numVarBndChgs_ = 0 ;
   }
-  if (verbosity_ >= 1) {
+  if (verbosity_ >= 3) {
     std::cout << "          "
       << "reverting " << numLhsBndChgs_ << " lhs bnds." << std::endl ;
   }
   if (revertRowBnds) {
     for (int k = (numLhsBndChgs_-1) ; k >= 0 ; k--) {
       CglPhicLhsBndChg &chg = lhsBndChgs_[k] ;
-      if (verbosity_ >= 1) {
+      if (verbosity_ >= 4) {
         std::cout << "            " << chg << std::endl ;
       }
       int i = chg.ndx_ ;

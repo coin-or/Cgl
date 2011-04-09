@@ -30,45 +30,104 @@
 
 namespace CglProbingDebug {
 
+int nPath = 0 ;
+
 /*
-  This function checks that the column bounds passed in cut do not cut off
-  the optimal solution known to the debugger.
+  Check for the presence of an active row cut debugger.
 */
-void checkBounds (const OsiSolverInterface &si, const OsiColCut &cut)
+int checkForRowCutDebugger (const OsiSolverInterface &si,
+			    int paranoia, int verbosity)
 {
-  const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
-  std::cout
-    << "  checkBounds: checking bounds against optimal solution."
-    << std::endl ;
-  if (debugger) {
-    const double *optimal = debugger->optimalSolution() ;
-    int i ;
-    int nIndex ;
-    const double *values ;
-    const int *index ;
-    const CoinPackedVector &lbs = cut.lbs() ;
-    values = lbs.getElements() ;
-    nIndex = lbs.getNumElements() ;
-    index = lbs.getIndices() ;
-    for (i = 0 ; i < nIndex ; i++) {
-      int iColumn = index[i] ;
-      std::cout
-        << "    x(" << iColumn << ") lb = " << values[i]
-	<< ", opt = " << optimal[iColumn] << "." << std::endl ;
-      assert(values[i] <= optimal[iColumn]+1.0e-5) ;
-    }
-    const CoinPackedVector & ubs = cut.ubs() ;
-    values = ubs.getElements() ;
-    nIndex = ubs.getNumElements() ;
-    index = ubs.getIndices() ;
-    for (i = 0 ; i < nIndex ; i++) {
-      int iColumn = index[i];
-      std::cout
-        << "    x(" << iColumn << ") ub = " << values[i]
-	<< ", opt = " << optimal[iColumn] << "." << std::endl ;
-      assert(values[i] >= optimal[iColumn]-1.0e-5) ;
+  static bool printedWarning = false ;
+  const OsiRowCutDebugger *debugger = 0 ;
+  int retval = 0 ;
+  if (paranoia > 0) {
+    debugger = si.getRowCutDebugger() ;
+    if (debugger) {
+      if (verbosity >= 3)
+	std::cout << "      On optimal path " << nPath << std::endl ;
+      nPath++ ;
+      retval = 2 ;
+    } else {
+      debugger = si.getRowCutDebuggerAlways() ;
+      if (debugger) {
+        if (verbosity >= 3)
+	  std::cout << "      Not on optimal path." << std::endl ;
+	retval = 1 ;
+      } else {
+        if (verbosity > 0 && !printedWarning) {
+	  std::cout
+	    << "      WARNING: row cut debugger not active!" << std::endl ;
+	  printedWarning = true ;
+	}
+      }
     }
   }
+  return (retval) ;
+}
+
+/*
+  This function checks that the column bounds passed in cut do not cut off
+  the optimal solution known to the debugger. It returns the number of
+  violations.
+*/
+int checkBounds (const OsiSolverInterface &si, const OsiColCut &cut,
+		 int verbosity)
+{
+  const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
+  int infeasCnt = 0 ;
+  if (debugger) {
+    if (verbosity >= 4)
+      std::cout
+	<< "  checkBounds: checking col cuts against optimal solution."
+	<< std::endl ;
+    const double *xopt = debugger->optimalSolution() ;
+    const int *indices ;
+
+    const CoinPackedVector &lbVec = cut.lbs() ;
+    int numlbs = lbVec.getNumElements() ;
+    const double *lbs = lbVec.getElements() ;
+    indices = lbVec.getIndices() ;
+    for (int k = 0 ; k < numlbs ; k++) {
+      int j = indices[k] ;
+      const double &lj = lbs[k] ;
+      const double &xoptj = xopt[j] ;
+      const double err = lj-xoptj ;
+      if (err > 1.0e-5) infeasCnt++ ;
+      if (verbosity >= 5 || (verbosity > 0 && err > 1.0e-5)) {
+	std::cout << "    x<" << j << "> l = " << lj << ", x* = " << xoptj ;
+	if (err > 1.0e-5) std::cout << "; infeas = " << err ;
+	std::cout << "." << std::endl ;
+      }
+    }
+
+    const CoinPackedVector & ubVec = cut.ubs() ;
+    int numubs = ubVec.getNumElements() ;
+    const double *ubs = ubVec.getElements() ;
+    indices = ubVec.getIndices() ;
+    for (int k = 0 ; k < numubs ; k++) {
+      int j = indices[k] ;
+      const double &uj = ubs[k] ;
+      const double &xoptj = xopt[j] ;
+      const double err = xoptj-uj ;
+      if (err > 1.0e-5) infeasCnt++ ;
+      if (verbosity >= 5 || (verbosity > 0 && err > 1.0e-5)) {
+	std::cout << "    x<" << j << "> u = " << uj << ", x* = " << xoptj ;
+	if (err > 1.0e-5) std::cout << "; infeas = " << err ;
+	std::cout << "." << std::endl ;
+      }
+    }
+  } else {
+    if (verbosity >= 4)
+      std::cout
+	<< "  checkBounds: not on optimal path or no optimal solution."
+	<< std::endl ;
+  }
+  if (infeasCnt && verbosity > 0)
+    std::cout
+      << "  checkBounds: " << infeasCnt
+      << " bounds cut off the optimal solution." << std::endl ;
+  return (infeasCnt) ;
 }
 
 /*
@@ -185,52 +244,51 @@ void dump_row (int i, double rhsLow, double rhsHi, double lhsLow, double lhsHi,
   return ; }
 
 /*
-  Debugging utility to dump current solution, and optimal solution if
-  available via the RowCutDebugger.
+  Debugging utility to dump the current solution and the optimal solution (if
+  available).
 */
 void dumpSoln (const OsiSolverInterface &si)
+{
+  const OsiRowCutDebugger *debugger = si.getRowCutDebuggerAlways() ;
+  const double *xopt = 0 ;
 
-{ const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
-  const double *optimal = 0 ;
+  if (debugger) xopt = debugger->optimalSolution() ;
 
-  if (debugger) optimal = debugger->optimalSolution() ;
+  int n = si.getNumCols() ; 
+  const double *x = si.getColSolution() ;
+  const double *lbs = si.getColLower() ;
+  const double *ubs = si.getColUpper() ;
+  const double *c = si.getObjCoefficients() ;
+  double z = 0.0 ;
+  double zopt = 0.0 ;
 
-  int i ;
-  const double *solution = si.getColSolution() ;
-  const double *lower = si.getColLower() ;
-  const double *upper = si.getColUpper() ;
-  const double *objective = si.getObjCoefficients() ;
-  double objval1 = 0.0 ;
-  double objval2 = 0.0 ;
-  int nCols = si.getNumCols() ; 
-
-  for (i = 0 ; i < nCols ; i++)
-  {
+  std::cout << "  " << "Solution:" << std::endl ;
+  for (int j = 0 ; j < n ; j++) {
     std::cout
-      << "    " << si.getColName(i) << " (" << i << ") "
-      << lower[i] << " <= " << solution[i] << " <= " << upper[i] ;
-    if (optimal) {
-      std::cout << "; opt = " << optimal[i] ;
+      << "      " << "x<" << j << ">: " 
+      << lbs[j] << " <= " << x[j] << " <= " << ubs[j] ;
+    if (xopt) {
+      std::cout << "; x* = " << xopt[j] ;
+    }
+    z += x[j]*c[j] ;
+    if (xopt) {
+      zopt += xopt[j]*c[j] ;
+      if (lbs[j]-xopt[j] > 1.0e-8)
+        std::cout << "; lb violation " << lbs[j]-xopt[j] ;
+      if (xopt[j]-ubs[j] > 1.0e-8)
+        std::cout << "; ub violation " << xopt[j]-ubs[j] ;
     }
     std::cout << "." << std::endl ;
-    objval1 += solution[i]*objective[i] ;
-/*
-  TODO: In the original code, generateCuts had this test, but in
-	generateCutsAndModify, the test was weakened by a hardwired tolerance
-	of 1e-5. The two tests should be the same (which is now the case). If
-	we need to reintroduce a tolerance, it should not be hardwired.
-	-- lh, 101203 --
-*/
-    if (optimal)
-    { objval2 += optimal[i]*objective[i] ;
-      assert(optimal[i] >= lower[i] && optimal[i] <= upper[i]) ; } }
+  }
 
-  std::cout << "  current obj " << objval1 ;
-  if (optimal)
-  { std::cout << ", integer " << objval2 ; }
+  std::cout << "    z = " << z ;
+  if (xopt) {
+    std::cout << ", z* = " << zopt ;
+  }
   std::cout << "." << std::endl ;
   
-  return ; }
+  return ;
+}
 
 }  // end namespace CglProbingDebug
 

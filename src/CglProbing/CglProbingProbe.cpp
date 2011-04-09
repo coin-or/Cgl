@@ -115,9 +115,6 @@ void groomSoln (double direction, double primalTolerance, int nCols,
 		double *const colsol,
 		const double *const colUpper)
 {
-# if CGL_DEBUG > 1
-  std::cout << "Entering groomSoln." << std::endl ;
-# endif
 /*
   Convert reduced costs to minimisation and clean up any that are on the wrong
   side of zero.
@@ -137,9 +134,6 @@ void groomSoln (double direction, double primalTolerance, int nCols,
       }
     }
   }
-# if CGL_DEBUG > 1
-  std::cout << "Leaving groomSoln." << std::endl ;
-# endif
   return ;
 }
 
@@ -203,10 +197,10 @@ int CglProbing::implicationCuts (int p, int n,
   double *colUpper ;
   phic.getColBnds(colLower,colUpper) ;
 
-# if CGL_DEBUG > 1
-  if (verbosity_ > 1) {
-    std::cout
-      << "Entering implicationCuts, probe x<" << p << ">, " << numDnProbeBnds
+# if CGL_DEBUG > 0
+  if (verbosity_ >= 3) {
+    std::cout << "    "
+      << "start implicationCuts, probe x<" << p << ">, " << numDnProbeBnds
       << " down records, " << numUpProbeBnds << " up records." << std::endl ;
   }
   int origRowCutCnt = cs.sizeRowCuts() ;
@@ -223,7 +217,18 @@ int CglProbing::implicationCuts (int p, int n,
     assert(colLower[p] == 0.0 && colUpper[p] == 1.0) ;
   }
 # endif
-
+/*
+  If there's exactly one down record and exactly one up record, we're looking
+  at the probe variable itself. Since there's clearly no consensus, we can
+  pack up and leave now while it's still uncomplicated.
+*/
+  if (numDnProbeBnds == 1 && numUpProbeBnds == 1) {
+#   if CGL_DEBUG > 0
+    if (verbosity_ >= 3)
+      std::cout << "    " << "end implicationCuts; trivial." << std::endl ;
+#   endif
+    return (0) ;
+  }
 /*
   Construct a cross-reference so that we can correlate entries in the down and
   up probe records. Then, as we scan the up probe records, we can quickly
@@ -280,11 +285,13 @@ int CglProbing::implicationCuts (int p, int n,
 */
     const double bestProbelj = CoinMin(ldj,luj) ;
     if (bestProbelj > lj+minChange) {
-#     if CGL_DEBUG > 1
-      std::cout
-        << "      consensus lb for (" << typLett[typej]
-        << ") x<" << j << "> improved from "
-	<< lj << " to " << bestProbelj << "." << std::endl ;
+#     if CGL_DEBUG > 0
+      if (verbosity_ >= 4) {
+	std::cout
+	  << "      consensus lb for (" << typLett[typej]
+	  << ") x<" << j << "> improved from "
+	  << lj << " to " << bestProbelj << "." << std::endl ;
+      }
 #     endif
       lj = bestProbelj ;
       nTot++ ;
@@ -300,11 +307,13 @@ int CglProbing::implicationCuts (int p, int n,
 */
     const double bestProbeuj = CoinMax(udj,uuj) ;
     if (bestProbeuj < uj-minChange) {
-#     if CGL_DEBUG > 1
-      std::cout
-        << "      consensus ub for (" << typLett[typej]
-        << ") x<" << j << "> improved from "
-	<< uj << " to " << bestProbeuj << "." << std::endl ;
+#     if CGL_DEBUG > 0
+      if (verbosity_ >= 4) {
+	std::cout
+	  << "      consensus ub for (" << typLett[typej]
+	  << ") x<" << j << "> improved from "
+	  << uj << " to " << bestProbeuj << "." << std::endl ;
+      }
 #     endif
       uj = bestProbeuj ;
       nTot++ ;
@@ -340,9 +349,11 @@ int CglProbing::implicationCuts (int p, int n,
 	implCoeffs[0] = -(uj-lj) ;
 	implCoeffs[1] = 1.0 ;
 	rc.setRow(2,implIndices,implCoeffs,false) ;
-#       if CGL_DEBUG > 1
-	std::cout << "      implication:" ;
-	rc.print() ;
+#       if CGL_DEBUG > 0
+        if (verbosity_ >= 4) {
+	  std::cout << "      implication: " ;
+	  rc.print() ;
+	}
 #       endif
 	cs.insert(rc) ;
       } else if (uuj < lj+primalTolerance_ && ldj > uj-primalTolerance_) {
@@ -358,9 +369,11 @@ int CglProbing::implicationCuts (int p, int n,
 	implCoeffs[0] = uj-lj ;
 	implCoeffs[1] = 1.0 ;
 	rc.setRow(2,implIndices,implCoeffs,false) ;
-#       if CGL_DEBUG > 1
-	std::cout << "      inverse implication:" ;
-	rc.print() ;
+#       if CGL_DEBUG > 0
+	if (verbosity_ >= 4) {
+	  std::cout << "      inverse implication: " ;
+	  rc.print() ;
+	}
 #       endif
 	cs.insert(rc) ;
       } 
@@ -384,24 +397,30 @@ int CglProbing::implicationCuts (int p, int n,
     } else {
       cc.setEffectiveness(1.0e-5) ;
     }
-#   if CGL_DEBUG > 1
-    std::cout
-      << "    tightened " << consensus_lbs.getNumElements() << " integer lb, "
-      << consensus_ubs.getNumElements()  << " integer ub" ;
-    if (cutsOffSoln)
-      std::cout << "; " << cutsOffSoln << " cuts." << std::endl ;
-    else
-      std::cout << "; no cut." << std::endl ;
-    CglProbingDebug::checkBounds(si,cc) ;
+#   if CGL_DEBUG > 0
+    if (verbosity_ >= 3) {
+      std::cout
+	<< "      tightened "
+	<< consensus_lbs.getNumElements() << " integer lb, "
+	<< consensus_ubs.getNumElements()  << " integer ub" ;
+      if (cutsOffSoln)
+	std::cout << "; " << cutsOffSoln << " cuts." << std::endl ;
+      else
+	std::cout << "; no cut." << std::endl ;
+    }
+    if (paranoia_ > 0)
+      assert(CglProbingDebug::checkBounds(si,cc,verbosity_) == 0) ;
 #   endif
     cs.insert(cc) ;
   }
 # if CGL_DEBUG > 1
-  std::cout
-    << "Leaving implicationCuts, improved " << nTot << "bounds, "
-    << cs.sizeRowCuts()-origRowCutCnt << " row cuts, "
-    << cs.sizeColCuts()-origColCutCnt << " col cuts."
-    << std::endl ;
+  if (verbosity_ >= 3) {
+    std::cout << "    "
+      << "end implicationCuts, improved " << nTot << " bounds, "
+      << cs.sizeRowCuts()-origRowCutCnt << " row cuts, "
+      << cs.sizeColCuts()-origColCutCnt << " col cuts."
+      << std::endl ;
+  }
 # endif
 
   if (nTot)
@@ -453,12 +472,15 @@ void CglProbing::disaggCuts (
 		 int *const index, double *const element) const
 { 
 
-# if CGL_DEBUG > 1
-  assert((probeDir == probeDown) || (probeDir == probeUp)) ;
-  std::cout
-    << "Entering disaggCuts, "
-    << ((probeDir == probeDown)?"down":"up") << " probe on "
-    << "x<" << p << ">." << std::endl ;
+# if CGL_DEBUG > 0
+  if (paranoia_)
+    assert((probeDir == probeDown) || (probeDir == probeUp)) ;
+  if (verbosity_ >= 3) {
+    std::cout << "    "
+      << "start disaggCuts, "
+      << ((probeDir == probeDown)?"down":"up") << " probe on "
+      << "x<" << p << ">." << std::endl ;
+  }
   const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
   int cutsAtStart = rowCut.numberCuts() ;
 # endif
@@ -497,20 +519,22 @@ void CglProbing::disaggCuts (
   }
   deltaProbe_p = x_p-luPrime_p ;
 
-# if CGL_DEBUG > 2
-  if (probeDir == probeDown) {
+# if CGL_DEBUG > 0
+  if (verbosity_ >= 4) {
     const CglPhic::CglPhicBndPair &oldBnd_p = oldBnds[0] ;
+    if (probeDir == probeDown) {
+      std::cout
+	<< "  u<" << p << "> = " << oldBnd_p.ub_
+	<< " reduced to " << luPrime_p << "." << std::endl ;
+    } else {
+      std::cout
+	<< "  l<" << p << "> = " << oldBnd_p.lb_
+	<< " increased to " << luPrime_p << "." << std::endl ;
+    }
     std::cout
-      << "  u<" << p << "> = " << oldBnd_p.ub_
-      << " reduced to " << luPrime_p << "." << std::endl ;
-  } else {
-    std::cout
-      << "  l<" << p << "> = " << oldBnd_p.lb_
-      << " increased to " << luPrime_p << "." << std::endl ;
+      << "  x<" << p << "> = " << x_p << "; deltaProbe = "
+      << deltaProbe_p << std::endl ;
   }
-  std::cout
-    << "  x<" << p << "> = " << x_p << "; deltaProbe = "
-    << deltaProbe_p << std::endl ;
 # endif
 /*
   Change record 0 is the probing variable. Start with change record 1 for
@@ -544,21 +568,24 @@ void CglProbing::disaggCuts (
 	(x_t > uPrime_t-deltaProbe_p*a_p+primalTolerance_)) {
       double deltaCut_p = (uPrime_t-x_t)/a_p ;
       double effectiveness = plusMinus*(deltaProbe_p-deltaCut_p) ;
-#     if CGL_DEBUG > 2
-      std::cout
-	<< "    Generating upper disaggregation cut for x<"
-	<< t << "> (" << k << ")." << std::endl ;
-      std::cout
-	<< "    u<" << t << "> = " << u_t
-	<< " reduced to " << uPrime_t << "." << std::endl ;
-      std::cout
-	<< "    x<" << t << "> = " << x_t
-	<< " reduced to " << (uPrime_t-deltaProbe_p*a_p) << "." << std::endl ;
-      std::cout
-	<< "    x<" << p << "> = " << x_p
-	<< " changed to " << deltaCut_p+luPrime_p
-	<< "; effectiveness = " << effectiveness
-	<< "; required " << disaggEffectiveness << "." << std::endl ;
+#     if CGL_DEBUG > 0
+      if (verbosity_ >= 5) {
+	std::cout
+	  << "    Generating upper disaggregation cut for x<"
+	  << t << "> (" << k << ")." << std::endl ;
+	std::cout
+	  << "    u<" << t << "> = " << u_t
+	  << " decreased to " << uPrime_t << "." << std::endl ;
+	std::cout
+	  << "    x<" << t << "> = " << x_t
+	  << " decreased to " << (uPrime_t-deltaProbe_p*a_p)
+	  << "." << std::endl ;
+	std::cout
+	  << "    x<" << p << "> = " << x_p
+	  << " changed to " << deltaCut_p+luPrime_p
+	  << "; effectiveness = " << effectiveness
+	  << "; required " << disaggEffectiveness << "." << std::endl ;
+      }
 #     endif
       assert(effectiveness+primalTolerance_ > 0) ;
       if (effectiveness > disaggEffectiveness) {
@@ -571,9 +598,10 @@ void CglProbing::disaggCuts (
 	index[1] = p ;
 	element[1] = a_p ;
 	rc.setRow(2,index,element,false) ;
-#	if CGL_DEBUG > 1
+#	if CGL_DEBUG > 0
 	if (debugger) assert(!debugger->invalidCut(rc)); 
-	std::cout << "    Adding upper disaggregation cut." << std::endl ;
+	if (verbosity_ >= 4)
+	  std::cout << "    Adding upper disaggregation cut." << std::endl ;
 #	endif
 	rowCut.addCutIfNotDuplicate(rc) ;
       }
@@ -592,20 +620,23 @@ void CglProbing::disaggCuts (
       double deltaCut_p = (lPrime_t-x_t)/a_p ;
       double effectiveness = plusMinus*(deltaProbe_p-deltaCut_p) ;
 #     if CGL_DEBUG > 2
-      std::cout
-	<< "    Generating lower disaggregation cut for x<"
-	<< t << "> (" << k << ")." << std::endl ;
-      std::cout
-	<< "    l<" << t << "> = " << l_t
-	<< " increased to " << lPrime_t << "." << std::endl ;
-      std::cout
-	<< "    x<" << t << "> = " << x_t
-	<< " increased to " << (lPrime_t-deltaProbe_p*a_p) << "." << std::endl ;
-      std::cout
-	<< "    x<" << p << "> = " << x_p
-	<< " changed to " << deltaCut_p+luPrime_p
-	<< "; effectiveness = " << effectiveness
-	<< "; required " << disaggEffectiveness << "." << std::endl ;
+      if (verbosity_ >= 5) {
+	std::cout
+	  << "    Generating lower disaggregation cut for x<"
+	  << t << "> (" << k << ")." << std::endl ;
+	std::cout
+	  << "    l<" << t << "> = " << l_t
+	  << " increased to " << lPrime_t << "." << std::endl ;
+	std::cout
+	  << "    x<" << t << "> = " << x_t
+	  << " increased to " << (lPrime_t-deltaProbe_p*a_p)
+	  << "." << std::endl ;
+	std::cout
+	  << "    x<" << p << "> = " << x_p
+	  << " changed to " << deltaCut_p+luPrime_p
+	  << "; effectiveness = " << effectiveness
+	  << "; required " << disaggEffectiveness << "." << std::endl ;
+      }
 #     endif
       assert(effectiveness+primalTolerance_ > 0) ;
       if (effectiveness > disaggEffectiveness) {
@@ -620,18 +651,21 @@ void CglProbing::disaggCuts (
 	rc.setRow(2,index,element,false) ;
 #	if CGL_DEBUG > 1
 	if (debugger) assert(!debugger->invalidCut(rc)); 
-	std::cout << "    Adding lower disaggregation cut." << std::endl ;
+	if (verbosity_ >= 4)
+	  std::cout << "    Adding lower disaggregation cut." << std::endl ;
 #	endif
 	rowCut.addCutIfNotDuplicate(rc) ;
       }
     }
   }
 
-# if CGL_DEBUG > 1
-  std::cout << "Leaving disaggCuts" ;
-  if (rowCut.numberCuts() > cutsAtStart)
-    std::cout << ", " << rowCut.numberCuts()-cutsAtStart << " cuts" ;
-  std::cout << "." << std::endl ;
+# if CGL_DEBUG > 0
+  if (verbosity_ >= 3) {
+    std::cout << "    " << "end disaggCuts" ;
+    if (rowCut.numberCuts() > cutsAtStart)
+      std::cout << ", " << rowCut.numberCuts()-cutsAtStart << " cuts" ;
+    std::cout << "." << std::endl ;
+  }
 # endif
   return ;
 }
@@ -703,11 +737,13 @@ void CglProbing::strengthenCoeff (
 # if CGL_DEBUG > 0
   const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
 # endif
-# if CGL_DEBUG > 1
-  std::cout
-    << "Entering strengthenCoeff, probing "
-    << "x<" << p << "> "
-    << ((probeDir == probeDown)?"down":"up") << "." << std::endl ;
+# if CGL_DEBUG > 0
+  if (verbosity_ >= 3) {
+    std::cout << "    "
+      << "start strengthenCoeff, probing "
+      << "x<" << p << "> "
+      << ((probeDir == probeDown)?"down":"up") << "." << std::endl ;
+  }
   int newCuts = 0 ;
   int cutsAtStart = rowCut.numberCuts() ;
 # endif
@@ -856,7 +892,7 @@ void CglProbing::strengthenCoeff (
     if (!genCut) continue ;
 
 #   if CGL_DEBUG > 0
-    if (violation <= 0) {
+    if (violation <= 0 && paranoia_ > 0) {
       std::cout
         << "  NOT VIOLATED (strengthenCoeff): need " << needEffectiveness
         << ", violation " << violation ;
@@ -892,14 +928,16 @@ void CglProbing::strengthenCoeff (
     rc.setUb(biPrime) ;
     rc.setEffectiveness(effectiveness) ;
     rc.setRow(n,index,element,false) ;
-#   if CGL_DEBUG > 1
-    printf("Strengthen Cut:\n") ;
-    CglProbingDebug::dump_row(i,rc.lb(),rc.ub(),nan(""),nan(""),
-        &si,true,true,4,n,index,element,1.0e-10,colLower,colUpper) ;
-    printf("Original Row:\n") ;
-    int k = rowStart[i] ;
-    CglProbingDebug::dump_row(i,blowi,bi,Li,Ui,&si,true,true,4,rowLen[i],
-	&colIndices[k],&coeffs[k],1.0e-10,colLower,colUpper) ;
+#   if CGL_DEBUG > 0
+    if (verbosity_ >= 4) {
+      std::cout << "    " << "Strengthen Cut: " << std::endl ;
+      CglProbingDebug::dump_row(i,rc.lb(),rc.ub(),nan(""),nan(""),
+	  &si,true,true,4,n,index,element,1.0e-10,colLower,colUpper) ;
+      std::cout << "    " << "Original Row:" << std::endl ;
+      CoinBigIndex jj = rowStart[i] ;
+      CglProbingDebug::dump_row(i,blowi,bi,Li,Ui,&si,true,true,4,rowLen[i],
+	  &colIndices[jj],&coeffs[jj],1.0e-10,colLower,colUpper) ;
+    }
 #   endif
 #   if CGL_DEBUG > 0
     if (debugger) assert(!debugger->invalidCut(rc)); 
@@ -920,11 +958,13 @@ void CglProbing::strengthenCoeff (
       assert(realRow >= 0) ;
       rc.setWhichRow(realRow) ;
       if (!justReplace) {
-#       if CGL_DEBUG > 1
+#       if CGL_DEBUG > 0
+	if (verbosity_ >= 2) {
 	  std::cout
 	    << "    strengthen coeff cut on real row "
 	    << realRow << " added to cut collection." << std::endl ;
-	  newCuts++ ;
+	}
+	newCuts++ ;
 #       endif
 	rowCut.addCutIfNotDuplicate(rc) ;
       } else {
@@ -935,34 +975,40 @@ void CglProbing::strengthenCoeff (
 	    info->strengthenRow[realRow]->effectiveness() > effectiveness) {
 	  delete info->strengthenRow[realRow] ;
 	  rc.setEffectiveness(effectiveness) ;
-#         if CGL_DEBUG > 1
-	  std::cout
-	    << "    strengthen coeff on real row " << realRow
-	    << " will replace row, eff " << effectiveness << "."
-	    << std::endl ;
+#         if CGL_DEBUG > 0
+	  if (verbosity_ >= 2) {
+	    std::cout
+	      << "    strengthen coeff on real row " << realRow
+	      << " will replace row, eff " << effectiveness << "."
+	      << std::endl ;
+	  }
 	  newCuts++ ;
 #         endif
 	  info->strengthenRow[realRow] = rc.clone() ;
 	} else {
-#         if CGL_DEBUG > 1
+#         if CGL_DEBUG > 0
+	  if (verbosity_ >= 2) {
 	    std::cout
 	      << "    strengthen coeff cut on real row " << realRow
 	      << " rejected; eff " << effectiveness << " >  eff "
 	      << info->strengthenRow[realRow]->effectiveness()
 	      << " of incumbent." << std::endl ;
+	  }
 #         endif
 	}
       }
     }
 
-# if CGL_DEBUG > 1
-  int cutsAtEnd = rowCut.numberCuts() ;
-  int outplaceCuts = cutsAtEnd-cutsAtStart ;
-  int inplaceCuts = newCuts-outplaceCuts ;
-  std::cout << "Leaving strengthenCoeff" ;
-  if (newCuts > 0)
-    std::cout << ", " << newCuts << " cuts, " << inplaceCuts << " in place" ;
-  std::cout << "." << std::endl ;
+# if CGL_DEBUG > 0
+  if (verbosity_ >= 3) {
+    int cutsAtEnd = rowCut.numberCuts() ;
+    int outplaceCuts = cutsAtEnd-cutsAtStart ;
+    int inplaceCuts = newCuts-outplaceCuts ;
+    std::cout << "    " << "end strengthenCoeff" ;
+    if (newCuts > 0)
+      std::cout << ", " << newCuts << " cuts, " << inplaceCuts << " in place" ;
+    std::cout << "." << std::endl ;
+  }
 # endif
 
   return ;
@@ -1000,13 +1046,13 @@ bool CglProbing::monotoneActions (
   int anyColCuts = 0 ;
   int nTot = 0 ;
   int nFix = 0 ;
-# if CGL_DEBUG > 1
-  { const CglPhic::CglPhicBndPair &newBnd_p = varBndChgs[0] ;
+# if CGL_DEBUG > 0
+  if (verbosity_ >= 3) {
+    const CglPhic::CglPhicBndPair &newBnd_p = varBndChgs[0] ;
     const int &p = newBnd_p.ndx_ ;
-    std::cout << "Entering monotoneActions." ;
     std::cout
-      << std::endl
-      << "    " << " x(" << p << ") monotone ["
+      << "    " << "start monotoneActions; "
+      << "x<" << p << "> monotone ["
       << newBnd_p.lb_ << ", " << newBnd_p.ub_ 
       << "] from " << colsol[p] << "." << std::endl ;
   }
@@ -1032,11 +1078,13 @@ bool CglProbing::monotoneActions (
 	} else {
 	  ifCut = false ;
 	}
-#       if CGL_DEBUG > 1
-        std::cout
-	  << "    " << " x(" << j << ") ub " << ou_j << " ==> " << nu_j ;
-	if (ifCut) std::cout << " (cut)" ;
-	std::cout << "." << std::endl ;
+#       if CGL_DEBUG > 0
+	if (verbosity_ >= 4) {
+	  std::cout
+	    << "    " << " x<" << j << "> ub " << ou_j << " ==> " << nu_j ;
+	  if (ifCut) std::cout << " (cut)" ;
+	  std::cout << "." << std::endl ;
+	}
 #       endif
       }
     }
@@ -1062,11 +1110,13 @@ bool CglProbing::monotoneActions (
 	} else {
 	  ifCut = false ;
 	}
-#       if CGL_DEBUG > 1
-        std::cout
-	  << "    " << " x(" << j << ") lb " << ol_j << " ==> " << nl_j ;
-	if (ifCut) std::cout << " (cut)" ;
-	std::cout << "." << std::endl ;
+#       if CGL_DEBUG > 0
+	if (verbosity_ >= 4) {
+	  std::cout
+	    << "    " << " x<" << j << "> lb " << ol_j << " ==> " << nl_j ;
+	  if (ifCut) std::cout << " (cut)" ;
+	  std::cout << "." << std::endl ;
+	}
 #       endif
       }
     }
@@ -1082,18 +1132,21 @@ bool CglProbing::monotoneActions (
       cc.setEffectiveness(1.0e-5) ;
     }
 #   if CGL_DEBUG > 0
-    CglProbingDebug::checkBounds(si,cc) ;
+    if (paranoia_ > 0)
+      assert(CglProbingDebug::checkBounds(si,cc,verbosity_) == 0) ;
 #   endif
     cs.insert(cc) ;
   }
 
-# if CGL_DEBUG > 1
-  std::cout << "  Leaving monotoneActions" ;
-  if (nTot > 0)
-    std::cout << ", " << nTot << " monotone" ;
-  if (anyColCuts > 0)
-    std::cout << ", " << anyColCuts << " column cuts" ;
-  std::cout << "." << std::endl ;
+# if CGL_DEBUG > 0
+  if (verbosity_ >= 3) {
+    std::cout << "    " << "end monotoneActions" ;
+    if (nTot > 0)
+      std::cout << ", " << nTot << " monotone" ;
+    if (anyColCuts > 0)
+      std::cout << ", " << anyColCuts << " column cuts" ;
+    std::cout << "." << std::endl ;
+  }
 # endif
   return (anyColCuts > 0) ;
 }
@@ -1143,8 +1196,9 @@ void CglProbing::singletonRows (int jProbe, bool useObj,
 		    const OsiSolverInterface &si, CglPhic &phic, int numChgs,
 		    const CglPhic::CglPhicBndPair *const lhsBndChgs) const
 {
-# if CGL_DEBUG > 1
-  std::cout << "Entering singletonRows." << std::endl ;
+# if CGL_DEBUG > 0
+  if (verbosity_ >= 3)
+    std::cout << "    " << "start singletonRows." << std::endl ;
   int numSingletons = 0 ;
 # endif
 /*
@@ -1217,10 +1271,14 @@ void CglProbing::singletonRows (int jProbe, bool useObj,
       }
     }
     if (!canFix || !target) continue ;
-#   if CGL_DEBUG > 2
-    CglProbingDebug::dump_row(i,rowLower[i],rowUpper[i],minR[i],maxR[i],
-	&si,true,true,4,rowLens[i],&colIndices[rowStarts[i]],
-        &coeffs[rowStarts[i]],primalTolerance_,colLower,colUpper) ;
+#   if CGL_DEBUG > 0
+    if (verbosity_ >= 5) {
+      std::cout << "    " << "singleton row: " << std::endl ;
+      CglProbingDebug::dump_row(i,rowLower[i],rowUpper[i],
+	  phic.getRowLhsLB(i),phic.getRowLhsUB(i),
+	  &si,true,true,4,rowLens[i],&colIndices[rowStarts[i]],
+	  &coeffs[rowStarts[i]],primalTolerance_,colLower,colUpper) ;
+    }
 #   endif
 /*
   If we've passed the tests, we can look for variables suitable to drive to
@@ -1247,18 +1305,20 @@ void CglProbing::singletonRows (int jProbe, bool useObj,
 	    } else {
 	      phic.chgColBnd(j,'u',lj,feas) ;
 	    }
-#	    if CGL_DEBUG > 1
+#	    if CGL_DEBUG > 0
 	    numSingletons++ ;
-	    std::cout
-	      << "    row " << i << " uGap " << rowUpper[i] << "-"
-	      << Ui << " = " << uGap
-	      << " " << " x(" << j
-	      << ") c = " << c[j] << ", a = " << value ;
-	    if (colLower[j] == uj)
-	      std::cout << " l " << lj << " -> " << uj ;
-	    else
-	      std::cout << " u " << uj << " -> " << lj ;
-	    std::cout << std::endl ;
+	    if (verbosity_ >= 4) {
+	      std::cout
+		<< "    row " << i << " uGap " << rowUpper[i] << "-"
+		<< Ui << " = " << uGap
+		<< " " << " x(" << j
+		<< ") c = " << c[j] << ", a = " << value ;
+	      if (colLower[j] == uj)
+		std::cout << " l " << lj << " -> " << uj ;
+	      else
+		std::cout << " u " << uj << " -> " << lj ;
+	      std::cout << std::endl ;
+	    }
 #	    endif
 	    assert(feas) ;
 	  }
@@ -1286,18 +1346,20 @@ void CglProbing::singletonRows (int jProbe, bool useObj,
 	    } else {
 	      phic.chgColBnd(j,'u',lj,feas) ;
 	    }
-#	    if CGL_DEBUG > 1
+#	    if CGL_DEBUG > 0
 	    numSingletons++ ;
-	    std::cout
-	      << "    row " << i << " lGap " << Li << "-"
-	      << rowLower[i] << " = " << lGap
-	      << " " << " x(" << j
-	      << ") c = " << c[j] << ", a = " << value ;
-	    if (colLower[j] == uj)
-	      std::cout << " l " << lj << " -> " << uj ;
-	    else
-	      std::cout << " u " << uj << " -> " << lj ;
-	    std::cout << std::endl ;
+	    if (verbosity_ >= 4) {
+	      std::cout
+		<< "    row " << i << " lGap " << Li << "-"
+		<< rowLower[i] << " = " << lGap
+		<< " " << " x(" << j
+		<< ") c = " << c[j] << ", a = " << value ;
+	      if (colLower[j] == uj)
+		std::cout << " l " << lj << " -> " << uj ;
+	      else
+		std::cout << " u " << uj << " -> " << lj ;
+	      std::cout << std::endl ;
+	    }
 #	    endif
 	    assert(feas) ;
 	  }
@@ -1305,11 +1367,13 @@ void CglProbing::singletonRows (int jProbe, bool useObj,
       }
     }
   }
-# if CGL_DEBUG > 1
-  std::cout << "Leaving singletonRows" ;
-  if (numSingletons)
-    std::cout << ", found " << numSingletons << " singletons" ;
-  std::cout << "." << std::endl ;
+# if CGL_DEBUG > 0
+  if (verbosity_ >= 3) {
+    std::cout << "    " << "end singletonRows" ;
+    if (numSingletons)
+      std::cout << ", found " << numSingletons << " singletons" ;
+    std::cout << "." << std::endl ;
+  }
 # endif
   return ;
 }
@@ -1449,8 +1513,8 @@ bool CglProbing::probe (const OsiSolverInterface &si,
 # if CGL_DEBUG > 0
   int numberRowCutsBefore = cs.sizeRowCuts() ;
   int numberColCutsBefore = cs.sizeColCuts() ;
-  if (verbosity_ > 2) {
-    std::cout << "Entering CglProbing::probe." << std::endl ;
+  if (verbosity_ >= 3) {
+    std::cout << "  " << "start CglProbing::probe." << std::endl ;
   }
 # endif
 /*
@@ -1602,6 +1666,12 @@ bool CglProbing::probe (const OsiSolverInterface &si,
   CoinMemcpyN(si.getReducedCost(),nCols,djs) ;
   CoinMemcpyN(si.getColSolution(),nCols,colsol) ;
   double direction = si.getObjSense() ;
+# if CGL_DEBUG > 0
+  if (verbosity_ >= 3) {
+    std::cout
+      << "      " << "grooming solution and reduced costs." << std::endl ;
+  }
+# endif
   groomSoln(direction,primalTolerance_,nCols,djs,colLower,colsol,colUpper) ;
 /*
   jjf: If we are going to replace coefficient then we don't need to be
@@ -1941,16 +2011,16 @@ bool CglProbing::probe (const OsiSolverInterface &si,
 
 #       if CGL_DEBUG > 1
 	double solMovement ;
-	if (verbosity_ > 2) {
+	if (verbosity_ >= 3) {
 	  if (iWay == downIter) {
 	    solMovement = down-xj ;
 	    std::cout
-	      << "    down probe, old u " << colUpper[j]
+	      << "  down probe, old u " << colUpper[j]
 	      << ", new u " << colUpper[j]+movement ;
 	  } else {
 	    solMovement = xj-up ;
 	    std::cout
-	      << "    up probe, old l " << colLower[j]
+	      << "  up probe, old l " << colLower[j]
 	      << ", new l " << colLower[j]+movement ;
 	  }
 	  std::cout
@@ -2138,10 +2208,10 @@ bool CglProbing::probe (const OsiSolverInterface &si,
       }     // PROBE LOOP: END
     }    // LOOKEDAT LOOP: END
 #   if CGL_DEBUG > 0
-    if (verbosity_ > 1)
+    if (verbosity_ > 3)
       std::cout
 	<< "  probe: ending pass " << iPass
-	<< ", fixed " << nfixed << " probe vars." << std::endl ;
+	<< ", fixed " << nfixed << " variables." << std::endl ;
 #   endif
   }   // PASS LOOP: END
 /*
@@ -2193,45 +2263,48 @@ bool CglProbing::probe (const OsiSolverInterface &si,
 	assert(realRow >= 0 && realRow < si.getNumRows()) ;
 	OsiRowCut *cut = info->strengthenRow[realRow] ;
 	if (cut) {
-#         if CGL_DEBUG > 1
-	  std::cout
-	    << "    row " << realRow << " (local " << i
-	    << ") strengthened, effectiveness " << cut->effectiveness()
-	    << "." << std::endl ;
+#         if CGL_DEBUG > 0
+	  if (verbosity_ > 2) {
+	    std::cout
+	      << "    row " << realRow << " (local " << i
+	      << ") strengthened, effectiveness " << cut->effectiveness()
+	      << "." << std::endl ;
+	  }
 #         endif
 	}
       }
     }
   }
 # if CGL_DEBUG > 0
-  int numberRowCutsAfter = cs.sizeRowCuts() ;
-  int numberColCutsAfter = cs.sizeColCuts() ;
-  int inPlaceCuts = 0 ;
-  if (justReplace) {
-    for (int i = 0 ; i < nRows ; i++)
-      if (info->strengthenRow[i] != 0) inPlaceCuts++ ;
-  }
-
-  std::cout
-    << "Leaving CglProbing::probe, "
-    << ((overallFeasible)?"feasible":"infeasible")
-    << ", " << (numberRowCutsAfter-numberRowCutsBefore) << " row cuts, "
-    << inPlaceCuts << " inplace, "
-    << (numberColCutsAfter-numberColCutsBefore) << " col cuts."
-    << std::endl ;
- 
-  if ((numberRowCutsAfter-numberRowCutsBefore) > 0) {
-    std::cout << "  row cuts:" << std::endl ;
-    for (int k = numberRowCutsBefore ; k < numberRowCutsAfter ; k++) {
-      OsiRowCut thisCut = cs.rowCut(k) ;
-      thisCut.print() ;
+  if (verbosity_ >= 3) {
+    int numberRowCutsAfter = cs.sizeRowCuts() ;
+    int numberColCutsAfter = cs.sizeColCuts() ;
+    int inPlaceCuts = 0 ;
+    if (justReplace) {
+      for (int i = 0 ; i < nRows ; i++)
+	if (info->strengthenRow[i] != 0) inPlaceCuts++ ;
     }
-  }
-  if ((numberColCutsAfter-numberColCutsBefore) > 0) {
-    std::cout << "  col cuts:" << std::endl ;
-    for (int k = numberColCutsBefore ; k < numberColCutsAfter ; k++) {
-      OsiColCut thisCut = cs.colCut(k) ;
-      thisCut.print() ;
+    std::cout << "  "
+      << "end probe, "
+      << ((overallFeasible)?"feasible":"infeasible")
+      << ", " << (numberRowCutsAfter-numberRowCutsBefore) << " row cuts, "
+      << inPlaceCuts << " inplace, "
+      << (numberColCutsAfter-numberColCutsBefore) << " col cuts."
+      << std::endl ;
+   
+    if ((numberRowCutsAfter-numberRowCutsBefore) > 0) {
+      std::cout << "  row cuts:" << std::endl ;
+      for (int k = numberRowCutsBefore ; k < numberRowCutsAfter ; k++) {
+	OsiRowCut thisCut = cs.rowCut(k) ;
+	thisCut.print() ;
+      }
+    }
+    if ((numberColCutsAfter-numberColCutsBefore) > 0) {
+      std::cout << "  col cuts:" << std::endl ;
+      for (int k = numberColCutsBefore ; k < numberColCutsAfter ; k++) {
+	OsiColCut thisCut = cs.colCut(k) ;
+	thisCut.print() ;
+      }
     }
   }
 # endif

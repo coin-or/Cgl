@@ -19,7 +19,7 @@
   and nothing else. Values greater than zero enable debugging output, the
   methods declared below, and increasingly expensive checks.
 */
-#define CGL_DEBUG 2
+#define CGL_DEBUG 5
 
 #if defined(CGL_DEBUG)
 # ifdef NDEBUG
@@ -36,12 +36,27 @@
 
 namespace CglProbingDebug {
 
+/*! \brief Check for an active row cut debugger
+
+  If \p paranoia = 0, the call is a noop and returns 0. If \p paranoia > 0
+  the return value is
+    0: no debugger available
+    1: debugger active, not on optimal path
+    2: debugger active, on optimal path
+  If verbosity >= 1, you'll get a message for case 0. If verbosity >= 3, you'll
+  get a message for cases 1 and 2.
+*/
+int checkForRowCutDebugger(const OsiSolverInterface &si,
+			   int paranoia, int verbosity) ;
+
 /*! \brief Check column bounds against optimal solution
 
   Check the column bounds passed as parameters against the optimal solution
-  known to the debugger.
+  known to the debugger. \p Verbosity > 0 allows messages when there's a
+  violation. \p Verbosity = 4 prints a summary, 5 prints each check.
 */
-void checkBounds(const OsiSolverInterface &si, const OsiColCut &cut) ;
+int checkBounds(const OsiSolverInterface &si, const OsiColCut &cut,
+		int verbosity) ;
 
 /*! \brief Print a summary of the primal variables (bounds, value, solution)
 
