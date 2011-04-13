@@ -34,14 +34,14 @@ namespace {
 
   This value is used for coefficients, bounds, variable values, etc.
 */
-const double dfltZeroTol = 1.0e-12 ;
+const double dfltZeroTol = 1.0e-11 ;
 
 /* \brief Default feasibility tolerance
 
   This value is used when comparing constraint and variable bounds in
   feasibility tests.
 */
-const double dfltFeasTol = 1.0e-8 ;
+const double dfltFeasTol = 1.0e-7 ;
 
 // Default value for infinity
 const double dfltInfinity = COIN_DBL_MAX ;
@@ -51,7 +51,7 @@ const double dfltInfinity = COIN_DBL_MAX ;
   This value is used to determine if the change to a lhs bound is worth
   propagating.
 */
-const double dfltPropTol = 1.0e-8 ;
+const double dfltPropTol = 1.0e-6 ;
 
 /*! \brief Default revision limit for constraint lhs bounds
 
@@ -664,7 +664,6 @@ void CglPhic::recordLhsBndChg (int i, bool fullRecalc, char bnd,
   assert(bnd == 'L' || bnd == 'U' || bnd == 'B') ;
 
   const bool deltaL = (bnd == 'L') ;
-  const bool deltaU = !deltaL ;
 
   int chgNdx = lhsHasChanged_[i] ;
 /*
@@ -702,12 +701,17 @@ void CglPhic::recordLhsBndChg (int i, bool fullRecalc, char bnd,
       << "          " <<  "r(" << i << ") {" << chg.oL_ << "," << chg.oU_
       << "} " ;
     if (fullRecalc) std::cout << "*" ;
-    if (deltaL)
+    if (deltaL) {
       std::cout
 	<< "L #" << chg.revL_+1 << ": " << lhsL_[i] << " -> " << nbndi ;
-    else
+      if (!fullRecalc && nbndi.infCnt_ == 0)
+        std::cout << "  gap " << (nbndi.bnd_-rhsL_[i]) ;
+    } else {
       std::cout
 	<< "U #" << chg.revU_+1 << ": " << lhsU_[i] << " -> " << nbndi ;
+      if (!fullRecalc && nbndi.infCnt_ == 0)
+        std::cout << "  gap " << (rhsU_[i]-nbndi.bnd_) ;
+    }
     std::cout << std::endl ;
   }
   if (fullRecalc) {

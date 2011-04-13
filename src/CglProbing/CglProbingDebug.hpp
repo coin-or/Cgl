@@ -19,7 +19,7 @@
   and nothing else. Values greater than zero enable debugging output, the
   methods declared below, and increasingly expensive checks.
 */
-#define CGL_DEBUG 5
+#define CGL_DEBUG 0
 
 #if defined(CGL_DEBUG)
 # ifdef NDEBUG
@@ -62,11 +62,15 @@ int checkBounds(const OsiSolverInterface &si, const OsiColCut &cut,
 
   For each primal variable, print a line of the form
   \verbatim
-  name(index) <lower bound> <= <value> <= <upper bound>; opt = <optimal value>
+  x(index) lb <= x <= ub ; opt = x*
   \endverbatim
-  The optimal value is available only if a row cut debugger is active.
+  The optimal value is available only if a row cut debugger is active. When
+  the optimal solution is available, the method checks that
+  \verbatim
+  lb-tol < x* < ub+tol
+  \endverbatim
 */
-void dumpSoln (const OsiSolverInterface &si) ;
+void dumpSoln (const OsiSolverInterface &si, double tol) ;
 
 /*! \brief Print detailed information about a row
 

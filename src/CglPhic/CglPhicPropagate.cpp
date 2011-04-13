@@ -161,7 +161,7 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
 {
   assert(bnd == 'l' || bnd == 'u') ;
   assert(0 <= j && j < n_) ;
-  
+
   feas = true ;
 
   // Create separate deltal and deltau for readability.
@@ -231,10 +231,11 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
   * A simple change in a finite bound (incremental update unless full
     recalculation is required because we've reached the revision limit).
 
-  Avoid revising an unused bound, or triggering a full recalculation on
-  an unused bound (but accept that full recalculation currently does both
-  bounds).  A >= constraint (finite blow<i>) uses only U<i>, while a <=
-  constraint (finite b<i>) uses only L<i>. Range and equality use both.
+  A >= constraint (finite blow<i>) uses only U<i> in propagation, while a <=
+  constraint (finite b<i>) uses only L<i>. Range and equality use both. But
+  there are other uses where the bound not used in propagation is still
+  important. Both are calculated here, but the constraint will not be queued
+  for propagation unless the relevant bound is updated.
 
   Note that at most one bound revision block will execute.
 */
@@ -243,7 +244,7 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
     double deltaUi = 0.0 ;
     bool updatedLi = false ;
     bool updatedUi = false ;
-    if ((blowi > -infty_) && changeUi) {
+    if (changeUi) {
       if (!toFinite) {
 	if (newUi.infCnt_ == 0) {
 	  if (newUi.revs_ < revLimit_) {
@@ -282,7 +283,7 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
 	updatedUi = true ;
       }
     }
-    if ((bi < infty_) && changeLi) {
+    if (changeLi) {
       if (!toFinite) {
 	if (newLi.infCnt_ == 0) {
 	  if (newLi.revs_ < revLimit_) {
@@ -418,10 +419,11 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
       if (!feas) return ;
     }
 /*
-  Is this change worth propagating?
+  Is this change worth propagating? It has to be useful and large enough to
+  matter.
 */
     double metric = 0.0 ;
-    if (updatedUi) {
+    if ((blowi > -infty_) && updatedUi) {
       if (Ui.infCnt_ == 0) {
 	if  (toFinite) {
 	  addToPending(i,infty_,infty_) ;
@@ -431,7 +433,7 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
 	}
       }
     } else {
-      if (Li.infCnt_ == 0) {
+      if ((bi < infty_) && Li.infCnt_ == 0) {
 	if  (toFinite) {
 	  addToPending(i,infty_,infty_) ;
 	} else {
@@ -467,11 +469,11 @@ bool CglPhic::tightenVu (int t, double gap, double ait, double corr)
 */
   double n_ut = gap/ait+corr ;
   if (CoinAbs(n_ut) < zeroTol_) n_ut = 0 ;
-  n_ut = roundU(n_ut,zeroTol_) ;
+  n_ut = roundU(n_ut,10*zeroTol_) ;
 /*
   If this is an integer, we may be able to tighten further.
 */
-  if (intVar_[t]) n_ut = floor(n_ut) ;
+  if (intVar_[t]) n_ut = floor(n_ut+feasTol_) ;
 /*
   Did we make any progress? If so, check to see whether we're still feasible.
   If we're feasible, propagate the change.
@@ -517,11 +519,11 @@ bool CglPhic::tightenVl (int t, double gap, double ait, double corr)
 */
   double n_lt = gap/ait+corr ;
   if (CoinAbs(n_lt) < zeroTol_) n_lt = 0 ;
-  n_lt = roundL(n_lt,zeroTol_) ;
+  n_lt = roundL(n_lt,10*zeroTol_) ;
 /*
   If this is an integer, we may be able to tighten further.
 */
-  if (intVar_[t]) n_lt = ceil(n_lt) ;
+  if (intVar_[t]) n_lt = ceil(n_lt-feasTol_) ;
 /*
   Did we make any progress? If so, check to see whether we're still feasible.
   If we're feasible, propagate the change.

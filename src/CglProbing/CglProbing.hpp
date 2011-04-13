@@ -283,12 +283,15 @@ private:
   	       double *const lbs, double *const ubs) const ;
 
   /*! \brief Compare two sets of variable bound arrays and generate column
-  	     cuts.
+  	     cuts for any tightened bounds.
+
+    Returns the number of bounds tightened. Effectiveness is increased if any
+    of the new bounds cut off the current solution.
   */
-  void makeColCuts(int nCols, OsiCuts &cs, const char *const intVar,
-  		   const double *const origsol, 
-		   const double *const origlbs, const double *const origubs,
-		   const double *const newlbs, const double *const newubs) const ;
+  int makeColCuts(int nCols, OsiCuts &cs, const char *const intVar,
+  		  const double *const origsol, 
+		  const double *const origlbs, const double *const origubs,
+		  const double *const newlbs, const double *const newubs) const ;
 
   /*! \brief Create working row-major copy of constraint system.  */
 

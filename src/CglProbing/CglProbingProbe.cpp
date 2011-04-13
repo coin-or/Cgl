@@ -75,7 +75,8 @@ const unsigned int upIterFeas = 0x2 ;
 /*
   Calculate the change in objective due to bound changes that move a variable
   past the current solution (column cuts). Return true if column cuts are
-  present, as this affects the generation of other cuts.
+  present, as this affects the generation of other cuts. Note that the probe
+  variable (newBnds[0]) doesn't count in this determination.
 */
 bool calcObjChg (double &z, double feasTol,
 		 int bndLen, const CglPhic::CglPhicBndPair *const &newBnds,
@@ -84,8 +85,14 @@ bool calcObjChg (double &z, double feasTol,
 {
   bool colCuts = false ;
   double deltaz = 0 ;
+  const int &p = newBnds[0].ndx_ ;
+  if (newBnds[0].lb_-colsol[p] > feasTol) {
+    deltaz += (newBnds[0].lb_-colsol[p])*djs[p] ;
+  } else if (colsol[p]-newBnds[0].ub_ > feasTol) {
+    deltaz -= (colsol[p]-newBnds[0].ub_)*djs[p] ;
+  }
 
-  for (int k = 0 ; k < bndLen ; k++) {
+  for (int k = 1 ; k < bndLen ; k++) {
     const CglPhic::CglPhicBndPair &chgRec = newBnds[k] ;
     const int &j = chgRec.ndx_ ;
     const double &lj = chgRec.lb_ ;
@@ -96,11 +103,10 @@ bool calcObjChg (double &z, double feasTol,
       deltaz += (lj-solj)*djs[j] ;
     } else if (solj-uj > feasTol) {
       colCuts = true ;
-      deltaz += (solj-uj)*djs[j] ;
+      deltaz -= (solj-uj)*djs[j] ;
     }
   }
   z += deltaz ;
-
   return (colCuts) ;
 }
 
@@ -166,8 +172,9 @@ void groomSoln (double direction, double primalTolerance, int nCols,
   As with binary variables, form 2) are actual cuts; form 1) just amounts to
   a bound change.
 
-  1) is applied to all variables in the change record and consensus bounds
-  are installed for all. Only integer variables qualify for column cuts.
+  1) is applied to all variables (integer and continuous) in the change
+  record and consensus bounds are installed for all. Only integer variables
+  qualify for inclusion in a column cut.
 
   The method uses the probe index, p, to decide if it should generate form
   2) cuts. If p >= 0, it's assumed to be the index of a binary variable
@@ -178,6 +185,9 @@ void groomSoln (double direction, double primalTolerance, int nCols,
   bound improvements are written directly to colLower, colUpper, which implies
   that the row lhs bounds in the CglPhic object will need to be recalculated
   before any further propagation activity.
+
+  Clearly, if the only entry in either the up or down change record is the
+  probe variable, we aren't going to see any consensus.
 
   TODO: Check that the above comment is correct --- do improvements to
 	continuous bounds really propagate back to the caller?
@@ -218,11 +228,11 @@ int CglProbing::implicationCuts (int p, int n,
   }
 # endif
 /*
-  If there's exactly one down record and exactly one up record, we're looking
-  at the probe variable itself. Since there's clearly no consensus, we can
-  pack up and leave now while it's still uncomplicated.
+  If there's only one variable in either the up or down records, it's the
+  probe variable and we aren't going to see any consensus bounds. Bail out now
+  while it's still uncomplicated.
 */
-  if (numDnProbeBnds == 1 && numUpProbeBnds == 1) {
+  if (numDnProbeBnds == 1 || numUpProbeBnds == 1) {
 #   if CGL_DEBUG > 0
     if (verbosity_ >= 3)
       std::cout << "    " << "end implicationCuts; trivial." << std::endl ;
@@ -481,9 +491,11 @@ void CglProbing::disaggCuts (
       << ((probeDir == probeDown)?"down":"up") << " probe on "
       << "x<" << p << ">." << std::endl ;
   }
+
   const OsiRowCutDebugger *debugger = si.getRowCutDebugger() ;
   int cutsAtStart = rowCut.numberCuts() ;
 # endif
+
 
 /*
   The change record for the probe variable should be the first entry in the
@@ -667,6 +679,7 @@ void CglProbing::disaggCuts (
     std::cout << "." << std::endl ;
   }
 # endif
+
   return ;
 }
 
@@ -742,7 +755,9 @@ void CglProbing::strengthenCoeff (
     std::cout << "    "
       << "start strengthenCoeff, probing "
       << "x<" << p << "> "
-      << ((probeDir == probeDown)?"down":"up") << "." << std::endl ;
+      << ((probeDir == probeDown)?"down":"up")
+      << "; " << numVarChgs << " vars, "
+      << numLhsChgs << " cons." << std::endl ;
   }
   int newCuts = 0 ;
   int cutsAtStart = rowCut.numberCuts() ;
@@ -766,7 +781,7 @@ void CglProbing::strengthenCoeff (
   const CoinPackedMatrix *colCopyUnused = 0 ;
   const double *rowUpper = 0 ;
   const double *rowLower = 0 ;
-  phic.getSystem(rowCopy,colCopyUnused,rowUpper,rowLower) ;
+  phic.getSystem(rowCopy,colCopyUnused,rowLower,rowUpper) ;
   const CoinBigIndex *rowStart = rowCopy->getVectorStarts() ;
   const int *rowLen = rowCopy->getVectorLengths() ;
   const int *colIndices = rowCopy->getIndices() ;
@@ -797,6 +812,13 @@ void CglProbing::strengthenCoeff (
     const double lGap = blowi-Li ;
     bool useableUGap = ((uGap > primalTolerance_) && (uGap < bigCoeff)) ;
     bool useableLGap = ((-lGap > primalTolerance_) && (-lGap < bigCoeff)) ;
+#   if CGL_DEBUG > 0
+    if (verbosity_ >= 5)
+      std::cout
+        << "          " << "r(" << i << ") uGap " << uGap << " "
+	<< ((useableUGap)?"useable":"unuseable") << "; lGap " << lGap << " "
+	<< ((useableUGap)?"useable":"unuseable") << "." << std::endl ;
+#   endif
     if (!(useableUGap || useableLGap)) continue ;
     bool isRangeCon = ((blowi  > -rhsInf) && (bi < rhsInf)) ;
     if (isRangeCon && justReplace) continue ;
@@ -1888,7 +1910,7 @@ bool CglProbing::probe (const OsiSolverInterface &si,
 #     if CGL_DEBUG > 0
       if (verbosity_ > 2) {
 	std::cout
-	  << "  probe: looking at " << " x(" << j << ") = " << xj
+	  << "  probe: looking at " << " x<" << j << "> = " << xj
 	  << ", l = " << lj << ", u = " << uj << "." << std::endl ;
 	if ((xj > uj+tolerance) || (xj < lj-tolerance))
 	  std::cout << "    discard; out-of-bound." << std::endl ;
@@ -1950,7 +1972,10 @@ bool CglProbing::probe (const OsiSolverInterface &si,
           { downIterFeas, upIterFeas } ;
       unsigned int feasRecord = 0 ;
       bool probeFeasible = true ;
-      if (recalcRowLhsBnds) phic.initLhsBnds() ;
+      if (recalcRowLhsBnds) {
+        phic.initLhsBnds() ;
+	recalcRowLhsBnds = false ;
+      }
 /*
   PROBE LOOP: HEAD
 
@@ -2029,10 +2054,9 @@ bool CglProbing::probe (const OsiSolverInterface &si,
 	}
 #       endif
 /*
-  Now that we know what we're doing, update kick off the propagation by
-  pushing the probe's bound change and propagate. If we're still feasible at
-  the end of propagation, acquire the variable bound changes and adjust the
-  objective.
+  Now that we know what we're doing, push the probe's bound change and
+  propagate. If we're still feasible at the end of propagation, acquire
+  the variable bound changes and adjust the objective.
 */
 	if (iWay == downIter)
 	  phic.chgColBnd(j,'u',down,probeFeasible) ;
@@ -2065,6 +2089,13 @@ bool CglProbing::probe (const OsiSolverInterface &si,
 				  numVarBndChgs,varBndChgs,colsol,djs) ;
 	  if (doSingletons || (doCoeffStrengthen && !anyColCuts))
 	    numRowLhsBndChgs = phic.getRowLhsBndChgs(&rowLhsBndChgs,0) ;
+#         if CGL_DEBUG > 0
+	  if (verbosity_ > 2) {
+	    std::cout << "    " << "probe feasible" ;
+	    if (anyColCuts) std::cout << "; cuts off solution" ;
+	    std::cout << "." << std::endl ;
+	  }
+#         endif
 	}
 /*
   PROBE LOOP: INFEASIBILITY
@@ -2076,7 +2107,7 @@ bool CglProbing::probe (const OsiSolverInterface &si,
   the maximum.
 */
 	if (!probeFeasible || (useCutoff && (objVal > cutoff))) {
-#	  if CGL_DEBUG > 1
+#	  if CGL_DEBUG > 0
 	  if (verbosity_ > 2) {
 	    std::cout
 	      << "    " << ((way[iWay] == probeDown)?"down":"up")
@@ -2086,7 +2117,9 @@ bool CglProbing::probe (const OsiSolverInterface &si,
 	    else if (!probeFeasible)
 	      std::cout << "primal bounds" ;
 	    else
-	      std::cout << "objective cutoff" ;
+	      std::cout
+	        << "objective cutoff, z = " << objVal << ", cutoff "
+		<< cutoff  ;
 	    std::cout << "." << std::endl ;
 	  }
 #	  endif
@@ -2154,17 +2187,14 @@ bool CglProbing::probe (const OsiSolverInterface &si,
 
         if (feasRecord != (downIterFeas|upIterFeas)) {
           nfixed++ ;
-	  int numColCuts = 0 ;
 	  if (feasRecord == downIterFeas) {
 	    phic.revert(true,false) ;
 	    phic.editColBnds(numVarBndChgsDown,varBndChgsDown) ;
-	    numColCuts = monotoneActions(si,cs,intVar,
-					 numVarBndChgsDown,varBndChgsDown,
-					 origBndsDown,colsol,index,element) ;
-	    if (numColCuts) recalcRowLhsBnds = true ;
+	    monotoneActions(si,cs,intVar,numVarBndChgsDown,varBndChgsDown,
+			    origBndsDown,colsol,index,element) ;
+	    recalcRowLhsBnds = true ;
 	  } else {
-	    monotoneActions(si,cs,intVar,
-			    numVarBndChgs,varBndChgs,
+	    monotoneActions(si,cs,intVar,numVarBndChgs,varBndChgs,
 			    origBnds,colsol,index,element) ;
 	  }
 	  phic.clearPropagation() ;

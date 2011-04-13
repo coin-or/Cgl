@@ -34,6 +34,10 @@ int nPath = 0 ;
 
 /*
   Check for the presence of an active row cut debugger.
+  Returns:
+    0: debugger does not exist
+    1: debugger exists but we're not on the optimal path
+    2: debugger exists and we're on the optimal path
 */
 int checkForRowCutDebugger (const OsiSolverInterface &si,
 			    int paranoia, int verbosity)
@@ -153,8 +157,11 @@ void dump_row (int i, double rhsLow, double rhsHi, double lhsLow, double lhsHi,
   std::cout
     << std::setw(indent) << " "
     << rhsLow << " <= " << lhsLow << " <= " ;
-  if (si)
-  { std::cout << si->getRowName(i) << " " ; }
+  if (si) {
+    std::cout << si->getRowName(i) << " " ;
+  } else {
+    std::cout << "r" ;
+  }
   std::cout << "(" << i << ") <= " << lhsHi << " <= " << rhsHi ;
 /*
   If rowLen is 0 but one of fixed or unfixed is true, warn the user (who
@@ -244,10 +251,15 @@ void dump_row (int i, double rhsLow, double rhsHi, double lhsLow, double lhsHi,
   return ; }
 
 /*
-  Debugging utility to dump the current solution and the optimal solution (if
-  available).
+  Debugging utility to dump the current solution and the optimal solution
+  (if available). If the optimal solution is available, the method will
+  check that the bounds held in the solver admit the optimal solution. Tol
+  is the feasibility tolerance for the test.
+
+  The row cut debugger does similar tests, but with hardwired tolerances, and
+  it only inspects integer variables.
 */
-void dumpSoln (const OsiSolverInterface &si)
+void dumpSoln (const OsiSolverInterface &si, double tol)
 {
   const OsiRowCutDebugger *debugger = si.getRowCutDebuggerAlways() ;
   const double *xopt = 0 ;
@@ -264,19 +276,37 @@ void dumpSoln (const OsiSolverInterface &si)
 
   std::cout << "  " << "Solution:" << std::endl ;
   for (int j = 0 ; j < n ; j++) {
-    std::cout
-      << "      " << "x<" << j << ">: " 
-      << lbs[j] << " <= " << x[j] << " <= " << ubs[j] ;
+
+    const double &xj = x[j] ;
+    const double &lj = lbs[j] ;
+    const double &uj = ubs[j] ;
+    const double &cj = c[j] ;
+    double xoptj = 0.0 ;
+    double lbviolj = 0.0 ;
+    double ubviolj = 0.0 ;
     if (xopt) {
-      std::cout << "; x* = " << xopt[j] ;
+      xoptj = xopt[j] ;
+      lbviolj = lj-xoptj ;
+      ubviolj = xoptj-uj ;
     }
-    z += x[j]*c[j] ;
+
+    // Uninteresting zero -- no need to do more.
+    if (xj == 0.0 && xoptj == 0.0 &&
+        lbviolj <= tol && ubviolj <= tol) continue ;
+
+    std::cout
+      << "      "
+      << "x<" << j << ">: " << lj << " <= " << xj << " <= " << uj ;
+    if (lj-uj > tol)
+      std::cout << "; infeasible by " << (lj-uj) ;
+    z += xj*cj ;
     if (xopt) {
-      zopt += xopt[j]*c[j] ;
-      if (lbs[j]-xopt[j] > 1.0e-8)
-        std::cout << "; lb violation " << lbs[j]-xopt[j] ;
-      if (xopt[j]-ubs[j] > 1.0e-8)
-        std::cout << "; ub violation " << xopt[j]-ubs[j] ;
+      std::cout << "; x* = " << xoptj ;
+      if (lbviolj > tol)
+        std::cout << "; lb violation " << lbviolj ;
+      if (ubviolj > tol)
+        std::cout << "; ub violation " << ubviolj ;
+      zopt += xoptj*cj ;
     }
     std::cout << "." << std::endl ;
   }
