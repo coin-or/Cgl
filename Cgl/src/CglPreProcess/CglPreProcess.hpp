@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "CoinFinite.hpp"
 #include "CoinMessageHandler.hpp"
 #include "OsiSolverInterface.hpp"
 #include "CglStored.hpp"

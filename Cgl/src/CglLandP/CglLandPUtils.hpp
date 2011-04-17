@@ -13,9 +13,11 @@
 #define CglLandPUtils_H
 #include "CglLandPTabRow.hpp"
 
+class CoinRelFltEq;
 class OsiRowCut;
 class OsiCuts;
 #include <vector>
+#include <cmath>
 
 namespace LAP
 {
@@ -60,7 +62,7 @@ struct Cuts
     {
     }
     /** Puts all the cuts into an OsiCuts */
-    int insertAll(OsiCuts & cs, CoinRelFltEq eq);
+    int insertAll(OsiCuts & cs, CoinRelFltEq& eq);
     /** Destructor.*/
     ~Cuts() {}
     /** Access to row cut indexed by i*/

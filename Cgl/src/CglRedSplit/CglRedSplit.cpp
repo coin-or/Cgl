@@ -11,10 +11,6 @@
 // Copyright (C) 2005, Francois Margot and others.  All Rights Reserved.
 // This code is licensed under the terms of the Eclipse Public License (EPL).
 
-#if defined(_MSC_VER)
-// Turn off compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
@@ -28,6 +24,7 @@
 
 #include "OsiSolverInterface.hpp"
 
+#include "CoinPragma.hpp"
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedVector.hpp"
 #include "CoinPackedMatrix.hpp"
@@ -1370,7 +1367,11 @@ void CglRedSplit::generateCuts(OsiCuts &cs)
     new_mTab = static_cast<int> (sqrt(param.getMaxTab()/card_contNonBasicVar));
   }
   else {
-    new_mTab = static_cast<int> (CoinCbrt(param.getMaxTab()));
+#if defined(_MSC_VER)
+    new_mTab = static_cast<int> (pow(param.getMaxTab(), 1./3.));
+#else
+    new_mTab = static_cast<int> (cbrt(param.getMaxTab()));
+#endif
   }
 
   if(new_mTab == 0) {

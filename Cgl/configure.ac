@@ -90,6 +90,14 @@ AC_COIN_CHECK_PACKAGE(OsiDyLP, [osi-dylp])
 #AC_COIN_CHECK_PACKAGE(OsiSpx,  [osi-soplex])
 
 #############################################################################
+#                  System header                                            #
+#############################################################################
+
+AC_COIN_CHECK_CXX_CHEADER(math)
+AC_COIN_CHECK_CXX_CHEADER(float)
+AC_COIN_CHECK_CXX_CHEADER(ieeefp)
+
+#############################################################################
 #                   Determine list of all Cgl subprojects                   #
 #############################################################################
 

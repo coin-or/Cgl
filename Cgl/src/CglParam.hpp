@@ -13,6 +13,7 @@
 
 #ifndef CglParam_H
 #define CglParam_H
+#include "CglConfig.h"
 #include "CoinFinite.hpp"
 /** Class collecting parameters for all cut generators. Each generator
     may have a derived class to add parameters. Each generator might
@@ -49,7 +50,7 @@ public:
   /**@name Constructors and destructors */
   //@{
   /// Default constructor 
-  CglParam(const double inf = DBL_MAX, const double eps = 1e-6, 
+  CglParam(const double inf = COIN_DBL_MAX, const double eps = 1e-6,
 	   const double eps_c = 1e-5, const int max_s = COIN_INT_MAX);
  
   /// Copy constructor 
