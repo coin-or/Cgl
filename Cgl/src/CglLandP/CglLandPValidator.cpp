@@ -12,6 +12,14 @@
 #include "CoinPackedMatrix.hpp"
 #include "OsiRowCut.hpp"
 
+#ifdef HAVE_CMATH
+# include <cmath>
+#else
+# ifdef HAVE_MATH_H
+#  include <math.h>
+# endif
+#endif
+
 
 namespace LAP
 {
