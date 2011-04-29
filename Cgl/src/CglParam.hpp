@@ -73,7 +73,7 @@ protected:
   /**@name Protected member data */
 
   //@{
-  // Value for infinity. Default: DBL_MAX. 
+  // Value for infinity. Default: COIN_DBL_MAX.
   double INFINIT;
 
   // EPSILON for double comparisons. Default: 1e-6.

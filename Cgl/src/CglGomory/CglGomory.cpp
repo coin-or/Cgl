@@ -443,7 +443,7 @@ CglGomory::generateCuts(
     printf("condition %g\n",relaxation);
 #endif
   relaxation *= conditionNumberMultiplier_;
-  double bounds[2]={-DBL_MAX,0.0};
+  double bounds[2]={-COIN_DBL_MAX,0.0};
   int iColumn,iRow;
 
   const int * column = rowCopy.getIndices();

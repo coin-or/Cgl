@@ -239,7 +239,7 @@ CglKnapsackCoverUnitTest(
     double sampleElems[sampleSize]={1.0, -1.0, -1.0};
     OsiRowCut sampleRowCut;
     sampleRowCut.setRow(sampleSize,sampleCols,sampleElems);
-    sampleRowCut.setLb(-DBL_MAX);
+    sampleRowCut.setLb(-COIN_DBL_MAX);
     sampleRowCut.setUb(-1.0);
     
     // test for 'close enough'
@@ -452,7 +452,7 @@ CglKnapsackCoverUnitTest(
       int sampleCols[sampleSize]={0,1,2,3,4,5};
       double sampleElems[sampleSize]={1.0,1.0,1.0,0.25,1.0,2.0};
       sampleRowCut.setRow(sampleSize,sampleCols,sampleElems);
-      sampleRowCut.setLb(-DBL_MAX);
+      sampleRowCut.setLb(-COIN_DBL_MAX);
       sampleRowCut.setUb(3.0);
       assert(testRowPV.isEquivalent(sampleRowCut.row(),CoinRelFltEq(1.0e-05)));
     }

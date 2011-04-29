@@ -2229,8 +2229,8 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
     int bestDirection = 0;
     int bestGammaSign = 0;
 
-    double bestSigma = DBL_MAX;
-    double bestRc = DBL_MAX;
+    double bestSigma = COIN_DBL_MAX;
+    double bestRc = COIN_DBL_MAX;
     //now scan the heap
     int best_l = 0;
     int notImproved = 0;
@@ -2375,7 +2375,10 @@ CglLandPSimplex::computeCglpObjective(double gamma, bool strengthen, TabRow & ne
     int * indices = newRow.getIndices();
     int k = 0;
     {
-        if (col_in_subspace[basics_[row_i_.num]]==false) DblEqAssert(0.,1.);
+        if (col_in_subspace[basics_[row_i_.num]]==false)
+          {
+            DblEqAssert(0.,1.);
+          }
         double & val = newRow[ basics_[row_i_.num]] = gamma;//newRowCoefficient(basics_[row_i_.num], gamma);
         indices[k++] = basics_[row_i_.num];
         if (strengthen && row_i_.num < ncols_orig_ && isInteger(row_i_.num))
@@ -2563,7 +2566,7 @@ CglLandPSimplex::createIntersectionCut(TabRow & row, OsiRowCut &cut) const
 
     //  return ;
 
-    cut.setUb(DBL_MAX);
+    cut.setUb(COIN_DBL_MAX);
     double * vec = new double[ncols_orig_+ nrows_orig_ ];
     CoinFillN(vec, ncols_orig_ + nrows_orig_, 0.);
     double infty = si_->getInfinity();
@@ -2695,7 +2698,7 @@ CglLandPSimplex::createMIG( TabRow &row, OsiRowCut &cut) const
         //double scaleFactor = normalizationFactor(row);
         row.rhs = f_0;
 
-        cut.setUb(DBL_MAX);
+        cut.setUb(COIN_DBL_MAX);
         double * vec = new double[ncols_orig_ + nrows_orig_];
         CoinFillN(vec, ncols_orig_ + nrows_orig_, 0.);
         //f_0 = row.rhs - floor(row.rhs);

@@ -1651,7 +1651,7 @@ CglTreeProbingInfo::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	  // infeasible!
 	  // generate infeasible cut and return
 	  OsiRowCut rc;
-	  rc.setLb(DBL_MAX);
+	  rc.setLb(COIN_DBL_MAX);
 	  rc.setUb(0.0);   
 	  cs.insert(rc);
 	  //printf("IMPINFEAS!\n");
@@ -1686,7 +1686,7 @@ CglTreeProbingInfo::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	  // infeasible!
 	  // generate infeasible cut and return
 	  OsiRowCut rc;
-	  rc.setLb(DBL_MAX);
+	  rc.setLb(COIN_DBL_MAX);
 	  rc.setUb(0.0);   
 	  cs.insert(rc);
 	  //printf("IMPINFEAS!\n");
@@ -1715,7 +1715,7 @@ CglTreeProbingInfo::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       // infeasible!
       // generate infeasible cut
       OsiRowCut rc;
-      rc.setLb(DBL_MAX);
+      rc.setLb(COIN_DBL_MAX);
       rc.setUb(0.0);   
       cs.insert(rc);
       //printf("IMPINFEAS!\n");

@@ -96,7 +96,7 @@ CglSimpleRoundingUnitTest(
     double solCoefs[solSize]={5.0, 4.0};
     OsiRowCut solRowCut;
     solRowCut.setRow(solSize,solCols,solCoefs);
-    solRowCut.setLb(-DBL_MAX);
+    solRowCut.setLb(-COIN_DBL_MAX);
     solRowCut.setUb(2.0);
 
     // Test for equality between the derived cut and the solution cut
