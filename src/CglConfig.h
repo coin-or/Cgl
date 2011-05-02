@@ -23,6 +23,20 @@
 #ifdef HAVE_CONFIG_H
 #include "config_cgl.h"
 
+/*
+  Used to come from CoinUtils, but no more. Seems pointless that individual
+  Cgl's should need to repeat this logic.
+*/
+#ifdef HAVE_CMATH 
+# include <cmath> 
+#else
+# ifdef HAVE_MATH.H
+#   include <math.h>
+# else
+#   error "No header file for math!"
+# endif
+#endif
+
 /* undefine macros that could conflict with those in other config.h
    files */
 #undef PACKAGE

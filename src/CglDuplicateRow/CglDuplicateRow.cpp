@@ -814,7 +814,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
 		       i,k,check2[columnB1]);
 	      OsiRowCut rc;
 	      rc.setLb(2.0);
-	      rc.setUb(DBL_MAX);   
+	      rc.setUb(COIN_DBL_MAX);   
 	      int index[3];
 	      double element[3]={1.0,1.0,1.0};
 	      index[0]=column0;
@@ -872,7 +872,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
   if (infeasible) {
     // generate infeasible cut and return
     OsiRowCut rc;
-    rc.setLb(DBL_MAX);
+    rc.setLb(COIN_DBL_MAX);
     rc.setUb(0.0);   
     cs.insert(rc);
   }
@@ -2262,7 +2262,7 @@ void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
     // generate infeasible cut and return
     printf("QQ**** infeasible cut\n");
     OsiRowCut rc;
-    rc.setLb(DBL_MAX);
+    rc.setLb(COIN_DBL_MAX);
     rc.setUb(0.0);   
     cs.insert(rc);
   }
@@ -3109,7 +3109,7 @@ void CglDuplicateRow::generateCuts8(const OsiSolverInterface & si, OsiCuts & cs,
     // generate infeasible cut and return
     printf("QQ**** infeasible cut\n");
     OsiRowCut rc;
-    rc.setLb(DBL_MAX);
+    rc.setLb(COIN_DBL_MAX);
     rc.setUb(0.0);   
     cs.insert(rc);
   }

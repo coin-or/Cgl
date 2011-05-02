@@ -15,6 +15,9 @@
 #  pragma warning(disable:4786)
 #endif
 
+#include "CglConfig.h"
+
+#include "CoinFinite.hpp"
 #include "CoinHelperFunctions.hpp"
 #include "CglPhic.hpp"
 

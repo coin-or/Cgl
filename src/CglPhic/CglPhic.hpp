@@ -199,7 +199,7 @@ public:
   */
   void getRowLhsBnds(double *&lhsLower, double *&lhsUpper) const ;
 
-  /*! \brief Retrieve variable bound changes as packed vectors
+  /*! \brief Retrieve constraint lhs bound changes as packed vectors
 
     As with #getRowLhsBnds, there's a loss of information.
   */

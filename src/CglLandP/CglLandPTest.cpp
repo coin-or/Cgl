@@ -38,8 +38,8 @@ CglLandPUnitTest(
         assert(aGenerator.parameter().degeneratePivotLimit==0);
         assert(eq(aGenerator.parameter().pivotTol, 1e-04));
         assert(eq(aGenerator.parameter().away, 5e-04));
-        assert(eq(aGenerator.parameter().timeLimit, DBL_MAX));
-        assert(eq(aGenerator.parameter().singleCutTimeLimit, DBL_MAX));
+        assert(eq(aGenerator.parameter().timeLimit, COIN_DBL_MAX));
+        assert(eq(aGenerator.parameter().singleCutTimeLimit, COIN_DBL_MAX));
         assert(aGenerator.parameter().useTableauRow==true);
         assert(aGenerator.parameter().modularize==false);
         assert(aGenerator.parameter().strengthen==true);
@@ -127,7 +127,8 @@ CglLandPUnitTest(
             double elements[8] = {2.0,-2.0,7.0,-7.0,2.0,2.0,4.0,4.0};
             CoinPackedMatrix  columnCopy(true,4,2,8,elements,rows,start,length);
 
-            double rowLower[4]={-DBL_MAX,-DBL_MAX,-DBL_MAX,-DBL_MAX};
+            double rowLower[4]={-COIN_DBL_MAX,-COIN_DBL_MAX,
+                                -COIN_DBL_MAX,-COIN_DBL_MAX};
             double rowUpper[4]={3.,1.,8.,1.};
             double colLower[2]={0.0,0.0};
             double colUpper[2]={1.0,1.0};

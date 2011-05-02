@@ -2062,7 +2062,15 @@ bool CglProbing::probe (const OsiSolverInterface &si,
 	  phic.chgColBnd(j,'u',down,probeFeasible) ;
 	else
 	  phic.chgColBnd(j,'l',up,probeFeasible) ;
-        phic.propagate(probeFeasible) ;
+	if (probeFeasible) {
+	  phic.propagate(probeFeasible) ;
+	} else {
+	  if (verbosity_ >= 3) {
+	  std::cout
+	    << "      " << "lost feasibility propagating probe."
+	    << std::endl ;
+	  }
+	}
 /*
   Whether we're feasible or not, we don't need these any longer.
 */

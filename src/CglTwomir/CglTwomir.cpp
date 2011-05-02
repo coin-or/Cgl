@@ -225,7 +225,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	}
 	if (largest<5.0e9*smallest&&goodCut) {
 	  rowcut.setRow(number, cutIndex, packed);
-	  rowcut.setUb(DBL_MAX);
+	  rowcut.setUb(COIN_DBL_MAX);
 	  rowcut.setLb(rhs);
 	  cs.insert(rowcut);
 	}
@@ -473,16 +473,16 @@ DGG_data_t* DGG_getData(const void *osi_ptr )
         DGG_setEqualityConstraint(data,j);
       
       /* check if the row is bounded above/below and define variable bounds */
-      if ( rowUpper[i] < DBL_MAX )
+      if ( rowUpper[i] < COIN_DBL_MAX )
         DGG_setIsConstraintBoundedAbove(data,j);
-      if ( rowLower[i] > -1*DBL_MAX )
+      if ( rowLower[i] > -1*COIN_DBL_MAX )
         DGG_setIsConstraintBoundedBelow(data,j);
 
       data->lb[j] = 0.0;
       if (DGG_isConstraintBoundedAbove(data,j) && DGG_isConstraintBoundedBelow(data,j)) 
           data->ub[j] = rowUpper[i] - rowLower[i];
       else
-          data->ub[j] = UB_MAX;
+          data->ub[j] = COIN_DBL_MAX;
 
       /* compute row activity. for this we need to go to the row in question,
          and multiply all the coefficients times their respective variables.
@@ -1073,7 +1073,7 @@ int DGG_nicefyConstraint( const void * /*solver_ptr*/,
 													
 {
   
-  double min_coef = DBL_MAX, max_coef = DBL_MIN;
+  double min_coef = COIN_DBL_MAX, max_coef = COIN_DBL_MIN;
   
   DGG_TEST(cut->sense == 'L', 1, "can't nicefy an L constraint");
   
@@ -1474,7 +1474,7 @@ DGG_add2stepToList ( DGG_constraint_t *base, char *isint, double * /*x*/,
   double rc_val, best_rc_val,  best_rc_alpha=-1.0;
   double vht, bht, alpha;
   
-  best_rc_val = best_norm_val = DBL_MAX;
+  best_rc_val = best_norm_val = COIN_DBL_MAX;
   
   bht = ABOV(base->rhs);
 
@@ -1502,7 +1502,7 @@ DGG_add2stepToList ( DGG_constraint_t *base, char *isint, double * /*x*/,
     rval = DGG_build2step(alpha, isint, base, &cut);
     DGG_CHECKRVAL(rval, rval);
 
-    rc_val = DBL_MAX; // this gives a lower bound on obj. fn. improvement
+    rc_val = COIN_DBL_MAX; // this gives a lower bound on obj. fn. improvement
 
     for(i=0; i<cut->nz; i++) if(cut->coeff[i]> 1E-6){
       rc_val = CoinMin(rc_val, fabs(rc[i])/cut->coeff[i]);

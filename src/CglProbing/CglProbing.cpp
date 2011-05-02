@@ -1425,7 +1425,8 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 */
   CglPhic phic(rowCopy,columnCopy,rowLower,rowUpper) ;
   phic.setVerbosity(verbosity_) ;
-  phic.setParanoia(3) ;
+  phic.setParanoia(0) ;
+  phic.setPropTol(10) ;
   phic.loanColBnds(colLower,colUpper) ;
   phic.loanColType(intVar) ;
   phic.initLhsBnds() ;

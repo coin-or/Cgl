@@ -23,6 +23,9 @@
 #  pragma warning(disable:4786)
 #endif
 
+#include "CglConfig.h"
+
+#include "CoinFinite.hpp"
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedVector.hpp"
 
@@ -852,7 +855,12 @@ void CglPhic::revert (bool revertColBnds, bool revertRowBnds)
       }
       int i = chg.ndx_ ;
       assert(0 <= i && i < m_) ;
+#     if CGLPHIC_RECALC_ON_REVERT
       calcLhsBnds(i) ;
+#     else
+      lhsL_[i] = chg.oL_ ;
+      lhsU_[i] = chg.oU_ ;
+#     endif
       lhsHasChanged_[i] = 0 ;
     }
     numLhsBndChgs_ = 0 ;

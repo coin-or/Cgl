@@ -199,12 +199,12 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
     if (fabs(sum-upRhs)<1.0e-5) {
       possible=true;
     } else {
-      effectiveUpper[rowIndex]=DBL_MAX;
+      effectiveUpper[rowIndex]=COIN_DBL_MAX;
     }
     if (fabs(sum-loRhs)<1.0e-5) {
       possible=true;
     } else {
-      effectiveLower[rowIndex]=-DBL_MAX;
+      effectiveLower[rowIndex]=-COIN_DBL_MAX;
     }
     if (possible&&numberBinary&&numberBinary+numberContinuous<=maxInKnapsack_) {
       // binding with binary
@@ -844,7 +844,7 @@ CglKnapsackCover::liftAndUncomplementAndAdd(
       }
     }
 #endif
-    rc.setLb(-DBL_MAX);
+    rc.setLb(-COIN_DBL_MAX);
     rc.setUb(cutRhs);
     //  rc.setEffectiveness(0);
     // Todo: put in a more useful measure such as  the violation. 
@@ -908,8 +908,8 @@ CglKnapsackCover::deriveAKnapsack(
 
   CoinPackedVector leMatrixRow(numberElements,index,element); 
 
-  double maxKrowElement = -DBL_MAX;
-  double minKrowElement = DBL_MAX;
+  double maxKrowElement = -COIN_DBL_MAX;
+  double minKrowElement = COIN_DBL_MAX;
   
 
   if (treatAsLRow) {
@@ -1063,7 +1063,7 @@ CglKnapsackCover::deriveAKnapsack(
 #endif
     cc.setLbs( 1, &index, &fakeLb);
     cc.setUbs( 1, &index, &fakeLb);
-    cc.setEffectiveness(DBL_MAX);
+    cc.setEffectiveness(COIN_DBL_MAX);
     cs.insert(cc);
 #ifdef PRINT_DEBUG
     printf("Cgl: Problem is infeasible\n");
@@ -1093,7 +1093,7 @@ CglKnapsackCover::deriveAKnapsack(
     OsiColCut cc;
     cc.setLbs(fixedBnd);
     cc.setUbs(fixedBnd);
-    cc.setEffectiveness(DBL_MAX);
+    cc.setEffectiveness(COIN_DBL_MAX);
     return 0; 
   }  
 
@@ -2731,7 +2731,7 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
 #else
       if ( fabs(atOne.getElements()[j])<= epsilon_ ) {
 	// exit gracefully
-	cutRhs = DBL_MAX;
+	cutRhs = COIN_DBL_MAX;
 	break;
       }
 #endif
@@ -2959,7 +2959,7 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
       }
     }
 #endif
-    rc.setLb(-DBL_MAX);
+    rc.setLb(-COIN_DBL_MAX);
     rc.setUb(cutRhs);
     // ToDo: what's the default effectiveness?
     //  rc.setEffectiveness(1.0);
@@ -3227,7 +3227,7 @@ CglKnapsackCover::seqLiftAndUncomplementAndAdd(
       }
     }
 #endif
-    rc.setLb(-DBL_MAX);
+    rc.setLb(-COIN_DBL_MAX);
     rc.setUb(cutRhs);
     // ToDo: what's a meaningful effectivity?
     //  rc.setEffectiveness(1.0);
@@ -3539,7 +3539,7 @@ CglKnapsackCover::exactSolveKnapsack(
   z = 0.0;
   double chat = c+epsilon2_;
   p[n+1] = 0.0;
-  w[n+1]= DBL_MAX;
+  w[n+1]= COIN_DBL_MAX;
   j=1;
 
   while (1){

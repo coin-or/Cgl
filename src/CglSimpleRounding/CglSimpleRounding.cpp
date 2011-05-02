@@ -154,7 +154,7 @@ CglSimpleRounding::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     if (fabs(cutRhs*gcd-b)> epsilon_){ // if the cut and row are different. 
       OsiRowCut rc;
       rc.setRow(cut.getNumElements(),cut.getIndices(),cut.getElements());
-      rc.setLb(-DBL_MAX);
+      rc.setLb(-COIN_DBL_MAX);
       rc.setUb(cutRhs);   
       cs.insert(rc);
 
