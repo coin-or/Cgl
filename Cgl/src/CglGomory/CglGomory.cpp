@@ -61,7 +61,10 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     dynamic_cast<CoinWarmStartBasis*>(warmstart);
   const double * colUpper = si.getColUpper();
   const double * colLower = si.getColLower();
+  //#define CLP_INVESTIGATE2
+#ifndef CLP_INVESTIGATE2
   if ((info.options&16)!=0)
+#endif
     printf("%d %d %d\n",info.inTree,info.options,info.pass);
   for (i=0;i<numberColumns;i++) {
     if (si.isInteger(i)) {
@@ -202,10 +205,12 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	cs.eraseRowCut(k);
       }
     }
-    //printf("OR %p pass %d inTree %c - %d cuts (but %d deleted)\n",
-    //   originalSolver_,info.pass,info.inTree?'Y':'N',
-    //   numberRowCutsAfter-numberRowCutsBefore,
-    //   numberRowCutsAfter-cs.sizeRowCuts());
+#ifdef CLP_INVESTIGATE2
+    printf("OR %p pass %d inTree %c - %d cuts (but %d deleted)\n",
+       originalSolver_,info.pass,info.inTree?'Y':'N',
+       numberRowCutsAfter-numberRowCutsBefore,
+       numberRowCutsAfter-cs.sizeRowCuts());
+#endif
   }
 #endif
 
@@ -1165,8 +1170,10 @@ CglGomory::generateCuts(
 	    double test = CoinMin(largestFactor*largestFactorMultiplier_,
 				  relaxation);
 	    if (number>5&&numberNonInteger&&test>1.0e-20) {
-	      //printf("relaxing rhs by %g - largestFactor was %g, rel %g\n",
-	      //   CoinMin(test*fabs(rhs),tolerance9),largestFactor,relaxation);
+#ifdef CLP_INVESTIGATE2
+	      printf("relaxing rhs by %g - largestFactor was %g, rel %g\n",
+	         CoinMin(test*fabs(rhs),tolerance9),largestFactor,relaxation);
+#endif
 	      //bounds[1] = CoinMax(bounds[1],
 	      //		  rhs+CoinMin(test*fabs(rhs),tolerance9)); // weaken
 	      bounds[1] = bounds[1]+CoinMin(test*fabs(rhs),tolerance9); // weaken
