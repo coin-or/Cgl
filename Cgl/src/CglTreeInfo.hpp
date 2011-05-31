@@ -31,6 +31,9 @@ public:
       32 - last round of cuts did nothing - maybe be more aggressive
       64 - in preprocessing stage
       128 - looks like solution
+      256 - want alternate cuts
+      512 - in sub tree (i.e. parent model)
+      1024 - in must call again mode or after everything mode
   */
   int options;
   /// Set true if in tree (to avoid ambiguity at first branch)
