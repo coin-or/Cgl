@@ -1,4 +1,9 @@
-/*
+/* Copyright (C) 2011
+ * All Rights Reserved.
+ * This code is published under the Eclipse Public License.
+ *
+ * $Id$
+ *
  * Include file for the configuration of Cgl.
  *
  * On systems where the code is configured with the configure script
@@ -10,10 +15,10 @@
  * Developer Studio), a header files is included to define those
  * macros that depend on the operating system and the compiler.  The
  * macros that define the configuration of the particular user setting
- * (e.g., presence of other COIN packages or third party code) are set
- * here.  The project maintainer needs to remember to update this file
- * and choose reasonable defines.  A user can modify the default
- * setting by editing this file here.
+ * (e.g., presence of other COIN-OR packages or third party code) are set
+ * by the files config_*default.h. The project maintainer needs to remember
+ * to update these file and choose reasonable defines.
+ * A user can modify the default setting by editing the config_*default.h files.
  *
  */
 
@@ -21,50 +26,19 @@
 #define __CGLCONFIG_H__
 
 #ifdef HAVE_CONFIG_H
+#ifdef CGL_BUILD
+#include "config.h"
+#else
 #include "config_cgl.h"
-
-/* undefine macros that could conflict with those in other config.h
-   files */
-#undef PACKAGE
-#undef PACKAGE_BUGREPORT
-#undef PACKAGE_NAME
-#undef PACKAGE_STRING
-#undef PACKAGE_TARNAME
-#undef PACKAGE_VERSION
-#undef VERSION
+#endif
 
 #else /* HAVE_CONFIG_H */
 
-/* include the COIN-wide system specific configure header */
-#include "configall_system.h"
-
-/***************************************************************************/
-/*             HERE DEFINE THE CONFIGURATION SPECIFIC MACROS               */
-/***************************************************************************/
-
-/* Define to the debug sanity check level (0 is no test) */
-#define COIN_CGL_CHECKLEVEL 0
-
-/* Define to the debug verbosity level (0 is no output) */
-#define COIN_CGL_VERBOSITY 0
-
-/* Define to 1 if the Cbc package is used */
-/* #define COIN_HAS_CBC 1 */
-
-/* Define to 1 if the Cgl package is used */
-/* #define COIN_HAS_CGL 1 */
-
-/* Define to 1 if the Clp package is used */
-#define COIN_HAS_OSICLP 1
-
-/* Define to 1 if the CoinUtils package is used */
-#define COIN_HAS_COINUTILS 1
-
-/* Define to 1 if the Osi package is used */
-#define COIN_HAS_OSI 1
-
-/* Define to 1 if the Vol package is used */
-#define COIN_HAS_VOL 1
+#ifdef CGL_BUILD
+#include "config_default.h"
+#else
+#include "config_cgl_default.h"
+#endif
 
 #endif /* HAVE_CONFIG_H */
 

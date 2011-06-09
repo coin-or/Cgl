@@ -68,7 +68,6 @@ Cgl/depcomp -text
 Cgl/doxydoc/doxygen.conf.in -text
 Cgl/examples/Makefile.in -text
 Cgl/examples/cgl1.cpp -text
-Cgl/inc/config_cgl.h.in -text
 Cgl/install-sh -text
 Cgl/ltmain.sh -text
 Cgl/missing -text
@@ -87,6 +86,10 @@ Cgl/src/CglLandP/CglLandPValidator.cpp -text
 Cgl/src/CglLandP/CglLandPValidator.hpp -text
 Cgl/src/CglLandP/Makefile.am -text
 Cgl/src/CglLandP/Makefile.in -text
+Cgl/src/config.h.in -text
+Cgl/src/config_cgl.h.in -text
+Cgl/src/config_cgl_default.h -text
+Cgl/src/config_default.h -text
 Cgl/test/CglTestData/capPlan1.mps -text
 Cgl/test/CglTestData/egout.mps -text
 Cgl/test/CglTestData/l152lav.mps -text
