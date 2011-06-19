@@ -52,8 +52,8 @@ CglLandP::Parameters::Parameters():
         extraCutsLimit(5),
         pivotTol(1e-4),
         away(5e-4),
-        timeLimit(DBL_MAX),
-        singleCutTimeLimit(DBL_MAX),
+        timeLimit(COIN_DBL_MAX),
+        singleCutTimeLimit(COIN_DBL_MAX),
         rhsWeight(1.),
         useTableauRow(true),
         modularize(false),
@@ -592,7 +592,7 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
         {
             ncSi = t_si->clone();
             landpSi.setSi(ncSi);
-            ncSi->setDblParam(OsiDualObjectiveLimit, DBL_MAX);
+            ncSi->setDblParam(OsiDualObjectiveLimit, COIN_DBL_MAX);
             ncSi->messageHandler()->setLogLevel(0);
         }
 

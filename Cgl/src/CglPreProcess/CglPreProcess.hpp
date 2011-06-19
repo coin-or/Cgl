@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-#include "CoinFinite.hpp"
 #include "CoinMessageHandler.hpp"
 #include "OsiSolverInterface.hpp"
 #include "CglStored.hpp"
@@ -344,6 +343,9 @@ private:
   int numberRowType_;
   /** Options
       1 - original model had integer bounds before tightening
+      2 - don't do probing
+      4 - don't do duplicate rows
+      8 - don't do cliques
   */
   int options_;
   /** Row types (may be NULL) 

@@ -479,12 +479,12 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * /*debugger*/,
 	  double violation=0.0;
 	  if (packed) {
 	    violation = sum-rhs;
-	    rc.setLb(-DBL_MAX);
+	    rc.setLb(-COIN_DBL_MAX);
 	    rc.setUb(rhs);   
 	  } else {
 	    // other way for cover
 	    violation = rhs-sum;
-	    rc.setUb(DBL_MAX);
+	    rc.setUb(COIN_DBL_MAX);
 	    rc.setLb(rhs);   
 	  }
 	  if (violation<minimumViolation_) {

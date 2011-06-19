@@ -90,27 +90,33 @@ AC_COIN_CHECK_PACKAGE(OsiDyLP, [osi-dylp])
 #AC_COIN_CHECK_PACKAGE(OsiSpx,  [osi-soplex])
 
 #############################################################################
+#                  System header                                            #
+#############################################################################
+
+AC_COIN_CHECK_CXX_CHEADER(math)
+AC_COIN_CHECK_CXX_CHEADER(float)
+AC_COIN_CHECK_CXX_CHEADER(ieeefp)
+
+#############################################################################
 #                   Determine list of all Cgl subprojects                   #
 #############################################################################
 
 # In order to avoid that one has to update this configure.ac and the
-# Makefile.am whenever a new cut generator is added, we automatically
-# determine the list of all subdirectories of src with Makefile
-# (CGL_SUBDIRS), and also a list of all sublibraries relative to src
-# (CGL_SUBLIBS) that can be used in the src/Makefile.am.  (We still need
-# to manually add the Makefile in the AC_CONFIG_FILES list below)
+# Makefile.am whenever a new cut generator is added, we automatically determine
+# the list of all subdirectories of src with a Makefile.in (CGL_SUBDIRS),
+# and also a list of all sublibraries relative to src (CGL_SUBLIBS) that
+# can be used in the src/Makefile.am.  (It is still necessary to manually
+# add an entry to write the Makefile in the AC_CONFIG_FILES list below.)
 
 AC_SUBST(CGL_SUBDIRS)
 AC_SUBST(CGL_SUBLIBS)
 
 curr_dir=`pwd`
 cd $srcdir/src
-for file in `find . -name Makefile.in`; do
-  if test $file != ./Makefile.in; then
-    newdir=`echo $file | sed -e s%/Makefile.in%% | sed -e s%^./%% `
-    CGL_SUBDIRS="$CGL_SUBDIRS $newdir"
-    CGL_SUBLIBS="$CGL_SUBLIBS $newdir/lib${newdir}.la"
-  fi
+for file in `ls */Makefile.in`; do
+  newdir=`echo $file | sed -e s%/Makefile.in%% | sed -e s%^./%% `
+  CGL_SUBDIRS="$CGL_SUBDIRS $newdir"
+  CGL_SUBLIBS="$CGL_SUBLIBS $newdir/lib${newdir}.la"
 done
 cd $curr_dir
 
@@ -155,7 +161,7 @@ AC_CONFIG_FILES([Makefile
 AC_CONFIG_FILES([doxydoc/doxygen.conf])
 
 # Here put the location and name of the configuration header file
-AC_CONFIG_HEADER([inc/config_cgl.h])
+AC_CONFIG_HEADER([src/config.h src/config_cgl.h])
 
 # Finally, we let configure write all the output...
 AC_COIN_FINALIZE

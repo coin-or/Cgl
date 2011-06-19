@@ -415,7 +415,7 @@ CglClique::find_scl(OsiCuts& cs) const
 
 int
 CglClique::scl_choose_next_node(const int current_nodenum,
-				const int *current_indices,
+				const int * /* current_indices */,
 				const int *current_degrees,
 				const double *current_values) const
 {

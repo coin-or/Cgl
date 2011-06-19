@@ -362,7 +362,7 @@ void CglAllDifferent::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   if (infeasible) {
     // create infeasible cut
     OsiRowCut rc;
-    rc.setLb(DBL_MAX);
+    rc.setLb(COIN_DBL_MAX);
     rc.setUb(0.0);   
     cs.insert(rc);
   } else {

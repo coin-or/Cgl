@@ -12,6 +12,14 @@
 #include "CoinPackedMatrix.hpp"
 #include "OsiRowCut.hpp"
 
+#ifdef HAVE_CMATH
+# include <cmath>
+#else
+# ifdef HAVE_MATH_H
+#  include <math.h>
+# endif
+#endif
+
 
 namespace LAP
 {
@@ -145,7 +153,7 @@ Validator::cleanCut(OsiRowCut & aCut, const double * solCut, const OsiSolverInte
 /**Clean cut 2, different algorithm. First check the dynamic of the cut if < maxRatio scale to a biggest coef of 1
    otherwise scale it so that biggest coeff is 1 and try removing tinys ( < 1/maxRatio) either succeed or fail */
 int
-Validator::cleanCut2(OsiRowCut & aCut, const double * solCut, const OsiSolverInterface &si, const CglParam &par,
+Validator::cleanCut2(OsiRowCut & aCut, const double * solCut, const OsiSolverInterface &si, const CglParam &/* par */,
                      const double * origColLower, const double * origColUpper) const
 {
     /** Compute fill-in in si */

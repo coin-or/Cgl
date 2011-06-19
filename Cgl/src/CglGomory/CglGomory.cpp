@@ -61,7 +61,10 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     dynamic_cast<CoinWarmStartBasis*>(warmstart);
   const double * colUpper = si.getColUpper();
   const double * colLower = si.getColLower();
+  //#define CLP_INVESTIGATE2
+#ifndef CLP_INVESTIGATE2
   if ((info.options&16)!=0)
+#endif
     printf("%d %d %d\n",info.inTree,info.options,info.pass);
   for (i=0;i<numberColumns;i++) {
     if (si.isInteger(i)) {
@@ -85,23 +88,29 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 #ifdef COIN_HAS_CLP_GOMORY
   double * objective = NULL;
   OsiClpSolverInterface * clpSolver = dynamic_cast<OsiClpSolverInterface *>(originalSolver_);
+  int numberOriginalRows;
   if (clpSolver) {
     useSolver = originalSolver_;
-    ClpSimplex * simplex = clpSolver->getModelPtr();
     assert (gomoryType_);
     // check simplex is plausible
-    if (!simplex->numberRows()||numberColumns!=simplex->numberColumns()) {
+    if (!clpSolver->getNumRows()||numberColumns!=clpSolver->getNumCols()) {
       delete originalSolver_;
       originalSolver_=si.clone();
       clpSolver = dynamic_cast<OsiClpSolverInterface *>(originalSolver_);
       assert (clpSolver);
       useSolver = originalSolver_;
-      simplex = clpSolver->getModelPtr();
     }
-    int numberOriginalRows = simplex->numberRows();
+    ClpSimplex * simplex = clpSolver->getModelPtr();
+    numberOriginalRows = simplex->numberRows();
     int numberRows = si.getNumRows();
-    // only do if different (unless type 2)
-    if (numberRows>numberOriginalRows||gomoryType_>1) {
+    assert (numberOriginalRows<=numberRows);
+    // only do if different (unless type 2x)
+    int gomoryType = gomoryType_%10;
+    int whenToDo = gomoryType_/10;
+    if (whenToDo==2 ||(numberRows>numberOriginalRows && whenToDo==1
+		       && (info.options&512)==0) ||
+	((info.options&1024)!=0 && (info.options&512)==0
+	 && numberTimesStalled_<3)) {
       // bounds
       memcpy(simplex->columnLower(),colLower,numberColumns*sizeof(double));
       memcpy(simplex->columnUpper(),colUpper,numberColumns*sizeof(double));
@@ -113,12 +122,66 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
       const int * rowLength = rowCopy->getVectorLengths(); 
       const double * rowElements = rowCopy->getElements();
+      const double * rowLower = si.getRowLower();
+      const double * rowUpper = si.getRowUpper();
+      int numberCopy;
+      int numberAdd;
+      double * rowLower2 = NULL;
+      double * rowUpper2 = NULL;
+      int * column2 = NULL;
+      CoinBigIndex * rowStart2 = NULL;
+      double * rowElements2 = NULL;
+      char * copy = new char [numberRows-numberOriginalRows];
+      memset(copy,0,numberRows-numberOriginalRows);
+      if (gomoryType==2) {
+	numberCopy=0;
+	numberAdd=0;
+	for (int iRow=numberOriginalRows;iRow<numberRows;iRow++) {
+	  bool simple = true;
+	  for (int k=rowStart[iRow];
+	       k<rowStart[iRow]+rowLength[iRow];k++) {
+	    double value = rowElements[k];
+	    if (value!=floor(value+0.5)) {
+	      simple=false;
+	      break;
+	    }
+	  }
+	  if (simple) {
+	    numberCopy++;
+	    numberAdd+=rowLength[iRow];
+	    copy[iRow-numberOriginalRows]=1;
+	  }
+	}
+	if (numberCopy) {
+	  //printf("Using %d rows out of %d\n",numberCopy,numberRows-numberOriginalRows);
+	  rowLower2 = new double [numberCopy];
+	  rowUpper2 = new double [numberCopy];
+	  rowStart2 = new CoinBigIndex [numberCopy+1];
+	  rowStart2[0]=0;
+	  column2 = new int [numberAdd];
+	  rowElements2 = new double [numberAdd];
+	}
+      }
+      numberCopy=0;
+      numberAdd=0;
       for (int iRow=numberOriginalRows;iRow<numberRows;iRow++) {
-	double value = pi[iRow];
-	for (int k=rowStart[iRow];
-	     k<rowStart[iRow]+rowLength[iRow];k++) {
-	  int iColumn=column[k];
-	  obj[iColumn] -= value*rowElements[k];
+	if (!copy[iRow-numberOriginalRows]) {
+	  double value = pi[iRow];
+	  for (int k=rowStart[iRow];
+	       k<rowStart[iRow]+rowLength[iRow];k++) {
+	    int iColumn=column[k];
+	    obj[iColumn] -= value*rowElements[k];
+	  }
+	} else {
+	  rowLower2[numberCopy]=rowLower[iRow];
+	  rowUpper2[numberCopy]=rowUpper[iRow];
+	  for (int k=rowStart[iRow];
+	       k<rowStart[iRow]+rowLength[iRow];k++) {
+	    column2[numberAdd]=column[k];
+	    rowElements2[numberAdd++]=rowElements[k];
+	  }
+	  numberCopy++;
+	  rowStart2[numberCopy]=numberAdd;
 	}
       }
 #if 0
@@ -135,6 +198,17 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	}
       }
 #endif
+      if (numberCopy) {
+	clpSolver->addRows(numberCopy,
+			   rowStart2,column2,rowElements2,
+			   rowLower2,rowUpper2);
+	delete [] rowLower2 ;
+	delete [] rowUpper2 ;
+	delete [] column2 ;
+	delete [] rowStart2 ;
+	delete [] rowElements2 ;
+      }
+      delete [] copy;
       memcpy(simplex->primalColumnSolution(),si.getColSolution(),
 	     numberColumns*sizeof(double));
       warm->resize(numberOriginalRows,numberColumns);
@@ -143,6 +217,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       simplex->setDualObjectiveLimit(COIN_DBL_MAX);
       simplex->setLogLevel(0);
       simplex->primal(1);
+      //printf("Trying - %d its\n",simplex->numberIterations());
       //simplex->setLogLevel(0);
       warm=simplex->getBasis();
       warmstart=warm;
@@ -151,6 +226,8 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       // don't do
       delete warmstart;
       warmstart=NULL;
+      if ((info.options&1024)==0)
+	numberTimesStalled_=0;
     }
   }
 #endif
@@ -202,10 +279,12 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	cs.eraseRowCut(k);
       }
     }
-    //printf("OR %p pass %d inTree %c - %d cuts (but %d deleted)\n",
-    //   originalSolver_,info.pass,info.inTree?'Y':'N',
-    //   numberRowCutsAfter-numberRowCutsBefore,
-    //   numberRowCutsAfter-cs.sizeRowCuts());
+#ifdef CLP_INVESTIGATE2
+    printf("OR %p pass %d inTree %c - %d cuts (but %d deleted)\n",
+       originalSolver_,info.pass,info.inTree?'Y':'N',
+       numberRowCutsAfter-numberRowCutsBefore,
+       numberRowCutsAfter-cs.sizeRowCuts());
+#endif
   }
 #endif
 
@@ -221,11 +300,22 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	cs.rowCutPtr(i)->setGloballyValid();
     }
   }
+  if ((gomoryType_%10)==2) {
+    // back to original
+    int numberRows = clpSolver->getNumRows();
+    if (numberRows>numberOriginalRows) {
+      int numberDelete = numberRows-numberOriginalRows;
+      int * delRow = new int [numberDelete];
+      for (int i=0;i<numberDelete;i++)
+	delRow[i]=i+numberOriginalRows;
+      clpSolver->deleteRows(numberDelete,delRow);
+      delete [] delRow;
+    }
+  }
 }
 
 // Returns value - floor but allowing for small errors
-inline double above_integer(double value) 
-{
+inline double above_integer(double value) {
   double value2=floor(value);
   double value3=floor(value+0.5);
   if (fabs(value3-value)<1.0e-7*(fabs(value3)+1.0))
@@ -443,7 +533,7 @@ CglGomory::generateCuts(
     printf("condition %g\n",relaxation);
 #endif
   relaxation *= conditionNumberMultiplier_;
-  double bounds[2]={-DBL_MAX,0.0};
+  double bounds[2]={-COIN_DBL_MAX,0.0};
   int iColumn,iRow;
 
   const int * column = rowCopy.getIndices();
@@ -1165,8 +1255,10 @@ CglGomory::generateCuts(
 	    double test = CoinMin(largestFactor*largestFactorMultiplier_,
 				  relaxation);
 	    if (number>5&&numberNonInteger&&test>1.0e-20) {
-	      //printf("relaxing rhs by %g - largestFactor was %g, rel %g\n",
-	      //   CoinMin(test*fabs(rhs),tolerance9),largestFactor,relaxation);
+#ifdef CLP_INVESTIGATE2
+	      printf("relaxing rhs by %g - largestFactor was %g, rel %g\n",
+	         CoinMin(test*fabs(rhs),tolerance9),largestFactor,relaxation);
+#endif
 	      //bounds[1] = CoinMax(bounds[1],
 	      //		  rhs+CoinMin(test*fabs(rhs),tolerance9)); // weaken
 	      bounds[1] = bounds[1]+CoinMin(test*fabs(rhs),tolerance9); // weaken
@@ -1492,7 +1584,8 @@ CglGomory::passInOriginalSolver(OsiSolverInterface * solver)
 {
   delete originalSolver_;
   if (solver) {
-    gomoryType_=1;
+    if (!gomoryType_)
+      gomoryType_=1;
     originalSolver_ = solver->clone();
   } else {
     gomoryType_=0;

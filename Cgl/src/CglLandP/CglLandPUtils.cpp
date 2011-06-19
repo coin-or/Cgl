@@ -68,7 +68,7 @@ void modularizeRow(TabRow & row, const bool * integerVar)
 
 
 int
-Cuts::insertAll(OsiCuts & cs, CoinRelFltEq eq)
+Cuts::insertAll(OsiCuts & cs, CoinRelFltEq& eq)
 {
     int r_val = 0;
     for (unsigned int i = 0 ; i < cuts_.size() ; i++)
