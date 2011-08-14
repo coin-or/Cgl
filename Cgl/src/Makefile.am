@@ -41,8 +41,6 @@ libCgl_la_DEPENDENCIES = $(libCgl_la_LIBADD)
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.
-# "top_srcdir" refers to the basic directory for the main package that is
-# being compiled.
 AM_CPPFLAGS = $(COINUTILS_CFLAGS) $(OSI_CFLAGS)
 
 # This line is necessary to allow VPATH compilation

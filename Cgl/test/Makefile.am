@@ -23,7 +23,7 @@ unitTest_DEPENDENCIES = ../src/libCgl.la $(CGLLIB_DEPENDENCIES)
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows
-AM_CPPFLAGS = $(CGLLIB_CFLAGS) \
+AM_CPPFLAGS = \
 	-I`$(CYGPATH_W) $(srcdir)/../src` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglFlowCover` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglGomory` \
@@ -37,7 +37,8 @@ AM_CPPFLAGS = $(CGLLIB_CFLAGS) \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglRedSplit` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglTwomir` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglClique` \
-	-I`$(CYGPATH_W) $(srcdir)/../src/CglSimpleRounding`
+	-I`$(CYGPATH_W) $(srcdir)/../src/CglSimpleRounding` \
+	$(CGLLIB_CFLAGS)
 if COIN_HAS_SAMPLE
 AM_CPPFLAGS += -DSAMPLEDIR=\"`$(CYGPATH_W) @SAMPLE_DATA@ | sed -e 's/\\\\/\\\\\\\\/g'`\"
 endif
