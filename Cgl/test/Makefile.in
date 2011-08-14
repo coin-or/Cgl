@@ -351,8 +351,8 @@ unitTest_DEPENDENCIES = ../src/libCgl.la $(CGLLIB_DEPENDENCIES) \
 # libraries and include dirs
 # For solvers not available, the variables should just resolve to an empty string,
 # so it's no harm to list them all
-AM_CPPFLAGS = $(CGLLIB_CFLAGS) -I`$(CYGPATH_W) $(srcdir)/../src` \
-	-I`$(CYGPATH_W) $(srcdir)/../src/CglFlowCover` -I`$(CYGPATH_W) \
+AM_CPPFLAGS = -I`$(CYGPATH_W) $(srcdir)/../src` -I`$(CYGPATH_W) \
+	$(srcdir)/../src/CglFlowCover` -I`$(CYGPATH_W) \
 	$(srcdir)/../src/CglGomory` -I`$(CYGPATH_W) \
 	$(srcdir)/../src/CglKnapsackCover` -I`$(CYGPATH_W) \
 	$(srcdir)/../src/CglLandP` -I`$(CYGPATH_W) \
@@ -364,10 +364,10 @@ AM_CPPFLAGS = $(CGLLIB_CFLAGS) -I`$(CYGPATH_W) $(srcdir)/../src` \
 	$(srcdir)/../src/CglRedSplit` -I`$(CYGPATH_W) \
 	$(srcdir)/../src/CglTwomir` -I`$(CYGPATH_W) \
 	$(srcdir)/../src/CglClique` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglSimpleRounding` $(am__append_1) \
-	$(OSICLP_CFLAGS) $(OSICPX_CFLAGS) $(OSIDYLP_CFLAGS) \
-	$(OSIGLPK_CFLAGS) $(OSIMSK_CFLAGS) $(OSIVOL_CFLAGS) \
-	$(OSIXPR_CFLAGS)
+	$(srcdir)/../src/CglSimpleRounding` $(CGLLIB_CFLAGS) \
+	$(am__append_1) $(OSICLP_CFLAGS) $(OSICPX_CFLAGS) \
+	$(OSIDYLP_CFLAGS) $(OSIGLPK_CFLAGS) $(OSIMSK_CFLAGS) \
+	$(OSIVOL_CFLAGS) $(OSIXPR_CFLAGS)
 
 # This line is necessary to allow VPATH compilation with MS compilers
 # on Cygwin
