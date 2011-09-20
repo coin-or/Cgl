@@ -2571,7 +2571,7 @@ CglLandPSimplex::createIntersectionCut(TabRow & row, OsiRowCut &cut) const
     CoinFillN(vec, ncols_orig_ + nrows_orig_, 0.);
     double infty = si_->getInfinity();
     double cutRhs = row.rhs;
-    cutRhs = cutRhs ;//* (1 - cutRhs);
+    cutRhs = cutRhs * (1 - cutRhs);
     for (int j = 0; j < ncols_ ; j++)
     {
         if (fabs(row[nonBasics_[j]])>1e-10)
