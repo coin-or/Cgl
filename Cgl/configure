@@ -21237,12 +21237,12 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     COINUTILS_DEPENDENCIES=`echo " $COINUTILS_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     COINUTILS_DEPENDENCIES=`echo " $COINUTILS_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
-       CGLLIB_DEPENDENCIES=`echo " $CGLLIB_LIBS " | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+       CGLLIB_DEPENDENCIES=`echo " $CGLLIB_LIBS " | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -21754,12 +21754,12 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     OSI_DEPENDENCIES=`echo " $OSI_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     OSI_DEPENDENCIES=`echo " $OSI_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
-       CGLLIB_DEPENDENCIES=`echo " $CGLLIB_LIBS " | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+       CGLLIB_DEPENDENCIES=`echo " $CGLLIB_LIBS " | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -22250,10 +22250,10 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     SAMPLE_DEPENDENCIES=`echo " $SAMPLE_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     SAMPLE_DEPENDENCIES=`echo " $SAMPLE_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -22731,10 +22731,10 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     NETLIB_DEPENDENCIES=`echo " $NETLIB_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     NETLIB_DEPENDENCIES=`echo " $NETLIB_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -23235,12 +23235,12 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     OSICLP_DEPENDENCIES=`echo " $OSICLP_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     OSICLP_DEPENDENCIES=`echo " $OSICLP_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
-       CGLLIB_DEPENDENCIES=`echo " $CGLLIB_LIBS " | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+       CGLLIB_DEPENDENCIES=`echo " $CGLLIB_LIBS " | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -23734,10 +23734,10 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     OSICPX_DEPENDENCIES=`echo " $OSICPX_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     OSICPX_DEPENDENCIES=`echo " $OSICPX_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -24215,10 +24215,10 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     OSIGLPK_DEPENDENCIES=`echo " $OSIGLPK_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     OSIGLPK_DEPENDENCIES=`echo " $OSIGLPK_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -24697,10 +24697,10 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     OSIMSK_DEPENDENCIES=`echo " $OSIMSK_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     OSIMSK_DEPENDENCIES=`echo " $OSIMSK_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -25178,10 +25178,10 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     OSIXPR_DEPENDENCIES=`echo " $OSIXPR_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     OSIXPR_DEPENDENCIES=`echo " $OSIXPR_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -25659,10 +25659,10 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     OSIVOL_DEPENDENCIES=`echo " $OSIVOL_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     OSIVOL_DEPENDENCIES=`echo " $OSIVOL_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -26140,10 +26140,10 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     OSIDYLP_DEPENDENCIES=`echo " $OSIDYLP_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     OSIDYLP_DEPENDENCIES=`echo " $OSIDYLP_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
