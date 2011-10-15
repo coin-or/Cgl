@@ -27,10 +27,6 @@ Cgl/MSVisualStudio/v10alt/libCglRedSplit.vcxproj -text
 Cgl/MSVisualStudio/v10alt/libCglResidualCapacity.vcxproj -text
 Cgl/MSVisualStudio/v10alt/libCglSimpleRounding.vcxproj -text
 Cgl/MSVisualStudio/v10alt/libCglTwomir.vcxproj -text
-Cgl/MSVisualStudio/v6/libCgl/libCgl.dsp -text
-Cgl/MSVisualStudio/v7/cglExamplesCgl1/cglExamplesCgl1.vcproj -text
-Cgl/MSVisualStudio/v7/libCgl/libCgl.vcproj -text
-Cgl/MSVisualStudio/v8/libCgl/libCgl.vcproj -text
 Cgl/MSVisualStudio/v9/Cgl.sln -text
 Cgl/MSVisualStudio/v9/CglUnitTest/CglUnitTest.vcproj -text
 Cgl/MSVisualStudio/v9/libCgl/libCgl.vcproj -text
