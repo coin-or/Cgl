@@ -194,7 +194,7 @@ int CglProbingUnitTest (const OsiSolverInterface *baseSiP,
     nColCuts = osicuts.sizeColCuts() ;
     nRowCuts = osicuts.sizeRowCuts() ;
 
-    assert (nRowCuts >= 4) ;
+    assert (nRowCuts >= 2) ;
     delete siP ;
   }
 /*
@@ -237,6 +237,7 @@ int CglProbingUnitTest (const OsiSolverInterface *baseSiP,
     test1.setMode(2) ;
     test1.setRowCuts(3) ;
     test1.generateCutsAndModify(*siP,osicuts,&treeInfo) ;
+    printCuts(siP,osicuts) ;
   }
 
   return (0) ;

@@ -61,7 +61,8 @@ am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
-CONFIG_HEADER = $(top_builddir)/inc/config_cgl.h
+CONFIG_HEADER = $(top_builddir)/src/config.h \
+	$(top_builddir)/src/config_cgl.h
 CONFIG_CLEAN_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
 libCglLandP_la_LIBADD =
@@ -95,8 +96,7 @@ LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
 SOURCES = $(libCglLandP_la_SOURCES)
 DIST_SOURCES = $(am__libCglLandP_la_SOURCES_DIST)
-am__includecoin_HEADERS_DIST = CglLandP.hpp CglLandPSimplex.hpp \
-	CglLandPValidator.hpp
+am__includecoin_HEADERS_DIST = CglLandP.hpp CglLandPValidator.hpp
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -385,15 +385,12 @@ libCglLandP_la_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.
-# "top_srcdir" refers to the basic directory for the main package that is
-# being compiled.
-AM_CPPFLAGS = $(COINUTILS_CFLAGS) $(OSI_CFLAGS) -I`$(CYGPATH_W) \
-	$(srcdir)/..` -I`$(CYGPATH_W) $(srcdir)/../CglGomory` \
+AM_CPPFLAGS = -I`$(CYGPATH_W) $(srcdir)/..` -I`$(CYGPATH_W) \
+	$(srcdir)/../CglGomory` $(COINUTILS_CFLAGS) $(OSI_CFLAGS) \
 	$(am__append_2)
 
-# This line is necessary to allow VPATH compilation with MS compilers
-# on Cygwin
-DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
+# This line is necessary to allow VPATH compilation
+DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I..
 
 ########################################################################
 #                Headers that need to be installed                     #
@@ -402,7 +399,7 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
 # Here list all the header files that are required by a user of the library,
 # and that therefore should be installed in 'include/coin'
 includecoindir = $(includedir)/coin
-@COIN_HAS_OSICLP_TRUE@includecoin_HEADERS = CglLandP.hpp CglLandPSimplex.hpp CglLandPValidator.hpp
+@COIN_HAS_OSICLP_TRUE@includecoin_HEADERS = CglLandP.hpp CglLandPValidator.hpp
 all: all-am
 
 .SUFFIXES:

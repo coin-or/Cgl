@@ -17,23 +17,17 @@ AUTOMAKE_OPTIONS = foreign
 noinst_LTLIBRARIES = libCglSimpleRounding.la
 
 # List all source files for this library, including headers
-libCglSimpleRounding_la_SOURCES = \
-	CglSimpleRounding.cpp  CglSimpleRounding.hpp \
-	CglSimpleRoundingTest.cpp
+libCglSimpleRounding_la_SOURCES = CglSimpleRounding.cpp CglSimpleRounding.hpp CglSimpleRoundingTest.cpp
 
 # This is for libtool (on Windows)
 libCglSimpleRounding_la_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.
-# "top_srcdir" refers to the basic directory for the main package that is
-# being compiled.
-AM_CPPFLAGS = $(COINUTILS_CFLAGS) $(OSI_CFLAGS) \
-	-I`$(CYGPATH_W) $(srcdir)/..`
+AM_CPPFLAGS = -I`$(CYGPATH_W) $(srcdir)/..` $(COINUTILS_CFLAGS) $(OSI_CFLAGS)
 
-# This line is necessary to allow VPATH compilation with MS compilers
-# on Cygwin
-DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/inc
+# This line is necessary to allow VPATH compilation
+DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I..
 
 ########################################################################
 #                Headers that need to be installed                     #

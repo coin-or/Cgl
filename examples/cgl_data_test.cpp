@@ -3,7 +3,7 @@
 // This code is licensed under the terms of the Eclipse Public License (EPL).
 
 #include <cstdio>
-#include<stdlib.h>
+#include <cstdlib>
 #include <cfloat>
 
 #include "OsiSolverInterface.hpp"

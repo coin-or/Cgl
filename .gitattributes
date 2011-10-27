@@ -26,10 +26,6 @@ MSVisualStudio/v10alt/libCglRedSplit.vcxproj -text
 MSVisualStudio/v10alt/libCglResidualCapacity.vcxproj -text
 MSVisualStudio/v10alt/libCglSimpleRounding.vcxproj -text
 MSVisualStudio/v10alt/libCglTwomir.vcxproj -text
-MSVisualStudio/v6/libCgl/libCgl.dsp -text
-MSVisualStudio/v7/cglExamplesCgl1/cglExamplesCgl1.vcproj -text
-MSVisualStudio/v7/libCgl/libCgl.vcproj -text
-MSVisualStudio/v8/libCgl/libCgl.vcproj -text
 MSVisualStudio/v9/Cgl.sln -text
 MSVisualStudio/v9/CglUnitTest/CglUnitTest.vcproj -text
 MSVisualStudio/v9/libCgl/libCgl.vcproj -text
@@ -68,7 +64,6 @@ MSVisualStudio/v9alt/libCglTwomir.vcproj -text
 doxydoc/doxygen.conf.in -text
 examples/Makefile.in -text
 examples/cgl1.cpp -text
-inc/config_cgl.h.in -text
 /install-sh -text
 /ltmain.sh -text
 /missing -text
@@ -100,6 +95,10 @@ src/CglProbing/CglProbingProbe.cpp -text
 src/CglProbing/CglProbingRowCut.cpp -text
 src/CglProbing/CglProbingRowCut.hpp -text
 src/CglProbing/CglProbingTighten.cpp -text
+src/config.h.in -text
+src/config_cgl.h.in -text
+src/config_cgl_default.h -text
+src/config_default.h -text
 test/CglTestData/capPlan1.mps -text
 test/CglTestData/egout.mps -text
 test/CglTestData/l152lav.mps -text

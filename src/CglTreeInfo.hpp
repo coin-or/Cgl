@@ -26,6 +26,9 @@ public:
 
   /*! \brief Number of times the cut generator has been invoked at this
   	     search tree node
+      256 - want alternate cuts
+      512 - in sub tree (i.e. parent model)
+      1024 - in must call again mode or after everything mode
   */
   int pass ;
 
