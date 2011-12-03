@@ -28,12 +28,12 @@ libCglPhic_la_LDFLAGS = $(LT_LDFLAGS)
 # "cygpath" stuff is necessary to compile with native compilers on Windows.
 # "top_srcdir" refers to the basic directory for the main package that is
 # being compiled.
-AM_CPPFLAGS = $(COINUTILS_CFLAGS) $(OSI_CFLAGS) \
-	-I`$(CYGPATH_W) $(srcdir)/..`
+AM_CPPFLAGS = $(COINUTILS_CFLAGS) $(OSI_CFLAGS)
 
 # This line is necessary to allow VPATH compilation with MS compilers
 # on Cygwin
-DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I..
+DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` \
+		   -I..  -I`$(CYGPATH_W) $(srcdir)/..`
 
 ########################################################################
 #                Headers that need to be installed                     #
