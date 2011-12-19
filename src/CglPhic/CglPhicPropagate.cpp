@@ -141,10 +141,8 @@ int CglPhic::getFromPending ()
     isPending_[bestNdx] = 0 ;
     numPending_-- ;
     if (numPending_ != bestPending) {
-      if (bestPending != numPending_) {
-        pending_[bestPending] = pending_[numPending_] ;
-	isPending_[pending_[bestPending].ndx_] = bestPending+1 ; 
-      }
+      pending_[bestPending] = pending_[numPending_] ;
+      isPending_[pending_[bestPending].ndx_] = bestPending+1 ; 
     }
   }
   return (bestNdx) ;
@@ -198,6 +196,23 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
 */
   recordVarBndChg(j,bnd,nbndj) ;
 /*
+  See if we're propagating this variable type.
+*/
+  if (((1<<intVar_[j])&propType_) == 0) {
+    if (verbosity_ >= 5) {
+      char vartypelet[3] = {'c','b','g'} ;
+      std::cout
+        << "          suppressing propagation of x(" << j << ") (" 
+	<< vartypelet[intVar_[j]] << "); propagating" ;
+	if ((CglPhic::PropCon&propType_) != 0) std::cout << " (c)" ;
+	if ((CglPhic::PropGenInt&propType_) != 0) std::cout << " (g)" ;
+	if ((CglPhic::PropBinary&propType_) != 0) std::cout << " (b)" ;
+	std::cout << "." << std::endl ;
+    }
+    return ;
+  }
+    
+/*
   Set up a loop to walk the column
 */
   const CoinBigIndex &colStart = cm_colStarts_[j] ;
@@ -217,7 +232,7 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
   * L<i> changes if (a<ij> > 0 && delta(l<j>)) || (a<ij> < 0 && delta(u<j>))
   Again, create separate changeLi and changeUi for readability.
 */
-    const bool changeLi = (((aij > 0) && deltal) || ((aij < 0) && !deltal)) ;
+    const bool changeLi = (((aij > 0) && deltal) || ((aij < 0) && deltau)) ;
     const bool changeUi = !changeLi ;
 /*
   And what sort of change are we talking about? The possibilities are:
@@ -425,14 +440,19 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
   Is this change worth propagating? It has to be useful and large enough to
   matter.
 */
+    const double &posGapi = info_[i].posGap_ ;
+    const double &negGapi = info_[i].negGap_ ;
     double metric = 0.0 ;
     if ((blowi > -infty_) && updatedUi) {
       if (Ui.infCnt_ == 0) {
 	if  (toFinite) {
 	  addToPending(i,infty_,infty_) ;
 	} else {
-	  metric = -deltaUi/info_[i].l1norm_ ;
-	  if (metric > propTol_) addToPending(i,deltaUi,metric) ;
+	  double gapLE = blowi-Ui.bnd_ ;
+	  if (posGapi > gapLE || -negGapi < gapLE) {
+	    metric = -deltaUi/info_[i].l1norm_ ;
+	    if (metric > rowPropTol_) addToPending(i,deltaUi,metric) ;
+	  }
 	}
       }
     } else {
@@ -440,8 +460,11 @@ void CglPhic::chgColBnd (int j, char bnd, double nbndj, bool &feas)
 	if  (toFinite) {
 	  addToPending(i,infty_,infty_) ;
 	} else {
-	  metric = deltaLi/info_[i].l1norm_ ;
-	  if (metric > propTol_) addToPending(i,deltaLi,metric) ;
+	  double gapGE = bi-Li.bnd_ ;
+	  if (-posGapi > gapGE || negGapi < gapGE) {
+	    metric = deltaLi/info_[i].l1norm_ ;
+	    if (metric > rowPropTol_) addToPending(i,deltaLi,metric) ;
+	  }
 	}
       }
     }
@@ -484,7 +507,8 @@ bool CglPhic::tightenVu (int t, double gap, double ait, double corr)
   const double &o_ut = colU_[t] ;
   const double &o_lt = colL_[t] ;
   feas = true ;
-  if ((o_ut-n_ut) > zeroTol_) {
+  const double diff = o_ut-n_ut ;
+  if (diff > zeroTol_) {
     if ((o_lt-n_ut) > feasTol_) {
       feas = false ;
       if (verbosity_ >= 1)
@@ -493,7 +517,7 @@ bool CglPhic::tightenVu (int t, double gap, double ait, double corr)
 	  << n_ut << " = u(" << t << ") < l(" << t << ") = " << o_lt
 	  << ", infeas = " << o_lt-n_ut << ", tol = " << feasTol_
 	  << "." << std::endl ;
-    } else {
+    } else if (diff > colPropTol_) {
       chgColBnd(t,'u',n_ut,feas) ;
     }
   }
@@ -534,7 +558,8 @@ bool CglPhic::tightenVl (int t, double gap, double ait, double corr)
   const double &o_ut = colU_[t] ;
   const double &o_lt = colL_[t] ;
   feas = true ;
-  if ((n_lt-o_lt) > zeroTol_) {
+  const double diff = n_lt-o_lt ;
+  if (diff > zeroTol_) {
     if ((n_lt-o_ut) > feasTol_) {
       feas = false ;
       if (verbosity_ >= 1)
@@ -543,7 +568,7 @@ bool CglPhic::tightenVl (int t, double gap, double ait, double corr)
 	  << n_lt << " = l(" << t << ") > u(" << t << ") = " << o_ut
 	  << ", infeas = " << n_lt-o_ut << ", tol = " << feasTol_
 	  << "." << std::endl ;
-    } else {
+    } else if (diff > colPropTol_) {
       chgColBnd(t,'l',n_lt,feas) ;
     }
   }
@@ -692,7 +717,6 @@ void CglPhic::propagate (bool &feas)
     int i = getFromPending() ;
     inProcess_ = i ;
     processRow(i,feas) ;
-    if (!feas) break ;
   }
   return ;
 }
@@ -722,6 +746,8 @@ void CglPhic::tightenAbInitio (bool &feas)
     const double &negGapi = info_[i].negGap_ ;
     const double &bi = rhsU_[i] ;
     const double &blowi = rhsL_[i] ;
+    double gapLE = 0.0 ;
+    double gapGE = 0.0 ;
     double metricLE = 0.0 ;
     double metricGE = 0.0 ;
     bool propagate = false ;
@@ -739,19 +765,20 @@ void CglPhic::tightenAbInitio (bool &feas)
     * U(i) is finite: In this case we can queue based on the gap, which will
       be finite. If (bi-Li)-posGap < 0 we will be able to tighten the upper
       bound on some variable with a positive coefficient. If (bi-Li)+negGap
-      < 0, we will be able to tighten the lower bound on some variable with
+      > 0, we will be able to tighten the lower bound on some variable with
       a negative coefficient.
 */
     if (bi < infty_ && lhsL_[i].infCnt_ == 0) {
       if (lhsU_[i].infCnt_ != 0) {
-        metricLE = infty_ ;
+        gapLE = infty_ ;
+	metricLE = infty_ ;
 	propagate = true ;
       } else {
-	metricLE = CoinMax(posGapi,-negGapi) ;
-        metricLE = (bi-lhsL_[i].bnd_)-metricLE ;
-	if (metricLE < 0) {
+	gapLE = bi-lhsL_[i].bnd_ ;
+	if (posGapi > gapLE || -negGapi < gapLE) {
 	  propagate = true ;
-	  metricLE /= -normi ;
+	  metricLE = CoinMax((posGapi-gapLE),(gapLE+negGapi)) ;
+	  metricLE /= normi ;
 	}
       }
       if (verbosity_ >= 4 && propagate) {
@@ -771,13 +798,14 @@ void CglPhic::tightenAbInitio (bool &feas)
 */
     if (blowi > -infty_ && lhsU_[i].infCnt_ == 0) {
       if (lhsL_[i].infCnt_ != 0) {
-        metricGE = infty_ ;
+        gapGE = infty_ ;
+	metricGE = infty_ ;
 	propagate = true ;
       } else {
-	metricGE = CoinMin(-posGapi,negGapi) ;
-        metricGE = (blowi-lhsU_[i].bnd_)-metricGE ;
-	if (metricGE > 0) {
+	gapGE = blowi-lhsU_[i].bnd_ ;
+	if (-posGapi > gapGE || negGapi < gapGE) {
 	  propagate = true ;
+	  metricGE = CoinMax(-(gapGE+posGapi),(gapGE-negGapi)) ;
 	  metricGE /= normi ;
 	}
       }

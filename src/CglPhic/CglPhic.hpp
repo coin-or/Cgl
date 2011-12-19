@@ -337,10 +337,20 @@ public:
   /// Get the feasibility tolerance
   inline double getFeasTol() const { return (feasTol_) ; }
 
-  /// Set the propagation tolerance
-  inline void setPropTol(double tol) { propTol_ = tol ; }
+  /// Set the propagation type
+  inline void setPropType(int propType) { propType_ = propType ; }
+  /// Get the propagation type
+  inline int getPropType() const { return (propType_) ; }
+
+  /// Set the row propagation tolerance
+  inline void setRowPropTol(double tol) { rowPropTol_ = tol ; }
   /// Get the propagation tolerance
-  inline double getPropTol() const { return (propTol_) ; }
+  inline double getRowPropTol() const { return (rowPropTol_) ; }
+
+  /// Set the column propagation tolerance
+  inline void setColPropTol(double tol) { colPropTol_ = tol ; }
+  /// Get the column propagation tolerance
+  inline double getColPropTol() const { return (colPropTol_) ; }
 
   /// Set the value of infinity
   inline void setInfinity(double val) { infty_ = val ; }
@@ -358,6 +368,18 @@ public:
   inline double getParanoia() const { return (paranoia_) ; }
   //@}
 
+  /*! \name Propagation type constants
+
+    These are used to control propagation based on the type of the variable.
+
+    \note The shift constants used to define these values must match the
+    	  codes used for #intVar_!
+  */
+  static const int PropCon = (1<<0) ;
+  static const int PropBinary = (1<<1) ;
+  static const int PropGenInt = (1<<2) ;
+
+
 private:
 
   /*! \name Control parameters */
@@ -374,12 +396,26 @@ private:
     bound has resulted in loss of feasibility.
   */
   double feasTol_ ;
-  /*! \brief Propagation tolerance
+  /*! \brief Propagation control by variable type
 
-    This value is used to determine if a change to a lhs bound is worth
+    Interpreted as a bit vector:
+    - PropBinary: propagate binary variables
+    - PropGenInt: propagate general integer variables
+    - PropCon: propagate continuous variables
+  */
+  int propType_ ;
+  /*! \brief Column propagation tolerance
+
+    This value is used to determine if a change to a column bound is worth
     propagating.
   */
-  double propTol_ ;
+  double colPropTol_ ;
+  /*! \brief Row propagation tolerance
+
+    This value is used to determine if a change to a row lhs bound is worth
+    propagating.
+  */
+  double rowPropTol_ ;
   /*! \brief Infinity
 
     The value used as infinity during propagation.
@@ -401,6 +437,7 @@ private:
     -  4: revisions to row lhs bounds
     -  5: pending set activity
     -  6: add additional processing traces
+
     Anything above 1 is likely too much unless you're debugging.
   */
   int verbosity_ ;
@@ -466,6 +503,7 @@ private:
     - 0: continuous ('c')
     - 1: binary ('b')
     - 2: general integer ('g')
+
     The character is shown in various print statements.
   */
   const char *intVar_ ;

@@ -49,12 +49,25 @@ const double dfltFeasTol = 1.0e-7 ;
 // Default value for infinity
 const double dfltInfinity = COIN_DBL_MAX ;
 
-/*! \brief Default propagation tolerance
+/*! \brief Default column types to propagate
+
+  This value is used to determine which variable types will be propagated.
+*/
+const int dfltColPropType = CglPhic::PropGenInt|CglPhic::PropBinary ;
+
+/*! \brief Default column propagation tolerance
+
+  This value is used to determine if the change to a column bound is worth
+  propagating.
+*/
+const double dfltColPropTol = 1.0e-3 ;
+
+/*! \brief Default row propagation tolerance
 
   This value is used to determine if the change to a lhs bound is worth
   propagating.
 */
-const double dfltPropTol = 1.0e-6 ;
+const double dfltRowPropTol = 1.0e-3 ;
 
 /*! \brief Default revision limit for constraint lhs bounds
 
@@ -71,7 +84,9 @@ const int dfltRevLimit = 10 ;
 CglPhic::CglPhic ()
   : zeroTol_(dfltZeroTol),
     feasTol_(dfltFeasTol),
-    propTol_(dfltPropTol),
+    propType_(dfltColPropType),
+    colPropTol_(dfltColPropTol),
+    rowPropTol_(dfltRowPropTol),
     infty_(dfltInfinity),
     revLimit_(dfltRevLimit),
     verbosity_(0),
@@ -123,7 +138,9 @@ CglPhic::CglPhic (const CoinPackedMatrix *const rowMtx,
 		  const double *const rhsLower, const double *const rhsUpper)
   : zeroTol_(dfltZeroTol),
     feasTol_(dfltFeasTol),
-    propTol_(dfltPropTol),
+    propType_(dfltColPropType),
+    colPropTol_(dfltColPropTol),
+    rowPropTol_(dfltRowPropTol),
     infty_(dfltInfinity),
     revLimit_(dfltRevLimit),
     verbosity_(0),
