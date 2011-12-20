@@ -10,6 +10,8 @@
 #ifndef CglPhic_H
 #define CglPhic_H
 
+#include <vector>
+
 #include "CoinPackedMatrix.hpp"
 
 /*! \file CglPhic.hpp
@@ -558,35 +560,79 @@ private:
   /// Constraint characteristics array
   CglPhicConInfo *info_ ;
 
-  /*! \brief Propagation candidate
+  /*! \brief Propagation candidate information
   
     It's important to the efficiency of the algorithm that large changes in
     lhs bounds be propagated first. Delta_ and metric_ are used for this
     purpose.
   */
   struct CglPhicCand {
-    /// constraint index
-    int ndx_ ;
     /// accumulated bound change
-    double delta_ ;
+    float delta_ ;
     /// percentage bound change (sort key)
-    double metric_ ;
+    float metric_ ;
+    /// True if constraint is in the pending set, waiting for propagation
+    bool isPending_ ;
+  } ;
+
+  /*! \brief Vector of propagation candidate information
+
+    There is one entry per constraint. If the constraint is not queued for
+    propagation, CglPhicCand::inPending_ will be false and any information
+    is invalid. When CglPhicCand::inPending_ is true, the constraint is a
+    candidate for propagation and the propagation information should be valid.
+  */
+  CglPhicCand *candInfo_ ;
+
+  /*! \brief Comparison operator for candidate heap
+  
+    We need a function object that knows how to compare two candidate
+    constraints.
+  */
+  struct CglPhicCandCompare {
+
+    CglPhicCand *candVec_ ;
+
+    CglPhicCandCompare (CglPhicCand *candVec) : candVec_(candVec) {}
+
+    inline bool operator() (int x, int y) {
+      bool retval = false ;
+      if (x != y) {
+	if (candVec_[x].metric_ < candVec_[y].metric_)
+	  retval = true ;
+	else if (candVec_[x].metric_ == candVec_[y].metric_ && x < y)
+	  retval = true ;
+      }
+      return (retval) ;
+    }
   } ;
   
-  /// Capacity of #pending_
-  int szePending_ ;
-  /// The number of constraints waiting for bound propagation
-  int numPending_ ;
-  /// The set of constraints waiting for bound propagation.
-  CglPhicCand *pending_ ;
-  /*! \brief Cross-reference from constraint index to pending entry.
+  /// Prebuilt comparision object
+  CglPhicCandCompare heapCmpObj_ ;
 
-    Contains (index+1) of the entry in #pending_, or zero if the constraint is
-    not pending.
+  /*! \brief The constraint currently in process
+
+    Set to -1 if there's no constraint in process.
   */
-  int *isPending_ ;
-  /// The constraint currently in process
   int inProcess_ ;
+  
+  /// Typedef for propagation candidate heap
+  typedef std::vector<int> CglPhicCandHeap ;
+
+  /*! \brief The heap of candidates
+
+    The set of pending constraints is organised into a heap; each heap entry
+    is the index of an entry in #pending_.
+  */
+  CglPhicCandHeap pending_ ;
+
+  /*! \brief True if a heap rebuild is necessary
+
+    The metrics in the entries in #candInfo_ are revised during
+    propagation. In general, revision destroys the heap property. This
+    variable indicates that revision has occurred and a rebuild is required.
+  */
+  bool rebuildHeap_ ;
 
   /*! \brief Constraint lhs bound change record
 

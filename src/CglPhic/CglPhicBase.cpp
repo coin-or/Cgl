@@ -115,11 +115,11 @@ CglPhic::CglPhic ()
     lhsL_(0),
     lhsU_(0),
     info_(0),
-    szePending_(0),
-    numPending_(0),
-    pending_(0),
-    isPending_(0),
+    candInfo_(0),
+    heapCmpObj_(0),
     inProcess_(0),
+    pending_(0),
+    rebuildHeap_(false),
     szeLhsBndChgs_(0),
     numLhsBndChgs_(0),
     lhsBndChgs_(0),
@@ -169,11 +169,10 @@ CglPhic::CglPhic (const CoinPackedMatrix *const rowMtx,
     lhsL_(0),
     lhsU_(0),
     info_(0),
-    szePending_(0),
-    numPending_(0),
-    pending_(0),
-    isPending_(0),
+    candInfo_(0),
+    heapCmpObj_(0),
     inProcess_(0),
+    rebuildHeap_(false),
     szeLhsBndChgs_(0),
     numLhsBndChgs_(0),
     lhsBndChgs_(0),
@@ -199,8 +198,7 @@ CglPhic::~CglPhic ()
  delete[] info_ ;
  if (ourColL_) delete[] colL_ ;
  if (ourColU_) delete[] colU_ ;
- delete[] pending_ ;
- delete[] isPending_ ;
+ delete[] candInfo_ ;
  delete[] varBndChgs_ ;
  delete[] varHasChanged_ ;
  delete[] lhsBndChgs_ ;
@@ -467,26 +465,11 @@ void CglPhic::initLhsBnds ()
 void CglPhic::initPropagation ()
 {
   assert(colMtx_) ;
-
 /*
-  Allocate and/or reset the data structures for the set of pending
-  constraints: the set itself, and a cross reference. Reset is simply a matter
-  of setting numPending back to zero.
+  Allocate and initialise the data structures that record variable bound
+  changes.
 */
-  int newSize = CoinMin(m_/4+10,m_) ;
-  if (newSize > szePending_) {
-    szePending_ = newSize ;
-    delete[] pending_ ;
-    pending_ = new CglPhicCand [szePending_] ;
-  }
-  if (!isPending_) isPending_ = new int [m_] ;
-  CoinZeroN(isPending_,m_) ;
-  numPending_ = 0 ;
-  inProcess_ = -1 ;
-/*
-  And again, for the data structures that record variable bound changes.
-*/
-  newSize = CoinMin(n_/4+10,n_) ;
+  int newSize = CoinMin(n_/4+10,n_) ;
   if (newSize > szeVarBndChgs_) {
     szeVarBndChgs_ = newSize ;
     delete[] varBndChgs_ ;
@@ -507,6 +490,19 @@ void CglPhic::initPropagation ()
   if (!lhsHasChanged_) lhsHasChanged_ = new int [m_] ;
   CoinZeroN(lhsHasChanged_,m_) ;
   numLhsBndChgs_ = 0 ;
+/*
+  And again, for the data structures that control bound propagation: The vector
+  of metrics and the heap of candidates for propagation.
+*/
+  int szePending = static_cast<int>(pending_.capacity()) ;
+  if (newSize > szePending) pending_.reserve(newSize) ;
+  inProcess_ = -1 ;
+  rebuildHeap_ = false ;
+  if (!candInfo_ ) candInfo_ = new CglPhicCand [m_] ;
+  for (int i = 0 ; i < m_ ; i++) {
+    candInfo_[i].isPending_ = false ;
+  }
+  heapCmpObj_.candVec_ = candInfo_ ;
 }
 
 
@@ -517,8 +513,12 @@ void CglPhic::clearPropagation ()
 {
   if (verbosity_ >= 2)
     std::cout << "    clearing pending set and change records." << std::endl ;
-  numPending_ = 0 ;
-  CoinZeroN(isPending_,m_) ;
+
+  pending_.clear() ;
+  for (int i = 0 ; i < m_ ; i++) {
+    candInfo_[i].isPending_ = false ;
+  }
+
   numVarBndChgs_ = 0 ;
   CoinZeroN(varHasChanged_,n_) ;
   numLhsBndChgs_ = 0 ;

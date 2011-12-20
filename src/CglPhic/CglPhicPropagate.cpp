@@ -43,109 +43,99 @@ inline double roundL (double val, double tol) {
 }    // end file-local namespace
 
 /*
-  Add a constraint to the pile of constraints waiting to be processed. 
+  Add a constraint to the heap of constraints waiting to be processed. 
 */
-void CglPhic::addToPending (int i, double delta, double metric)
+void CglPhic::addToPending (int i, double ddelta, double dmetric)
 {
+  const float delta = static_cast<float>(ddelta) ;
+  const float metric = static_cast<float>(dmetric) ;
 /*
-  Is this constraint already in the pile? If so, simply add to the existing
-  entry.
+  Is this constraint already in the heap? If so, simply add to the existing
+  entry and indicate we need to rebuild the heap.
 */
-  bool isPendingi = (isPending_[i] > 0) ;
-  int pendNdx = -1 ;
+  CglPhicCand &candi = candInfo_[i] ;
+  bool alreadyPendingi = candi.isPending_ ;
 
-  if (isPendingi) {
-    pendNdx = isPending_[i]-1 ;
-    assert(0 <= pendNdx && pendNdx < szePending_) ;
-    assert(pending_[pendNdx].ndx_ == i) ;
-    pending_[pendNdx].delta_ += delta ;
-    if (pending_[pendNdx].metric_ < infty_)
-      pending_[pendNdx].metric_ += metric ;
+  if (alreadyPendingi) {
+    candi.delta_ += delta ;
+    if (candi.metric_ < infty_) candi.metric_ += metric ;
+    rebuildHeap_ = true ;
   } else if (i != inProcess_) {
 /*
-  Not in the pile, and not currently in process.  Make a new entry. Expand
-  the pending_ array, if necessary.
+  Not in the heap, and not currently in process. Initialise the entry in
+  candInfo_, add a pointer to the end of pending_ and set rebuildHeap_.
 */
-    if (numPending_ >= szePending_) {
-      int newSze = szePending_+(szePending_/2)+10 ;
-      newSze = CoinMax(newSze,m_) ;
-      CglPhicCand *newPending = new CglPhicCand [newSze] ;
-      CoinMemcpyN(pending_,szePending_,newPending) ;
-      delete[] pending_ ;
-      pending_ = newPending ;
-      szePending_ = newSze ;
-    }
-    pendNdx = numPending_ ;
-    numPending_++ ;
-    pending_[pendNdx].ndx_ = i ;
-    pending_[pendNdx].delta_ = delta ;
-    pending_[pendNdx].metric_ = metric ;
-    isPending_[i] = pendNdx+1 ;
+    candi.delta_ = delta ;
+    candi.metric_ = metric ;
+    candi.isPending_ = true ;
+    pending_.push_back(i) ;
+    rebuildHeap_ = true ;
   }
-  assert(pendNdx >= 0 || i == inProcess_) ;
 
-  if (verbosity_ >= 4 && pendNdx >= 0) {
-    CglPhicCand &pendi = pending_[pendNdx] ;
+  if (verbosity_ >= 4 && rebuildHeap_) {
     std::cout << "          " ;
-    if (isPendingi)
+    if (alreadyPendingi)
       std::cout << "updated" ;
     else
       std::cout << "queued" ;
     std:: cout
-      << " pending #" << pendNdx << ", r(" << pendi.ndx_ << "), delta "
-      << pendi.delta_ << " (" << delta << "), metric " << pendi.metric_
-      << " (" << metric << ")" << std::endl ;
+      << " r(" << i << "), delta " << candi.delta_ << " (" << delta
+      << "), metric " << candi.metric_ << " (" << metric << "); pending set "
+      << pending_.size() << " entries." << std::endl ;
   }
        
 }
 
 /*
   Remove the constraint with the largest metric from the pile of constraints
-  waiting to be processed. Implemented as a simple linear scan.  A return
-  value of -1 means the pile is empty.
+  waiting to be processed.
+
+  This initial implementation is straightforward: If rebuildHeap_ is true,
+  rebuild before popping the first entry.
 */
 int CglPhic::getFromPending ()
 {
-  double bestMetric = -1.0 ;
-  int bestPending = -1 ;
-  int bestNdx = -1 ;
+  typedef CglPhicCandHeap::iterator HeapIter ;
+  HeapIter heapStart = pending_.begin() ;
+  HeapIter heapEnd = pending_.end() ;
 /*
-  Scan for the best entry.
+  Do we need to rebuild the heap?
 */
-  for (int k = 0 ; k < numPending_ ; k++) {
-    double metric = pending_[k].metric_ ;
-    if (metric > bestMetric) {
-      bestMetric = metric ;
-      bestPending = k ;
+  if (rebuildHeap_) {
+    if (verbosity_ >= 4) {
+      std::cout << std::endl ;
+      std::cout
+        << "      rebuilding heap, " << pending_.size() << " entries ... " ;
     }
+    make_heap(heapStart,heapEnd,heapCmpObj_) ;
+    rebuildHeap_ = false ;
   }
+/*
+  Pop the best element: read the value of the entry at the top of the heap,
+  then remove the element from the heap and rebuild the heap (pop_heap), and
+  finally remove the element from pending_ (pop_back).
+*/
+  int bestPending = -1 ;
+  if (!pending_.empty()) {
+    bestPending = *heapStart ;
+    pop_heap(heapStart,heapEnd,heapCmpObj_) ;
+    pending_.pop_back() ;
+  }
+
   if (verbosity_ >= 5) {
+    std::cout << std::endl ;
     std::cout << "          " ;
     if (bestPending >= 0) {
-      CglPhicCand &cand = pending_[bestPending] ;
+      CglPhicCand &candi = candInfo_[bestPending] ;
       std::cout
-	<< "scanned " << numPending_ << " pending, selected #"
-	<< bestPending << ": r(" << cand.ndx_ << "), delta "
-	<< cand.delta_ << ", metric " << cand.metric_ ;
+	<< "selected r(" << bestPending << "), delta "
+	<< candi.delta_ << ", metric " << candi.metric_ ;
     } else {
       std::cout << "pending set empty." ;
     }
     std::cout << std::endl ;
   }
-/*
-  Bookkeeping. If needed, compress the pile, moving the last entry into
-  the position just vacated. Update isPending_.
-*/
-  if (bestPending >= 0) {
-    bestNdx = pending_[bestPending].ndx_ ;
-    isPending_[bestNdx] = 0 ;
-    numPending_-- ;
-    if (numPending_ != bestPending) {
-      pending_[bestPending] = pending_[numPending_] ;
-      isPending_[pending_[bestPending].ndx_] = bestPending+1 ; 
-    }
-  }
-  return (bestNdx) ;
+  return (bestPending) ;
 }
 
 
@@ -713,9 +703,10 @@ void CglPhic::propagate (bool &feas)
   changes to variable bounds.
 */
   feas = true ;
-  while (numPending_ > 0 && feas) {
+  while (!pending_.empty() && feas) {
     int i = getFromPending() ;
     inProcess_ = i ;
+    candInfo_[i].isPending_ = false ;
     processRow(i,feas) ;
   }
   return ;
