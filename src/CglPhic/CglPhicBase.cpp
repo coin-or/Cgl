@@ -69,6 +69,14 @@ const double dfltColPropTol = 1.0e-3 ;
 */
 const double dfltRowPropTol = 1.0e-3 ;
 
+/*! \brief Default heap disturbance tolerance
+
+  This value is used to decide if there's been enough accumulated change on
+  the lhs of a constraint to justify adding the entry to the heap (or tweaking
+  the metric of an existing entry).
+*/
+const double dfltDisturbTol = 10 ;
+
 /*! \brief Default revision limit for constraint lhs bounds
 
   The value comes from previous experience in bonsaiG.
@@ -87,6 +95,7 @@ CglPhic::CglPhic ()
     propType_(dfltColPropType),
     colPropTol_(dfltColPropTol),
     rowPropTol_(dfltRowPropTol),
+    disturbTol_(dfltDisturbTol),
     infty_(dfltInfinity),
     revLimit_(dfltRevLimit),
     verbosity_(0),
@@ -141,6 +150,7 @@ CglPhic::CglPhic (const CoinPackedMatrix *const rowMtx,
     propType_(dfltColPropType),
     colPropTol_(dfltColPropTol),
     rowPropTol_(dfltRowPropTol),
+    disturbTol_(dfltDisturbTol),
     infty_(dfltInfinity),
     revLimit_(dfltRevLimit),
     verbosity_(0),
@@ -499,9 +509,7 @@ void CglPhic::initPropagation ()
   inProcess_ = -1 ;
   rebuildHeap_ = false ;
   if (!candInfo_ ) candInfo_ = new CglPhicCand [m_] ;
-  for (int i = 0 ; i < m_ ; i++) {
-    candInfo_[i].isPending_ = false ;
-  }
+  memset(candInfo_,0,(sizeof(CglPhicCand)*m_)) ;
   heapCmpObj_.candVec_ = candInfo_ ;
 }
 
@@ -515,9 +523,7 @@ void CglPhic::clearPropagation ()
     std::cout << "    clearing pending set and change records." << std::endl ;
 
   pending_.clear() ;
-  for (int i = 0 ; i < m_ ; i++) {
-    candInfo_[i].isPending_ = false ;
-  }
+  memset(candInfo_,0,(sizeof(CglPhicCand)*m_)) ;
 
   numVarBndChgs_ = 0 ;
   CoinZeroN(varHasChanged_,n_) ;

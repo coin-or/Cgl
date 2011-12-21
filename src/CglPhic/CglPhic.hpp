@@ -354,6 +354,11 @@ public:
   /// Get the column propagation tolerance
   inline double getColPropTol() const { return (colPropTol_) ; }
 
+  /// Set the heap disturbance tolerance
+  inline void setDisturbTol(double tol) { disturbTol_ = tol ; }
+  /// Get the heap disturbance tolerance
+  inline double getDisturbTol() const { return (disturbTol_) ; }
+
   /// Set the value of infinity
   inline void setInfinity(double val) { infty_ = val ; }
   /// Get the value of infinity
@@ -418,6 +423,15 @@ private:
     propagating.
   */
   double rowPropTol_ ;
+
+  /*! \brief Heap disturbance tolerance
+
+    This value controls the addition of constraints to the propagation heap. A
+    constraint is added to the heap (or the metric of an existing entry is
+    tweaked) only when the accumulated change exceeds this value.
+  */
+  double disturbTol_ ;
+
   /*! \brief Infinity
 
     The value used as infinity during propagation.
@@ -563,14 +577,17 @@ private:
   /*! \brief Propagation candidate information
   
     It's important to the efficiency of the algorithm that large changes in
-    lhs bounds be propagated first. Delta_ and metric_ are used for this
-    purpose.
+    lhs bounds be propagated first. On the other hand, it's costly to disturb
+    the heap. So accumulate change in #accum_. Tweak #metric_ only when change
+    exceeds a threshold.
   */
   struct CglPhicCand {
     /// accumulated bound change
     float delta_ ;
-    /// percentage bound change (sort key)
+    /// percentage bound change (sort key for heap)
     float metric_ ;
+    /// accumulated bound change since last change of heap metric
+    float accum_ ;
     /// True if constraint is in the pending set, waiting for propagation
     bool isPending_ ;
   } ;
@@ -587,7 +604,7 @@ private:
   /*! \brief Comparison operator for candidate heap
   
     We need a function object that knows how to compare two candidate
-    constraints.
+    constraints. It also needs to carry a pointer to the candidate vector.
   */
   struct CglPhicCandCompare {
 

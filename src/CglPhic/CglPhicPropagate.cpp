@@ -58,18 +58,26 @@ void CglPhic::addToPending (int i, double ddelta, double dmetric)
 
   if (alreadyPendingi) {
     candi.delta_ += delta ;
-    if (candi.metric_ < infty_) candi.metric_ += metric ;
-    rebuildHeap_ = true ;
+    if (candi.metric_ < infty_) candi.accum_ += metric ;
+    if (candi.accum_ > disturbTol_) {
+      candi.metric_ += candi.accum_ ;
+      candi.accum_ = 0 ;
+      rebuildHeap_ = true ;
+    }
   } else if (i != inProcess_) {
 /*
   Not in the heap, and not currently in process. Initialise the entry in
   candInfo_, add a pointer to the end of pending_ and set rebuildHeap_.
 */
     candi.delta_ = delta ;
-    candi.metric_ = metric ;
-    candi.isPending_ = true ;
-    pending_.push_back(i) ;
-    rebuildHeap_ = true ;
+    candi.accum_ = metric ;
+    if (candi.accum_ > disturbTol_) {
+      candi.metric_ = candi.accum_ ;
+      candi.accum_ = 0 ;
+      candi.isPending_ = true ;
+      pending_.push_back(i) ;
+      rebuildHeap_ = true ;
+    }
   }
 
   if (verbosity_ >= 4 && rebuildHeap_) {
@@ -83,7 +91,6 @@ void CglPhic::addToPending (int i, double ddelta, double dmetric)
       << "), metric " << candi.metric_ << " (" << metric << "); pending set "
       << pending_.size() << " entries." << std::endl ;
   }
-       
 }
 
 /*
