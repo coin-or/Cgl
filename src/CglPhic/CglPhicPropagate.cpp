@@ -114,7 +114,7 @@ int CglPhic::getFromPending ()
       std::cout
         << "      rebuilding heap, " << pending_.size() << " entries ... " ;
     }
-    make_heap(heapStart,heapEnd,heapCmpObj_) ;
+    std::make_heap(heapStart,heapEnd,heapCmpObj_) ;
     rebuildHeap_ = false ;
   }
 /*
@@ -125,7 +125,7 @@ int CglPhic::getFromPending ()
   int bestPending = -1 ;
   if (!pending_.empty()) {
     bestPending = *heapStart ;
-    pop_heap(heapStart,heapEnd,heapCmpObj_) ;
+    std::pop_heap(heapStart,heapEnd,heapCmpObj_) ;
     pending_.pop_back() ;
   }
 
