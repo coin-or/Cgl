@@ -65,7 +65,11 @@ public:
                                   int makeEquality=0, int numberPasses=5,
 					    int tuning=0);
   /// Creates solution in original model
-  void postProcess(OsiSolverInterface &model);
+  void postProcess(OsiSolverInterface &model
+#ifdef KEEP_POSTPROCESS
+		   ,bool deleteStuff=true
+#endif
+		   );
   /** Tightens primal bounds to make dual and branch and cutfaster.  Unless
       fixed or integral, bounds are slightly looser than they could be.
       Returns non-zero if problem infeasible
