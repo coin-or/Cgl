@@ -3341,7 +3341,8 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
 }
 
 void
-CglPreProcess::postProcess(OsiSolverInterface & modelIn)
+CglPreProcess::postProcess(OsiSolverInterface & modelIn
+			   ,bool deleteStuff)
 {
   // Do presolves
   bool saveHint;
@@ -3580,12 +3581,14 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 	  } 
 	}
       }
-      delete modifiedModel_[iPass];;
-      delete model_[iPass];;
-      delete presolve_[iPass];
-      modifiedModel_[iPass]=NULL;
-      model_[iPass]=NULL;
-      presolve_[iPass]=NULL;
+      if (deleteStuff) {
+	delete modifiedModel_[iPass];;
+	delete model_[iPass];;
+	delete presolve_[iPass];
+	modifiedModel_[iPass]=NULL;
+	model_[iPass]=NULL;
+	presolve_[iPass]=NULL;
+      }
       modelM = modelM2;
     }
     // should be back to startModel_;
@@ -3793,7 +3796,9 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 #endif
     handler_->message(CGL_POST_INFEASIBLE,messages_)
       <<CoinMessageEol;
-  } else if (fabs(saveObjectiveValue-objectiveValue)>testObj) {
+  } else if (fabs(saveObjectiveValue-objectiveValue)>testObj
+	     &&deleteStuff
+	     ) {
     handler_->message(CGL_POST_CHANGED,messages_)
       <<saveObjectiveValue<<objectiveValue
       <<CoinMessageEol;
