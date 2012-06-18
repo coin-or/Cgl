@@ -2003,7 +2003,13 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     oldModel->getStrParam(OsiSolverName,solverName);
     // Extend if you want other solvers to keep solution
     bool keepSolution=solverName=="clp";
-    presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-7,true,5,prohibited_,keepSolution,rowType_);
+    // Should not be hardwired tolerance - temporary fix
+#ifndef CGL_PREPROCESS_TOLERANCE
+#define CGL_PREPROCESS_TOLERANCE 1.0e-7
+#endif
+    // So standalone version can switch off
+    double feasibilityTolerance = ((tuning&1024)==0) ? CGL_PREPROCESS_TOLERANCE : 1.0e-4;
+    presolvedModel = pinfo->presolvedModel(*oldModel,feasibilityTolerance,true,5,prohibited_,keepSolution,rowType_);
     oldModel->messageHandler()->setLogLevel(saveLogLevel);
     if (presolvedModel) {
       presolvedModel->messageHandler()->setLogLevel(saveLogLevel);
@@ -2300,7 +2306,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       oldModel->getStrParam(OsiSolverName,solverName);
       // Extend if you want other solvers to keep solution
       bool keepSolution=solverName=="clp";
-      presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-7,true,5,
+      presolvedModel = pinfo->presolvedModel(*oldModel,CGL_PREPROCESS_TOLERANCE,true,5,
 					     prohibited_,keepSolution,rowType_);
       oldModel->messageHandler()->setLogLevel(saveLogLevel);
       if (!presolvedModel) {
