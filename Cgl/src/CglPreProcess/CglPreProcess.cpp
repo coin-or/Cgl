@@ -2003,7 +2003,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     oldModel->getStrParam(OsiSolverName,solverName);
     // Extend if you want other solvers to keep solution
     bool keepSolution=solverName=="clp";
-    presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-7,true,5,prohibited_,keepSolution,rowType_);
+    // Should not be hardwired tolerance - temporary fix
+#ifndef CGL_PREPROCESS_TOLERANCE
+#define CGL_PREPROCESS_TOLERANCE 1.0e-7
+#endif
+    presolvedModel = pinfo->presolvedModel(*oldModel,CGL_PREPROCESS_TOLERANCE,true,5,prohibited_,keepSolution,rowType_);
     oldModel->messageHandler()->setLogLevel(saveLogLevel);
     if (presolvedModel) {
       presolvedModel->messageHandler()->setLogLevel(saveLogLevel);
@@ -2300,7 +2304,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       oldModel->getStrParam(OsiSolverName,solverName);
       // Extend if you want other solvers to keep solution
       bool keepSolution=solverName=="clp";
-      presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-7,true,5,
+      presolvedModel = pinfo->presolvedModel(*oldModel,CGL_PREPROCESS_TOLERANCE,true,5,
 					     prohibited_,keepSolution,rowType_);
       oldModel->messageHandler()->setLogLevel(saveLogLevel);
       if (!presolvedModel) {
@@ -3309,7 +3313,7 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
                       }
                       assert (sum>=rowLower[iRow]-1.0e7&&sum<=rowUpper[iRow]+1.0e-7);
                     }
-#endif
+#endif 
                   }
                 }
               }
