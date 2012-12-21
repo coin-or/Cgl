@@ -677,7 +677,7 @@ CglGomory::generateCuts(
       tolerance3=1.0e-6;
       tolerance6=1.0e-7;
       tolerance9=1.0e-5;
-      if (!limit||limit>=500)
+      if (!limit)
 	limit=numberColumns;
     } else {
       if((infoOptions&32)==0/*&&numberTimesStalled_<3*/) {
