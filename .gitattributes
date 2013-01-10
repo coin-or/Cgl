@@ -82,6 +82,13 @@ Cgl/src/CglLandP/CglLandPValidator.cpp -text
 Cgl/src/CglLandP/CglLandPValidator.hpp -text
 Cgl/src/CglLandP/Makefile.am -text
 Cgl/src/CglLandP/Makefile.in -text
+Cgl/src/CglZeroHalf/Cgl012cut.cpp -text
+Cgl/src/CglZeroHalf/Cgl012cut.hpp -text
+Cgl/src/CglZeroHalf/CglZeroHalf.cpp -text
+Cgl/src/CglZeroHalf/CglZeroHalf.hpp -text
+Cgl/src/CglZeroHalf/CglZeroHalfTest.cpp -text
+Cgl/src/CglZeroHalf/Makefile.am -text
+Cgl/src/CglZeroHalf/Makefile.in -text
 Cgl/src/config.h.in -text
 Cgl/src/config_cgl.h.in -text
 Cgl/src/config_cgl_default.h -text
