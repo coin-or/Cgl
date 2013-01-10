@@ -47,6 +47,7 @@
 #include "CglTwomir.hpp"
 #include "CglClique.hpp"
 #include "CglFlowCover.hpp"
+#include "CglZeroHalf.hpp"
 
 // Function Prototypes. Function definitions is in this file.
 void testingMessage( const char * const msg );
@@ -219,6 +220,11 @@ int main (int argc, const char *argv[])
     testingMessage( "Testing CglFlowCover with OsiXprSolverInterface\n" );
     CglFlowCoverUnitTest(&xprSi, testDir);
   }
+  {
+    OsiXprSolverInterface xprSi;
+    testingMessage( "Testing CglZeroHalf with OsiXprSolverInterface\n" );
+    CglZeroHalfUnitTest(&xprSi, mpsDir);
+  }
 
 #endif
 #ifdef COIN_HAS_OSICLP
@@ -287,6 +293,11 @@ int main (int argc, const char *argv[])
     testingMessage( "Testing CglFlowCover with OsiClpSolverInterface\n" );
     CglFlowCoverUnitTest(&clpSi, testDir);
   }
+  {
+    OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglZeroHalf with OsiClpSolverInterface\n" );
+    CglZeroHalfUnitTest(&clpSi, mpsDir);
+  }
 
 #endif
 #ifdef COIN_HAS_OSIDYLP
@@ -351,6 +362,11 @@ int main (int argc, const char *argv[])
     testingMessage( "Testing CglFlowCover with OsiDylpSolverInterface\n" );
     CglFlowCoverUnitTest(&dylpSi, testDir);
   }
+  {
+    OsiDylpSolverInterface dylpSi;
+    testingMessage( "Testing CglZeroHalf with OsiDylpSolverInterface\n" );
+    CglZeroHalfUnitTest(&dylpSi, mpsDir);
+  }
 
 #endif
 #ifdef COIN_HAS_OSIGLPK
@@ -414,6 +430,11 @@ int main (int argc, const char *argv[])
     OsiGlpkSolverInterface glpkSi;
     testingMessage( "Testing CglFlowCover with OsiGlpkSolverInterface\n" );
     CglFlowCoverUnitTest(&glpkSi, testDir);
+  }
+  {
+    OsiGlpkSolverInterface glpkSi;
+    testingMessage( "Testing CglZeroHalf with OsiGlpkSolverInterface\n" );
+    CglZeroHalfUnitTest(&glpkSi, mpsDir);
   }
 
 #endif

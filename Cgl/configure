@@ -27423,7 +27423,7 @@ fi
 
 # Here list all the files that configure should create (except for the
 # configuration header file)
-                                                                                                                                                                                                                                      ac_config_files="$ac_config_files Makefile examples/Makefile src/Makefile src/CglAllDifferent/Makefile src/CglClique/Makefile src/CglDuplicateRow/Makefile src/CglFlowCover/Makefile src/CglGomory/Makefile src/CglKnapsackCover/Makefile src/CglLandP/Makefile src/CglLiftAndProject/Makefile src/CglMixedIntegerRounding/Makefile src/CglMixedIntegerRounding2/Makefile src/CglOddHole/Makefile src/CglPreProcess/Makefile src/CglProbing/Makefile src/CglRedSplit/Makefile src/CglResidualCapacity/Makefile src/CglSimpleRounding/Makefile src/CglTwomir/Makefile test/Makefile cgl.pc cgl-uninstalled.pc"
+                                                                                                                                                                                                                                                ac_config_files="$ac_config_files Makefile examples/Makefile src/Makefile src/CglAllDifferent/Makefile src/CglClique/Makefile src/CglDuplicateRow/Makefile src/CglFlowCover/Makefile src/CglGomory/Makefile src/CglKnapsackCover/Makefile src/CglLandP/Makefile src/CglLiftAndProject/Makefile src/CglMixedIntegerRounding/Makefile src/CglMixedIntegerRounding2/Makefile src/CglOddHole/Makefile src/CglPreProcess/Makefile src/CglProbing/Makefile src/CglRedSplit/Makefile src/CglResidualCapacity/Makefile src/CglSimpleRounding/Makefile src/CglTwomir/Makefile src/CglZeroHalf/Makefile test/Makefile cgl.pc cgl-uninstalled.pc"
 
           ac_config_files="$ac_config_files doxydoc/doxygen.conf"
 
@@ -28270,6 +28270,7 @@ do
   "src/CglResidualCapacity/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglResidualCapacity/Makefile" ;;
   "src/CglSimpleRounding/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglSimpleRounding/Makefile" ;;
   "src/CglTwomir/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglTwomir/Makefile" ;;
+  "src/CglZeroHalf/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglZeroHalf/Makefile" ;;
   "test/Makefile" ) CONFIG_FILES="$CONFIG_FILES test/Makefile" ;;
   "cgl.pc" ) CONFIG_FILES="$CONFIG_FILES cgl.pc" ;;
   "cgl-uninstalled.pc" ) CONFIG_FILES="$CONFIG_FILES cgl-uninstalled.pc" ;;

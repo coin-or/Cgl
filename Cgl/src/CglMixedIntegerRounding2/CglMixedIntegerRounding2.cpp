@@ -1684,9 +1684,14 @@ CglMixedIntegerRounding2::printStats(
 }
 // This can be used to refresh any inforamtion
 void 
-CglMixedIntegerRounding2::refreshSolver(OsiSolverInterface * )
+CglMixedIntegerRounding2::refreshSolver(OsiSolverInterface * solver)
 {
-  doneInitPre_ = false;
+  if (solver->getNumRows()) {
+    mixIntRoundPreprocess(*solver);
+    doneInitPre_ = true;
+  } else {
+    doneInitPre_ = false;
+  }
 }
 // Create C++ lines to get to current state
 std::string

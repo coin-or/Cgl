@@ -1578,6 +1578,23 @@ CglGomory::operator=(const CglGomory& rhs)
   }
   return *this;
 }
+// This can be used to refresh any information
+void 
+CglGomory::refreshSolver(OsiSolverInterface * solver)
+{
+  int numberColumns=solver->getNumCols(); 
+  const double * colUpper = solver->getColUpper();
+  const double * colLower = solver->getColLower();
+  canDoGlobalCuts_ = true;
+  for (int i=0;i<numberColumns;i++) {
+    if (solver->isInteger(i)) {
+      if (colUpper[i]>colLower[i]+1.0) {
+	canDoGlobalCuts_ = false;
+	break;
+      }
+    }
+  }
+}
 // Pass in a copy of original solver (clone it)
 void 
 CglGomory::passInOriginalSolver(OsiSolverInterface * solver)

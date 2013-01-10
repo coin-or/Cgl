@@ -151,7 +151,7 @@ public:
   /// Create C++ lines to get to current state
   virtual std::string generateCpp( FILE * fp);
 
-  /// This can be used to refresh any inforamtion
+  /// This can be used to refresh any information
   virtual void refreshSolver(OsiSolverInterface * solver);
   //@}
       
