@@ -83,6 +83,11 @@ public:
   */
   inline void setAggressiveness(int value)
   { aggressive_=value;}
+  /// Set whether can do global cuts (Dummy for compatibility)
+  inline void setGlobalCuts(bool ) {}
+  /// Say whether can do global cuts (Dummy for compatibility)
+  inline bool canDoGlobalCuts() const 
+  {return false;}
 
   /**
      Returns true if may generate Row cuts in tree (rather than root node).
