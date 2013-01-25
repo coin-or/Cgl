@@ -3185,7 +3185,7 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
           CoinBigIndex rEnd = rowStart[iRow]+rowLength[iRow];
           CoinBigIndex j;
           int numberInteger=0;
-          int whichInteger=-1;
+          //int whichInteger=-1;
           // Compute possible lower and upper ranges
           for (j = rStart;j < rEnd; ++j) {
             double value=element[j];
@@ -3193,7 +3193,7 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
             if (newUpper[iColumn]>newLower[iColumn]) {
               if (model.isInteger(iColumn)) {
                 numberInteger++;
-                whichInteger=iColumn;
+                //whichInteger=iColumn;
               }
               largest = CoinMax(largest,fabs(value));
               if (value > 0.0) {
@@ -3854,8 +3854,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
 			int numberPasses)
 {
   OsiSolverInterface * newModel = model->clone();
-  OsiCuts twoCuts;
   int numberRows = newModel->getNumRows();
+  CglUniqueRowCuts twoCuts(numberRows);
   int numberColumns = newModel->getNumCols();
   int number01Integers=0;
   int iColumn;
@@ -3874,6 +3874,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
   info.options = !numberProhibited_ ? 0 : 2;
   info.randomNumberGenerator=&randomGenerator;
   info.strengthenRow= whichCut;
+#ifdef HEAVY_PROBING
   // See if user asked for heavy probing
   bool heavyProbing=false;
   for (int iGenerator=0;iGenerator<numberCutGenerators_;iGenerator++) {
@@ -3883,6 +3884,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
       break;
     }
   }
+#endif
   bool feasible=true;
   int firstGenerator=0;
   int lastGenerator=numberCutGenerators_;
@@ -4032,7 +4034,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  //}
 	}
       } else {
-#if 0
+#ifdef HEAVY_PROBING
         // special probing
         CglProbing generator1;
         probingCut=&generator1;
@@ -4263,12 +4265,14 @@ CglPreProcess::modified(OsiSolverInterface * model,
 			  interesting=0;
 			}
 			newValue = singletonValue;
+#ifdef CLP_INVESTIGATE
 			double newLoRhs = rowLower[iRow];
 			double newUpRhs = rowUpper[iRow];
 			if ((interesting&3)!=0) {
 			  newLoRhs = nearestLo0;
 			  newValue = nearestLo0-nearestLo1;
 			}
+#endif
 			if (saveLo==saveUp&&((interesting&5)==5||(interesting&10)==10)) {
 #ifdef CLP_INVESTIGATE
 			  printf("INFEAS? ");
@@ -4278,8 +4282,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
 			if ((interesting&12)) {
 #ifdef CLP_INVESTIGATE
 			  double value2 = newValue;
-#endif
 			  newUpRhs = nearestUp0;
+#endif
 			  newValue = nearestUp0-nearestUp1;
 #ifdef CLP_INVESTIGATE
 			  if (newValue!=value2) {
@@ -4490,7 +4494,6 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	memset(markLB,0,number01);
 	char * markUB = new char [number01];
 	memset(markUB,0,number01);
-	CoinRelFltEq equality;
 	for (int k=0;k<number01;k++) {
 	  int start = toZero[k];
 	  int end = toOne[k];
@@ -4520,7 +4523,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 		    columns[0]=which[k];
 		    columns[1]=which[v];
 		    thisCut.setRow(2,columns,values,false);
-		    twoCuts.insertIfNotDuplicate(thisCut,equality);
+		    twoCuts.insertIfNotDuplicate(thisCut);
 		  } else {
 		    // means infeasible for k to go to 0
 		    markLB[k]=1;
@@ -4548,7 +4551,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 		    columns[0]=which[k];
 		    columns[1]=which[v];
 		    thisCut.setRow(2,columns,values,false);
-		    twoCuts.insertIfNotDuplicate(thisCut,equality);
+		    twoCuts.insertIfNotDuplicate(thisCut);
 		  } else {
 		    // means infeasible for k to go to 0
 		    markLB[k]=1;
@@ -4586,7 +4589,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 		    columns[0]=which[k];
 		    columns[1]=which[v];
 		    thisCut.setRow(2,columns,values,false);
-		    twoCuts.insertIfNotDuplicate(thisCut,equality);
+		    twoCuts.insertIfNotDuplicate(thisCut);
 		  } else {
 		    // means infeasible for k to go to 1
 		    markUB[k]=1;
@@ -4614,7 +4617,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 		    columns[0]=which[k];
 		    columns[1]=which[v];
 		    thisCut.setRow(2,columns,values,false);
-		    twoCuts.insertIfNotDuplicate(thisCut,equality);
+		    twoCuts.insertIfNotDuplicate(thisCut);
 		  } else {
 		    // means infeasible for k to go to 1
 		    markUB[k]=1;
@@ -6143,4 +6146,343 @@ CglBK::newSolver(const OsiSolverInterface & model)
   // mark so everything will be deleted
   left_=-1;
   return newSolver;
+}
+static double multiplier[] = {1.23456789e2,-9.87654321};
+static int hashCut (const OsiRowCut & x, int size) 
+{
+  int xN =x.row().getNumElements();
+  double xLb = x.lb();
+  double xUb = x.ub();
+  const int * xIndices = x.row().getIndices();
+  const double * xElements = x.row().getElements();
+  unsigned int hashValue;
+  double value=1.0;
+  if (xLb>-1.0e10)
+    value += xLb*multiplier[0];
+  if (xUb<1.0e10)
+    value += xUb*multiplier[1];
+  for( int j=0;j<xN;j++) {
+    int xColumn = xIndices[j];
+    double xValue = xElements[j];
+    int k=(j&1);
+    value += (j+1)*multiplier[k]*(xColumn+1)*xValue;
+  }
+  // should be compile time but too lazy for now
+  if (sizeof(value)>sizeof(hashValue)) {
+    assert (sizeof(value)==2*sizeof(hashValue));
+    union { double d; int i[2]; } xx;
+    xx.d = value;
+    hashValue = (xx.i[0] + xx.i[1]);
+  } else {
+    assert (sizeof(value)==sizeof(hashValue));
+    union { double d; unsigned int i[2]; } xx;
+    xx.d = value;
+    hashValue = xx.i[0];
+  }
+  return hashValue%(size);
+}
+static bool same (const OsiRowCut & x, const OsiRowCut & y) 
+{
+  int xN =x.row().getNumElements();
+  int yN =y.row().getNumElements();
+  bool identical=false;
+  if (xN==yN) {
+    double xLb = x.lb();
+    double xUb = x.ub();
+    double yLb = y.lb();
+    double yUb = y.ub();
+    if (fabs(xLb-yLb)<1.0e-8&&fabs(xUb-yUb)<1.0e-8) {
+      const int * xIndices = x.row().getIndices();
+      const double * xElements = x.row().getElements();
+      const int * yIndices = y.row().getIndices();
+      const double * yElements = y.row().getElements();
+      int j;
+      for( j=0;j<xN;j++) {
+	if (xIndices[j]!=yIndices[j])
+	  break;
+	if (fabs(xElements[j]-yElements[j])>1.0e-12)
+	  break;
+      }
+      identical =  (j==xN);
+    }
+  }
+  return identical;
+}
+CglUniqueRowCuts::CglUniqueRowCuts(int initialMaxSize, int hashMultiplier)
+{
+  numberCuts_=0;
+  size_ = initialMaxSize;
+  hashMultiplier_ = hashMultiplier;
+  int hashSize=hashMultiplier_*size_;
+  if (size_) {
+    rowCut_ = new  OsiRowCut * [size_];
+    hash_ = new CglHashLink[hashSize];
+  } else {
+    rowCut_ = NULL;
+    hash_ = NULL;
+  }
+  for (int i=0;i<hashSize;i++) {
+    hash_[i].index=-1;
+    hash_[i].next=-1;
+  }
+  lastHash_=-1;
+}
+CglUniqueRowCuts::~CglUniqueRowCuts()
+{
+  for (int i=0;i<numberCuts_;i++)
+    delete rowCut_[i];
+  delete [] rowCut_;
+  delete [] hash_;
+}
+CglUniqueRowCuts::CglUniqueRowCuts(const CglUniqueRowCuts& rhs)
+{
+  numberCuts_=rhs.numberCuts_;
+  hashMultiplier_ = rhs.hashMultiplier_;
+  size_ = rhs.size_;
+  int hashSize= size_*hashMultiplier_;
+  lastHash_=rhs.lastHash_;
+  if (size_) {
+    rowCut_ = new  OsiRowCut * [size_];
+    hash_ = new CglHashLink[hashSize];
+    for (int i=0;i<hashSize;i++) {
+      hash_[i] = rhs.hash_[i];
+    }
+    for (int i=0;i<size_;i++) {
+      if (rhs.rowCut_[i])
+	rowCut_[i]=new OsiRowCut(*rhs.rowCut_[i]);
+      else
+	rowCut_[i]=NULL;
+    }
+  } else {
+    rowCut_ = NULL;
+    hash_ = NULL;
+  }
+}
+CglUniqueRowCuts& 
+CglUniqueRowCuts::operator=(const CglUniqueRowCuts& rhs)
+{
+  if (this != &rhs) {
+    for (int i=0;i<numberCuts_;i++)
+      delete rowCut_[i];
+    delete [] rowCut_;
+    delete [] hash_;
+    numberCuts_=rhs.numberCuts_;
+    hashMultiplier_ = rhs.hashMultiplier_;
+    size_ = rhs.size_;
+    lastHash_=rhs.lastHash_;
+    if (size_) {
+      rowCut_ = new  OsiRowCut * [size_];
+      int hashSize= size_*hashMultiplier_;
+      hash_ = new CglHashLink[hashSize];
+      for (int i=0;i<hashSize;i++) {
+	hash_[i] = rhs.hash_[i];
+      }
+      for (int i=0;i<size_;i++) {
+	if (rhs.rowCut_[i])
+	  rowCut_[i]=new OsiRowCut(*rhs.rowCut_[i]);
+	else
+	  rowCut_[i]=NULL;
+      }
+    } else {
+      rowCut_ = NULL;
+      hash_ = NULL;
+    }
+  }
+  return *this;
+}
+void 
+CglUniqueRowCuts::eraseRowCut(int sequence)
+{
+  // find
+  assert (sequence>=0&&sequence<numberCuts_);
+  OsiRowCut * cut = rowCut_[sequence];
+  int hashSize= size_*hashMultiplier_;
+  int ipos = hashCut(*cut,hashSize);
+  int found = -1;
+  while ( true ) {
+    int j1 = hash_[ipos].index;
+    if ( j1 >= 0 ) {
+      if (j1!=sequence) {
+	int k = hash_[ipos].next;
+	if ( k != -1 )
+	  ipos = k;
+	else
+	  break;
+      } else {
+	found = j1;
+	break;
+      }
+    } else {
+      break;
+    }
+  }
+  assert (found>=0);
+  assert (hash_[ipos].index==sequence);
+  // shuffle up
+  while (hash_[ipos].next>=0) {
+    int k = hash_[ipos].next;
+    hash_[ipos]=hash_[k];
+    ipos=k;
+  }
+  delete cut;
+  // move last to found
+  numberCuts_--;
+  if (numberCuts_) {
+    ipos = hashCut(*rowCut_[numberCuts_],hashSize);
+    while ( true ) {
+      int j1 = hash_[ipos].index;
+      if (j1!=numberCuts_) {
+	int k = hash_[ipos].next;
+	ipos = k;
+      } else {
+	// change
+	hash_[ipos].index=found;
+	rowCut_[found]=rowCut_[numberCuts_];
+	rowCut_[numberCuts_]=NULL;
+	break;
+      }
+    }
+  }
+  assert (!rowCut_[numberCuts_]);
+}
+// Return 0 if added, 1 if not
+int 
+CglUniqueRowCuts::insertIfNotDuplicate(const OsiRowCut & cut)
+{
+  int hashSize= size_*hashMultiplier_;
+  if (numberCuts_==size_) {
+    size_ = 2*size_+100;
+    hashSize=hashMultiplier_*size_;
+    OsiRowCut ** temp = new  OsiRowCut * [size_];
+    delete [] hash_;
+    hash_ = new CglHashLink[hashSize];
+    for (int i=0;i<hashSize;i++) {
+      hash_[i].index=-1;
+      hash_[i].next=-1;
+    }
+    for (int i=0;i<numberCuts_;i++) {
+      temp[i]=rowCut_[i];
+      int ipos = hashCut(*temp[i],hashSize);
+      int found = -1;
+      int jpos=ipos;
+      while ( true ) {
+	int j1 = hash_[ipos].index;
+	
+	if ( j1 >= 0 ) {
+	  if ( !same(*temp[i],*temp[j1]) ) {
+	    int k = hash_[ipos].next;
+	    if ( k != -1 )
+	      ipos = k;
+	    else
+	      break;
+	  } else {
+	    found = j1;
+	    break;
+	  }
+	} else {
+	  break;
+	}
+      }
+      if (found<0) {
+	assert (hash_[ipos].next==-1);
+	if (ipos==jpos) {
+	  // first
+	  hash_[ipos].index=i;
+	} else {
+	  // find next space 
+	  while ( true ) {
+	    ++lastHash_;
+	    assert (lastHash_<hashSize);
+	    if ( hash_[lastHash_].index == -1 ) 
+	      break;
+	  }
+	  hash_[ipos].next = lastHash_;
+	  hash_[lastHash_].index = i;
+	}
+      }
+    }
+    delete [] rowCut_;
+    rowCut_ = temp;
+  }
+  if (numberCuts_<size_) {
+    double newLb = cut.lb();
+    double newUb = cut.ub();
+    CoinPackedVector vector = cut.row();
+    int numberElements =vector.getNumElements();
+    int * newIndices = vector.getIndices();
+    double * newElements = vector.getElements();
+    CoinSort_2(newIndices,newIndices+numberElements,newElements);
+    int i;
+    bool bad=false;
+    for (i=0;i<numberElements;i++) {
+      double value = fabs(newElements[i]);
+      if (value<1.0e-12||value>1.0e12) 
+	bad=true;
+    }
+    if (bad)
+      return 1;
+    OsiRowCut newCut;
+    newCut.setLb(newLb);
+    newCut.setUb(newUb);
+    newCut.setRow(vector);
+    int ipos = hashCut(newCut,hashSize);
+    int found = -1;
+    int jpos=ipos;
+    while ( true ) {
+      int j1 = hash_[ipos].index;
+      
+      if ( j1 >= 0 ) {
+	if ( !same(newCut,*rowCut_[j1]) ) {
+	  int k = hash_[ipos].next;
+	  if ( k != -1 )
+	    ipos = k;
+	  else
+	    break;
+	} else {
+	  found = j1;
+	  break;
+	}
+      } else {
+	break;
+      }
+    }
+    if (found<0) {
+      assert (hash_[ipos].next==-1);
+      if (ipos==jpos) {
+	// first
+	hash_[ipos].index=numberCuts_;
+      } else {
+	// find next space 
+	while ( true ) {
+	  ++lastHash_;
+	  assert (lastHash_<hashSize);
+	  if ( hash_[lastHash_].index == -1 ) 
+	    break;
+	}
+	hash_[ipos].next = lastHash_;
+	hash_[lastHash_].index = numberCuts_;
+      }
+      OsiRowCut * newCutPtr = new OsiRowCut();
+      newCutPtr->setLb(newLb);
+      newCutPtr->setUb(newUb);
+      newCutPtr->setRow(vector);
+      rowCut_[numberCuts_++]=newCutPtr;
+      return 0;
+    } else {
+      return 1;
+    }
+  } else {
+    return -1;
+  }
+}
+// Add in cuts as normal cuts and delete
+void 
+CglUniqueRowCuts::addCuts(OsiCuts & cs)
+{
+  for (int i=0;i<numberCuts_;i++) {
+    cs.insert(*rowCut_[i]);
+    delete rowCut_[i] ;
+    rowCut_[i] = NULL ;
+  }
+  numberCuts_=0;
 }
