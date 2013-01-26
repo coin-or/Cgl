@@ -1,4 +1,4 @@
-// $Id: CglZeroHalf.hpp 1015 2011-04-29 18:02:51Z stefan $
+// $Id$
 // Copyright (C) 2010, International Business Machines
 // Corporation and others.  All Rights Reserved.
 // This code is licensed under the terms of the Eclipse Public License (EPL).
@@ -11,7 +11,7 @@
 #include "CoinPackedMatrix.hpp"
 #include "Cgl012cut.hpp" 
 
-/** Zero Half Cut Generator Class<br> 
+/** Zero Half Cut Generator Class
 
  This class generates zero half cuts via the following method:
 

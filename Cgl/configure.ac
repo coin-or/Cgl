@@ -138,27 +138,27 @@ AC_COIN_VPATH_LINK([test/CglTestData/capPlan1.mps test/CglTestData/l152lav.mps t
 AC_CONFIG_FILES([Makefile
                  examples/Makefile
                  src/Makefile
-		 src/CglAllDifferent/Makefile
-		 src/CglClique/Makefile
-		 src/CglDuplicateRow/Makefile
-		 src/CglFlowCover/Makefile
-		 src/CglGomory/Makefile
-		 src/CglKnapsackCover/Makefile
-		 src/CglLandP/Makefile
-		 src/CglLiftAndProject/Makefile
-		 src/CglMixedIntegerRounding/Makefile
-		 src/CglMixedIntegerRounding2/Makefile
-		 src/CglOddHole/Makefile
-		 src/CglPreProcess/Makefile
-		 src/CglProbing/Makefile
-		 src/CglRedSplit/Makefile
-		 src/CglResidualCapacity/Makefile
-		 src/CglSimpleRounding/Makefile
-		 src/CglTwomir/Makefile
-		 src/CglZeroHalf/Makefile
+                 src/CglAllDifferent/Makefile
+                 src/CglClique/Makefile
+                 src/CglDuplicateRow/Makefile
+                 src/CglFlowCover/Makefile
+                 src/CglGomory/Makefile
+                 src/CglKnapsackCover/Makefile
+                 src/CglLandP/Makefile
+                 src/CglLiftAndProject/Makefile
+                 src/CglMixedIntegerRounding/Makefile
+                 src/CglMixedIntegerRounding2/Makefile
+                 src/CglOddHole/Makefile
+                 src/CglPreProcess/Makefile
+                 src/CglProbing/Makefile
+                 src/CglRedSplit/Makefile
+                 src/CglResidualCapacity/Makefile
+                 src/CglSimpleRounding/Makefile
+                 src/CglTwomir/Makefile
+                 src/CglZeroHalf/Makefile
                  test/Makefile
-		 cgl.pc
-		 cgl-uninstalled.pc])
+                 cgl.pc
+                 cgl-uninstalled.pc])
 AC_CONFIG_FILES([doxydoc/doxygen.conf])
 
 # Here put the location and name of the configuration header file
