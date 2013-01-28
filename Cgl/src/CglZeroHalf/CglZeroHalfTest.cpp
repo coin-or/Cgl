@@ -2,17 +2,13 @@
 // Copyright (C) 2010, International Business Machines
 // Corporation and others.  All Rights Reserved.
 // This code is licensed under the terms of the Eclipse Public License (EPL).
-#if defined(_MSC_VER)
-// Turn off compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
-
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
 
 #include <cassert>
 
+#include "CoinPragma.hpp"
 #include "CglZeroHalf.hpp" 
 //#include "CglKnapsackCover.hpp" 
 #include <stdio.h>
@@ -42,8 +38,8 @@ CglZeroHalfUnitTest(
 
 
 
-
-  // Test generate cuts method on p0201
+#if 0  /* don't have lseu in Data/Sample */
+  // Test generate cuts method on lseu
   {
     CglZeroHalf cg;
     
@@ -91,7 +87,7 @@ CglZeroHalfUnitTest(
     delete siP;
 
   }
-
+#endif
 
 }
 
