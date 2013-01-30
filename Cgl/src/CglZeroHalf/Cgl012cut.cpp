@@ -2996,9 +2996,9 @@ void Cgl012Cut::restart(short int failure /* flag forcing the restart if some tr
   }
 }
 
-/* terminate: free the memory used by local search */
+/* free_memory: free the memory used by local search */
 
-void terminate()
+void free_memory()
 {
   free_cur_cut();
   free(last_moved);
@@ -3029,7 +3029,7 @@ cut_list *Cgl012Cut::tabu_012()
 
   }
   while ( out_cuts->cnum < MAX_CUTS && it < MAX_TABU_ITER );
-  terminate();
+  free_memory();
 #ifdef PRINT_TABU
     printf("Number of violated cuts found by Tabu Search %d\n",out_cuts->cnum);
     printf("Tabu Search timings: best_neighbour %f  score_by_moving %f coefficient %f  best_cut %f\n",
@@ -3568,7 +3568,7 @@ print_parity_ilp();
   }
   else {
 /* printf("Violated cuts found in the pool - no separation procedure used\n"); */
-    goto terminate;
+    goto free_memory;
   }
 
 #endif
