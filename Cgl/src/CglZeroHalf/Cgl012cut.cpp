@@ -13,6 +13,53 @@ int MAX_CUTS = 1000;
 //#define PRINT_TIME
 //#define TIME
 
+/* #define TIME  */
+#undef TIME
+
+#define TRUE 1
+#define FALSE 0
+
+#define ODD 1
+#define EVEN 0
+
+#define NONE -1
+#define BOTH 2
+
+#define IN 1
+#define OUT 0
+#define ADD 1
+#define DEL 0
+
+#define LOWER_BOUND 0
+#define UPPER_BOUND 1
+
+#define EPS 0.0001 /* small tolerance */
+//#define EPS 0.000001 /* small tolerance */
+#define ZERO 0.000001 /* estimated accuracy for doubles */
+//#define ZERO 0.0001 /* estimated accuracy for doubles */
+#define INF 1000000000.0
+#define IINF 1000000000
+
+#define MAX_SLACK 1.0
+#define MAX_LOSS 1.0
+#define MAX_CYCLE_WEIGHT 1.0
+#define MIN_VIOLATION 0.001
+#define MIN_SCORE_RANGE 10.0
+#define MAX_SCORE_RANGE ZERO /* 1.0 */
+
+#define ISCALE 10000
+
+//#define MAX_CUTS  10
+
+#define MAX_CUT_POOL 10000
+#define MAX_CUT_COD 10000
+#define MAX_ITER_POOL 100
+#define CLEAN_THRESH 0.9
+#define MANY_IT_ZERO 10
+
+#define mod2(I) ( I % 2 == 0 ? 0 : 1 )
+
+
 #ifdef TIME
 
 static float tot_basic_sep_time = 0.0; /* total time spent for basic 
@@ -2996,9 +3043,9 @@ void Cgl012Cut::restart(short int failure /* flag forcing the restart if some tr
   }
 }
 
-/* terminate: free the memory used by local search */
+/* free_memory: free the memory used by local search */
 
-void terminate()
+void free_memory()
 {
   free_cur_cut();
   free(last_moved);
@@ -3029,7 +3076,7 @@ cut_list *Cgl012Cut::tabu_012()
 
   }
   while ( out_cuts->cnum < MAX_CUTS && it < MAX_TABU_ITER );
-  terminate();
+  free_memory();
 #ifdef PRINT_TABU
     printf("Number of violated cuts found by Tabu Search %d\n",out_cuts->cnum);
     printf("Tabu Search timings: best_neighbour %f  score_by_moving %f coefficient %f  best_cut %f\n",
@@ -3568,7 +3615,7 @@ print_parity_ilp();
   }
   else {
 /* printf("Violated cuts found in the pool - no separation procedure used\n"); */
-    goto terminate;
+    goto free_memory;
   }
 
 #endif

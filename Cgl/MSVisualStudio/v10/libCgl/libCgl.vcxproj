@@ -25,7 +25,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
-    <PlatformToolset>v100</PlatformToolset>
+    <PlatformToolset>v90</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
@@ -37,7 +37,6 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
-    <PlatformToolset>v100</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -84,7 +83,6 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <Optimization>MaxSpeed</Optimization>
       <AdditionalIncludeDirectories>..\..\..\src\CglDuplicateRow;..\..\..\src\CglMixedIntegerRounding;..\..\..\src\CglMixedIntegerRounding2;..\..\..\src\CglFlowCover;..\..\..\src\CglClique;..\..\..\src\CglOddHole;..\..\..\src\CglKnapsackCover;..\..\..\src\CglGomory;..\..\..\src\CglPreProcess;..\..\..\src\CglRedSplit;..\..\..\src\CglResidualCapacity;..\..\..\src\CglProbing;..\..\..\src;..\..\..\..\Osi\src\Osi;..\..\..\..\Clp\src\OsiClp;..\..\..\..\Clp\src;..\..\..\..\CoinUtils\src;..\..\..\..\BuildTools\headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions);_SCL_SECURE_NO_WARNINGS</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
@@ -131,18 +129,13 @@
       <TargetEnvironment>X64</TargetEnvironment>
     </Midl>
     <ClCompile>
-      <Optimization>MaxSpeed</Optimization>
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <AdditionalIncludeDirectories>..\..\..\src\CglDuplicateRow;..\..\..\src\CglMixedIntegerRounding;..\..\..\src\CglMixedIntegerRounding2;..\..\..\src\CglFlowCover;..\..\..\src\CglClique;..\..\..\src\CglOddHole;..\..\..\src\CglKnapsackCover;..\..\..\src\CglGomory;..\..\..\src\CglPreProcess;..\..\..\src\CglRedSplit;..\..\..\src\CglResidualCapacity;..\..\..\src\CglProbing;..\..\..\src;..\..\..\..\Osi\src\Osi;..\..\..\..\Clp\src\OsiClp;..\..\..\..\Clp\src;..\..\..\..\CoinUtils\src;..\..\..\..\BuildTools\headers;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions);_SCL_SECURE_NO_WARNINGS</PreprocessorDefinitions>
-      <StringPooling>true</StringPooling>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <RuntimeTypeInfo>true</RuntimeTypeInfo>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <CompileAs>Default</CompileAs>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -443,6 +436,7 @@
     </ClCompile>
     <ClCompile Include="..\..\..\src\CglRedSplit\CglRedSplitParam.cpp" />
     <ClCompile Include="..\..\..\src\CglResidualCapacity\CglResidualCapacity.cpp" />
+    <ClCompile Include="..\..\..\src\CglResidualCapacity\CglResidualCapacityTest.cpp" />
     <ClCompile Include="..\..\..\src\CglSimpleRounding\CglSimpleRounding.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Disabled</Optimization>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -492,6 +486,9 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\CglZeroHalf\Cgl012cut.cpp" />
+    <ClCompile Include="..\..\..\src\CglZeroHalf\CglZeroHalf.cpp" />
+    <ClCompile Include="..\..\..\src\CglZeroHalf\CglZeroHalfTest.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\src\CglAllDifferent\CglAllDifferent.hpp" />
@@ -523,6 +520,8 @@
     <ClInclude Include="..\..\..\src\CglStored.hpp" />
     <ClInclude Include="..\..\..\src\CglTreeInfo.hpp" />
     <ClInclude Include="..\..\..\src\CglTwomir\CglTwomir.hpp" />
+    <ClInclude Include="..\..\..\src\CglZeroHalf\Cgl012cut.hpp" />
+    <ClInclude Include="..\..\..\src\CglZeroHalf\CglZeroHalf.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
