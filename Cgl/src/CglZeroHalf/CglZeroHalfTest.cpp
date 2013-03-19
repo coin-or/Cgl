@@ -45,7 +45,13 @@ CglZeroHalfUnitTest(
     
     OsiSolverInterface * siP = baseSiP->clone();
     std::string fn = mpsDir+"lseu";
-    siP->readMps(fn.c_str(),"mps");
+    siP->readMps(fn.c_str(),"");
+    // test if there
+    if (!siP->getNumRows()) {
+      printf("** Unable to find lseu in %s\n",
+	     mpsDir.c_str());
+      return;
+    }
     siP->initialSolve();
     cg.refreshSolver(siP);
     OsiCuts cuts;

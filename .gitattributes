@@ -67,6 +67,12 @@ Cgl/examples/cgl1.cpp -text
 Cgl/install-sh -text
 Cgl/ltmain.sh -text
 Cgl/missing -text
+Cgl/src/CglGMI/CglGMI.cpp -text
+Cgl/src/CglGMI/CglGMI.hpp -text
+Cgl/src/CglGMI/CglGMIParam.cpp -text
+Cgl/src/CglGMI/CglGMIParam.hpp -text
+Cgl/src/CglGMI/Makefile.am -text
+Cgl/src/CglGMI/Makefile.in -text
 Cgl/src/CglLandP/CglLandP.cpp -text
 Cgl/src/CglLandP/CglLandP.hpp -text
 Cgl/src/CglLandP/CglLandPMessages.cpp -text
@@ -82,6 +88,13 @@ Cgl/src/CglLandP/CglLandPValidator.cpp -text
 Cgl/src/CglLandP/CglLandPValidator.hpp -text
 Cgl/src/CglLandP/Makefile.am -text
 Cgl/src/CglLandP/Makefile.in -text
+Cgl/src/CglRedSplit2/CglRedSplit2.cpp -text
+Cgl/src/CglRedSplit2/CglRedSplit2.hpp -text
+Cgl/src/CglRedSplit2/CglRedSplit2Param.cpp -text
+Cgl/src/CglRedSplit2/CglRedSplit2Param.hpp -text
+Cgl/src/CglRedSplit2/CglRedSplit2Test.cpp -text
+Cgl/src/CglRedSplit2/Makefile.am -text
+Cgl/src/CglRedSplit2/Makefile.in -text
 Cgl/src/CglZeroHalf/Cgl012cut.cpp -text
 Cgl/src/CglZeroHalf/Cgl012cut.hpp -text
 Cgl/src/CglZeroHalf/CglZeroHalf.cpp -text

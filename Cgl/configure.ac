@@ -142,6 +142,7 @@ AC_CONFIG_FILES([Makefile
                  src/CglClique/Makefile
                  src/CglDuplicateRow/Makefile
                  src/CglFlowCover/Makefile
+                 src/CglGMI/Makefile
                  src/CglGomory/Makefile
                  src/CglKnapsackCover/Makefile
                  src/CglLandP/Makefile
@@ -152,6 +153,7 @@ AC_CONFIG_FILES([Makefile
                  src/CglPreProcess/Makefile
                  src/CglProbing/Makefile
                  src/CglRedSplit/Makefile
+                 src/CglRedSplit2/Makefile
                  src/CglResidualCapacity/Makefile
                  src/CglSimpleRounding/Makefile
                  src/CglTwomir/Makefile

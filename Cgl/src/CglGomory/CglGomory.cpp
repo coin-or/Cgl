@@ -164,9 +164,12 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       }
       numberCopy=0;
       numberAdd=0;
+      const double * rowSolution = si.getRowActivity();
+      double offset=0.0;
       for (int iRow=numberOriginalRows;iRow<numberRows;iRow++) {
 	if (!copy[iRow-numberOriginalRows]) {
 	  double value = pi[iRow];
+	  offset += rowSolution[iRow]*value;
 	  for (int k=rowStart[iRow];
 	       k<rowStart[iRow]+rowLength[iRow];k++) {
 	    int iColumn=column[k];
@@ -217,11 +220,37 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       simplex->setDualObjectiveLimit(COIN_DBL_MAX);
       simplex->setLogLevel(0);
       simplex->primal(1);
-      //printf("Trying - %d its\n",simplex->numberIterations());
+      // check basis
+      int numberTotal=simplex->numberRows()+simplex->numberColumns();
+      int superbasic=0;
+      for (int i=0;i<numberTotal;i++) {
+	if (simplex->getStatus(i)==ClpSimplex::superBasic)
+	  superbasic++;
+      }
+      if (superbasic) {
+	//printf("%d superbasic!\n",superbasic);
+	simplex->dual();
+	superbasic=0;
+	for (int i=0;i<numberTotal;i++) {
+	  if (simplex->getStatus(i)==ClpSimplex::superBasic)
+	    superbasic++;
+	}
+	assert (!superbasic);
+      }
+      //printf("Trying - %d its status %d objs %g %g - with offset %g\n",
+      //     simplex->numberIterations(),simplex->status(),
+      //     simplex->objectiveValue(),si.getObjValue(),simplex->objectiveValue()+offset);
       //simplex->setLogLevel(0);
       warm=simplex->getBasis();
       warmstart=warm;
-      assert (!simplex->status());
+      if (simplex->status()) {
+	//printf("BAD status %d\n",simplex->status());
+	//clpSolver->writeMps("clp");
+	//si.writeMps("si");
+	delete [] objective;
+	objective=NULL;
+	useSolver=&si;
+      }
     } else {
       // don't do
       delete warmstart;
@@ -1586,6 +1615,10 @@ CglGomory::refreshSolver(OsiSolverInterface * solver)
   const double * colUpper = solver->getColUpper();
   const double * colLower = solver->getColLower();
   canDoGlobalCuts_ = true;
+  if (originalSolver_) {
+    delete originalSolver_;
+    originalSolver_ = solver->clone();
+  }
   for (int i=0;i<numberColumns;i++) {
     if (solver->isInteger(i)) {
       if (colUpper[i]>colLower[i]+1.0) {
