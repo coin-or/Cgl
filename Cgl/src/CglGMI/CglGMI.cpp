@@ -8,10 +8,6 @@
 //-----------------------------------------------------------------------------
 // Copyright (C) 2009, Giacomo Nannicini.  All Rights Reserved.
 
-#if defined(_MSC_VER)
-// Turn off compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
@@ -21,12 +17,12 @@
 #include <fenv.h>
 #include <climits>
 
-#include "OsiSolverInterface.hpp"
-
+#include "CoinPragma.hpp"
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedVector.hpp"
 #include "CoinPackedMatrix.hpp"
 #include "CoinIndexedVector.hpp"
+#include "OsiSolverInterface.hpp"
 #include "OsiRowCutDebugger.hpp"
 #include "CoinFactorization.hpp"
 #include "CglGMI.hpp"

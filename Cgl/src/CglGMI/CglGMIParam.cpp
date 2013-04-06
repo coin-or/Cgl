@@ -7,10 +7,6 @@
 //-----------------------------------------------------------------------------
 // Copyright (C) 2009, Giacomo Nannicini and others.  All Rights Reserved.
 
-#if defined(_MSC_VER)
-// Turn off compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
@@ -18,6 +14,7 @@
 #include <cassert>
 #include <iostream>
 
+#include "CoinPragma.hpp"
 #include "CglGMIParam.hpp"
 
 /***********************************************************************/
