@@ -45,7 +45,7 @@ int gomory_try=CGL_DEBUG_GOMORY;
 // Generate Gomory cuts
 //------------------------------------------------------------------- 
 void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-			     const CglTreeInfo info) const
+			     const CglTreeInfo info)
 {
 #ifdef CGL_DEBUG_GOMORY
   gomory_try++;
@@ -478,7 +478,7 @@ CglGomory::generateCuts(
                          const double * rowLower, const double * rowUpper,
 			 const char * intVar,
                          const CoinWarmStartBasis* warm,
-                         const CglTreeInfo info) const
+                         const CglTreeInfo info)
 {
   int infoOptions=info.options;
   bool globalCuts = (infoOptions&16)!=0;
@@ -1643,12 +1643,6 @@ CglGomory::passInOriginalSolver(OsiSolverInterface * solver)
     originalSolver_=NULL;
   }
 }
-// Returns true if needs optimal basis to do cuts
-bool 
-CglGomory::needsOptimalBasis() const
-{
-  return true;
-}
 // Does actual work - returns number of cuts
 int
 CglGomory::generateCuts( const OsiRowCutDebugger * debugger, 
@@ -1659,7 +1653,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
                          const double * rowLower, const double * rowUpper,
 			 const char * intVar,
                          const CoinWarmStartBasis* warm,
-                         const CglTreeInfo info) const
+                         const CglTreeInfo info)
 {
   CoinPackedMatrix rowCopy;
   rowCopy.reverseOrderedCopyOf(columnCopy);

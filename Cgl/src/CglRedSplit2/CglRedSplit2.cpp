@@ -1578,16 +1578,6 @@ bool CglRedSplit2::rs_are_different_vectors(const int *vect1,
 } /* rs_are_different_vectors */
 
 /************************************************************************/
-void CglRedSplit2::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-				const CglTreeInfo info) const {
-
-  // kludge to be able to modify the CglRedSplit2 object if it is const
-  CglRedSplit2 temp(*this);
-  startTime = CoinCpuTime();
-  temp.generateCuts(si, cs, info);
-} /* generateCuts */
-
-/************************************************************************/
 void CglRedSplit2::generateCuts(const OsiSolverInterface &si, OsiCuts & cs,
 				const CglTreeInfo info)
 {

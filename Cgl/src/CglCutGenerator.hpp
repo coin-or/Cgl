@@ -31,7 +31,7 @@ public:
   collection of cuts cs.
   */
   virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
-			     const CglTreeInfo info = CglTreeInfo()) const=0; 
+			     const CglTreeInfo info = CglTreeInfo())=0;
   //@}
 
     

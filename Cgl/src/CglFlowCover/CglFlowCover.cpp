@@ -47,7 +47,7 @@ int CglFlowCover::numFlowCuts_ = 0;
 // Determine row types. Find the VUBS and VLBS. 
 //-------------------------------------------------------------------  
 void 
-CglFlowCover::flowPreprocess(const OsiSolverInterface& si) const
+CglFlowCover::flowPreprocess(const OsiSolverInterface& si)
 {
   CoinPackedMatrix matrixByRow(*si.getMatrixByRow());
 
@@ -231,7 +231,7 @@ CglFlowCover::flowPreprocess(const OsiSolverInterface& si) const
 // Generate LSGFC cuts
 //------------------------------------------------------------------- 
 void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-				const CglTreeInfo info) const 
+				const CglTreeInfo info)
 {
   static int count=0;
   if (getMaxNumCuts() <= 0) return;
@@ -474,7 +474,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 				  char sense,
 				  double rhs,
 				  OsiRowCut& flowCut,
-				  double& violation ) const
+				  double& violation )
 {
   bool generated       = false;
   const double* xlp    = si.getColSolution();

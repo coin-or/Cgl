@@ -341,7 +341,7 @@ void free_info_weak(info_weak *i_weak)
 /* get_parity_ilp: construct an internal data structure containing all the 
    information which can be useful for  0-1/2 cut separation */
 
-void Cgl012Cut::get_parity_ilp() const
+void Cgl012Cut::get_parity_ilp()
 {
   int i, j, h, ij, aij, cnti, cnttot, begi, begh, ofsj, gcdi, ubj, lbj;
   double slacki, xstarj, loss_upper, loss_lower;
@@ -600,7 +600,7 @@ printf("sense %c and rhs %d and slack %.5e\n",inp_ilp->msense[i],inp_ilp->mrhs[i
 /* initialize_sep_graph: allocate and initialize the data structure
    to contain the information associated with a separation graph */
 
-separation_graph *Cgl012Cut::initialize_sep_graph() const
+separation_graph *Cgl012Cut::initialize_sep_graph()
 {
   int maxnodes, maxedges, nnodes, j, jk; 
   int *nodes, *ind;
@@ -1456,7 +1456,7 @@ short int Cgl012Cut::get_ori_cut_coef(
 			   short int only_viol /* flag which tells whether only an inequality of
 			slack smaller than MAX_SLACK is of interest (TRUE)
 			otherwise (FALSE) */
-			   ) const
+			   )
 {
   int h, i, begi, gcdi, ofsj;
   double tot_slack;
@@ -1520,7 +1520,7 @@ short int Cgl012Cut::best_cut(
 		   short int only_viol /* flag which tells whether only an inequality of
 			slack smaller than MAX_SLACK is of interest (TRUE)
 			otherwise (FALSE) */
-		   ) const
+		   )
 {
   int j, n_to_weak;
   short int original_parity; 
@@ -1604,7 +1604,7 @@ short int Cgl012Cut::best_cut(
 cut *Cgl012Cut::define_cut(
 		int *ccoef, /* coefficients of the cut */
 		int crhs /* right hand side of the cut */
-		) const
+		)
 {
   int cnzcnt, j;
   cut *v_cut;
@@ -1638,7 +1638,7 @@ cut *Cgl012Cut::define_cut(
 
 cut *Cgl012Cut::get_cut(
 	     cycle *s_cyc /* shortest odd cycles identified in the separation graph */
-	     ) const
+	     )
 { 
   int i, e, crhs;
   short int ok;
@@ -1887,7 +1887,7 @@ short int only_odd, /* flag which tells whether only an odd weakening is of
 short int only_viol /* flag which tells whether only an inequality of
 			slack smaller than MAX_SLACK is of interest (TRUE)
 			otherwise (FALSE) */
-		   ) const
+		   )
 {
   int nweak, cntweak, ofsl, l;
   short int flag_even, flag_odd, ok_even, ok_odd;
@@ -2053,7 +2053,7 @@ short int only_viol /* flag which tells whether only an inequality of
 /* basic_separation: try to identify violated 0-1/2 cuts by using the 
    original procedure described in Caprara and Fischetti's MP paper */
 
-cut_list *Cgl012Cut::basic_separation() const
+cut_list *Cgl012Cut::basic_separation()
 {
   int i, j, k, l, begi, special, ofsj, ofsk, ofsl, n_to_weak, c;
   short int parity, original_parity, ok_weak;
@@ -3439,7 +3439,7 @@ short int after_sep /* flag telling whether the pool is searched after
 #endif
 /* initialize_log_var: initialize the log information for the problem variables */  
 
-void Cgl012Cut::initialize_log_var() const
+void Cgl012Cut::initialize_log_var()
 {
   int j;
   if (!vlog) {
@@ -3474,7 +3474,7 @@ void Cgl012Cut::free_log_var()
 
 /* update_log_var: update the log information for the problem variables */
 
-void Cgl012Cut::update_log_var() const
+void Cgl012Cut::update_log_var()
 {
   int j;
 
@@ -3535,7 +3535,7 @@ char **csense /* senses of the cuts: 'L', 'G' or 'E' */
   with pure ILP's, and that the ILP matrix has to be given on input
   in ROW format.
 */
-		) const
+		)
 {
 #ifdef TIME
   float tbasi, tbasf;

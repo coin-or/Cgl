@@ -38,17 +38,17 @@ public:
       The generator marks identical rows so can be taken out in solve
   */
   virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
-			     const CglTreeInfo info = CglTreeInfo()) const;
+			     const CglTreeInfo info = CglTreeInfo());
 private:
   /// Does work for modes 1,2
   void generateCuts12( const OsiSolverInterface & si, OsiCuts & cs,
-		       const CglTreeInfo info = CglTreeInfo()) const;
+		       const CglTreeInfo info = CglTreeInfo());
   /// Does work for mode 4
   void generateCuts4( const OsiSolverInterface & si, OsiCuts & cs,
-		       const CglTreeInfo info = CglTreeInfo()) const;
+		       const CglTreeInfo info = CglTreeInfo());
   /// Does work for mode 8
   void generateCuts8( const OsiSolverInterface & si, OsiCuts & cs,
-		       const CglTreeInfo info = CglTreeInfo()) const;
+		       const CglTreeInfo info = CglTreeInfo());
 public:
   /** Fix variables and find duplicate/dominated rows for the model of the 
       solver interface, si.
@@ -169,17 +169,17 @@ protected:
   /// Possible rhs (if 0 then not possible)
   int * rhs_;
   /// Marks duplicate rows
-  mutable int * duplicate_;
+  int * duplicate_;
   /// To allow for <= rows
   int * lower_;
   /// Stored cuts if we found dominance cuts
-  mutable CglStored * storedCuts_;
+  CglStored * storedCuts_;
   /// Check dominated columns if less than this number of candidates
   int maximumDominated_;
   /// Check duplicates if effective rhs <= this
   int maximumRhs_;
   /// Size of dynamic program
-  mutable int sizeDynamic_;
+  int sizeDynamic_;
   /// 1 do rows, 2 do columns, 3 do both
   int mode_;
   /// Controls print out

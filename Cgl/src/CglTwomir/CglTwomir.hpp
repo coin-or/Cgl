@@ -97,7 +97,7 @@ class CglTwomir : public CglCutGenerator {
 public:
 
   /// Problem name
-  mutable std::string probname_;
+  std::string probname_;
     
   /**@name Generate Cuts */
   //@{
@@ -105,7 +105,7 @@ public:
       formulation rows
   */
   virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs, 
-			     const CglTreeInfo info = CglTreeInfo()) const;
+			     const CglTreeInfo info = CglTreeInfo());
   /// Return true if needs optimal basis to do cuts (will return true)
   virtual bool needsOptimalBasis() const;
 
@@ -194,9 +194,9 @@ private:
   /**@name Private member data */
   //@{
   /// Threadsafe random number generator
-  mutable CoinThreadRandom randomNumberGenerator_;
+  CoinThreadRandom randomNumberGenerator_;
   /// Original solver
-  mutable OsiSolverInterface * originalSolver_;
+  OsiSolverInterface * originalSolver_;
   /// Only investigate if more than this away from integrality
   double away_;
   /// Only investigate if more than this away from integrality (at root)

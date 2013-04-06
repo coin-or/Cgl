@@ -397,7 +397,7 @@ CglProbing::tighten(double *colLower, double * colUpper,
 		    const CoinBigIndex * rowStartPos,const int * rowLength,
                     double *rowLower, double *rowUpper, 
                     int nRows,int nCols,char * intVar,int maxpass,
-                    double tolerance) const
+                    double tolerance)
 {
   int i, j, k, kre;
   int krs;
@@ -1152,7 +1152,7 @@ CglProbing::tighten2(double *colLower, double * colUpper,
 		     const int * rowLength,
 		     double *rowLower, double *rowUpper, 
 		     double * minR, double * maxR, int * markR,
-		     int nRows) const
+		     int nRows)
 {
   int i, j, k, kre;
   int krs;
@@ -1230,7 +1230,7 @@ static int nPath=0;
 // Generate disaggregation cuts
 //------------------------------------------------------------------- 
 void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-			      const CglTreeInfo info2) const
+			      const CglTreeInfo info2)
 {
 
 #ifdef CGL_DEBUG
@@ -1634,7 +1634,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                                    OsiCuts & cs ,
                                    double * rowLower, double * rowUpper,
                                    double * colLower, double * colUpper,
-                                   CglTreeInfo * info) const
+                                   CglTreeInfo * info)
 {
   //printf("PASS\n");
   // Get basic problem information
@@ -2938,7 +2938,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		       const double * rowLower, const double * rowUpper,
 		       const char * intVar, double * minR, double * maxR, 
 		       int * markR, 
-                       CglTreeInfo * info) const
+		       CglTreeInfo * info)
 {
   int nRows=rowCopy->getNumRows();
   int nRowsSafe=CoinMin(nRows,si.getNumRows());
@@ -5819,7 +5819,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		       double * rowLower, double * rowUpper,
 		       char * intVar, double * minR, double * maxR, 
 		       int * markR, 
-                       CglTreeInfo * info) const
+                       CglTreeInfo * info)
 {
   // Set up maxes
   int maxStack = info->inTree ? maxStack_ : maxStackRoot_;
@@ -7363,7 +7363,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 			 CoinPackedMatrix *columnCopy,
                           double * rowLower, double * rowUpper,
                           char * intVar, double * minR, double * maxR,int * markR,
-                          CglTreeInfo * info) const
+                          CglTreeInfo * info)
 {
   if (!numberCliques_)
     return 0;
@@ -9792,7 +9792,7 @@ CglProbing::generateCpp( FILE * fp)
 //-------------------------------------------------------------
 void
 CglImplication::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-				const CglTreeInfo info) const
+				const CglTreeInfo info)
 {
   if (probingInfo_) {
     //int n1=cs.sizeRowCuts();

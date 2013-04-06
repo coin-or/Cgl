@@ -1281,7 +1281,7 @@ CglTreeProbingInfo::initializeFixing(const OsiSolverInterface * model)
 }
 // Converts to ordered and takes out duplicates
 void 
-CglTreeProbingInfo::convert() const
+CglTreeProbingInfo::convert()
 {
   if (numberEntries_>=0) {
     CoinSort_2( fixingEntry_, fixingEntry_+numberEntries_, fixEntry_);

@@ -5146,7 +5146,7 @@ CglPreProcess::newLanguage(CoinMessages::Language language)
 }
 // Return a pointer to the original columns (without clique slacks)
 const int * 
-CglPreProcess::originalColumns() const
+CglPreProcess::originalColumns()
 {
   if (!originalColumn_) 
     createOriginalIndices();
@@ -5154,7 +5154,7 @@ CglPreProcess::originalColumns() const
 }
 // Return a pointer to the original rows
 const int * 
-CglPreProcess::originalRows() const
+CglPreProcess::originalRows()
 {
   if (!originalRow_)
     createOriginalIndices();
@@ -5162,7 +5162,7 @@ CglPreProcess::originalRows() const
 }
 // create original columns and rows
 void 
-CglPreProcess::createOriginalIndices() const
+CglPreProcess::createOriginalIndices()
 {
   // Find last model and presolve
   int iPass;

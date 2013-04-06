@@ -27,7 +27,7 @@
 // Generate knapsack cover cuts
 //------------------------------------------------------------------- 
 void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
-				    const CglTreeInfo info) const
+				    const CglTreeInfo info)
 {
   // Get basic problem information
   int nRows=si.getNumRows(); 
@@ -799,7 +799,7 @@ CglKnapsackCover::liftAndUncomplementAndAdd(
          int /*row*/,
          CoinPackedVector & cover,
          CoinPackedVector & remainder,
-         OsiCuts & cs ) const
+         OsiCuts & cs )
 {
   CoinPackedVector cut;
   double cutRhs = cover.getNumElements() - 1.0;
@@ -895,7 +895,7 @@ CglKnapsackCover::deriveAKnapsack(
        int /*rowIndex*/,
        int numberElements,
        const int * index,
-       const double * element) const
+       const double * element)
 {
 
   // Fix to https://projects.coin-or.org/Cbc/ticket/30
@@ -1124,7 +1124,7 @@ CglKnapsackCover::deriveAKnapsack(
        int *  complement,
        double *  xstar,
        int rowIndex,
-       const CoinPackedVectorBase & matrixRow ) const
+       const CoinPackedVectorBase & matrixRow )
 {
   // Get the sense of the row
   const char  rowsense = si.getRowSense()[rowIndex];
@@ -1158,7 +1158,7 @@ CglKnapsackCover::findLPMostViolatedMinCover(
       double & b,
       double * xstar, 
       CoinPackedVector & cover,
-      CoinPackedVector & remainder) const
+      CoinPackedVector & remainder)
 {
   
   // Assumes krow and b describe a knapsack inequality in canonical form
@@ -1370,7 +1370,7 @@ CglKnapsackCover::findExactMostViolatedMinCover(
         double b, 
         double *  xstar, 
         CoinPackedVector & cover,
-        CoinPackedVector & remainder) const 
+        CoinPackedVector & remainder)
 {
   
   // assumes the row is in canonical knapsack form 
@@ -1543,7 +1543,7 @@ CglKnapsackCover::findPseudoJohnAndEllisCover(
      double & b,
      double * xstar, 
      CoinPackedVector & cover,  
-     CoinPackedVector & remainder) const
+     CoinPackedVector & remainder)
 
 {
   // semi-mimic of John&Ellis's approach without taking advantage of SOS info
@@ -1791,7 +1791,7 @@ CglKnapsackCover::findJohnAndEllisCover(
      double * xstar, 
      CoinPackedVector & fracCover,  
      CoinPackedVector & atOne,
-     CoinPackedVector & remainder) const
+     CoinPackedVector & remainder)
 
 {
   // John Forrest and Ellis Johnson's approach as I see it.
@@ -2037,7 +2037,7 @@ CglKnapsackCover::findGreedyCover(
      double * xstar,
      CoinPackedVector & cover,
      CoinPackedVector & remainder
-     ) const
+     )
   // the row argument is a hold over from debugging
   // ToDo: move the print cover statement out to the mainprogram 
   // and remove the row argument
@@ -2144,7 +2144,7 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
          CoinPackedVector & atOne,
 	 // and together with fracCover form minimal (?) cover. 
          CoinPackedVector & remainder,
-         OsiCuts & cs ) const
+         OsiCuts & cs )
 {
   CoinPackedVector cut;
 
@@ -3009,7 +3009,7 @@ CglKnapsackCover::seqLiftAndUncomplementAndAdd(
                                      //     inequality derived from row 
       CoinPackedVector & cover,       // need not be violated
       CoinPackedVector & remainder,
-      OsiCuts & cs) const
+      OsiCuts & cs)
 {
   CoinPackedVector cut;
   
@@ -3270,7 +3270,7 @@ CglKnapsackCover::liftCoverCut(
       int nRowElem,
       CoinPackedVector & cover,
       CoinPackedVector & remainder,
-      CoinPackedVector & cut) const
+      CoinPackedVector & cut)
 {
   int i;
   int  goodCut=1;
@@ -3501,7 +3501,7 @@ CglKnapsackCover::exactSolveKnapsack(
        double const *pp, 
        double const *ww, 
        double & z, 
-       int * x) const
+       int * x)
 {
   // The knapsack problem is to find:
 

@@ -81,10 +81,6 @@ public:
   virtual void generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 			    const CglTreeInfo info = CglTreeInfo());
 
-  /// For compatibility with CglCutGenerator (const method)
-  virtual void generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-			    const CglTreeInfo info = CglTreeInfo()) const;
-
   /// Return true if needs optimal basis to do cuts (will return true)
   virtual bool needsOptimalBasis() const;
 
@@ -479,7 +475,7 @@ private:
 
   /// Time at which cut computations began.
   /// Reset by each call to generateCuts().
-  mutable double startTime;
+  double startTime;
 
   //@}
 };

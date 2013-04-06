@@ -31,7 +31,7 @@ namespace { int nPath = 0 ; }
 // Generate cuts
 //------------------------------------------------------------------- 
 void CglAllDifferent::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-			      const CglTreeInfo ) const
+			      const CglTreeInfo )
 {
 #ifndef NDEBUG
   int nCols=si.getNumCols();
