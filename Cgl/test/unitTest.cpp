@@ -44,6 +44,7 @@
 #include "CglMixedIntegerRounding2.hpp"
 #include "CglResidualCapacity.hpp"
 #include "CglRedSplit.hpp"
+#include "CglRedSplit2.hpp"
 #include "CglTwomir.hpp"
 #include "CglClique.hpp"
 #include "CglFlowCover.hpp"
@@ -59,7 +60,7 @@ void testingMessage( const char * const msg );
 
 int main (int argc, const char *argv[])
 {
-  // Initialise directories containing data files.
+  // Initialize directories containing data files.
   std::string mpsDir;
   std::string testDir;
   
@@ -71,7 +72,7 @@ int main (int argc, const char *argv[])
     mpsDir = "../../Data/Sample/";
 #endif
 #ifdef TESTDIR
-	testDir = TESTDIR "/" ;
+    testDir = TESTDIR "/" ;
 #else
     testDir = "CglTestData/";
 #endif
@@ -82,7 +83,7 @@ int main (int argc, const char *argv[])
     mpsDir = "..\\..\\Data\\Sample\\";
 #endif
 #ifdef TESTDIR
-	testDir = TESTDIR "\\";
+    testDir = TESTDIR "\\";
 #else
     testDir = "CglTestData\\";
 #endif
@@ -90,11 +91,11 @@ int main (int argc, const char *argv[])
   // Check for command line override
   if (argc >= 2) {
     mpsDir = argv[1];
-	mpsDir += dirsep;
+    mpsDir += dirsep;
     if (argc >= 3) {
       testDir = argv[2];
-	  testDir += dirsep;
-	}
+      testDir += dirsep;
+    }
   }
 
 #ifdef COIN_HAS_OSICPX
@@ -223,7 +224,7 @@ int main (int argc, const char *argv[])
   {
     OsiXprSolverInterface xprSi;
     testingMessage( "Testing CglZeroHalf with OsiXprSolverInterface\n" );
-    CglZeroHalfUnitTest(&xprSi, mpsDir);
+    CglZeroHalfUnitTest(&xprSi, testDir);
   }
 
 #endif
@@ -280,6 +281,11 @@ int main (int argc, const char *argv[])
   }
   {
     OsiClpSolverInterface clpSi;
+    testingMessage( "Testing CglRedSplit2 with OsiClpSolverInterface\n" );
+    CglRedSplit2UnitTest(&clpSi, mpsDir);
+  }
+  {
+    OsiClpSolverInterface clpSi;
     testingMessage( "Testing CglTwomir with OsiClpSolverInterface\n" );
     CglTwomirUnitTest(&clpSi, testDir);
   }
@@ -296,7 +302,7 @@ int main (int argc, const char *argv[])
   {
     OsiClpSolverInterface clpSi;
     testingMessage( "Testing CglZeroHalf with OsiClpSolverInterface\n" );
-    CglZeroHalfUnitTest(&clpSi, mpsDir);
+    CglZeroHalfUnitTest(&clpSi, testDir);
   }
 
 #endif
@@ -365,7 +371,7 @@ int main (int argc, const char *argv[])
   {
     OsiDylpSolverInterface dylpSi;
     testingMessage( "Testing CglZeroHalf with OsiDylpSolverInterface\n" );
-    CglZeroHalfUnitTest(&dylpSi, mpsDir);
+    CglZeroHalfUnitTest(&dylpSi, testDir);
   }
 
 #endif
@@ -434,7 +440,7 @@ int main (int argc, const char *argv[])
   {
     OsiGlpkSolverInterface glpkSi;
     testingMessage( "Testing CglZeroHalf with OsiGlpkSolverInterface\n" );
-    CglZeroHalfUnitTest(&glpkSi, mpsDir);
+    CglZeroHalfUnitTest(&glpkSi, testDir);
   }
 
 #endif

@@ -580,7 +580,7 @@ CglMixedIntegerRounding2::determineRowType(//const OsiSolverInterface& si,
 				  const double* coef, const char sense, 
 				  const double rhs) const
 {
-  if (rowLen == 0) 
+  if (rowLen == 0 || fabs(rhs) > 1.0e20) 
     return ROW_UNDEFINED;
 
   RowType rowType = ROW_UNDEFINED;
@@ -1433,12 +1433,26 @@ CglMixedIntegerRounding2::cMirSeparation(
   double cutRHS = rhsBestCut;
   double violation = 0.0;
   double normCut = 0.0;
+  //double smallest=COIN_DBL_MAX;
+  double largest=0.0;
   // Also weaken by small coefficients
+  for ( j = 0; j < cutLen; ++j) {
+    int column = cutInd[j];
+    double value = cutCoef[column];
+    //smallest=CoinMin(smallest,fabs(value));
+    largest=CoinMax(largest,fabs(value));
+    //normCut += value * value;
+  }
+  //normCut=sqrt(normCut);
+  //printf("smallest %g largest %g norm %g\n",
+  //	 smallest,largest,normCut);
+  double testValue=CoinMax(1.0e-6*largest,1.0e-12);
+  //normCut=0.0;
   int n=0;
   for ( j = 0; j < cutLen; ++j) {
     int column = cutInd[j];
     double value = cutCoef[column];
-    if (fabs(value)>1.0e-12) {
+    if (fabs(value)>testValue) {
       violation += value * xlp[column];
       normCut += value * value;
       cutInd[n++]=column;

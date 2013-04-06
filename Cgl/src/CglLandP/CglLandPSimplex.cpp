@@ -634,8 +634,22 @@ CglLandPSimplex::optimize
 
     delete basis_;
     basis_ = new CoinWarmStartBasis(*cached.basis_);
-
+#define CACHED_SOLVER
+#ifndef CACHED_SOLVER
     si_->enableSimplexInterface(0);
+#else
+    delete si_;
+    si_ = cached.solver_->clone();
+#ifdef COIN_HAS_OSICLP
+    OsiClpSolverInterface * clpSi = dynamic_cast<OsiClpSolverInterface *>(si_);
+    OsiClpSolverInterface * clpSiRhs = dynamic_cast<OsiClpSolverInterface *>(cached.solver_);
+    if (clpSi)
+    {
+        clp_ = clpSi;
+	clpSi->getModelPtr()->copyEnabledStuff(clpSiRhs->getModelPtr());;
+    }
+#endif
+#endif
 #ifdef APPEND_ROW
     if (params.modularize)
     {

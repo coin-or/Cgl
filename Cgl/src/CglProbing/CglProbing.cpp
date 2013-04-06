@@ -1915,7 +1915,26 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	    rc.setLb(rowLower[i]);
 	    rc.setUb(rowUpper[i]);
 	    int start = rowStart[i];
+	    int n = rowLength[i];
 	    rc.setRow(rowLength[i],column+start,elements+start,false);
+	    // but get rid of tinies
+	    CoinPackedVector & row = rc.mutableRow();
+	    double * elements = row.getElements();
+	    int n2=0;
+	    for (n2=0;n2<n;n2++) {
+	      if (fabs(elements[n2])<1.0e-12)
+		break;
+	    }
+	    if (n2<n) {
+	      int * columns = row.getIndices();
+	      for (int i=n2+1;i<n;i++) {
+		if (fabs(elements[i])>1.0e-12) {
+		  elements[n2]=elements[i];
+		  columns[n2++]=columns[i];
+		}
+	      }
+	      row.truncate(n2);
+	    }
 	    rc.setEffectiveness(effectiveness);
 	    assert (!info->strengthenRow[i]);
 	    info->strengthenRow[i]=rc.clone();

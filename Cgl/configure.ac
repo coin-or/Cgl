@@ -67,7 +67,6 @@ if test $coin_has_osi != yes ; then
 fi
 
 AC_COIN_CHECK_PACKAGE(Sample, [coindatasample])
-AC_COIN_CHECK_PACKAGE(Netlib, [coindatanetlib])
 
 # Clp can be used by CglLandP
 AC_COIN_CHECK_PACKAGE(OsiClp, [osi-clp], [CglLib])
@@ -131,7 +130,7 @@ AC_COIN_DOXYGEN(CoinUtils)
 ##############################################################################
 
 # Install files for unitTest
-AC_COIN_VPATH_LINK([test/CglTestData/capPlan1.mps test/CglTestData/l152lav.mps test/CglTestData/egout.mps])
+AC_COIN_VPATH_LINK([test/CglTestData/capPlan1.mps test/CglTestData/l152lav.mps test/CglTestData/egout.mps test/CglTestData/lseu.mps])
 
 # Here list all the files that configure should create (except for the
 # configuration header file)
@@ -142,6 +141,7 @@ AC_CONFIG_FILES([Makefile
                  src/CglClique/Makefile
                  src/CglDuplicateRow/Makefile
                  src/CglFlowCover/Makefile
+                 src/CglGMI/Makefile
                  src/CglGomory/Makefile
                  src/CglKnapsackCover/Makefile
                  src/CglLandP/Makefile
@@ -152,6 +152,7 @@ AC_CONFIG_FILES([Makefile
                  src/CglPreProcess/Makefile
                  src/CglProbing/Makefile
                  src/CglRedSplit/Makefile
+                 src/CglRedSplit2/Makefile
                  src/CglResidualCapacity/Makefile
                  src/CglSimpleRounding/Makefile
                  src/CglTwomir/Makefile

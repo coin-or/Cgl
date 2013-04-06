@@ -2,33 +2,31 @@
 # All Rights Reserved.
 # This file is distributed under the Eclipse Public License.
 
-## $Id$
+## $Id: Makefile.am 1040 2011-08-14 10:49:48Z stefan $
 
 # Author:  Andreas Waechter           IBM    2006-04-13
 
 AUTOMAKE_OPTIONS = foreign
 
 ########################################################################
-#                           libCglTwomir                               #
+#                          libCglGMI                              #
 ########################################################################
 
 # Name of the library compiled in this directory.  We don't want it to be
 # installed since it will be collected into the libCgl library
-noinst_LTLIBRARIES = libCglTwomir.la
+noinst_LTLIBRARIES = libCglGMI.la
 
 # List all source files for this library, including headers
-libCglTwomir_la_SOURCES = CglTwomir.cpp CglTwomir.hpp CglTwomirTest.cpp
+libCglGMI_la_SOURCES = \
+	CglGMI.cpp  CglGMI.hpp \
+	CglGMIParam.cpp  CglGMIParam.hpp
 
 # This is for libtool (on Windows)
-libCglTwomir_la_LDFLAGS = $(LT_LDFLAGS)
+libCglGMI_la_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.
 AM_CPPFLAGS = -I`$(CYGPATH_W) $(srcdir)/..` $(COINUTILS_CFLAGS) $(OSI_CFLAGS)
-
-if COIN_HAS_OSICLP
-AM_CPPFLAGS += $(OSICLP_CFLAGS)
-endif
 
 # This line is necessary to allow VPATH compilation
 DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I..
@@ -40,4 +38,4 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I..
 # Here list all the header files that are required by a user of the library,
 # and that therefore should be installed in 'include/coin'
 includecoindir = $(includedir)/coin
-includecoin_HEADERS = CglTwomir.hpp
+includecoin_HEADERS = CglGMI.hpp CglGMIParam.hpp

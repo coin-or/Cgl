@@ -1109,9 +1109,10 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
   if ( violation > TOLERANCE_ ) {
     cutLen = 0;
     cutSense = 'L';
-    cutInd  = new int [numCols];
-    cutCoef = new double [numCols];
+    cutInd  = new int [3*numCols];
+    cutCoef = new double [3*numCols];
       
+	  assert (cutLen<numCols);
     for ( i = 0; i < rowLen; ++i )  {
       VUB = getVubs(ind[i]);
       
@@ -1124,7 +1125,6 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	    cutCoef[cutLen] = coef[i] * yCoef[i];
 	  else 
 	    cutCoef[cutLen] = -coef[i] * yCoef[i];
-		  
 	  cutInd[cutLen++] = ind[i];
 	}
 
@@ -1149,7 +1149,26 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	}
       }
     }
-    
+#if 1
+    assert (cutLen);
+    CoinShortSort_2(cutInd,cutInd+cutLen,cutCoef);
+    j=0;
+    int lastInd=cutInd[0];
+    double lastCoef=cutCoef[0];
+    for ( i = 1; i < cutLen+1; ++i ) {
+      if (i==cutLen||cutInd[i]>lastInd) {
+	if ( fabs(lastCoef) >= EPSILON_ ) {
+	  cutCoef[j]=lastCoef;
+	  cutInd[j++]=lastInd;
+	  lastCoef = cutCoef[i];
+	  if (i<cutLen)
+	    lastInd=cutInd[i];
+	}
+      } else {
+	lastCoef += cutCoef[i];
+      }
+    }
+#else
     for ( i = 0; i < cutLen; ++i ) {
       for ( j = 0; j < i; j++ ) {
 	if ( cutInd[j] == cutInd[i] ) { /* Duplicate*/
@@ -1169,7 +1188,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	j++;
       }
     }
-    
+#endif
     cutLen = j;
     // Skip if no elements ? - bug somewhere
     assert (cutLen);

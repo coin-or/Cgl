@@ -3533,19 +3533,52 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
       } else {
 	//model->writeMps("good2");
       }
-      presolve_[iPass]->postsolve(true);
+      const int * originalColumns = presolve_[iPass]->originalColumns();
+      const double * columnLower = modelM->getColLower(); 
+      const double * columnUpper = modelM->getColUpper();
       OsiSolverInterface * modelM2;
       if (iPass)
 	modelM2 = modifiedModel_[iPass-1];
       else
 	modelM2 = startModel_;
-      // and fix
-      const int * originalColumns = presolve_[iPass]->originalColumns();
+      const double * solutionM2 = modelM2->getColSolution();
       const double * columnLower2 = modelM2->getColLower(); 
       const double * columnUpper2 = modelM2->getColUpper();
-      const double * columnLower = modelM->getColLower(); 
-      const double * columnUpper = modelM->getColUpper();
-      const double * solutionM2 = modelM2->getColSolution();
+      double primalTolerance;
+      modelM->getDblParam(OsiPrimalTolerance,primalTolerance);
+      /* clean up status for any bound alterations made by preprocess which 
+	 postsolve won't understand.
+	 Could move inside OsiPresolve but some people might object */
+      CoinWarmStartBasis *presolvedBasis  = 
+	dynamic_cast<CoinWarmStartBasis*>(model->getWarmStart()) ;
+      assert (presolvedBasis);
+      int numberChanged=0;
+      // Have to use free as superBasic does not exist
+      for (iColumn=0;iColumn<numberColumns;iColumn++) {
+	int jColumn = originalColumns[iColumn];
+	switch (presolvedBasis->getStructStatus(iColumn)) {
+	case CoinWarmStartBasis::basic:
+	case CoinWarmStartBasis::isFree:
+	  break;
+	case CoinWarmStartBasis::atLowerBound:
+	  if (solutionM[iColumn]>columnLower2[jColumn]+primalTolerance) {
+	    presolvedBasis->setStructStatus(iColumn,CoinWarmStartBasis::isFree);
+	    numberChanged++;
+	  }
+	  break;
+	case CoinWarmStartBasis::atUpperBound:
+	  if (solutionM[iColumn]<columnUpper2[jColumn]-primalTolerance) {
+	    presolvedBasis->setStructStatus(iColumn,CoinWarmStartBasis::isFree);
+	    numberChanged++;
+	  }
+	  break;
+	}
+      }
+      if (numberChanged)
+	model->setWarmStart(presolvedBasis);
+      delete presolvedBasis;
+      presolve_[iPass]->postsolve(true);
+      // and fix values
       for (iColumn=0;iColumn<numberColumns;iColumn++) {
 	int jColumn = originalColumns[iColumn];
 	if (!modelM2->isInteger(jColumn)) {
