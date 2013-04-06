@@ -10,10 +10,6 @@
 //-----------------------------------------------------------------------------
 // Copyright (C) 2010, Giacomo Nannicini and others.  All Rights Reserved.
 
-#if defined(_MSC_VER)
-// Turn off compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
@@ -37,6 +33,7 @@
 // Sparse for workNonBasic 0,1,2
 #define RS_FAST_WORK 2
 
+#include "CoinPragma.hpp"
 #include "OsiSolverInterface.hpp"
 
 #include "CglRedSplit2.hpp"

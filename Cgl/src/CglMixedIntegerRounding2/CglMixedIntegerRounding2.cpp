@@ -9,14 +9,11 @@
 // All Rights Reserved.
 // This code is published under the Eclipse Public License.
 
-#if defined(_MSC_VER)
-// Turn off MS VS compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
 //#include <cmath>
 //#include <cstdlib>
 #include <cassert>
 
+#include "CoinPragma.hpp"
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedMatrix.hpp"
 #include "CoinPackedVector.hpp"

@@ -1,8 +1,3 @@
-#if defined(_MSC_VER)
-// Turn off compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
-
 #include <cstdlib>
 #include <cstdio>
 
@@ -11,6 +6,7 @@
 #endif
 
 #include <cassert>
+#include "CoinPragma.hpp"
 #include "CglRedSplit2.hpp"
 
 

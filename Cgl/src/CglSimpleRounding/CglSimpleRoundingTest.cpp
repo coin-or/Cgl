@@ -3,17 +3,13 @@
 // Corporation and others.  All Rights Reserved.
 // This code is licensed under the terms of the Eclipse Public License (EPL).
 
-#if defined(_MSC_VER)
-// Turn off compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
-
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
 
 #include <cassert>
 
+#include "CoinPragma.hpp"
 #include "CglSimpleRounding.hpp" 
 #include <stdio.h>
 
