@@ -3,16 +3,13 @@
 // Corporation and others.  All Rights Reserved.
 // This code is licensed under the terms of the Eclipse Public License (EPL).
 
-#if defined(_MSC_VER)
-// Turn off compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
 #include <cstdlib>
 #include <cmath>
 #include <cstdio>
 #include <cfloat> 
 #include <cassert>
 
+#include "CoinPragma.hpp"
 #include "CglSimpleRounding.hpp" 
 #include "CoinPackedVector.hpp"
 #include "CoinSort.hpp"
@@ -21,7 +18,7 @@
 //-------------------------------------------------------------
 void
 CglSimpleRounding::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-				const CglTreeInfo /*info*/) const
+				const CglTreeInfo /*info*/)
 {
   int nRows=si.getNumRows(); // number of rows in the coefficient matrix
   int nCols=si.getNumCols(); // number of columns in the coefficient matrix

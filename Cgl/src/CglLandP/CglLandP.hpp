@@ -139,7 +139,7 @@ public:
         /** A variable have to be at least away from integrity to be generated */
         double away;
         /** Total time limit for cut generation.*/
-        mutable double timeLimit;
+        double timeLimit;
         /** Time limit for generating a single cut.*/
         double singleCutTimeLimit;
         /** Weight to put in RHS of normalization if static.*/
@@ -190,7 +190,7 @@ public:
     //@{
 
     virtual void generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-                              const CglTreeInfo info = CglTreeInfo()) const;
+                              const CglTreeInfo info = CglTreeInfo());
 
     //@}
 
@@ -280,7 +280,7 @@ private:
                                     const CachedData &data,
                                     const CglLandP::Parameters & params) const;
     /** Cached informations about problem.*/
-    mutable CachedData cached_;
+    CachedData cached_;
     /** message handler */
     CoinMessageHandler * handler_;
     /** messages */
@@ -288,17 +288,17 @@ private:
     /** cut validator */
     LAP::Validator validator_;
     /** number of rows in the original problems. */
-    mutable int numrows_;
+    int numrows_;
     /** number of columns in the original problems. */
-    mutable int numcols_;
+    int numcols_;
     /** Original lower bounds for the problem (for lifting cuts).*/
-    mutable double * originalColLower_;
+    double * originalColLower_;
     /** Original upper bounds for the problem (for lifting cuts).*/
-    mutable double * originalColUpper_;
+    double * originalColUpper_;
     /** Flag to say if cuts can be lifted.*/
-    mutable bool canLift_;
+    bool canLift_;
     /** Store some extra cut which could be cheaply generated but do not cut current incumbent.*/
-    mutable OsiCuts extraCuts_;
+    OsiCuts extraCuts_;
 };
 void CglLandPUnitTest(OsiSolverInterface *si, const std::string & mpsDir);
 

@@ -368,7 +368,7 @@ int main (int argc, const char *argv[])
     testingMessage( "Testing CglFlowCover with OsiDylpSolverInterface\n" );
     CglFlowCoverUnitTest(&dylpSi, testDir);
   }
-  {
+  if (0) {
     OsiDylpSolverInterface dylpSi;
     testingMessage( "Testing CglZeroHalf with OsiDylpSolverInterface\n" );
     CglZeroHalfUnitTest(&dylpSi, testDir);

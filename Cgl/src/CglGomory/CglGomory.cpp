@@ -2,10 +2,6 @@
 // Corporation and others.  All Rights Reserved.
 // This code is licensed under the terms of the Eclipse Public License (EPL).
 
-#if defined(_MSC_VER)
-// Turn off compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
@@ -16,6 +12,7 @@
 //#ifdef NDEBUG
 //#undef NDEBUG
 //#endif
+#include "CoinPragma.hpp"
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedVector.hpp"
 #include "CoinPackedMatrix.hpp"
@@ -45,7 +42,7 @@ int gomory_try=CGL_DEBUG_GOMORY;
 // Generate Gomory cuts
 //------------------------------------------------------------------- 
 void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-			     const CglTreeInfo info) const
+			     const CglTreeInfo info)
 {
 #ifdef CGL_DEBUG_GOMORY
   gomory_try++;
@@ -88,7 +85,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 #ifdef COIN_HAS_CLP_GOMORY
   double * objective = NULL;
   OsiClpSolverInterface * clpSolver = dynamic_cast<OsiClpSolverInterface *>(originalSolver_);
-  int numberOriginalRows;
+  int numberOriginalRows = -1;
   if (clpSolver) {
     useSolver = originalSolver_;
     assert (gomoryType_);
@@ -331,6 +328,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   }
   if ((gomoryType_%10)==2) {
     // back to original
+    assert(clpSolver);
     int numberRows = clpSolver->getNumRows();
     if (numberRows>numberOriginalRows) {
       int numberDelete = numberRows-numberOriginalRows;
@@ -477,7 +475,7 @@ CglGomory::generateCuts(
                          const double * rowLower, const double * rowUpper,
 			 const char * intVar,
                          const CoinWarmStartBasis* warm,
-                         const CglTreeInfo info) const
+                         const CglTreeInfo info)
 {
   int infoOptions=info.options;
   bool globalCuts = (infoOptions&16)!=0;
@@ -1642,12 +1640,6 @@ CglGomory::passInOriginalSolver(OsiSolverInterface * solver)
     originalSolver_=NULL;
   }
 }
-// Returns true if needs optimal basis to do cuts
-bool 
-CglGomory::needsOptimalBasis() const
-{
-  return true;
-}
 // Does actual work - returns number of cuts
 int
 CglGomory::generateCuts( const OsiRowCutDebugger * debugger, 
@@ -1658,7 +1650,7 @@ CglGomory::generateCuts( const OsiRowCutDebugger * debugger,
                          const double * rowLower, const double * rowUpper,
 			 const char * intVar,
                          const CoinWarmStartBasis* warm,
-                         const CglTreeInfo info) const
+                         const CglTreeInfo info)
 {
   CoinPackedMatrix rowCopy;
   rowCopy.reverseOrderedCopyOf(columnCopy);

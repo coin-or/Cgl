@@ -3,16 +3,13 @@
 // Corporation and others.  All Rights Reserved.
 // This code is licensed under the terms of the Eclipse Public License (EPL).
 
-#if defined(_MSC_VER)
-// Turn off compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
 #include <cfloat>
 #include <cassert>
 #include <iostream>
+#include "CoinPragma.hpp"
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedVector.hpp"
 #include "CoinPackedMatrix.hpp"
@@ -88,7 +85,7 @@ void testus( DGG_constraint_t *cut){ //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // Generate  cuts
 //------------------------------------------------------------------- 
 void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs, 
-			     const CglTreeInfo info ) const
+			     const CglTreeInfo info )
 {
 # ifdef CGL_DEBUG
   //!!!!!!!!!!!!!!!!!!
@@ -850,7 +847,6 @@ DGG_getSlackExpression(const void *osi_ptr, DGG_data_t* data, int row_index)
   const double *rowMat;
   const double *rowUpper;
   const double *rowLower;
-  const char *rowSense;
     
   row = DGG_newConstraint(data->ncol);
 
@@ -861,7 +857,6 @@ DGG_getSlackExpression(const void *osi_ptr, DGG_data_t* data, int row_index)
 
   rowUpper = si->getRowUpper();
   rowLower = si->getRowLower();
-  rowSense = si->getRowSense();
 
 #if DGG_DEBUG_DGG
   if ( row_index < 0 || row_index > data->nrow )
@@ -1920,8 +1915,6 @@ int DGG_is2stepValid(double alpha, double bht)
 
   /* d */
   double tau;
-  /* d-bar */
-  double tau_lim;
 
   /* ensure that alpha is not null or negative */
   if ( alpha < DGG_MIN_ALPHA )
@@ -1929,7 +1922,6 @@ int DGG_is2stepValid(double alpha, double bht)
 
   /* compute tau and tau_lim */
   tau = ceil( bht / alpha );
-  tau_lim = ceil( 1 / (1 - bht) ) - 1;
 
   /* make sure alpha is not a divisor of bht */
   if ( DGG_is_a_multiple_of_b(alpha, bht) )

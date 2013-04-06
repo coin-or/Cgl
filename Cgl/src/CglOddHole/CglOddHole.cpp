@@ -3,16 +3,13 @@
 // Corporation and others.  All Rights Reserved.
 // This code is licensed under the terms of the Eclipse Public License (EPL).
 
-#if defined(_MSC_VER)
-// Turn off compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
 #include <cfloat>
 #include <iostream>
 
+#include "CoinPragma.hpp"
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedVector.hpp"
 #include "CoinPackedMatrix.hpp"
@@ -33,7 +30,7 @@ public:
 // Generate three cycle cuts
 //------------------------------------------------------------------- 
 void CglOddHole::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-			      const CglTreeInfo info) const
+			      const CglTreeInfo info)
 {
   // Get basic problem information
   int nRows=si.getNumRows(); 

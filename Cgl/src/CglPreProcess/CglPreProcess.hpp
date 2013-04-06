@@ -132,10 +132,10 @@ public:
   { if (iPass>=0&&iPass<numberSolvers_) return presolve_[iPass]; else return NULL;}
   /** Return a pointer to the original columns (with possible  clique slacks)
       MUST be called before postProcess otherwise you just get 0,1,2.. */
-  const int * originalColumns() const;
+  const int * originalColumns();
   /** Return a pointer to the original rows
       MUST be called before postProcess otherwise you just get 0,1,2.. */
-  const int * originalRows() const;
+  const int * originalRows();
   /// Number of SOS if found
   inline int numberSOS() const
   { return numberSOS_;}
@@ -275,7 +275,7 @@ private:
                                 int iBigPass,
 				int numberPasses);
   /// create original columns and rows
-  void createOriginalIndices() const;
+  void createOriginalIndices();
   /// Make continuous variables integer
   void makeInteger();
   //@}
@@ -315,9 +315,9 @@ private:
   /// Pointer to user-defined data structure
   void * appData_;
   /// Original column numbers
-  mutable int * originalColumn_;
+  int * originalColumn_;
   /// Original row numbers
-  mutable int * originalRow_;
+  int * originalRow_;
   /// Number of cut generators
   int numberCutGenerators_;
   /// Cut generators

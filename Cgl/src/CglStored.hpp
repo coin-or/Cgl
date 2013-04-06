@@ -29,7 +29,7 @@ public:
       and inserts any that are violated by enough
   */
   virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
-			     const CglTreeInfo info = CglTreeInfo()) const;
+			     const CglTreeInfo info = CglTreeInfo());
   //@}
 
   /**@name Change criterion on whether to include cut.
@@ -113,7 +113,7 @@ protected:
   /// Pointer to probing information
   CglTreeProbingInfo * probingInfo_;
   /// Cuts
-  mutable OsiCuts cuts_;
+  OsiCuts cuts_;
   /// Number of columns in model
   int numberColumns_;
   /// Best solution (objective at end)

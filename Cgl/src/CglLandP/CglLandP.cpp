@@ -521,7 +521,7 @@ CglLandP::scanExtraCuts(OsiCuts& cs, const double * colsol) const
 
 void
 CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-                       const CglTreeInfo info ) const
+                       const CglTreeInfo info )
 {
     if ((info.pass == 0) && !info.inTree)
     {

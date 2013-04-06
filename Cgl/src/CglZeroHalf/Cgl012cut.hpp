@@ -246,7 +246,7 @@ char **csense /* senses of the cuts: 'L', 'G' or 'E' */
   with pure ILP's, and that the ILP matrix has to be given on input
   in ROW format.
 */
-		) const;
+		);
 void ilp_load(
 	      int mr, /* number of rows in the ILP matrix */
 	      int mc, /* number of columns in the ILP matrix */
@@ -269,7 +269,7 @@ void alloc_parity_ilp(
 		      int mnz /* number of nonzero's in the ILP matrix */
 		      );
 void free_parity_ilp();
-  void initialize_log_var() const;
+  void initialize_log_var();
 /* free_log_var */
   void free_log_var();
 private:
@@ -294,7 +294,7 @@ short int only_odd, /* flag which tells whether only an odd weakening is of
 short int only_viol /* flag which tells whether only an inequality of
 			slack smaller than MAX_SLACK is of interest (TRUE)
 			otherwise (FALSE) */
-		   ) const;
+		   );
 
 /* best_cut: find the coefficients, the rhs and the violation of the
    best possible cut that can be obtained by weakening a given set of
@@ -309,21 +309,21 @@ short int best_cut(
 		   short int only_viol /* flag which tells whether only an inequality of
 			slack smaller than MAX_SLACK is of interest (TRUE)
 			otherwise (FALSE) */
-			      ) const;
+			      );
 /* get_cut: extract a hopefully violated cut from an odd cycle of the
    separation graph */
 
 cut *get_cut(
 	     cycle *s_cyc /* shortest odd cycles identified in the separation graph */
-	     ) const;
+	     );
 
 /* update_log_var: update the log information for the problem variables */
-  void update_log_var() const;
+  void update_log_var();
 
 /* basic_separation: try to identify violated 0-1/2 cuts by using the 
    original procedure described in Caprara and Fischetti's MP paper */
 
-  cut_list *basic_separation() const;
+  cut_list *basic_separation();
 
 /* score_by_moving: compute the score of the best cut obtainable from 
    the current local search solution by inserting/deleting a constraint */
@@ -369,11 +369,11 @@ void modify_current(
 /* get_parity_ilp: construct an internal data structure containing all the 
    information which can be useful for  0-1/2 cut separation */
 
-  void get_parity_ilp() const;
+  void get_parity_ilp();
 /* initialize_sep_graph: allocate and initialize the data structure
    to contain the information associated with a separation graph */
 
-  separation_graph *initialize_sep_graph() const;
+  separation_graph *initialize_sep_graph();
   void print_cut(cut *v_cut);
 /* get_ori_cut_coef: get the coefficients of a cut, before dividing by 2 and
    rounding, starting from the list of the constraints combined to get 
@@ -387,14 +387,14 @@ short int get_ori_cut_coef(
 			   short int only_viol /* flag which tells whether only an inequality of
 			slack smaller than MAX_SLACK is of interest (TRUE)
 			otherwise (FALSE) */
-			   ) const;
+			   );
 /* define_cut: construct a cut data structure from a vector of
    coefficients and a right-hand-side */
 
 cut *define_cut(
 		int *ccoef, /* coefficients of the cut */
 		int crhs /* right hand side of the cut */
-		) const;
+		);
 
 /* cut_score: define the score of a (violated) cut */
 
@@ -448,16 +448,16 @@ private:
 
 ilp *inp_ilp; /* input ILP data structure */
 parity_ilp *p_ilp; /* parity ILP data structure */
-mutable int iter;
-mutable double gap;
-mutable double maxgap;
-  mutable int errorNo;  
-mutable int sep_iter; /* number of the current separation iteration */
-mutable log_var **vlog; /* information about the value attained
+int iter;
+double gap;
+double maxgap;
+int errorNo;
+int sep_iter; /* number of the current separation iteration */
+log_var **vlog; /* information about the value attained
 				  by the variables in the last iterations,
 				  used to possibly set to 0 some coefficient
 				  > 0 in a cut to be added */ 
-mutable bool aggr; /* flag saying whether as many cuts as possible are required
+bool aggr; /* flag saying whether as many cuts as possible are required
 		   from the separation procedure (TRUE) or not (FALSE) */
   //@}
 };

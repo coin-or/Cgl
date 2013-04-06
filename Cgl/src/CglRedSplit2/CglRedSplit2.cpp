@@ -10,10 +10,6 @@
 //-----------------------------------------------------------------------------
 // Copyright (C) 2010, Giacomo Nannicini and others.  All Rights Reserved.
 
-#if defined(_MSC_VER)
-// Turn off compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
@@ -37,6 +33,7 @@
 // Sparse for workNonBasic 0,1,2
 #define RS_FAST_WORK 2
 
+#include "CoinPragma.hpp"
 #include "OsiSolverInterface.hpp"
 
 #include "CglRedSplit2.hpp"
@@ -1576,16 +1573,6 @@ bool CglRedSplit2::rs_are_different_vectors(const int *vect1,
   }
   return(0);
 } /* rs_are_different_vectors */
-
-/************************************************************************/
-void CglRedSplit2::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-				const CglTreeInfo info) const {
-
-  // kludge to be able to modify the CglRedSplit2 object if it is const
-  CglRedSplit2 temp(*this);
-  double startTime = CoinCpuTime();
-  temp.generateCuts(si, cs, info);
-} /* generateCuts */
 
 /************************************************************************/
 void CglRedSplit2::generateCuts(const OsiSolverInterface &si, OsiCuts & cs,

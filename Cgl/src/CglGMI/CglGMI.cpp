@@ -14,7 +14,6 @@
 #include <cfloat>
 #include <cassert>
 #include <iostream>
-#include <fenv.h>
 #include <climits>
 
 #include "CoinPragma.hpp"
@@ -891,7 +890,7 @@ bool CglGMI::scaleCutIntegral(double* cutElem, int* cutIndex, int cutNz,
   long numerator = 0, denominator = 0;
   // Initialize gcd and lcm
   if (nearestRational(cutRhs, maxdelta, maxdnom, numerator, denominator)) {
-    gcd = abs(numerator);
+    gcd = labs(numerator);
     lcm = denominator;
   }
   else{
@@ -905,7 +904,7 @@ bool CglGMI::scaleCutIntegral(double* cutElem, int* cutIndex, int cutNz,
       continue;
     }
     if(nearestRational(cutElem[i], maxdelta, maxdnom, numerator, denominator)) {
-      gcd = computeGcd(gcd,abs(numerator));
+      gcd = computeGcd(gcd,labs(numerator));
       lcm *= denominator/(computeGcd(lcm,denominator));
     }
     else{
@@ -1064,11 +1063,11 @@ bool CglGMI::nearestRational(double val, double maxdelta, long maxdnom,
 /************************************************************************/
 long CglGMI::computeGcd(long a, long b) {
   // This is the standard Euclidean algorithm for gcd
-  int remainder = 1;
+  long remainder = 1;
   // Make sure a<=b (will always remain so)
   if (a > b) {
     // Swap a and b
-    int temp = a;
+    long temp = a;
     a = b;
     b = temp;
   }
@@ -1090,15 +1089,6 @@ long CglGMI::computeGcd(long a, long b) {
   return b;
 } /* computeGcd */
 
-/************************************************************************/
-void CglGMI::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-			  const CglTreeInfo info) const 
-{
-  // kludge to be able to modify the CglGMI object if it is const
-  CglGMI temp(*this);
-  temp.generateCuts(si, cs, info);
-
-} /* generateCuts */
 
 /************************************************************************/
 void CglGMI::generateCuts(const OsiSolverInterface &si, OsiCuts & cs,
@@ -1540,13 +1530,6 @@ void CglGMI::printOptTab(OsiSolverInterface *lclSolver) const
   delete[] slackVal;
 } /* printOptTab */
 
-/*********************************************************************/
-// Returns true if needs optimal basis to do cuts
-bool 
-CglGMI::needsOptimalBasis() const
-{
-  return true;
-}
 
 /*********************************************************************/
 // Create C++ lines to get to current state

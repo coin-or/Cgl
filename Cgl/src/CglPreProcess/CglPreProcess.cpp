@@ -2,10 +2,6 @@
 // Corporation and others.  All Rights Reserved.
 // This code is licensed under the terms of the Eclipse Public License (EPL).
 
-#if defined(_MSC_VER)
-// Turn off compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
 #include <string>
 #include <cassert>
 #include <cmath>
@@ -13,6 +9,7 @@
 #include <algorithm>
 #include <cfloat>
 
+#include "CoinPragma.hpp"
 #include "CglPreProcess.hpp"
 #include "CglMessage.hpp"
 #include "OsiRowCut.hpp"
@@ -4241,9 +4238,11 @@ CglPreProcess::modified(OsiSolverInterface * model,
 		      int interesting=0;
 		      double saveLo=lo;
 		      double saveUp=up;
+#ifdef CLP_INVESTIGATE
 		      double nearestLo0=lo;
+            double nearestLo1=lo;
+#endif
 		      double nearestUp0=up;
-		      double nearestLo1=lo;
 		      double nearestUp1=up;
 		      // adjust rhs for singleton 
 		      if (lo!=-COIN_DBL_MAX) {
@@ -4252,14 +4251,18 @@ CglPreProcess::modified(OsiSolverInterface * model,
 			double exact = lo/multiple;
 			if (fabs(exact-floor(exact+0.5))>1.0e-4) {
 			  interesting +=1;
+#ifdef CLP_INVESTIGATE
 			  nearestLo0 = ceil(exact)*multiple;
+#endif
 			} 
 			// singleton at ub
 			lo -= singletonValue;
 			exact = lo/multiple;
 			if (fabs(exact-floor(exact+0.5))>1.0e-4) {
 			  interesting +=2;
+#ifdef CLP_INVESTIGATE
 			  nearestLo1 = ceil(exact)*multiple;
+#endif
 			}
 		      }
 		      if (up!=COIN_DBL_MAX) {
@@ -5140,7 +5143,7 @@ CglPreProcess::newLanguage(CoinMessages::Language language)
 }
 // Return a pointer to the original columns (without clique slacks)
 const int * 
-CglPreProcess::originalColumns() const
+CglPreProcess::originalColumns()
 {
   if (!originalColumn_) 
     createOriginalIndices();
@@ -5148,7 +5151,7 @@ CglPreProcess::originalColumns() const
 }
 // Return a pointer to the original rows
 const int * 
-CglPreProcess::originalRows() const
+CglPreProcess::originalRows()
 {
   if (!originalRow_)
     createOriginalIndices();
@@ -5156,7 +5159,7 @@ CglPreProcess::originalRows() const
 }
 // create original columns and rows
 void 
-CglPreProcess::createOriginalIndices() const
+CglPreProcess::createOriginalIndices()
 {
   // Find last model and presolve
   int iPass;
@@ -5221,12 +5224,10 @@ CglPreProcess::update(const OsiPresolve * pinfo,
       if(prohibited_[i])
 	n++;
     }
-    int last=-1;
     int n2=0;
     for (i=0;i<numberColumns;i++) {
       int iColumn = original[i];
-      assert (iColumn>last);
-      last=iColumn;
+      assert (i == 0 || iColumn>original[i-1]);
       char p = prohibited_[iColumn];
       if (p)
 	n2++;

@@ -9,14 +9,11 @@
 // All Rights Reserved.
 // This code is published under the Eclipse Public License.
 
-#if defined(_MSC_VER)
-// Turn off MS VS compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
 //#include <cmath>
 //#include <cstdlib>
 #include <cassert>
 
+#include "CoinPragma.hpp"
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedMatrix.hpp"
 #include "CoinPackedVector.hpp"
@@ -29,7 +26,7 @@
 void
 CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
 				      OsiCuts& cs,
-				      const CglTreeInfo info) const
+				      const CglTreeInfo info)
 {
 
   // If the LP or integer presolve is used, then need to redo preprocessing
@@ -323,7 +320,7 @@ CglMixedIntegerRounding2::gutsOfCopy (const CglMixedIntegerRounding2& rhs)
 //-------------------------------------------------------------------  
 void 
 CglMixedIntegerRounding2::
-mixIntRoundPreprocess(const OsiSolverInterface& si) const
+mixIntRoundPreprocess(const OsiSolverInterface& si)
 {
   // get matrix stored by row
   const CoinPackedMatrix & matrixByRow = *si.getMatrixByRow();
