@@ -1912,7 +1912,7 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
             break;
         }
         newSigma = (p + gammaSign * elements[i] * q)*rhs_weight_/(r + gammaSign*elements[i] * s);
-#ifndef NDEBUG
+#ifdef DEBUG_LAP
         double alt = computeCglpObjective(gammaSign*elements[i], false);
         DblEqAssert(newSigma, alt);
 #endif
@@ -1989,7 +1989,7 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
 
     //std::cout<<"Minimum of f attained at breakpoint "<<lastValid<<std::endl;
     assert(bestSigma <= sigma_);
-#ifndef NDEBUG
+#ifdef DEBUG_LAP
     bestSigma_ = bestSigma;
     double otherSigma= computeCglpObjective(gammaSign*elements[lastValid], false);
     DblEqAssert(bestSigma, otherSigma);
