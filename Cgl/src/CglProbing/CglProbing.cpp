@@ -3293,7 +3293,6 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	  }
 	}
       }
-      int awayFromBound=1;
       int j=lookedAt_[iLook];
       //if (j==231||j==226)
       //printf("size %d %d j is %d\n",rowCut.numberCuts(),cs.sizeRowCuts(),j);//printf("looking at %d (%d out of %d)\n",j,iLook,numberThisTime_); 
@@ -3304,7 +3303,6 @@ int CglProbing::probe( const OsiSolverInterface & si,
       if ((markC[j]&3)!=0||!intVar[j]) continue;
       double saveSolval = solval;
       if (solval>=colUpper[j]-tolerance||solval<=colLower[j]+tolerance||up==down) {
-	awayFromBound=0;
 	if (solval<=colLower[j]+2.0*tolerance) {
 	  solval = colLower[j]+1.0e-1;
 	  down=colLower[j];
@@ -5955,7 +5953,6 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
       double solval;
       double down;
       double up;
-      int awayFromBound=1;
       j=lookedAt_[iLook];
       solval=colsol[j];
       down = floor(solval+tolerance);
@@ -5964,7 +5961,6 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
       if (markC[j]||!intVar[j]) continue;
       double saveSolval = solval;
       if (solval>=colUpper[j]-tolerance||solval<=colLower[j]+tolerance||up==down) {
-	awayFromBound=0;
 	if (solval<=colLower[j]+2.0*tolerance) {
 	  solval = colLower[j]+1.0e-1;
 	  down=colLower[j];
@@ -9002,6 +8998,7 @@ CglProbing::CglProbing (  const CglProbing & rhs)
     CoinMemcpyN(rhs.zeroFixStart_,numberColumns_,zeroFixStart_);
     endFixStart_ = new int [numberColumns_];
     CoinMemcpyN(rhs.endFixStart_,numberColumns_,endFixStart_);
+#ifndef NDEBUG
     int n2=-1;
     for (int i=numberColumns_-1;i>=0;i--) {
       if (oneFixStart_[i]>=0) {
@@ -9010,6 +9007,7 @@ CglProbing::CglProbing (  const CglProbing & rhs)
       }
     }
     assert (n==n2);
+#endif
     whichClique_ = new int [n];
     CoinMemcpyN(rhs.whichClique_,n,whichClique_);
     if (rhs.cliqueRowStart_) {
@@ -9177,6 +9175,7 @@ CglProbing::operator=(
       CoinMemcpyN(rhs.zeroFixStart_,numberColumns_,zeroFixStart_);
       endFixStart_ = new int [numberColumns_];
       CoinMemcpyN(rhs.endFixStart_,numberColumns_,endFixStart_);
+#ifndef NDEBUG
       int n2=-1;
       for (int i=numberColumns_-1;i>=0;i--) {
 	if (oneFixStart_[i]>=0) {
@@ -9185,6 +9184,7 @@ CglProbing::operator=(
 	}
       }
       assert (n==n2);
+#endif
       whichClique_ = new int [n];
       CoinMemcpyN(rhs.whichClique_,n,whichClique_);
       if (rhs.cliqueRowStart_) {
@@ -9266,9 +9266,6 @@ CglProbing::createCliques( OsiSolverInterface & si,
   const CoinBigIndex * rowStart = matrixByRow.getVectorStarts();
   const int * rowLength = matrixByRow.getVectorLengths();
 
-  // Column lengths for slacks
-  const int * columnLength = si.getMatrixByCol()->getVectorLengths();
-
   const double * lower = si.getColLower();
   const double * upper = si.getColUpper();
   const double * rowLower = si.getRowLower();
@@ -9280,7 +9277,6 @@ CglProbing::createCliques( OsiSolverInterface & si,
     double upperValue=rowUpper[iRow];
     double lowerValue=rowLower[iRow];
     bool good=true;
-    int slack = -1;
     for (j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
       int iColumn = column[j];
       int iInteger=lookup[iColumn];
@@ -9295,9 +9291,6 @@ CglProbing::createCliques( OsiSolverInterface & si,
       } else if (iInteger<0) {
 	good = false;
 	break;
-      } else {
-	if (columnLength[iColumn]==1)
-	  slack = iInteger;
       }
       if (fabs(elementByRow[j])!=1.0) {
 	good=false;

@@ -479,7 +479,7 @@ private:
 
   /// Time at which cut computations began.
   /// Reset by each call to generateCuts().
-  double startTime;
+  mutable double startTime;
 
   //@}
 };

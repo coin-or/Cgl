@@ -512,8 +512,6 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver)
   bool printit=false;
   int numberCliques=0;
   int numberEntries=0;
-  int maximumCliques=0;
-  int maximumEntries=0;
   int * cliqueStart = NULL;
   cliqueEntry * entry = NULL;
   char * cliqueType=NULL;
@@ -535,8 +533,6 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver)
   const double * rowUpper = si.getRowUpper();
   for (int iPass=0;iPass<2;iPass++) {
     if (iPass) {
-      maximumCliques=numberCliques;
-      maximumEntries=numberEntries;
       cliqueStart = new int [numberCliques+1];
       cliqueStart[0]=0;
       entry = new cliqueEntry [numberEntries];

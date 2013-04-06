@@ -850,7 +850,6 @@ DGG_getSlackExpression(const void *osi_ptr, DGG_data_t* data, int row_index)
   const double *rowMat;
   const double *rowUpper;
   const double *rowLower;
-  const char *rowSense;
     
   row = DGG_newConstraint(data->ncol);
 
@@ -861,7 +860,6 @@ DGG_getSlackExpression(const void *osi_ptr, DGG_data_t* data, int row_index)
 
   rowUpper = si->getRowUpper();
   rowLower = si->getRowLower();
-  rowSense = si->getRowSense();
 
 #if DGG_DEBUG_DGG
   if ( row_index < 0 || row_index > data->nrow )
@@ -1920,8 +1918,6 @@ int DGG_is2stepValid(double alpha, double bht)
 
   /* d */
   double tau;
-  /* d-bar */
-  double tau_lim;
 
   /* ensure that alpha is not null or negative */
   if ( alpha < DGG_MIN_ALPHA )
@@ -1929,7 +1925,6 @@ int DGG_is2stepValid(double alpha, double bht)
 
   /* compute tau and tau_lim */
   tau = ceil( bht / alpha );
-  tau_lim = ceil( 1 / (1 - bht) ) - 1;
 
   /* make sure alpha is not a divisor of bht */
   if ( DGG_is_a_multiple_of_b(alpha, bht) )

@@ -144,8 +144,10 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
     int iCont=-1;
     double sum = 0.0;
     double valueContinuous=0.0;
+#ifdef PRINT_DEBUG
     double valueBinary=0.0;
     int iBinary=-1;
+#endif
     int j;
     for (j=start;j<end;j++) {
       int iColumn=column[j];
@@ -155,13 +157,17 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
 	if (vubRow[iColumn]==-2&&value*multiplier>0.0) {
 	  // binary
 	  numberBinary++;
+#ifdef PRINT_DEBUG
 	  valueBinary=value;
 	  iBinary=iColumn;
+#endif
 	} else if (vlbRow[iColumn]==-2&&value*multiplier<0.0) {
 	  // binary
 	  numberBinary++;
+#ifdef PRINT_DEBUG
 	  valueBinary=value;
-	  iBinary=iColumn;
+     iBinary=iColumn;
+#endif
 	} else if (vubRow[iColumn]==-1) {
 	  // only use if not at bound
           //	  if (colsol[iColumn]<colUpper[iColumn]-1.0e-6&&
@@ -3679,6 +3685,7 @@ CglKnapsackCover::CglKnapsackCover (const CglKnapsackCover & source) :
     CoinMemcpyN(source.zeroFixStart_,numberColumns_,zeroFixStart_);
     endFixStart_ = new int [numberColumns_];
     CoinMemcpyN(source.endFixStart_,numberColumns_,endFixStart_);
+#ifndef NDEBUG
     int n2=-1;
     for (int i=numberColumns_-1;i>=0;i--) {
       if (oneFixStart_[i]>=0) {
@@ -3687,6 +3694,7 @@ CglKnapsackCover::CglKnapsackCover (const CglKnapsackCover & source) :
       }
     }
     assert (n==n2);
+#endif
     whichClique_ = new int [n];
     CoinMemcpyN(source.whichClique_,n,whichClique_);
   } else {
@@ -3756,6 +3764,7 @@ CglKnapsackCover::operator=(const CglKnapsackCover& rhs)
 	CoinMemcpyN(rhs.zeroFixStart_,numberColumns_,zeroFixStart_);
 	endFixStart_ = new int [numberColumns_];
 	CoinMemcpyN(rhs.endFixStart_,numberColumns_,endFixStart_);
+#ifndef NDEBUG
 	int n2=-1;
 	for (int i=numberColumns_-1;i>=0;i--) {
 	  if (oneFixStart_[i]>=0) {
@@ -3764,6 +3773,7 @@ CglKnapsackCover::operator=(const CglKnapsackCover& rhs)
 	  }
 	}
 	assert (n==n2);
+#endif
 	whichClique_ = new int [n];
 	CoinMemcpyN(rhs.whichClique_,n,whichClique_);
       }
@@ -3850,9 +3860,6 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
   const CoinBigIndex * rowStart = matrixByRow.getVectorStarts();
   const int * rowLength = matrixByRow.getVectorLengths();
 
-  // Column lengths for slacks
-  const int * columnLength = si.getMatrixByCol()->getVectorLengths();
-
   const double * lower = si.getColLower();
   const double * upper = si.getColUpper();
   const double * rowLower = si.getRowLower();
@@ -3864,7 +3871,6 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
     double upperValue=rowUpper[iRow];
     double lowerValue=rowLower[iRow];
     bool good=true;
-    int slack = -1;
     for (j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
       int iColumn = column[j];
       int iInteger=lookup[iColumn];
@@ -3879,9 +3885,6 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
       } else if (iInteger<0) {
 	good = false;
 	break;
-      } else {
-	if (columnLength[iColumn]==1)
-	  slack = iInteger;
       }
       if (fabs(elementByRow[j])!=1.0) {
 	good=false;

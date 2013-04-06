@@ -1583,7 +1583,7 @@ void CglRedSplit2::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 
   // kludge to be able to modify the CglRedSplit2 object if it is const
   CglRedSplit2 temp(*this);
-  double startTime = CoinCpuTime();
+  startTime = CoinCpuTime();
   temp.generateCuts(si, cs, info);
 } /* generateCuts */
 

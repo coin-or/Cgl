@@ -4241,9 +4241,11 @@ CglPreProcess::modified(OsiSolverInterface * model,
 		      int interesting=0;
 		      double saveLo=lo;
 		      double saveUp=up;
+#ifdef CLP_INVESTIGATE
 		      double nearestLo0=lo;
+            double nearestLo1=lo;
+#endif
 		      double nearestUp0=up;
-		      double nearestLo1=lo;
 		      double nearestUp1=up;
 		      // adjust rhs for singleton 
 		      if (lo!=-COIN_DBL_MAX) {
@@ -4252,14 +4254,18 @@ CglPreProcess::modified(OsiSolverInterface * model,
 			double exact = lo/multiple;
 			if (fabs(exact-floor(exact+0.5))>1.0e-4) {
 			  interesting +=1;
+#ifdef CLP_INVESTIGATE
 			  nearestLo0 = ceil(exact)*multiple;
+#endif
 			} 
 			// singleton at ub
 			lo -= singletonValue;
 			exact = lo/multiple;
 			if (fabs(exact-floor(exact+0.5))>1.0e-4) {
 			  interesting +=2;
+#ifdef CLP_INVESTIGATE
 			  nearestLo1 = ceil(exact)*multiple;
+#endif
 			}
 		      }
 		      if (up!=COIN_DBL_MAX) {
@@ -5221,12 +5227,10 @@ CglPreProcess::update(const OsiPresolve * pinfo,
       if(prohibited_[i])
 	n++;
     }
-    int last=-1;
     int n2=0;
     for (i=0;i<numberColumns;i++) {
       int iColumn = original[i];
-      assert (iColumn>last);
-      last=iColumn;
+      assert (i == 0 || iColumn>original[i-1]);
       char p = prohibited_[iColumn];
       if (p)
 	n2++;
