@@ -38,13 +38,12 @@ CglZeroHalfUnitTest(
 
 
 
-#if 0  /* don't have lseu in Data/Sample */
   // Test generate cuts method on lseu
   {
     CglZeroHalf cg;
     
     OsiSolverInterface * siP = baseSiP->clone();
-    std::string fn = mpsDir+"lseu";
+    std::string fn = mpsDir+"lseu.mps";
     siP->readMps(fn.c_str(),"");
     // test if there
     if (!siP->getNumRows()) {
@@ -93,7 +92,6 @@ CglZeroHalfUnitTest(
     delete siP;
 
   }
-#endif
 
 }
 
