@@ -257,6 +257,8 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\CglGMI\CglGMI.cpp" />
+    <ClCompile Include="..\..\..\src\CglGMI\CglGMIParam.cpp" />
     <ClCompile Include="..\..\..\src\CglGomory\CglGomory.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Disabled</Optimization>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -408,6 +410,9 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <ClCompile Include="..\..\..\src\CglRedSplit2\CglRedSplit2.cpp" />
+    <ClCompile Include="..\..\..\src\CglRedSplit2\CglRedSplit2Param.cpp" />
+    <ClCompile Include="..\..\..\src\CglRedSplit2\CglRedSplit2Test.cpp" />
     <ClCompile Include="..\..\..\src\CglRedSplit\CglRedSplit.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Disabled</Optimization>
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -487,6 +492,8 @@
     <ClInclude Include="..\..\..\src\CglCutGenerator.hpp" />
     <ClInclude Include="..\..\..\src\CglDuplicateRow\CglDuplicateRow.hpp" />
     <ClInclude Include="..\..\..\src\CglFlowCover\CglFlowCover.hpp" />
+    <ClInclude Include="..\..\..\src\CglGMI\CglGMI.hpp" />
+    <ClInclude Include="..\..\..\src\CglGMI\CglGMIParam.hpp" />
     <ClInclude Include="..\..\..\src\CglGomory\CglGomory.hpp" />
     <ClInclude Include="..\..\..\src\CglKnapsackCover\CglKnapsackCover.hpp" />
     <ClInclude Include="..\..\..\src\CglLandP\CglLandP.hpp" />
@@ -503,6 +510,8 @@
     <ClInclude Include="..\..\..\src\CglParam.hpp" />
     <ClInclude Include="..\..\..\src\CglPreProcess\CglPreProcess.hpp" />
     <ClInclude Include="..\..\..\src\CglProbing\CglProbing.hpp" />
+    <ClInclude Include="..\..\..\src\CglRedSplit2\CglRedSplit2.hpp" />
+    <ClInclude Include="..\..\..\src\CglRedSplit2\CglRedSplit2Param.hpp" />
     <ClInclude Include="..\..\..\src\CglRedSplit\CglRedSplit.hpp" />
     <ClInclude Include="..\..\..\src\CglRedSplit\CglRedSplitParam.hpp" />
     <ClInclude Include="..\..\..\src\CglResidualCapacity\CglResidualCapacity.hpp" />
