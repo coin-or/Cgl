@@ -111,7 +111,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
         numberFree++;
     }
     if (numberFree) {
-#if 1 //def COIN_DEVELOP
+#ifdef COIN_DEVELOP
       if (!info.inTree&&!info.pass)
         printf("CglTwoMir - %d free variables - returning\n",numberFree);
 #endif
