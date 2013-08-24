@@ -3894,6 +3894,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
       number01Integers++;
   }
   OsiRowCut ** whichCut = new OsiRowCut * [numberRows+1];
+  memset(whichCut, 0, (numberRows+1)*sizeof(OsiRowCut *));
   numberChanges=0;
   CoinThreadRandom randomGenerator;
   CglTreeProbingInfo info(model);
