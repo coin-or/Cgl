@@ -86,8 +86,12 @@ CglZeroHalfUnitTest(
     printf("Final LP min=%f\n\n",lpRelaxAfter);
 #endif
     printf("Zero cuts %d\n",nRowCuts);
-    assert( lpRelaxBefore < lpRelaxAfter );
-    printf("Good zero %s\n",fn.c_str());
+    if (!(lpRelaxBefore < lpRelaxAfter)){
+       printf("***Warning: Bound did not improve after addition of cut.\n");
+       printf("***This can happen, but is generally not expected\n");
+    }else{
+       printf("Good zero %s\n",fn.c_str());
+    }
 
     delete siP;
 
