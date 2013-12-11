@@ -41,4 +41,4 @@ DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)`
 # Here list all the header files that are required by a user of the library,
 # and that therefore should be installed in 'include/coin'
 includecoindir = $(includedir)/coin
-includecoin_HEADERS = CglZeroHalf.hpp
+includecoin_HEADERS = CglZeroHalf.hpp Cgl012cut.hpp
