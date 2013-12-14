@@ -129,14 +129,10 @@ int CglProbingUnitTest (const OsiSolverInterface *baseSiP,
 
     siP->setIntParam(OsiNameDiscipline,1) ;
 
-    std::string localDir = "/devel/Coin/Split/Data/Miplib3/" ;
-    // std::string localDir = "/export/Lou2/Split/Data/Miplib3/" ;
-    // std::string probName = "p0033" ;
-    // std::string fn = mpsDir+probName ;
-    std::string probName = "bell3a" ;
-    std::string fn = localDir+probName ;
+    std::string probName = "p0033" ;
+    std::string fn = mpsDir+probName ;
 
-    siP->readMps(fn.c_str(),"mps") ;
+    int retVal = siP->readMps(fn.c_str(),"mps") ;
     siP->initialSolve() ;
 
 #   if CGL_DEBUG > 0
@@ -208,9 +204,8 @@ int CglProbingUnitTest (const OsiSolverInterface *baseSiP,
 
     siP->setIntParam(OsiNameDiscipline,1) ;
 
-    std::string localDir = "/devel/Coin/Split/Data/Sample/" ;
     std::string probName = "p0033" ;
-    std::string fn = localDir+probName ;
+    std::string fn = mpsDir+probName ;
 
     siP->readMps(fn.c_str(),"mps") ;
     siP->initialSolve() ;
