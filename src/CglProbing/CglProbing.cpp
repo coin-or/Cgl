@@ -1425,13 +1425,25 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 */
   CglPhic phic(rowCopy,columnCopy,rowLower,rowUpper) ;
   phic.setVerbosity(verbosity_) ;
+  // phic.setVerbosity(4) ;
   phic.setParanoia(0) ;
-  phic.setPropTol(10) ;
+  phic.setRowPropTol(1.0e-3) ;
+  phic.setColPropTol(1.0e-4) ;
+  phic.setDisturbTol(1.0e-1) ;
+  phic.setPropType(CglPhic::PropGenInt|CglPhic::PropBinary) ;
   phic.loanColBnds(colLower,colUpper) ;
   phic.loanColType(intVar) ;
   phic.initLhsBnds() ;
   phic.initPropagation() ;
   phic.tightenAbInitio(feasible) ;
+/*
+  Cut back on propagation now that we've tightened the system.
+*/
+  phic.setRowPropTol(1.0) ;
+  phic.setPropType(CglPhic::PropBinary) ;
+  // phic.setPropType(CglPhic::PropGenInt|CglPhic::PropBinary) ;
+  // phic.setPropType(CglPhic::PropCon|CglPhic::PropGenInt|CglPhic::PropBinary) ;
+  // phic.setVerbosity(6) ;
 /*
   If we've lost feasibility, do nothing more. Otherwise, record the new bounds
   as column cuts and continue with setup and probing.
