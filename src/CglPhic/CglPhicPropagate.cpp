@@ -50,6 +50,17 @@ void CglPhic::addToPending (int i, double ddelta, double dmetric)
   const float delta = static_cast<float>(ddelta) ;
   const float metric = static_cast<float>(dmetric) ;
 /*
+  Grab the metric for the candidate at the top of the heap. We'll use this to
+  decide if we need to rebuild.
+*/
+  int bestPending = -1 ;
+  float bestMetric = static_cast<float>(-infty_) ;
+  if (!pending_.empty()) {
+    bestPending = *pending_.begin() ;
+    CglPhicCand &bestCand = candInfo_[bestPending] ;
+    bestMetric = bestCand.metric_ ;
+  }
+/*
   Is this constraint already in the heap? If so, simply add to the existing
   entry and indicate we need to rebuild the heap.
 */
@@ -62,7 +73,7 @@ void CglPhic::addToPending (int i, double ddelta, double dmetric)
     if (candi.accum_ > disturbTol_) {
       candi.metric_ += candi.accum_ ;
       candi.accum_ = 0 ;
-      rebuildHeap_ = true ;
+      if (candi.metric_ > bestMetric) rebuildHeap_ = true ;
     }
   } else if (i != inProcess_) {
 /*
@@ -76,11 +87,11 @@ void CglPhic::addToPending (int i, double ddelta, double dmetric)
       candi.accum_ = 0 ;
       candi.isPending_ = true ;
       pending_.push_back(i) ;
-      rebuildHeap_ = true ;
+      if (candi.metric_ > bestMetric) rebuildHeap_ = true ;
     }
   }
 
-  if (verbosity_ >= 4 && rebuildHeap_) {
+  if (verbosity_ >= 4 && candi.metric_ > disturbTol_) {
     std::cout << "          " ;
     if (alreadyPendingi)
       std::cout << "updated" ;
@@ -90,6 +101,11 @@ void CglPhic::addToPending (int i, double ddelta, double dmetric)
       << " r(" << i << "), delta " << candi.delta_ << " (" << delta
       << "), metric " << candi.metric_ << " (" << metric << "); pending set "
       << pending_.size() << " entries." << std::endl ;
+    if (rebuildHeap_ == true) {
+      std::cout << "          " ;
+      std::cout
+        << "Requesting heap rebuild; best " << bestMetric << "." << std::endl ;
+    }
   }
 }
 
