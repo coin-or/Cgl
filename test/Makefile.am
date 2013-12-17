@@ -38,6 +38,7 @@ AM_CPPFLAGS = \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglTwomir` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglClique` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglSimpleRounding` \
+	-I`$(CYGPATH_W) $(srcdir)/../src/CglZeroHalf` \
 	$(CGLLIB_CFLAGS)
 if COIN_HAS_SAMPLE
 AM_CPPFLAGS += -DSAMPLEDIR=\"`$(CYGPATH_W) @SAMPLE_DATA@ | sed -e 's/\\\\/\\\\\\\\/g'`\"

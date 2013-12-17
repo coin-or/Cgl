@@ -20,7 +20,8 @@
 // Default Constructor 
 //-------------------------------------------------------------------
 CglCutGenerator::CglCutGenerator ()
-  : aggressive_(0)
+  : aggressive_(0),
+canDoGlobalCuts_(false)
 {
   // nothing to do here
 }
@@ -30,7 +31,8 @@ CglCutGenerator::CglCutGenerator ()
 //-------------------------------------------------------------------
 CglCutGenerator::CglCutGenerator (
                   const CglCutGenerator & source)         
-  : aggressive_(source.aggressive_)
+  : aggressive_(source.aggressive_),
+    canDoGlobalCuts_(source.canDoGlobalCuts_)
 {  
   // nothing to do here
 }
@@ -53,6 +55,7 @@ CglCutGenerator::operator=(
 {
   if (this != &rhs) {
     aggressive_ = rhs.aggressive_;
+    canDoGlobalCuts_ = rhs.canDoGlobalCuts_;
   }
   return *this;
 }

@@ -471,5 +471,44 @@ private:
   int lastColumn_;
  //@}
 };
+/**
+   Only store unique row cuts
+*/
+// for hashing
+typedef struct {
+  int index, next;
+} CglHashLink;
+class OsiRowCut;
+class CglUniqueRowCuts {
+public:
 
+  CglUniqueRowCuts(int initialMaxSize=0, int hashMultiplier=4 );
+  ~CglUniqueRowCuts();
+  CglUniqueRowCuts(const CglUniqueRowCuts& rhs);
+  CglUniqueRowCuts& operator=(const CglUniqueRowCuts& rhs);
+  inline OsiRowCut * cut(int sequence) const
+  { return rowCut_[sequence];}
+  inline int numberCuts() const
+  { return numberCuts_;}
+  inline int sizeRowCuts() const
+  { return numberCuts_;}
+  inline OsiRowCut * rowCutPtr(int sequence)
+  { return rowCut_[sequence];}
+  void eraseRowCut(int sequence);
+  // insert cut
+  inline void insert(const OsiRowCut & cut)
+  { insertIfNotDuplicate(cut);}
+  // Return 0 if added, 1 if not
+  int insertIfNotDuplicate(const OsiRowCut & cut);
+  // Add in cuts as normal cuts (and delete)
+  void addCuts(OsiCuts & cs);
+private:
+  OsiRowCut ** rowCut_;
+  /// Hash table
+  CglHashLink *hash_;
+  int size_;
+  int hashMultiplier_;
+  int numberCuts_;
+  int lastHash_;
+};
 #endif

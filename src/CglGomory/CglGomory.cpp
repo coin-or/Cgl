@@ -677,7 +677,7 @@ CglGomory::generateCuts(
       tolerance3=1.0e-6;
       tolerance6=1.0e-7;
       tolerance9=1.0e-5;
-      if (!limit||limit>=500)
+      if (!limit)
 	limit=numberColumns;
     } else {
       if((infoOptions&32)==0/*&&numberTimesStalled_<3*/) {
@@ -1577,6 +1577,23 @@ CglGomory::operator=(const CglGomory& rhs)
       originalSolver_=NULL;
   }
   return *this;
+}
+// This can be used to refresh any information
+void 
+CglGomory::refreshSolver(OsiSolverInterface * solver)
+{
+  int numberColumns=solver->getNumCols(); 
+  const double * colUpper = solver->getColUpper();
+  const double * colLower = solver->getColLower();
+  canDoGlobalCuts_ = true;
+  for (int i=0;i<numberColumns;i++) {
+    if (solver->isInteger(i)) {
+      if (colUpper[i]>colLower[i]+1.0) {
+	canDoGlobalCuts_ = false;
+	break;
+      }
+    }
+  }
 }
 // Pass in a copy of original solver (clone it)
 void 

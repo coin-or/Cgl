@@ -20,13 +20,14 @@
 
 # Author:  Andreas Waechter           IBM    2006-04-13
 
+
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 VPATH = @srcdir@
 pkgdatadir = $(datadir)/@PACKAGE@
 pkglibdir = $(libdir)/@PACKAGE@
 pkgincludedir = $(includedir)/@PACKAGE@
-top_builddir = ..
+top_builddir = ../..
 am__cd = CDPATH="$${ZSH_VERSION+.}$(PATH_SEPARATOR)" && cd
 INSTALL = @INSTALL@
 install_sh_DATA = $(install_sh) -c -m 644
@@ -42,10 +43,9 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-noinst_PROGRAMS = unitTest$(EXEEXT)
-@COIN_HAS_SAMPLE_TRUE@am__append_1 = -DSAMPLEDIR=\"`$(CYGPATH_W) @SAMPLE_DATA@ | sed -e 's/\\\\/\\\\\\\\/g'`\"
-subdir = test
-DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
+subdir = src/CglZeroHalf
+DIST_COMMON = $(includecoin_HEADERS) $(srcdir)/Makefile.am \
+	$(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.ac
@@ -55,10 +55,11 @@ mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/src/config.h \
 	$(top_builddir)/src/config_cgl.h
 CONFIG_CLEAN_FILES =
-PROGRAMS = $(noinst_PROGRAMS)
-am_unitTest_OBJECTS = unitTest.$(OBJEXT)
-unitTest_OBJECTS = $(am_unitTest_OBJECTS)
-am__DEPENDENCIES_1 =
+LTLIBRARIES = $(noinst_LTLIBRARIES)
+libCglZeroHalf_la_LIBADD =
+am_libCglZeroHalf_la_OBJECTS = CglZeroHalf.lo Cgl012cut.lo \
+	CglZeroHalfTest.lo
+libCglZeroHalf_la_OBJECTS = $(am_libCglZeroHalf_la_OBJECTS)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
@@ -69,8 +70,25 @@ LTCXXCOMPILE = $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) \
 CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(unitTest_SOURCES)
-DIST_SOURCES = $(unitTest_SOURCES)
+COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
+	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
+	$(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) \
+	$(AM_CFLAGS) $(CFLAGS)
+CCLD = $(CC)
+LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(AM_LDFLAGS) $(LDFLAGS) -o $@
+SOURCES = $(libCglZeroHalf_la_SOURCES)
+DIST_SOURCES = $(libCglZeroHalf_la_SOURCES)
+am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
+am__vpath_adj = case $$p in \
+    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
+    *) f=$$p;; \
+  esac;
+am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
+am__installdirs = "$(DESTDIR)$(includecoindir)"
+includecoinHEADERS_INSTALL = $(INSTALL_HEADER)
+HEADERS = $(includecoin_HEADERS)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -332,55 +350,42 @@ sol_cc_compiler = @sol_cc_compiler@
 sysconfdir = @sysconfdir@
 target_alias = @target_alias@
 AUTOMAKE_OPTIONS = foreign
-unitTest_SOURCES = unitTest.cpp
 
-# List libraries we need to link in
-unitTest_LDADD = ../src/libCgl.la $(CGLLIB_LIBS) $(OSICLP_LIBS) \
-	$(OSICPX_LIBS) $(OSIDYLP_LIBS) $(OSIGLPK_LIBS) $(OSIMSK_LIBS) \
-	$(OSIVOL_LIBS) $(OSIXPR_LIBS)
-unitTest_DEPENDENCIES = ../src/libCgl.la $(CGLLIB_DEPENDENCIES) \
-	$(OSICLP_DEPENDENCIES) $(OSICPX_DEPENDENCIES) \
-	$(OSIDYLP_DEPENDENCIES) $(OSIGLPK_DEPENDENCIES) \
-	$(OSIMSK_DEPENDENCIES) $(OSIVOL_DEPENDENCIES) \
-	$(OSIXPR_DEPENDENCIES)
+########################################################################
+#                       libCglZeroHalf                           #
+########################################################################
+
+# Name of the library compiled in this directory.  We don't want it to be
+# installed since it will be collected into the libCgl library
+noinst_LTLIBRARIES = libCglZeroHalf.la
+
+# List all source files for this library, including headers
+libCglZeroHalf_la_SOURCES = \
+	CglZeroHalf.cpp  CglZeroHalf.hpp \
+	Cgl012cut.cpp  Cgl012cut.hpp \
+	CglZeroHalfTest.cpp
+
+
+# This is for libtool
+libCglZeroHalf_la_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.  This
-# "cygpath" stuff is necessary to compile with native compilers on Windows
+# "cygpath" stuff is necessary to compile with native compilers on Windows.
+# "top_srcdir" refers to the basic directory for the main package that is
+# being compiled.
+AM_CPPFLAGS = -I`$(CYGPATH_W) $(srcdir)/..` $(COINUTILS_CFLAGS) $(OSI_CFLAGS)
 
-# Depending of what solvers are available, we add the corresponding files,
-# libraries and include dirs
-# For solvers not available, the variables should just resolve to an empty string,
-# so it's no harm to list them all
-AM_CPPFLAGS = -I`$(CYGPATH_W) $(srcdir)/../src` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglFlowCover` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglGomory` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglKnapsackCover` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglLandP` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglOddHole` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglProbing` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglMixedIntegerRounding` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglMixedIntegerRounding2` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglResidualCapacity` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglRedSplit` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglTwomir` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglClique` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglSimpleRounding` -I`$(CYGPATH_W) \
-	$(srcdir)/../src/CglZeroHalf` $(CGLLIB_CFLAGS) $(am__append_1) \
-	$(OSICLP_CFLAGS) $(OSICPX_CFLAGS) $(OSIDYLP_CFLAGS) \
-	$(OSIGLPK_CFLAGS) $(OSIMSK_CFLAGS) $(OSIVOL_CFLAGS) \
-	$(OSIXPR_CFLAGS)
-
-# This line is necessary to allow VPATH compilation with MS compilers
-# on Cygwin
-DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/src
+# This line is necessary to allow VPATH compilation
+DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)`
 
 ########################################################################
-#                          Cleaning stuff                              #
+#                Headers that need to be installed                     #
 ########################################################################
 
-# Here we list everything that is not generated by the compiler, e.g.,
-# output files of a program
-DISTCLEANFILES = 
+# Here list all the header files that are required by a user of the library,
+# and that therefore should be installed in 'include/coin'
+includecoindir = $(includedir)/coin
+includecoin_HEADERS = CglZeroHalf.hpp
 all: all-am
 
 .SUFFIXES:
@@ -394,9 +399,9 @@ $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__confi
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign  test/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign  src/CglZeroHalf/Makefile'; \
 	cd $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign  test/Makefile
+	  $(AUTOMAKE) --foreign  src/CglZeroHalf/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -415,15 +420,16 @@ $(top_srcdir)/configure: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 $(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 
-clean-noinstPROGRAMS:
-	@list='$(noinst_PROGRAMS)'; for p in $$list; do \
-	  f=`echo $$p|sed 's/$(EXEEXT)$$//'`; \
-	  echo " rm -f $$p $$f"; \
-	  rm -f $$p $$f ; \
+clean-noinstLTLIBRARIES:
+	-test -z "$(noinst_LTLIBRARIES)" || rm -f $(noinst_LTLIBRARIES)
+	@list='$(noinst_LTLIBRARIES)'; for p in $$list; do \
+	  dir="`echo $$p | sed -e 's|/[^/]*$$||'`"; \
+	  test "$$dir" != "$$p" || dir=.; \
+	  echo "rm -f \"$${dir}/so_locations\""; \
+	  rm -f "$${dir}/so_locations"; \
 	done
-unitTest$(EXEEXT): $(unitTest_OBJECTS) $(unitTest_DEPENDENCIES) 
-	@rm -f unitTest$(EXEEXT)
-	$(CXXLINK) $(unitTest_LDFLAGS) $(unitTest_OBJECTS) $(unitTest_LDADD) $(LIBS)
+libCglZeroHalf.la: $(libCglZeroHalf_la_OBJECTS) $(libCglZeroHalf_la_DEPENDENCIES) 
+	$(CXXLINK)  $(libCglZeroHalf_la_LDFLAGS) $(libCglZeroHalf_la_OBJECTS) $(libCglZeroHalf_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -431,7 +437,9 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/unitTest.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Cgl012cut.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglZeroHalf.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglZeroHalfTest.Plo@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -463,6 +471,23 @@ clean-libtool:
 distclean-libtool:
 	-rm -f libtool
 uninstall-info-am:
+install-includecoinHEADERS: $(includecoin_HEADERS)
+	@$(NORMAL_INSTALL)
+	test -z "$(includecoindir)" || $(mkdir_p) "$(DESTDIR)$(includecoindir)"
+	@list='$(includecoin_HEADERS)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  f=$(am__strip_dir) \
+	  echo " $(includecoinHEADERS_INSTALL) '$$d$$p' '$(DESTDIR)$(includecoindir)/$$f'"; \
+	  $(includecoinHEADERS_INSTALL) "$$d$$p" "$(DESTDIR)$(includecoindir)/$$f"; \
+	done
+
+uninstall-includecoinHEADERS:
+	@$(NORMAL_UNINSTALL)
+	@list='$(includecoin_HEADERS)'; for p in $$list; do \
+	  f=$(am__strip_dir) \
+	  echo " rm -f '$(DESTDIR)$(includecoindir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(includecoindir)/$$f"; \
+	done
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
@@ -541,8 +566,11 @@ distdir: $(DISTFILES)
 	done
 check-am: all-am
 check: check-am
-all-am: Makefile $(PROGRAMS)
+all-am: Makefile $(LTLIBRARIES) $(HEADERS)
 installdirs:
+	for dir in "$(DESTDIR)$(includecoindir)"; do \
+	  test -z "$$dir" || $(mkdir_p) "$$dir"; \
+	done
 install: install-am
 install-exec: install-exec-am
 install-data: install-data-am
@@ -563,14 +591,13 @@ clean-generic:
 
 distclean-generic:
 	-test -z "$(CONFIG_CLEAN_FILES)" || rm -f $(CONFIG_CLEAN_FILES)
-	-test -z "$(DISTCLEANFILES)" || rm -f $(DISTCLEANFILES)
 
 maintainer-clean-generic:
 	@echo "This command is intended for maintainers to use"
 	@echo "it deletes files that may require special tools to rebuild."
 clean: clean-am
 
-clean-am: clean-generic clean-libtool clean-noinstPROGRAMS \
+clean-am: clean-generic clean-libtool clean-noinstLTLIBRARIES \
 	mostlyclean-am
 
 distclean: distclean-am
@@ -589,7 +616,7 @@ info: info-am
 
 info-am:
 
-install-data-am:
+install-data-am: install-includecoinHEADERS
 
 install-exec-am:
 
@@ -617,25 +644,21 @@ ps: ps-am
 
 ps-am:
 
-uninstall-am: uninstall-info-am
+uninstall-am: uninstall-includecoinHEADERS uninstall-info-am
 
 .PHONY: CTAGS GTAGS all all-am check check-am clean clean-generic \
-	clean-libtool clean-noinstPROGRAMS ctags distclean \
+	clean-libtool clean-noinstLTLIBRARIES ctags distclean \
 	distclean-compile distclean-generic distclean-libtool \
 	distclean-tags distdir dvi dvi-am html html-am info info-am \
 	install install-am install-data install-data-am install-exec \
-	install-exec-am install-info install-info-am install-man \
-	install-strip installcheck installcheck-am installdirs \
-	maintainer-clean maintainer-clean-generic mostlyclean \
-	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
-	pdf pdf-am ps ps-am tags uninstall uninstall-am \
+	install-exec-am install-includecoinHEADERS install-info \
+	install-info-am install-man install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-compile \
+	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
+	tags uninstall uninstall-am uninstall-includecoinHEADERS \
 	uninstall-info-am
 
-
-test: unitTest$(EXEEXT)
-	./unitTest$(EXEEXT)
-
-.PHONY: test
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

@@ -95,6 +95,13 @@ src/CglProbing/CglProbingProbe.cpp -text
 src/CglProbing/CglProbingRowCut.cpp -text
 src/CglProbing/CglProbingRowCut.hpp -text
 src/CglProbing/CglProbingTighten.cpp -text
+src/CglZeroHalf/Cgl012cut.cpp -text
+src/CglZeroHalf/Cgl012cut.hpp -text
+src/CglZeroHalf/CglZeroHalf.cpp -text
+src/CglZeroHalf/CglZeroHalf.hpp -text
+src/CglZeroHalf/CglZeroHalfTest.cpp -text
+src/CglZeroHalf/Makefile.am -text
+src/CglZeroHalf/Makefile.in -text
 src/config.h.in -text
 src/config_cgl.h.in -text
 src/config_cgl_default.h -text

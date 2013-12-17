@@ -3643,6 +3643,7 @@ expensiveCuts_(false)
   zeroFixStart_=NULL;
   endFixStart_=NULL;
   whichClique_=NULL;
+  canDoGlobalCuts_=true;
 }
 
 //-------------------------------------------------------------------
