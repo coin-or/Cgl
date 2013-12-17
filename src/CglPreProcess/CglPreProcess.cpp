@@ -1148,6 +1148,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   std::cout
     << "  Attempting to activate row cut debugger for "
     << modelName << " ... " ;
+  writeDebugMps(&model,"IPP:preProcessNonDefault",0) ;
   model.activateRowCutDebugger(modelName.c_str()) ;
   if (model.getRowCutDebugger())
     std::cout << "on optimal path." << std::endl ;
@@ -1163,7 +1164,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     debugger->printOptimalSolution(model) ;
   }
 # endif
-
 
   originalModel_ = & model;
   numberSolvers_ = numberPasses;
@@ -2059,7 +2059,13 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     oldModel->getStrParam(OsiSolverName,solverName);
     // Extend if you want other solvers to keep solution
     bool keepSolution=solverName=="clp";
-    presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-7,true,5,prohibited_,keepSolution,rowType_);
+    // Should not be hardwired tolerance - temporary fix
+#ifndef CGL_PREPROCESS_TOLERANCE
+#define CGL_PREPROCESS_TOLERANCE 1.0e-7
+#endif
+    // So standalone version can switch off
+    double feasibilityTolerance = ((tuning&1024)==0) ? CGL_PREPROCESS_TOLERANCE : 1.0e-4;
+    presolvedModel = pinfo->presolvedModel(*oldModel,feasibilityTolerance,true,5,prohibited_,keepSolution,rowType_);
 #   if LOU_DEBUG > 1
     std::cout << "    presolvedModel (init) " ;
     if (presolvedModel) {
@@ -2388,7 +2394,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       oldModel->getStrParam(OsiSolverName,solverName);
       // Extend if you want other solvers to keep solution
       bool keepSolution=solverName=="clp";
-      presolvedModel = pinfo->presolvedModel(*oldModel,1.0e-7,true,5,
+      presolvedModel = pinfo->presolvedModel(*oldModel,CGL_PREPROCESS_TOLERANCE,true,5,
 					     prohibited_,keepSolution,rowType_);
       oldModel->messageHandler()->setLogLevel(saveLogLevel);
       if (!presolvedModel) {
@@ -3502,7 +3508,8 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
 }
 
 void
-CglPreProcess::postProcess(OsiSolverInterface & modelIn)
+CglPreProcess::postProcess(OsiSolverInterface & modelIn
+			   ,bool deleteStuff)
 {
 # if LOU_DEBUG > 0
   std::cout << "Entering IPP::postProcess; " ;
@@ -3518,6 +3525,13 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
   originalModel_->getHintParam(OsiDoDualInInitial,saveHint2,saveStrength2);
   OsiSolverInterface * clonedCopy=NULL;
   double saveObjectiveValue = modelIn.getObjValue();
+  if (!modelIn.isProvenOptimal()) {
+    CoinWarmStartBasis *slack =
+      dynamic_cast<CoinWarmStartBasis *>(modelIn.getEmptyWarmStart()) ;
+    modelIn.setWarmStart(slack);
+    delete slack ;
+    modelIn.resolve();
+  }
   if (modelIn.isProvenOptimal()) {
     OsiSolverInterface * modelM = &modelIn;
     // If some cuts add back rows
@@ -3792,12 +3806,14 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 	  } 
 	}
       }
-      delete modifiedModel_[iPass];;
-      delete model_[iPass];;
-      delete presolve_[iPass];
-      modifiedModel_[iPass]=NULL;
-      model_[iPass]=NULL;
-      presolve_[iPass]=NULL;
+      if (deleteStuff) {
+	delete modifiedModel_[iPass];;
+	delete model_[iPass];;
+	delete presolve_[iPass];
+	modifiedModel_[iPass]=NULL;
+	model_[iPass]=NULL;
+	presolve_[iPass]=NULL;
+      }
       modelM = modelM2;
     }
 #   if LOU_DEBUG > 0
@@ -4012,7 +4028,9 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn)
 #endif
     handler_->message(CGL_POST_INFEASIBLE,messages_)
       <<CoinMessageEol;
-  } else if (fabs(saveObjectiveValue-objectiveValue)>testObj) {
+  } else if (fabs(saveObjectiveValue-objectiveValue)>testObj
+	     &&deleteStuff
+	     ) {
     handler_->message(CGL_POST_CHANGED,messages_)
       <<saveObjectiveValue<<objectiveValue
       <<CoinMessageEol;
