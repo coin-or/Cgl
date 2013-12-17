@@ -907,9 +907,12 @@ bool CglProbing::groomModel (bool useObj, int maxRowLen,
 /*
   So far, so good. We have something that looks like a reasonable collection
   of rows. Time to deal with fixed variables. We're going to walk the rows,
-  compressing out the coefficients of the fixed variables, and we'll sort
+  compressing out zeros and coefficients of fixed variables, and we'll sort
   the remaining coefficients so that all negative coefficients precede
   all positive coefficients.  There will be no gaps when we're done.
+
+  FIXME: Figure out the appropriate tolerance to use to decide if a
+	 coefficient is too small to retain in the matrix.
 
   NOTE that columns are not physically removed.
 
@@ -936,10 +939,11 @@ bool CglProbing::groomModel (bool useObj, int maxRowLen,
       int j = column[jj] ;
       double value = elements[jj] ;
       if (colUpper[j] > colLower[j]) {
+        // tolerance?
 	if (value < 0.0) {
 	  elements[newSize] = value ;
 	  column[newSize++] = j ;
-	} else {
+	} else if (value > 0.0) {
 	  elementsPos[nPos] = value ;
 	  columnPos[nPos++] = j ;
 	}

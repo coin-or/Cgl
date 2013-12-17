@@ -78,7 +78,7 @@ if COIN_HAS_PKGCONFIG
 	$(PKG_CONFIG) --libs cgl > $(addlibsdir)/cgl_addlibs.txt
 else
 if COIN_CXX_IS_CL
-	echo "-libpath:`$(CYGPATH_W) @abs_lib_dir@` libCgl.lib @CGLLIB_LIBS_INSTALLED@" > $(addlibsdir)/cgl_addlibs.txt
+	echo "/libpath:`$(CYGPATH_W) @abs_lib_dir@` libCgl.lib @CGLLIB_LIBS_INSTALLED@" > $(addlibsdir)/cgl_addlibs_cpp.txt
 else
 	echo -L@abs_lib_dir@ -lCgl @CGLLIB_LIBS_INSTALLED@ > $(addlibsdir)/cgl_addlibs.txt
 endif

@@ -472,7 +472,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os ALWAYS_FALSE_TRUE ALWAYS_FALSE_FALSE have_svnversion CGL_SVN_REV COIN_CC_IS_CL_TRUE COIN_CC_IS_CL_FALSE CDEFS ADD_CFLAGS DBG_CFLAGS OPT_CFLAGS sol_cc_compiler CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT MPICC CXXDEFS ADD_CXXFLAGS DBG_CXXFLAGS OPT_CXXFLAGS CXX CXXFLAGS ac_ct_CXX COIN_CXX_IS_CL_TRUE COIN_CXX_IS_CL_FALSE MPICXX EGREP INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM mkdir_p AWK SET_MAKE am__leading_dot AMTAR am__tar am__untar DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE CXXDEPMODE am__fastdepCXX_TRUE am__fastdepCXX_FALSE MAINTAINER_MODE_TRUE MAINTAINER_MODE_FALSE MAINT LIBTOOLM4 have_autoconf have_automake have_svn BUILDTOOLSDIR AUX_DIR abs_source_dir abs_lib_dir abs_include_dir abs_bin_dir HAVE_EXTERNALS_TRUE HAVE_EXTERNALS_FALSE host host_cpu host_vendor host_os LN_S ECHO AR ac_ct_AR RANLIB ac_ct_RANLIB CPP CXXCPP F77 FFLAGS ac_ct_F77 LIBTOOL ac_c_preproc_warn_flag ac_cxx_preproc_warn_flag RPATH_FLAGS LT_LDFLAGS PKG_CONFIG ac_pt_PKG_CONFIG COIN_HAS_PKGCONFIG_TRUE COIN_HAS_PKGCONFIG_FALSE COIN_PKG_CONFIG_PATH COIN_PKG_CONFIG_PATH_UNINSTALLED COINUTILS_LIBS COINUTILS_CFLAGS COINUTILS_DATA COINUTILS_DEPENDENCIES COINUTILS_LIBS_INSTALLED COINUTILS_CFLAGS_INSTALLED COINUTILS_DATA_INSTALLED CGLLIB_CFLAGS CGLLIB_LIBS CGLLIB_PCLIBS CGLLIB_PCREQUIRES CGLLIB_DEPENDENCIES CGLLIB_CFLAGS_INSTALLED CGLLIB_LIBS_INSTALLED COIN_HAS_COINUTILS_TRUE COIN_HAS_COINUTILS_FALSE OSI_LIBS OSI_CFLAGS OSI_DATA OSI_DEPENDENCIES OSI_LIBS_INSTALLED OSI_CFLAGS_INSTALLED OSI_DATA_INSTALLED COIN_HAS_OSI_TRUE COIN_HAS_OSI_FALSE SAMPLE_LIBS SAMPLE_CFLAGS SAMPLE_DATA SAMPLE_DEPENDENCIES SAMPLE_LIBS_INSTALLED SAMPLE_CFLAGS_INSTALLED SAMPLE_DATA_INSTALLED COIN_HAS_SAMPLE_TRUE COIN_HAS_SAMPLE_FALSE NETLIB_LIBS NETLIB_CFLAGS NETLIB_DATA NETLIB_DEPENDENCIES NETLIB_LIBS_INSTALLED NETLIB_CFLAGS_INSTALLED NETLIB_DATA_INSTALLED COIN_HAS_NETLIB_TRUE COIN_HAS_NETLIB_FALSE OSICLP_LIBS OSICLP_CFLAGS OSICLP_DATA OSICLP_DEPENDENCIES OSICLP_LIBS_INSTALLED OSICLP_CFLAGS_INSTALLED OSICLP_DATA_INSTALLED COIN_HAS_OSICLP_TRUE COIN_HAS_OSICLP_FALSE OSICPX_LIBS OSICPX_CFLAGS OSICPX_DATA OSICPX_DEPENDENCIES OSICPX_LIBS_INSTALLED OSICPX_CFLAGS_INSTALLED OSICPX_DATA_INSTALLED COIN_HAS_OSICPX_TRUE COIN_HAS_OSICPX_FALSE OSIGLPK_LIBS OSIGLPK_CFLAGS OSIGLPK_DATA OSIGLPK_DEPENDENCIES OSIGLPK_LIBS_INSTALLED OSIGLPK_CFLAGS_INSTALLED OSIGLPK_DATA_INSTALLED COIN_HAS_OSIGLPK_TRUE COIN_HAS_OSIGLPK_FALSE OSIMSK_LIBS OSIMSK_CFLAGS OSIMSK_DATA OSIMSK_DEPENDENCIES OSIMSK_LIBS_INSTALLED OSIMSK_CFLAGS_INSTALLED OSIMSK_DATA_INSTALLED COIN_HAS_OSIMSK_TRUE COIN_HAS_OSIMSK_FALSE OSIXPR_LIBS OSIXPR_CFLAGS OSIXPR_DATA OSIXPR_DEPENDENCIES OSIXPR_LIBS_INSTALLED OSIXPR_CFLAGS_INSTALLED OSIXPR_DATA_INSTALLED COIN_HAS_OSIXPR_TRUE COIN_HAS_OSIXPR_FALSE OSIVOL_LIBS OSIVOL_CFLAGS OSIVOL_DATA OSIVOL_DEPENDENCIES OSIVOL_LIBS_INSTALLED OSIVOL_CFLAGS_INSTALLED OSIVOL_DATA_INSTALLED COIN_HAS_OSIVOL_TRUE COIN_HAS_OSIVOL_FALSE OSIDYLP_LIBS OSIDYLP_CFLAGS OSIDYLP_DATA OSIDYLP_DEPENDENCIES OSIDYLP_LIBS_INSTALLED OSIDYLP_CFLAGS_INSTALLED OSIDYLP_DATA_INSTALLED COIN_HAS_OSIDYLP_TRUE COIN_HAS_OSIDYLP_FALSE CGL_SUBDIRS CGL_SUBLIBS coin_have_doxygen coin_doxy_usedot coin_doxy_tagname coin_doxy_logname coin_doxy_tagfiles coin_doxy_excludes LIBEXT VPATH_DISTCLEANFILES ABSBUILDDIR LIBOBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os ALWAYS_FALSE_TRUE ALWAYS_FALSE_FALSE have_svnversion CGL_SVN_REV COIN_CC_IS_CL_TRUE COIN_CC_IS_CL_FALSE CDEFS ADD_CFLAGS DBG_CFLAGS OPT_CFLAGS sol_cc_compiler CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT MPICC CXXDEFS ADD_CXXFLAGS DBG_CXXFLAGS OPT_CXXFLAGS CXX CXXFLAGS ac_ct_CXX COIN_CXX_IS_CL_TRUE COIN_CXX_IS_CL_FALSE MPICXX EGREP LN_S INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM mkdir_p AWK SET_MAKE am__leading_dot AMTAR am__tar am__untar DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE CXXDEPMODE am__fastdepCXX_TRUE am__fastdepCXX_FALSE MAINTAINER_MODE_TRUE MAINTAINER_MODE_FALSE MAINT LIBTOOLM4 have_autoconf have_automake have_svn BUILDTOOLSDIR AUX_DIR abs_source_dir abs_lib_dir abs_include_dir abs_bin_dir HAVE_EXTERNALS_TRUE HAVE_EXTERNALS_FALSE host host_cpu host_vendor host_os ECHO AR ac_ct_AR RANLIB ac_ct_RANLIB CPP CXXCPP F77 FFLAGS ac_ct_F77 LIBTOOL ac_c_preproc_warn_flag ac_cxx_preproc_warn_flag RPATH_FLAGS LT_LDFLAGS PKG_CONFIG ac_pt_PKG_CONFIG COIN_HAS_PKGCONFIG_TRUE COIN_HAS_PKGCONFIG_FALSE COIN_PKG_CONFIG_PATH COIN_PKG_CONFIG_PATH_UNINSTALLED COINUTILS_LIBS COINUTILS_CFLAGS COINUTILS_DATA COINUTILS_DEPENDENCIES COINUTILS_LIBS_INSTALLED COINUTILS_CFLAGS_INSTALLED COINUTILS_DATA_INSTALLED CGLLIB_CFLAGS CGLLIB_LIBS CGLLIB_PCLIBS CGLLIB_PCREQUIRES CGLLIB_DEPENDENCIES CGLLIB_CFLAGS_INSTALLED CGLLIB_LIBS_INSTALLED COIN_HAS_COINUTILS_TRUE COIN_HAS_COINUTILS_FALSE OSI_LIBS OSI_CFLAGS OSI_DATA OSI_DEPENDENCIES OSI_LIBS_INSTALLED OSI_CFLAGS_INSTALLED OSI_DATA_INSTALLED COIN_HAS_OSI_TRUE COIN_HAS_OSI_FALSE SAMPLE_LIBS SAMPLE_CFLAGS SAMPLE_DATA SAMPLE_DEPENDENCIES SAMPLE_LIBS_INSTALLED SAMPLE_CFLAGS_INSTALLED SAMPLE_DATA_INSTALLED COIN_HAS_SAMPLE_TRUE COIN_HAS_SAMPLE_FALSE NETLIB_LIBS NETLIB_CFLAGS NETLIB_DATA NETLIB_DEPENDENCIES NETLIB_LIBS_INSTALLED NETLIB_CFLAGS_INSTALLED NETLIB_DATA_INSTALLED COIN_HAS_NETLIB_TRUE COIN_HAS_NETLIB_FALSE OSICLP_LIBS OSICLP_CFLAGS OSICLP_DATA OSICLP_DEPENDENCIES OSICLP_LIBS_INSTALLED OSICLP_CFLAGS_INSTALLED OSICLP_DATA_INSTALLED COIN_HAS_OSICLP_TRUE COIN_HAS_OSICLP_FALSE OSICPX_LIBS OSICPX_CFLAGS OSICPX_DATA OSICPX_DEPENDENCIES OSICPX_LIBS_INSTALLED OSICPX_CFLAGS_INSTALLED OSICPX_DATA_INSTALLED COIN_HAS_OSICPX_TRUE COIN_HAS_OSICPX_FALSE OSIGLPK_LIBS OSIGLPK_CFLAGS OSIGLPK_DATA OSIGLPK_DEPENDENCIES OSIGLPK_LIBS_INSTALLED OSIGLPK_CFLAGS_INSTALLED OSIGLPK_DATA_INSTALLED COIN_HAS_OSIGLPK_TRUE COIN_HAS_OSIGLPK_FALSE OSIMSK_LIBS OSIMSK_CFLAGS OSIMSK_DATA OSIMSK_DEPENDENCIES OSIMSK_LIBS_INSTALLED OSIMSK_CFLAGS_INSTALLED OSIMSK_DATA_INSTALLED COIN_HAS_OSIMSK_TRUE COIN_HAS_OSIMSK_FALSE OSIXPR_LIBS OSIXPR_CFLAGS OSIXPR_DATA OSIXPR_DEPENDENCIES OSIXPR_LIBS_INSTALLED OSIXPR_CFLAGS_INSTALLED OSIXPR_DATA_INSTALLED COIN_HAS_OSIXPR_TRUE COIN_HAS_OSIXPR_FALSE OSIVOL_LIBS OSIVOL_CFLAGS OSIVOL_DATA OSIVOL_DEPENDENCIES OSIVOL_LIBS_INSTALLED OSIVOL_CFLAGS_INSTALLED OSIVOL_DATA_INSTALLED COIN_HAS_OSIVOL_TRUE COIN_HAS_OSIVOL_FALSE OSIDYLP_LIBS OSIDYLP_CFLAGS OSIDYLP_DATA OSIDYLP_DEPENDENCIES OSIDYLP_LIBS_INSTALLED OSIDYLP_CFLAGS_INSTALLED OSIDYLP_DATA_INSTALLED COIN_HAS_OSIDYLP_TRUE COIN_HAS_OSIDYLP_FALSE CGL_SUBDIRS CGL_SUBLIBS coin_have_doxygen coin_doxy_usedot coin_doxy_tagname coin_doxy_logname coin_doxy_tagfiles coin_doxy_excludes LIBEXT VPATH_DISTCLEANFILES ABSBUILDDIR LIBOBJS LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -1101,6 +1101,9 @@ Optional Features:
   --disable-interpackage-dependencies
                           disables deduction of Makefile dependencies from
                           package linker flags
+  --enable-interpackage-dependencies
+                          whether to deduce Makefile dependencies from package
+                          linker flags (default: yes)
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -1813,9 +1816,9 @@ fi
 
   if test "x$have_svnversion" = xyes; then
 
-    svn_rev_tmp=`LANG=en_EN svnversion $srcdir 2>/dev/null`
-    if test "x$svn_rev_tmp" != xexported -a "x$svn_rev_tmp" != x; then
-      CGL_SVN_REV=`echo $svn_rev_tmp | sed -n -e 's/^[0-9]*://' -e 's/\([0-9]\)[^0-9]*$/\1/p'`
+    svn_rev_tmp=`cd $srcdir/$coin_has_cgl ; svnversion`
+    CGL_SVN_REV=`echo $svn_rev_tmp | sed -n -e 's/^[0-9]*://' -e 's/\([0-9]\)[^0-9]*$/\1/p'`
+    if test $CGL_SVN_REV != exported; then
 
 cat >>confdefs.h <<_ACEOF
 #define CGL_SVN_REV $CGL_SVN_REV
@@ -2857,7 +2860,7 @@ if test x"$CFLAGS" = x; then
       *)
         coin_opt_cflags="-O3"
         coin_add_cflags="-pipe"
-        coin_dbg_cflags="-g -O0"
+        coin_dbg_cflags="-g"
         coin_warn_cflags="-Wimplicit -Wparentheses -Wsequence-point -Wreturn-type -Wcast-qual -Wall -Wno-unknown-pragmas -Wno-long-long"
         case $build in
           *-darwin*)
@@ -3793,8 +3796,8 @@ if test x"$CXXFLAGS" = x; then
 # ToDo decide about unroll-loops
         coin_opt_cxxflags="-O3"
         coin_add_cxxflags="-pipe"
-        coin_dbg_cxxflags="-g -O0"
-        coin_warn_cxxflags="-Wparentheses -Wreturn-type -Wcast-qual -Wall -Wpointer-arith -Wwrite-strings -Wconversion -Wno-unknown-pragmas -Wno-long-long"
+        coin_dbg_cxxflags="-g"
+        coin_warn_cxxflags="-Wimplicit -Wparentheses -Wreturn-type -Wcast-qual -Wall -Wpointer-arith -Wwrite-strings -Wconversion -Wno-unknown-pragmas -Wno-long-long"
         case $build in
           *-darwin*)
             ;;
@@ -5968,7 +5971,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 5922 "configure"' > conftest.$ac_ext
+  echo '#line 5954 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -7102,7 +7105,7 @@ fi
 
 
 # Provide some information about the compiler.
-echo "$as_me:7056:" \
+echo "$as_me:7088:" \
      "checking for Fortran 77 compiler version" >&5
 ac_compiler=`set X $ac_compile; echo $2`
 { (eval echo "$as_me:$LINENO: \"$ac_compiler --version </dev/null >&5\"") >&5
@@ -8169,11 +8172,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8123: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8155: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8127: \$? = $ac_status" >&5
+   echo "$as_me:8159: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -8437,11 +8440,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8391: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8423: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8395: \$? = $ac_status" >&5
+   echo "$as_me:8427: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -8541,11 +8544,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8495: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8527: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:8499: \$? = $ac_status" >&5
+   echo "$as_me:8531: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -10886,7 +10889,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 10840 "configure"
+#line 10872 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -10986,7 +10989,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 10940 "configure"
+#line 10972 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -13330,11 +13333,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13284: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13316: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:13288: \$? = $ac_status" >&5
+   echo "$as_me:13320: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -13434,11 +13437,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13388: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13420: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:13392: \$? = $ac_status" >&5
+   echo "$as_me:13424: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -15004,11 +15007,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14958: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14990: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:14962: \$? = $ac_status" >&5
+   echo "$as_me:14994: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -15108,11 +15111,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:15062: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:15094: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:15066: \$? = $ac_status" >&5
+   echo "$as_me:15098: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -17315,11 +17318,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:17269: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:17301: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:17273: \$? = $ac_status" >&5
+   echo "$as_me:17305: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -17583,11 +17586,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:17537: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:17569: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:17541: \$? = $ac_status" >&5
+   echo "$as_me:17573: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -17687,11 +17690,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:17641: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:17673: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:17645: \$? = $ac_status" >&5
+   echo "$as_me:17677: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -20866,11 +20869,6 @@ if test "${with_coinutils_lib+set}" = set; then
          CGLLIB_PCLIBS="$withval $CGLLIB_PCLIBS"
          CGLLIB_LIBS="$withval $CGLLIB_LIBS"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         COINUTILS_LIBS_INSTALLED="$withval"
-         CGLLIB_LIBS_INSTALLED="$withval $CGLLIB_LIBS_INSTALLED"
-       fi
      fi
 
 fi;
@@ -20886,12 +20884,7 @@ if test "${with_coinutils_incdir+set}" = set; then
      else
        coin_has_coinutils=yes
        COINUTILS_CFLAGS="-I`${CYGPATH_W} $withval`"
-       CGLLIB_CFLAGS="-I`${CYGPATH_W} $withval` $CGLLIB_CFLAGS"
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         COINUTILS_CFLAGS_INSTALLED="$COINUTILS_CFLAGS"
-         CGLLIB_CFLAGS_INSTALLED="$COINUTILS_CFLAGS $CGLLIB_CFLAGS_INSTALLED"
-       fi
+       CGLLIB_CFLAGS="$withval $CGLLIB_CFLAGS"
      fi
 
 fi;
@@ -20907,10 +20900,6 @@ if test "${with_coinutils_datadir+set}" = set; then
      else
        coin_has_coinutils=yes
        COINUTILS_DATA="$withval"
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         COINUTILS_DATA_INSTALLED="$withval"
-       fi
      fi
 
 fi;
@@ -21240,23 +21229,23 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 
-  # construct dependencies variables from LIBS variables
-  # we add an extra space in LIBS so we can substitute out everything starting with " -"
-  # before, substitute out everything of the form -framework xxx as used on Mac
-  # also substitute out everything of the form `xxx`yyy (may have been added for cygwin/cl)
-  COINUTILS_DEPENDENCIES=`echo " $COINUTILS_LIBS" | sed -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+  # Check whether --enable-interpackage-dependencies or --disable-interpackage-dependencies was given.
+if test "${enable_interpackage_dependencies+set}" = set; then
+  enableval="$enable_interpackage_dependencies"
 
-    CGLLIB_DEPENDENCIES=`echo " $CGLLIB_LIBS " | sed -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+else
+  enable_interpackage_dependencies=yes
+fi;
 
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     COINUTILS_DEPENDENCIES=`echo " $COINUTILS_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     COINUTILS_DEPENDENCIES=`echo " $COINUTILS_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
-       CGLLIB_DEPENDENCIES=`echo " $CGLLIB_LIBS " | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+       CGLLIB_DEPENDENCIES=`echo " $CGLLIB_LIBS " | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -21383,11 +21372,6 @@ if test "${with_osi_lib+set}" = set; then
          CGLLIB_PCLIBS="$withval $CGLLIB_PCLIBS"
          CGLLIB_LIBS="$withval $CGLLIB_LIBS"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSI_LIBS_INSTALLED="$withval"
-         CGLLIB_LIBS_INSTALLED="$withval $CGLLIB_LIBS_INSTALLED"
-       fi
      fi
 
 fi;
@@ -21403,12 +21387,7 @@ if test "${with_osi_incdir+set}" = set; then
      else
        coin_has_osi=yes
        OSI_CFLAGS="-I`${CYGPATH_W} $withval`"
-       CGLLIB_CFLAGS="-I`${CYGPATH_W} $withval` $CGLLIB_CFLAGS"
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSI_CFLAGS_INSTALLED="$OSI_CFLAGS"
-         CGLLIB_CFLAGS_INSTALLED="$OSI_CFLAGS $CGLLIB_CFLAGS_INSTALLED"
-       fi
+       CGLLIB_CFLAGS="$withval $CGLLIB_CFLAGS"
      fi
 
 fi;
@@ -21424,10 +21403,6 @@ if test "${with_osi_datadir+set}" = set; then
      else
        coin_has_osi=yes
        OSI_DATA="$withval"
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSI_DATA_INSTALLED="$withval"
-       fi
      fi
 
 fi;
@@ -21757,23 +21732,23 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 
-  # construct dependencies variables from LIBS variables
-  # we add an extra space in LIBS so we can substitute out everything starting with " -"
-  # before, substitute out everything of the form -framework xxx as used on Mac
-  # also substitute out everything of the form `xxx`yyy (may have been added for cygwin/cl)
-  OSI_DEPENDENCIES=`echo " $OSI_LIBS" | sed -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+  # Check whether --enable-interpackage-dependencies or --disable-interpackage-dependencies was given.
+if test "${enable_interpackage_dependencies+set}" = set; then
+  enableval="$enable_interpackage_dependencies"
 
-    CGLLIB_DEPENDENCIES=`echo " $CGLLIB_LIBS " | sed -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+else
+  enable_interpackage_dependencies=yes
+fi;
 
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     OSI_DEPENDENCIES=`echo " $OSI_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     OSI_DEPENDENCIES=`echo " $OSI_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
-       CGLLIB_DEPENDENCIES=`echo " $CGLLIB_LIBS " | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+       CGLLIB_DEPENDENCIES=`echo " $CGLLIB_LIBS " | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -21889,9 +21864,7 @@ if test "${with_sample_lib+set}" = set; then
        SAMPLE_LIBS="$withval"
        SAMPLE_PCLIBS="$withval"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         SAMPLE_LIBS_INSTALLED="$withval"
+     fi
 
        fi
      fi
@@ -21910,9 +21883,7 @@ if test "${with_sample_incdir+set}" = set; then
        coin_has_sample=yes
        SAMPLE_CFLAGS="-I`${CYGPATH_W} $withval`"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         SAMPLE_CFLAGS_INSTALLED="$SAMPLE_CFLAGS"
+     fi
 
        fi
      fi
@@ -21930,10 +21901,6 @@ if test "${with_sample_datadir+set}" = set; then
      else
        coin_has_sample=yes
        SAMPLE_DATA="$withval"
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         SAMPLE_DATA_INSTALLED="$withval"
-       fi
      fi
 
 fi;
@@ -22253,11 +22220,9 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 
-  # construct dependencies variables from LIBS variables
-  # we add an extra space in LIBS so we can substitute out everything starting with " -"
-  # before, substitute out everything of the form -framework xxx as used on Mac
-  # also substitute out everything of the form `xxx`yyy (may have been added for cygwin/cl)
-  SAMPLE_DEPENDENCIES=`echo " $SAMPLE_LIBS" | sed -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+  # Check whether --enable-interpackage-dependencies or --disable-interpackage-dependencies was given.
+if test "${enable_interpackage_dependencies+set}" = set; then
+  enableval="$enable_interpackage_dependencies"
 
 else
   enable_interpackage_dependencies=yes
@@ -22266,10 +22231,10 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     SAMPLE_DEPENDENCIES=`echo " $SAMPLE_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     SAMPLE_DEPENDENCIES=`echo " $SAMPLE_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -22372,9 +22337,7 @@ if test "${with_netlib_lib+set}" = set; then
        NETLIB_LIBS="$withval"
        NETLIB_PCLIBS="$withval"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         NETLIB_LIBS_INSTALLED="$withval"
+     fi
 
        fi
      fi
@@ -22393,9 +22356,7 @@ if test "${with_netlib_incdir+set}" = set; then
        coin_has_netlib=yes
        NETLIB_CFLAGS="-I`${CYGPATH_W} $withval`"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         NETLIB_CFLAGS_INSTALLED="$NETLIB_CFLAGS"
+     fi
 
        fi
      fi
@@ -22413,10 +22374,6 @@ if test "${with_netlib_datadir+set}" = set; then
      else
        coin_has_netlib=yes
        NETLIB_DATA="$withval"
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         NETLIB_DATA_INSTALLED="$withval"
-       fi
      fi
 
 fi;
@@ -22736,11 +22693,9 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 
-  # construct dependencies variables from LIBS variables
-  # we add an extra space in LIBS so we can substitute out everything starting with " -"
-  # before, substitute out everything of the form -framework xxx as used on Mac
-  # also substitute out everything of the form `xxx`yyy (may have been added for cygwin/cl)
-  NETLIB_DEPENDENCIES=`echo " $NETLIB_LIBS" | sed -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+  # Check whether --enable-interpackage-dependencies or --disable-interpackage-dependencies was given.
+if test "${enable_interpackage_dependencies+set}" = set; then
+  enableval="$enable_interpackage_dependencies"
 
 else
   enable_interpackage_dependencies=yes
@@ -22749,10 +22704,10 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     NETLIB_DEPENDENCIES=`echo " $NETLIB_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     NETLIB_DEPENDENCIES=`echo " $NETLIB_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -22868,11 +22823,6 @@ if test "${with_osiclp_lib+set}" = set; then
          CGLLIB_PCLIBS="$withval $CGLLIB_PCLIBS"
          CGLLIB_LIBS="$withval $CGLLIB_LIBS"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSICLP_LIBS_INSTALLED="$withval"
-         CGLLIB_LIBS_INSTALLED="$withval $CGLLIB_LIBS_INSTALLED"
-       fi
      fi
 
 fi;
@@ -22888,12 +22838,7 @@ if test "${with_osiclp_incdir+set}" = set; then
      else
        coin_has_osiclp=yes
        OSICLP_CFLAGS="-I`${CYGPATH_W} $withval`"
-       CGLLIB_CFLAGS="-I`${CYGPATH_W} $withval` $CGLLIB_CFLAGS"
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSICLP_CFLAGS_INSTALLED="$OSICLP_CFLAGS"
-         CGLLIB_CFLAGS_INSTALLED="$OSICLP_CFLAGS $CGLLIB_CFLAGS_INSTALLED"
-       fi
+       CGLLIB_CFLAGS="$withval $CGLLIB_CFLAGS"
      fi
 
 fi;
@@ -22909,10 +22854,6 @@ if test "${with_osiclp_datadir+set}" = set; then
      else
        coin_has_osiclp=yes
        OSICLP_DATA="$withval"
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSICLP_DATA_INSTALLED="$withval"
-       fi
      fi
 
 fi;
@@ -23242,23 +23183,23 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 
-  # construct dependencies variables from LIBS variables
-  # we add an extra space in LIBS so we can substitute out everything starting with " -"
-  # before, substitute out everything of the form -framework xxx as used on Mac
-  # also substitute out everything of the form `xxx`yyy (may have been added for cygwin/cl)
-  OSICLP_DEPENDENCIES=`echo " $OSICLP_LIBS" | sed -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+  # Check whether --enable-interpackage-dependencies or --disable-interpackage-dependencies was given.
+if test "${enable_interpackage_dependencies+set}" = set; then
+  enableval="$enable_interpackage_dependencies"
 
-    CGLLIB_DEPENDENCIES=`echo " $CGLLIB_LIBS " | sed -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+else
+  enable_interpackage_dependencies=yes
+fi;
 
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     OSICLP_DEPENDENCIES=`echo " $OSICLP_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     OSICLP_DEPENDENCIES=`echo " $OSICLP_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
-       CGLLIB_DEPENDENCIES=`echo " $CGLLIB_LIBS " | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+       CGLLIB_DEPENDENCIES=`echo " $CGLLIB_LIBS " | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -23377,9 +23318,7 @@ if test "${with_osicpx_lib+set}" = set; then
        OSICPX_LIBS="$withval"
        OSICPX_PCLIBS="$withval"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSICPX_LIBS_INSTALLED="$withval"
+     fi
 
        fi
      fi
@@ -23398,9 +23337,7 @@ if test "${with_osicpx_incdir+set}" = set; then
        coin_has_osicpx=yes
        OSICPX_CFLAGS="-I`${CYGPATH_W} $withval`"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSICPX_CFLAGS_INSTALLED="$OSICPX_CFLAGS"
+     fi
 
        fi
      fi
@@ -23418,10 +23355,6 @@ if test "${with_osicpx_datadir+set}" = set; then
      else
        coin_has_osicpx=yes
        OSICPX_DATA="$withval"
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSICPX_DATA_INSTALLED="$withval"
-       fi
      fi
 
 fi;
@@ -23741,11 +23674,9 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 
-  # construct dependencies variables from LIBS variables
-  # we add an extra space in LIBS so we can substitute out everything starting with " -"
-  # before, substitute out everything of the form -framework xxx as used on Mac
-  # also substitute out everything of the form `xxx`yyy (may have been added for cygwin/cl)
-  OSICPX_DEPENDENCIES=`echo " $OSICPX_LIBS" | sed -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+  # Check whether --enable-interpackage-dependencies or --disable-interpackage-dependencies was given.
+if test "${enable_interpackage_dependencies+set}" = set; then
+  enableval="$enable_interpackage_dependencies"
 
 else
   enable_interpackage_dependencies=yes
@@ -23754,10 +23685,10 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     OSICPX_DEPENDENCIES=`echo " $OSICPX_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     OSICPX_DEPENDENCIES=`echo " $OSICPX_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -23860,9 +23791,7 @@ if test "${with_osiglpk_lib+set}" = set; then
        OSIGLPK_LIBS="$withval"
        OSIGLPK_PCLIBS="$withval"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSIGLPK_LIBS_INSTALLED="$withval"
+     fi
 
        fi
      fi
@@ -23881,9 +23810,7 @@ if test "${with_osiglpk_incdir+set}" = set; then
        coin_has_osiglpk=yes
        OSIGLPK_CFLAGS="-I`${CYGPATH_W} $withval`"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSIGLPK_CFLAGS_INSTALLED="$OSIGLPK_CFLAGS"
+     fi
 
        fi
      fi
@@ -23901,10 +23828,6 @@ if test "${with_osiglpk_datadir+set}" = set; then
      else
        coin_has_osiglpk=yes
        OSIGLPK_DATA="$withval"
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSIGLPK_DATA_INSTALLED="$withval"
-       fi
      fi
 
 fi;
@@ -24224,11 +24147,9 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 
-  # construct dependencies variables from LIBS variables
-  # we add an extra space in LIBS so we can substitute out everything starting with " -"
-  # before, substitute out everything of the form -framework xxx as used on Mac
-  # also substitute out everything of the form `xxx`yyy (may have been added for cygwin/cl)
-  OSIGLPK_DEPENDENCIES=`echo " $OSIGLPK_LIBS" | sed -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+  # Check whether --enable-interpackage-dependencies or --disable-interpackage-dependencies was given.
+if test "${enable_interpackage_dependencies+set}" = set; then
+  enableval="$enable_interpackage_dependencies"
 
 else
   enable_interpackage_dependencies=yes
@@ -24237,10 +24158,10 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     OSIGLPK_DEPENDENCIES=`echo " $OSIGLPK_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     OSIGLPK_DEPENDENCIES=`echo " $OSIGLPK_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -24344,9 +24265,7 @@ if test "${with_osimsk_lib+set}" = set; then
        OSIMSK_LIBS="$withval"
        OSIMSK_PCLIBS="$withval"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSIMSK_LIBS_INSTALLED="$withval"
+     fi
 
        fi
      fi
@@ -24365,9 +24284,7 @@ if test "${with_osimsk_incdir+set}" = set; then
        coin_has_osimsk=yes
        OSIMSK_CFLAGS="-I`${CYGPATH_W} $withval`"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSIMSK_CFLAGS_INSTALLED="$OSIMSK_CFLAGS"
+     fi
 
        fi
      fi
@@ -24385,10 +24302,6 @@ if test "${with_osimsk_datadir+set}" = set; then
      else
        coin_has_osimsk=yes
        OSIMSK_DATA="$withval"
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSIMSK_DATA_INSTALLED="$withval"
-       fi
      fi
 
 fi;
@@ -24708,11 +24621,9 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 
-  # construct dependencies variables from LIBS variables
-  # we add an extra space in LIBS so we can substitute out everything starting with " -"
-  # before, substitute out everything of the form -framework xxx as used on Mac
-  # also substitute out everything of the form `xxx`yyy (may have been added for cygwin/cl)
-  OSIMSK_DEPENDENCIES=`echo " $OSIMSK_LIBS" | sed -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+  # Check whether --enable-interpackage-dependencies or --disable-interpackage-dependencies was given.
+if test "${enable_interpackage_dependencies+set}" = set; then
+  enableval="$enable_interpackage_dependencies"
 
 else
   enable_interpackage_dependencies=yes
@@ -24721,10 +24632,10 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     OSIMSK_DEPENDENCIES=`echo " $OSIMSK_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     OSIMSK_DEPENDENCIES=`echo " $OSIMSK_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -24827,9 +24738,7 @@ if test "${with_osixpr_lib+set}" = set; then
        OSIXPR_LIBS="$withval"
        OSIXPR_PCLIBS="$withval"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSIXPR_LIBS_INSTALLED="$withval"
+     fi
 
        fi
      fi
@@ -24848,9 +24757,7 @@ if test "${with_osixpr_incdir+set}" = set; then
        coin_has_osixpr=yes
        OSIXPR_CFLAGS="-I`${CYGPATH_W} $withval`"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSIXPR_CFLAGS_INSTALLED="$OSIXPR_CFLAGS"
+     fi
 
        fi
      fi
@@ -24868,10 +24775,6 @@ if test "${with_osixpr_datadir+set}" = set; then
      else
        coin_has_osixpr=yes
        OSIXPR_DATA="$withval"
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSIXPR_DATA_INSTALLED="$withval"
-       fi
      fi
 
 fi;
@@ -25191,11 +25094,9 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 
-  # construct dependencies variables from LIBS variables
-  # we add an extra space in LIBS so we can substitute out everything starting with " -"
-  # before, substitute out everything of the form -framework xxx as used on Mac
-  # also substitute out everything of the form `xxx`yyy (may have been added for cygwin/cl)
-  OSIXPR_DEPENDENCIES=`echo " $OSIXPR_LIBS" | sed -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+  # Check whether --enable-interpackage-dependencies or --disable-interpackage-dependencies was given.
+if test "${enable_interpackage_dependencies+set}" = set; then
+  enableval="$enable_interpackage_dependencies"
 
 else
   enable_interpackage_dependencies=yes
@@ -25204,10 +25105,10 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     OSIXPR_DEPENDENCIES=`echo " $OSIXPR_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     OSIXPR_DEPENDENCIES=`echo " $OSIXPR_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -25310,9 +25211,7 @@ if test "${with_osivol_lib+set}" = set; then
        OSIVOL_LIBS="$withval"
        OSIVOL_PCLIBS="$withval"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSIVOL_LIBS_INSTALLED="$withval"
+     fi
 
        fi
      fi
@@ -25331,9 +25230,7 @@ if test "${with_osivol_incdir+set}" = set; then
        coin_has_osivol=yes
        OSIVOL_CFLAGS="-I`${CYGPATH_W} $withval`"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSIVOL_CFLAGS_INSTALLED="$OSIVOL_CFLAGS"
+     fi
 
        fi
      fi
@@ -25351,10 +25248,6 @@ if test "${with_osivol_datadir+set}" = set; then
      else
        coin_has_osivol=yes
        OSIVOL_DATA="$withval"
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSIVOL_DATA_INSTALLED="$withval"
-       fi
      fi
 
 fi;
@@ -25674,11 +25567,9 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 
-  # construct dependencies variables from LIBS variables
-  # we add an extra space in LIBS so we can substitute out everything starting with " -"
-  # before, substitute out everything of the form -framework xxx as used on Mac
-  # also substitute out everything of the form `xxx`yyy (may have been added for cygwin/cl)
-  OSIVOL_DEPENDENCIES=`echo " $OSIVOL_LIBS" | sed -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+  # Check whether --enable-interpackage-dependencies or --disable-interpackage-dependencies was given.
+if test "${enable_interpackage_dependencies+set}" = set; then
+  enableval="$enable_interpackage_dependencies"
 
 else
   enable_interpackage_dependencies=yes
@@ -25687,10 +25578,10 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     OSIVOL_DEPENDENCIES=`echo " $OSIVOL_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     OSIVOL_DEPENDENCIES=`echo " $OSIVOL_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
@@ -25793,9 +25684,7 @@ if test "${with_osidylp_lib+set}" = set; then
        OSIDYLP_LIBS="$withval"
        OSIDYLP_PCLIBS="$withval"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSIDYLP_LIBS_INSTALLED="$withval"
+     fi
 
        fi
      fi
@@ -25814,9 +25703,7 @@ if test "${with_osidylp_incdir+set}" = set; then
        coin_has_osidylp=yes
        OSIDYLP_CFLAGS="-I`${CYGPATH_W} $withval`"
 
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSIDYLP_CFLAGS_INSTALLED="$OSIDYLP_CFLAGS"
+     fi
 
        fi
      fi
@@ -25834,10 +25721,6 @@ if test "${with_osidylp_datadir+set}" = set; then
      else
        coin_has_osidylp=yes
        OSIDYLP_DATA="$withval"
-       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
-       if test -z "$PKG_CONFIG" ; then
-         OSIDYLP_DATA_INSTALLED="$withval"
-       fi
      fi
 
 fi;
@@ -26157,11 +26040,9 @@ cat >>confdefs.h <<\_ACEOF
 _ACEOF
 
 
-  # construct dependencies variables from LIBS variables
-  # we add an extra space in LIBS so we can substitute out everything starting with " -"
-  # before, substitute out everything of the form -framework xxx as used on Mac
-  # also substitute out everything of the form `xxx`yyy (may have been added for cygwin/cl)
-  OSIDYLP_DEPENDENCIES=`echo " $OSIDYLP_LIBS" | sed -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+  # Check whether --enable-interpackage-dependencies or --disable-interpackage-dependencies was given.
+if test "${enable_interpackage_dependencies+set}" = set; then
+  enableval="$enable_interpackage_dependencies"
 
 else
   enable_interpackage_dependencies=yes
@@ -26170,10 +26051,10 @@ fi;
   if test $enable_interpackage_dependencies = yes ; then
      # construct dependencies variables from LIBS variables
      # we add an extra space in LIBS so we can substitute out everything starting with " -"
-     # remove everything of the form -framework xxx as used on Mac and mkl* and libiomp5* as used on Windows
+     # remove everything of the form -framework xxx as used on Mac and mklxxx as used on Windows
      # then remove everything of the form -xxx
      # also remove everything of the form `xxx`yyy (may have been added for cygwin/cl)
-     OSIDYLP_DEPENDENCIES=`echo " $OSIDYLP_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ libiomp5[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
+     OSIDYLP_DEPENDENCIES=`echo " $OSIDYLP_LIBS" | sed -e 's/ mkl[^ ]*//g' -e 's/ -framework  *[^ ]*//g' -e 's/ -[^ ]*//g' -e 's/\`[^\`]*\`[^ ]* //g'`
 
   fi
 
