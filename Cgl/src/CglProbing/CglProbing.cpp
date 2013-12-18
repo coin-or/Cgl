@@ -2949,6 +2949,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
     int newMax=CoinMin(2*maxStack,50);
     maxStack=CoinMax(newMax,maxStack);
   }
+  double relaxedTolerance=2.0*primalTolerance_;
 #define ONE_ARRAY
 #ifdef ONE_ARRAY
   unsigned int DIratio = sizeof(double)/sizeof(int);
@@ -3651,8 +3652,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		    assert ((markIt&4)!=0);
 		  assert (value2<0.0);
 		  double gap = columnGap[kcol]*value2;
-		  bool doUp = (rowUp2 + gap < 0.0);
-		  bool doDown = (rowLo2 -gap > 0.0);
+		  bool doUp = (rowUp2 + gap < -1.0e-7);
+		  bool doDown = (rowLo2 -gap > 1.0e-7);
 		  if (doUp||doDown) {
 		    double moveUp=0.0;
 		    double moveDown=0.0;
@@ -3662,7 +3663,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      double dbound = colUpper[kcol]+rowUp2/value2;
 		      if (intVar[kcol]) {
 			markIt |= 2;
-			newLower = ceil(dbound-primalTolerance_);
+			newLower = ceil(dbound-relaxedTolerance);
 		      } else {
 			newLower=dbound;
 			if (newLower+primalTolerance_>colUpper[kcol]&&
@@ -3681,7 +3682,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      double dbound = colLower[kcol] + rowLo2/value2;
 		      if (intVar[kcol]) {
 			markIt |= 1;
-			newUpper = floor(dbound+primalTolerance_);
+			newUpper = floor(dbound+relaxedTolerance);
 		      } else {
 			newUpper=dbound;
 			if (newUpper-primalTolerance_<colLower[kcol]&&
@@ -3857,7 +3858,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		if ((markIt&3)!=3) {
 		  double value2=rowElements[kk];
 		  double gap = columnGap[kcol]*value2;
-		  if (!(rowUp2 + gap < 0.0))
+		  if (!(rowUp2 + gap < -1.0e-7))
 		    continue;
 		  double moveUp=0.0;
 		  double newLower=1.0;
@@ -3865,7 +3866,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		    double dbound = colUpper[kcol]+rowUp2/value2;
 		    if (intVar[kcol]) {
 		      markIt |= 2;
-		      newLower = ceil(dbound-primalTolerance_);
+		      newLower = ceil(dbound-relaxedTolerance);
 		    } else {
 		      newLower=dbound;
 		      if (newLower+primalTolerance_>colUpper[kcol]&&
@@ -3975,12 +3976,12 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		  int markIt=markC[kcol];
 		  assert (value2<0.0);
 		  double gap = columnGap[kcol]*value2;
-		  bool doDown = (rowLo2 -gap > 0.0);
+		  bool doDown = (rowLo2 -gap > 1.0e-7);
 		  if (doDown&& (markIt&(1+4))==0 ) {
 		    double dbound = colLower[kcol] + rowLo2/value2;
 		    if (intVar[kcol]) {
 		      markIt |= 1;
-		      newUpper = floor(dbound+primalTolerance_);
+		      newUpper = floor(dbound+relaxedTolerance);
 		    } else {
 		      newUpper=dbound;
 		      if (newUpper-primalTolerance_<colLower[kcol]&&
@@ -4093,8 +4094,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		  assert (value2 > 0.0);
 		  /* positive element */
 		  double gap = columnGap[kcol]*value2;
-		  bool doDown = (rowLo2 + gap > 0.0);
-		  bool doUp = (rowUp2 - gap < 0.0);
+		  bool doDown = (rowLo2 + gap > 1.0e-7);
+		  bool doUp = (rowUp2 - gap < -1.0e-7);
 		  if (doDown||doUp) {
 		    double moveUp=0.0;
 		    double moveDown=0.0;
@@ -4104,7 +4105,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      double dbound = colUpper[kcol] + rowLo2/value2;
 		      if (intVar[kcol]) {
 			markIt |= 2;
-			newLower = ceil(dbound-primalTolerance_);
+			newLower = ceil(dbound-relaxedTolerance);
 		      } else {
 			newLower=dbound;
 			if (newLower+primalTolerance_>colUpper[kcol]&&
@@ -4123,7 +4124,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      double dbound = colLower[kcol] + rowUp2/value2;
 		      if (intVar[kcol]) {
 			markIt |= 1;
-			newUpper = floor(dbound+primalTolerance_);
+			newUpper = floor(dbound+relaxedTolerance);
 		      } else {
 			newUpper=dbound;
 			if (newUpper-primalTolerance_<colLower[kcol]&&
@@ -4303,13 +4304,13 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		  assert (value2 > 0.0);
 		  /* positive element */
 		  double gap = columnGap[kcol]*value2;
-		  bool doUp = (rowUp2 - gap < 0.0);
+		  bool doUp = (rowUp2 - gap < -1.0e-7);
 		  if (doUp&&(markIt&(1+4))==0) {
 		    double newUpper=-1.0;
 		    double dbound = colLower[kcol] + rowUp2/value2;
 		    if (intVar[kcol]) {
 		      markIt |= 1;
-		      newUpper = floor(dbound+primalTolerance_);
+		      newUpper = floor(dbound+relaxedTolerance);
 		    } else {
 		      newUpper=dbound;
 		      if (newUpper-primalTolerance_<colLower[kcol]&&
@@ -4418,13 +4419,13 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		  assert (value2 > 0.0);
 		  /* positive element */
 		  double gap = columnGap[kcol]*value2;
-		  bool doDown = (rowLo2 +gap > 0.0);
+		  bool doDown = (rowLo2 +gap > 1.0e-7);
 		  if (doDown&&(markIt&(2+8))==0) {
 		    double newLower=1.0;
 		    double dbound = colUpper[kcol] + rowLo2/value2;
 		    if (intVar[kcol]) {
 		      markIt |= 2;
-		      newLower = ceil(dbound-primalTolerance_);
+		      newLower = ceil(dbound-relaxedTolerance);
 		    } else {
 		      newLower=dbound;
 		      if (newLower+primalTolerance_>colUpper[kcol]&&
