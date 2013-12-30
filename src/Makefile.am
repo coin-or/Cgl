@@ -35,10 +35,13 @@ libCgl_la_LDFLAGS = $(LT_LDFLAGS)
 # We want to have all the sublibraries from the Cgl subprojects collected into
 # this library
 libCgl_la_LIBADD = $(CGL_SUBLIBS)
+if DEPENDENCY_LINKING
+libCgl_la_LIBADD += $(CGLLIB_LIBS)
+endif
 
 # Since automake is not doing this on its own, we need to declare the
 # dependencies to the subdirectory libraries here
-libCgl_la_DEPENDENCIES = $(libCgl_la_LIBADD)
+libCgl_la_DEPENDENCIES = $(CGL_SUBLIBS)
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.
