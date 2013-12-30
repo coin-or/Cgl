@@ -17,7 +17,7 @@
 //-------------------------------------------------------------
 void
 CglZeroHalf::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-				const CglTreeInfo info) const
+				const CglTreeInfo info)
 {
   if (mnz_) {
     int cnum=0,cnzcnt=0;

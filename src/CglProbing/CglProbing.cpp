@@ -999,9 +999,11 @@ bool CglProbing::groomModel (bool useObj, int maxRowLen,
 
 /*
   The traditional const method. Row and column cuts will be returned in cs.
+
+  But note Stefan went through and removed const/mutable in r1119.
 */
-void CglProbing::generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
-			      const CglTreeInfo info2) const
+void CglProbing::generateCuts (const OsiSolverInterface &si, OsiCuts &cs,
+			       const CglTreeInfo info2)
 {
 
 # if CGL_DEBUG > 0
@@ -1297,7 +1299,7 @@ bool CglProbing::gutsOfGenerateCuts (const OsiSolverInterface &si,
 				     OsiCuts &cs ,
 				     double *rowLower, double *rowUpper,
                                      double *colLower, double *colUpper,
-                                     CglTreeInfo *info) const
+                                     CglTreeInfo *info)
 {
 
 # if CGL_DEBUG > 0

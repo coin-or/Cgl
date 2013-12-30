@@ -1529,7 +1529,7 @@ bool CglProbing::probe (const OsiSolverInterface &si,
 			CglPhic &phic,
 		        const int *const realRows,
                         CglTreeInfo *const info,
-		        bool useObj, bool useCutoff, double cutoff) const
+		        bool useObj, bool useCutoff, double cutoff)
 
 {
 # if CGL_DEBUG > 0

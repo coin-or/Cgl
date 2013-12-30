@@ -25,7 +25,7 @@
 // Generate duplicate row column cuts
 //------------------------------------------------------------------- 
 void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-			      const CglTreeInfo info) const
+			      const CglTreeInfo info)
 {
 #ifdef CGL_DEBUG
   const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
@@ -50,7 +50,7 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   }
 }
 void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs,
-			      const CglTreeInfo info) const
+			      const CglTreeInfo info)
 {
   int numberColumns = matrix_.getNumCols();
   CoinPackedVector ubs;
@@ -878,7 +878,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
   }
 }
 void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
-			      const CglTreeInfo ) const
+			      const CglTreeInfo )
 {
   int numberColumns = matrix_.getNumCols();
   
@@ -2914,7 +2914,7 @@ static int outDupsEtc(int numberIntegers, int numberCliques, int * statusClique,
 }
 #endif
 void CglDuplicateRow::generateCuts8(const OsiSolverInterface & si, OsiCuts & cs,
-				    const CglTreeInfo ) const
+				    const CglTreeInfo )
 {
   bool printit=false;
   bool feasible=true;

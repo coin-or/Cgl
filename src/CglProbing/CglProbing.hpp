@@ -76,7 +76,7 @@ public:
     \p cs.
   */
   virtual void generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
-			    const CglTreeInfo info = CglTreeInfo()) const ;
+			    const CglTreeInfo info = CglTreeInfo()) ;
 			    
   /*! \brief Generate probing/disaggregation cuts and tighter bounds
 
@@ -275,7 +275,7 @@ private:
 			  OsiCuts &cs,
 			  double *rowLower, double *rowUpper,
 			  double *colLower, double *colUpper,
-                          CglTreeInfo *info) const ;
+                          CglTreeInfo *info) ;
 
   /*! \brief Look for variables that are naturally integer but not declared
   	     as integer.
@@ -323,7 +323,7 @@ private:
 	     OsiCuts &cs, CglPhic &phic,
 	     const int *const realRows,
 	     CglTreeInfo *const info,
-	     bool useObj, bool useCutoff, double cutoff) const ;
+	     bool useObj, bool useCutoff, double cutoff) ;
 
   /*! \brief Generate implication cuts
 
@@ -393,13 +393,13 @@ private:
     Holds a pointer to the working vector during probing and allows the client
     to retrieve tightened bounds.
   */
-  mutable double *colLower_ ;
+  double *colLower_ ;
   /*! \brief Upper bounds on variables
 
     Holds a pointer to the working vector during probing and allows the client
     to retrieve tightened bounds.
   */
-  mutable double *colUpper_ ;
+  double *colUpper_ ;
 
   /*
     Not entirely sure why these need to be mutable. Check. -- lh, 101007 --
@@ -408,9 +408,9 @@ private:
     Likely obsolete, unless I want to repurpose them  -- lh, 110407 --
   */
   /// Number of rows in snapshot (or when cliqueRow stuff computed)
-  mutable int numberRows_ ;
+  int numberRows_ ;
   /// Number of columns in problem ( must == current)
-  mutable int numberColumns_ ;
+  int numberColumns_ ;
 
   /// Tolerance to see if infeasible
   double primalTolerance_ ;
@@ -442,7 +442,7 @@ private:
     A negative value -n is interpreted as +n but only fixes variables unless
     at the root node
   */
-  mutable int rowCuts_ ;
+  int rowCuts_ ;
 
   /// Maximum number of passes to do in probing
   int maxPass_ ;
@@ -477,11 +477,11 @@ private:
   /// Number of 0-1 integer variables
   int number01Integers_ ;
   /// Number looked at this time
-  mutable int numberThisTime_ ;
+  int numberThisTime_ ;
   /*! \brief Total number of times called */
-  mutable int totalTimesCalled_ ;
+  int totalTimesCalled_ ;
   /// Which ones looked at this time
-  mutable int * lookedAt_ ;
+  int *lookedAt_ ;
 
   //@}
 } ;

@@ -88,7 +88,7 @@ void testus( DGG_constraint_t *cut){ //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // Generate  cuts
 //------------------------------------------------------------------- 
 void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs, 
-			     const CglTreeInfo info ) const
+			     const CglTreeInfo info )
 {
 # ifdef CGL_DEBUG
   //!!!!!!!!!!!!!!!!!!

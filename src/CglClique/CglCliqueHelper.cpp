@@ -17,7 +17,7 @@
   fractional level.
  *===========================================================================*/
 void
-CglClique::selectFractionalBinaries(const OsiSolverInterface& si) const
+CglClique::selectFractionalBinaries(const OsiSolverInterface& si)
 {
    // extract the primal tolerance from the solver
    double lclPetol = 0.0;
@@ -66,7 +66,7 @@ CglClique::selectFractionalBinaries(const OsiSolverInterface& si) const
  *===========================================================================*/
 
 void
-CglClique::selectFractionals(const OsiSolverInterface& si) const
+CglClique::selectFractionals(const OsiSolverInterface& si)
 {
    // extract the primal tolerance from the solver
    double lclPetol = 0.0;
@@ -98,7 +98,7 @@ CglClique::selectFractionals(const OsiSolverInterface& si) const
  *===========================================================================*/
 
 void
-CglClique::selectRowCliques(const OsiSolverInterface& si,int numOriginalRows) const
+CglClique::selectRowCliques(const OsiSolverInterface& si,int numOriginalRows)
 {
    const int numrows = si.getNumRows();
    std::vector<int> clique(numrows, 1);
@@ -160,7 +160,7 @@ CglClique::selectRowCliques(const OsiSolverInterface& si,int numOriginalRows) co
   Since all nonzero coefficients are 1.0, no need to store them.
  *===========================================================================*/
 void
-CglClique::createSetPackingSubMatrix(const OsiSolverInterface& si) const
+CglClique::createSetPackingSubMatrix(const OsiSolverInterface& si)
 {
    sp_col_start = new int[sp_numcols+1];
    sp_row_start = new int[sp_numrows+1];
@@ -283,7 +283,7 @@ CoinIsOrthogonal(const int* first0, const int* last0,
  *===========================================================================*/
 
 void
-CglClique::createFractionalGraph() const
+CglClique::createFractionalGraph()
 {
    // fgraph.edgenum is filled when createNodeNode is invoked
    fgraph.nodenum = sp_numcols;
@@ -349,7 +349,7 @@ CglClique::createFractionalGraph() const
  * during greedy clique formation.
  *===========================================================================*/
 int
-CglClique::createNodeNode() const
+CglClique::createNodeNode()
 {
    node_node = new bool[sp_numcols * sp_numcols];
    std::fill(node_node, node_node + sp_numcols * sp_numcols, false);
@@ -377,7 +377,7 @@ CglClique::createNodeNode() const
  * Cleanup routines
  *===========================================================================*/
 void
-CglClique::deleteSetPackingSubMatrix() const
+CglClique::deleteSetPackingSubMatrix()
 {
    delete[] sp_orig_row_ind; sp_orig_row_ind = 0; 
    delete[] sp_orig_col_ind; sp_orig_col_ind = 0; 
@@ -389,7 +389,7 @@ CglClique::deleteSetPackingSubMatrix() const
 }
 
 void
-CglClique::deleteFractionalGraph() const
+CglClique::deleteFractionalGraph()
 {
    fgraph.nodenum = 0;
    fgraph.edgenum = 0;

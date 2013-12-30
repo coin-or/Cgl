@@ -1090,15 +1090,6 @@ long CglGMI::computeGcd(long a, long b) {
   return b;
 } /* computeGcd */
 
-/************************************************************************/
-void CglGMI::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-			  const CglTreeInfo info) const 
-{
-  // kludge to be able to modify the CglGMI object if it is const
-  CglGMI temp(*this);
-  temp.generateCuts(si, cs, info);
-
-} /* generateCuts */
 
 /************************************************************************/
 void CglGMI::generateCuts(const OsiSolverInterface &si, OsiCuts & cs,
@@ -1540,13 +1531,6 @@ void CglGMI::printOptTab(OsiSolverInterface *lclSolver) const
   delete[] slackVal;
 } /* printOptTab */
 
-/*********************************************************************/
-// Returns true if needs optimal basis to do cuts
-bool 
-CglGMI::needsOptimalBasis() const
-{
-  return true;
-}
 
 /*********************************************************************/
 // Create C++ lines to get to current state

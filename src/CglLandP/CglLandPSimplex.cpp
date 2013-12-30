@@ -198,7 +198,7 @@ CglLandPSimplex::checkBasis()
 CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
                                  const CglLandP::CachedData &cached,
                                  const CglLandP::Parameters &params,
-                                 const Validator& validator):
+                                 Validator& validator):
 #ifdef COIN_HAS_OSICLP
         clp_(NULL),
 #endif
@@ -601,7 +601,7 @@ CglLandPSimplex::genThisBasisMigs(const CglLandP::CachedData &cached,
 
 bool
 CglLandPSimplex::generateMig(int row, OsiRowCut & cut,
-                             const CglLandP::Parameters & params) const
+                             const CglLandP::Parameters & params)
 {
     row_k_.num = row;
     pullTableauRow(row_k_);

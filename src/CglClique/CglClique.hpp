@@ -42,7 +42,7 @@ public:
   */
   virtual void
   generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
-	       const CglTreeInfo info = CglTreeInfo()) const ;
+	       const CglTreeInfo info = CglTreeInfo()) ;
   //@}
 
   /*! \brief Possible choices for selecting the next node in the star
@@ -218,34 +218,34 @@ protected:
     bool justOriginalRows_;
 
     /// Number of clique rows under consideration
-    mutable int sp_numrows;
+    int sp_numrows;
     /// Original row index for clique rows
-    mutable int* sp_orig_row_ind;
+    int* sp_orig_row_ind;
     /// Number of fractional binary variables
-    mutable int sp_numcols;
+    int sp_numcols;
     /// Original column index for fractional binary variables
-    mutable int* sp_orig_col_ind;
+    int* sp_orig_col_ind;
     /*! \brief Solution value for fractional binary variables
 
       Correlated with #sp_orig_col_ind.
     */
-    mutable double* sp_colsol;
+    double* sp_colsol;
     /// Column starts for the set packing submatrix
-    mutable int* sp_col_start;
+    int* sp_col_start;
     /// Row indices for columns of the set packing submatrix
-    mutable int* sp_col_ind;
+    int* sp_col_ind;
     /// Row starts for the set packing submatrix
-    mutable int* sp_row_start;
+    int* sp_row_start;
     /// Column indices for the rows of the set packing submatrix
-    mutable int* sp_row_ind;
+    int* sp_row_ind;
 
     /// The intersection graph corresponding to the set packing problem
-    mutable frac_graph fgraph;
+    frac_graph fgraph;
     /*! \brief The node-node incidence matrix of the intersection graph.
     
       This is stored as a full sp_numcols x sp_numcols matrix.
     */
-    mutable bool* node_node;
+    bool* node_node;
 
     /*! \brief Minimum acceptable clique violation
     
@@ -253,7 +253,7 @@ protected:
       #generateCuts is called (whether set by default or by the user), the
       actual value used will be the solver's primal tolerance.
     */
-    mutable double petol;
+    double petol;
 
     /*! \name Clique control parameters */
     /**@{*/
@@ -296,22 +296,22 @@ protected:
     /** List of indices that must be in the to-be-created clique. This is just
 	a pointer, it is never new'd and therefore does not need to be
 	delete[]'d either. */
-    mutable const int* cl_perm_indices;
+    const int* cl_perm_indices;
     /** The length of cl_perm_indices */
-    mutable int cl_perm_length;
+    int cl_perm_length;
 
     /** List of indices that should be considered for extending the ones listed
 	in cl_perm_indices. */
-    mutable int* cl_indices;
+    int* cl_indices;
     /** The length of cl_indices */
-    mutable int cl_length;
+    int cl_length;
 
     /** An array of nodes discarded from the candidate list. These are
 	rechecked when a maximal clique is found just to make sure that the
 	clique is really maximal. */
-    mutable int* cl_del_indices;
+    int* cl_del_indices;
     /** The length of cl_del_indices */
-    mutable int cl_del_length;
+    int cl_del_length;
 
     /**@}*/
 
@@ -324,7 +324,7 @@ private:
       for #petol. It's possible this is an error; there's some special-case
       code in this method that does not make sense in context.
     */
-    void selectFractionalBinaries(const OsiSolverInterface &si) const;
+    void selectFractionalBinaries(const OsiSolverInterface &si) ;
 
     /*! \brief Scan through the variables and select those that have a
     	       fractional value.
@@ -333,38 +333,38 @@ private:
       check this. The definition of fractional is symmetric, x* > tol1 and
       x* < tol2, tol1 = tol2 = solver's primal tolerance.
     */
-    void selectFractionals(const OsiSolverInterface& si) const;
+    void selectFractionals(const OsiSolverInterface& si);
     /**  */
-    void selectRowCliques(const OsiSolverInterface& si,int numOriginalRows) const;
+    void selectRowCliques(const OsiSolverInterface& si,int numOriginalRows);
     /**  */
-    void createSetPackingSubMatrix(const OsiSolverInterface& si) const;
+    void createSetPackingSubMatrix(const OsiSolverInterface& si);
     /**  */
-    void createFractionalGraph() const;
+    void createFractionalGraph();
     /**  */
-    int createNodeNode() const;
+    int createNodeNode();
     /**  */
-    void deleteSetPackingSubMatrix() const;
+    void deleteSetPackingSubMatrix();
     /**  */
-    void deleteFractionalGraph() const;
+    void deleteFractionalGraph();
     /**  */
-    void find_scl(OsiCuts& cs) const;
+    void find_scl(OsiCuts& cs);
     /**  */
-    void find_rcl(OsiCuts& cs) const;
+    void find_rcl(OsiCuts& cs);
     /**  */
     int scl_choose_next_node(const int current_nodenum,
 			     const int *current_indices,
 			     const int *current_degrees,
-			     const double *current_values) const;
+			     const double *current_values);
     /**  */
     void scl_delete_node(const int del_ind, int& current_nodenum,
 			 int *current_indices, int *current_degrees,
-			 double *current_values) const;
+			 double *current_values);
     /**  */
-    int enumerate_maximal_cliques(int& pos, bool* scl_label, OsiCuts& cs) const;
+    int enumerate_maximal_cliques(int& pos, bool* scl_label, OsiCuts& cs);
     /**  */
-    int greedy_maximal_clique(OsiCuts& cs) const;
+    int greedy_maximal_clique(OsiCuts& cs);
     /**  */
-    void recordClique(const int len, int* indices, OsiCuts& cs) const;
+    void recordClique(const int len, int* indices, OsiCuts& cs);
 };
 //#############################################################################
 /** A function that tests the methods in the CglClique class. The
@@ -405,7 +405,7 @@ public:
   
   virtual void
   generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
-	       const CglTreeInfo info = CglTreeInfo()) const;
+	       const CglTreeInfo info = CglTreeInfo());
   
   /**@name Constructors and destructors */
   //@{
@@ -428,9 +428,9 @@ public:
   void assignSolver(OsiSolverInterface * fakeSolver);
 protected:
   /// fake solver to use
-  mutable OsiSolverInterface * fakeSolver_;
+  OsiSolverInterface * fakeSolver_;
   /// Probing object
-  mutable CglProbing * probing_;
+  CglProbing * probing_;
 };
 
 #endif    // CGL_FAKE_CLIQUE

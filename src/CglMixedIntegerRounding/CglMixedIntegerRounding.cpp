@@ -30,7 +30,7 @@
 void
 CglMixedIntegerRounding::generateCuts(const OsiSolverInterface& si,
 				      OsiCuts& cs,
-				      const CglTreeInfo ) const
+				      const CglTreeInfo )
 {
 
   // If the LP or integer presolve is used, then need to redo preprocessing
@@ -313,7 +313,7 @@ CglMixedIntegerRounding::gutsOfCopy (const CglMixedIntegerRounding& rhs)
 //-------------------------------------------------------------------  
 void 
 CglMixedIntegerRounding::
-mixIntRoundPreprocess(const OsiSolverInterface& si) const
+mixIntRoundPreprocess(const OsiSolverInterface& si)
 {
   // get matrix stored by row
   const CoinPackedMatrix & matrixByRow = *si.getMatrixByRow();

@@ -30,7 +30,7 @@
 void
 CglResidualCapacity::generateCuts(const OsiSolverInterface& si,
 				      OsiCuts& cs,
-				  const CglTreeInfo /*info*/) const
+				  const CglTreeInfo /*info*/)
 {
 
   // If the LP or integer presolve is used, then need to redo preprocessing
@@ -237,7 +237,7 @@ CglResidualCapacity::gutsOfCopy (const CglResidualCapacity& rhs)
 //-------------------------------------------------------------------  
 void 
 CglResidualCapacity::
-resCapPreprocess(const OsiSolverInterface& si) const
+resCapPreprocess(const OsiSolverInterface& si)
 {
     // get matrix stored by row
     const CoinPackedMatrix & matrixByRow = *si.getMatrixByRow();

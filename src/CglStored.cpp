@@ -25,7 +25,7 @@
 //------------------------------------------------------------------- 
 void 
 CglStored::generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
-			const CglTreeInfo /*info*/) const
+			const CglTreeInfo /*info*/)
 {
 /*
   Original functionality: Grab the current solution from the solver and walk

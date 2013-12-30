@@ -1161,16 +1161,6 @@ bool CglRedSplit::rs_are_different_matrices(const CoinPackedMatrix *mat1,
 } /* rs_are_different_matrices */
 
 /************************************************************************/
-void CglRedSplit::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
-			       const CglTreeInfo info) const {
-
-  // kludge to be able to modify the CglRedSplit object if it is const
-  CglRedSplit temp(*this);
-  temp.generateCuts(si, cs, info);
-
-} /* generateCuts */
-
-/************************************************************************/
 void CglRedSplit::generateCuts(const OsiSolverInterface &si, OsiCuts & cs,
 			       const CglTreeInfo )
 {

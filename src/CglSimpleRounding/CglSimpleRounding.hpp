@@ -38,7 +38,7 @@ public:
   Insert generated cuts into the cut set cs.
   */
   virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs,
-			     const CglTreeInfo info = CglTreeInfo()) const;
+			     const CglTreeInfo info = CglTreeInfo());
   //@}
 
   /**@name Constructors and destructors */

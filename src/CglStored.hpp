@@ -47,7 +47,7 @@ public:
     The \p info parameter is not used.
   */
   virtual void generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
-			    const CglTreeInfo info = CglTreeInfo()) const ;
+			    const CglTreeInfo info = CglTreeInfo()) ;
   /// Add a collection of row cuts to the container
   void addCut(const OsiCuts & cs) ;
   /// Add a row cut to the container
@@ -164,7 +164,7 @@ protected:
     Note that the implementation of CglStored assumes that this collection
     will contain only row cuts.
   */
-  mutable OsiCuts cuts_;
+  OsiCuts cuts_;
   /// Length of primal solution and column bound vectors
   int numberColumns_;
   /// Primal solution
