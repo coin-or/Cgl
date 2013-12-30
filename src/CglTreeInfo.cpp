@@ -3,10 +3,6 @@
 // Corporation and others.  All Rights Reserved.
 // This code is licensed under the terms of the Eclipse Public License (EPL).
 
-#if defined(_MSC_VER)
-// Turn off compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
 
 /*
 #include <cstdlib>
@@ -16,11 +12,14 @@
 #include <cassert>
 #include <iostream>
 
+#include "CglTreeInfo.hpp"
 #include "CoinHelperFunctions.hpp"
 #include "CoinSort.hpp"
 #include "CoinPackedMatrix.hpp"
 #include "CglStored.hpp"
 */
+
+#include "CoinPragma.hpp"
 #include "OsiRowCut.hpp"
 #include "CglTreeInfo.hpp"
 

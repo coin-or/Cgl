@@ -5,11 +5,6 @@
 
 // UnitTest for CglGomory adapted for lift-and-project
 
-#if defined(_MSC_VER)
-// Turn off compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
-
 #include <cstdio>
 
 #ifdef NDEBUG
@@ -18,6 +13,7 @@
 
 #include <cassert>
 
+#include "CoinPragma.hpp"
 #include "CoinPackedMatrix.hpp"
 #include "OsiCuts.hpp"
 #include "CoinWarmStartBasis.hpp"
