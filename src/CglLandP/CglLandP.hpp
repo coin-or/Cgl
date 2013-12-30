@@ -266,6 +266,8 @@ private:
         double * slacks_;
         /** Stores wheter slacks are integer constrained */
         bool * integers_;
+        /** Solver before pivots */
+        OsiSolverInterface * solver_;
     };
     /** Retrieve sorted integer variables which are fractional in the solution.
         Return the number of variables.*/

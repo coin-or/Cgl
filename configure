@@ -27320,7 +27320,7 @@ fi
 
 # Here list all the files that configure should create (except for the
 # configuration header file)
-                                                                                                                                                                                                                                                ac_config_files="$ac_config_files Makefile examples/Makefile src/Makefile src/CglAllDifferent/Makefile src/CglClique/Makefile src/CglDuplicateRow/Makefile src/CglFlowCover/Makefile src/CglGomory/Makefile src/CglKnapsackCover/Makefile src/CglLandP/Makefile src/CglLiftAndProject/Makefile src/CglMixedIntegerRounding/Makefile src/CglMixedIntegerRounding2/Makefile src/CglOddHole/Makefile src/CglPreProcess/Makefile src/CglProbing/Makefile src/CglRedSplit/Makefile src/CglResidualCapacity/Makefile src/CglSimpleRounding/Makefile src/CglTwomir/Makefile src/CglZeroHalf/Makefile test/Makefile cgl.pc cgl-uninstalled.pc"
+                                                                                                                                                                                                                                                                    ac_config_files="$ac_config_files Makefile examples/Makefile src/Makefile src/CglAllDifferent/Makefile src/CglClique/Makefile src/CglDuplicateRow/Makefile src/CglFlowCover/Makefile src/CglGMI/Makefile src/CglGomory/Makefile src/CglKnapsackCover/Makefile src/CglLandP/Makefile src/CglLiftAndProject/Makefile src/CglMixedIntegerRounding/Makefile src/CglMixedIntegerRounding2/Makefile src/CglOddHole/Makefile src/CglPreProcess/Makefile src/CglProbing/Makefile src/CglRedSplit/Makefile src/CglRedSplit2/Makefile src/CglResidualCapacity/Makefile src/CglSimpleRounding/Makefile src/CglTwomir/Makefile src/CglZeroHalf/Makefile test/Makefile cgl.pc cgl-uninstalled.pc"
 
           ac_config_files="$ac_config_files doxydoc/doxygen.conf"
 
@@ -28154,6 +28154,7 @@ do
   "src/CglClique/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglClique/Makefile" ;;
   "src/CglDuplicateRow/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglDuplicateRow/Makefile" ;;
   "src/CglFlowCover/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglFlowCover/Makefile" ;;
+  "src/CglGMI/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglGMI/Makefile" ;;
   "src/CglGomory/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglGomory/Makefile" ;;
   "src/CglKnapsackCover/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglKnapsackCover/Makefile" ;;
   "src/CglLandP/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglLandP/Makefile" ;;
@@ -28165,6 +28166,7 @@ do
   "src/CglPreProcess/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglPreProcess/Makefile" ;;
   "src/CglProbing/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglProbing/Makefile" ;;
   "src/CglRedSplit/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglRedSplit/Makefile" ;;
+  "src/CglRedSplit2/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglRedSplit2/Makefile" ;;
   "src/CglResidualCapacity/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglResidualCapacity/Makefile" ;;
   "src/CglSimpleRounding/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglSimpleRounding/Makefile" ;;
   "src/CglTwomir/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglTwomir/Makefile" ;;

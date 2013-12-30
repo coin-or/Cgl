@@ -3738,14 +3738,65 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
 #       endif
       }
 /*
-  Transfer results from model_[i] back to modifiedModel_[i-1]
+  FIXME
+
+  In r1107 John added a bunch of code here to touch up the basis prior to
+  running the continuous postsolve. I should consider whether/how this
+  interacts with my updates to continuous presolve.  -- lh, 131230 --
+
+  And as I read the code, I really don't like this. We're abusing isFree as a
+  standin for superBasic, and that's problematic.
 */
-      presolve_[iPass]->postsolve(true);
+      const int * originalColumns = presolve_[iPass]->originalColumns();
+      const double * columnLower = modelM->getColLower(); 
+      const double * columnUpper = modelM->getColUpper();
+
       OsiSolverInterface * modelM2;
       if (iPass)
 	modelM2 = modifiedModel_[iPass-1];
       else
 	modelM2 = startModel_;
+      const double * solutionM2 = modelM2->getColSolution();
+      const double * columnLower2 = modelM2->getColLower(); 
+      const double * columnUpper2 = modelM2->getColUpper();
+
+      double primalTolerance;
+      modelM->getDblParam(OsiPrimalTolerance,primalTolerance);
+      /* clean up status for any bound alterations made by preprocess which 
+	 postsolve won't understand.
+	 Could move inside OsiPresolve but some people might object */
+      CoinWarmStartBasis *presolvedBasis  = 
+	dynamic_cast<CoinWarmStartBasis*>(model->getWarmStart()) ;
+      assert (presolvedBasis);
+      int numberChanged=0;
+      // Have to use free as superBasic does not exist
+      for (iColumn=0;iColumn<numberColumns;iColumn++) {
+	int jColumn = originalColumns[iColumn];
+	switch (presolvedBasis->getStructStatus(iColumn)) {
+	case CoinWarmStartBasis::basic:
+	case CoinWarmStartBasis::isFree:
+	  break;
+	case CoinWarmStartBasis::atLowerBound:
+	  if (solutionM[iColumn]>columnLower2[jColumn]+primalTolerance) {
+	    presolvedBasis->setStructStatus(iColumn,CoinWarmStartBasis::isFree);
+	    numberChanged++;
+	  }
+	  break;
+	case CoinWarmStartBasis::atUpperBound:
+	  if (solutionM[iColumn]<columnUpper2[jColumn]-primalTolerance) {
+	    presolvedBasis->setStructStatus(iColumn,CoinWarmStartBasis::isFree);
+	    numberChanged++;
+	  }
+	  break;
+	}
+      }
+      if (numberChanged)
+	model->setWarmStart(presolvedBasis);
+      delete presolvedBasis;
+/*
+  Transfer results from model_[i] back to modifiedModel_[i-1]
+*/
+      presolve_[iPass]->postsolve(true);
 #     if LOU_DEBUG > 0
       std::cout
         << "    after continuous postsolve model " << modelM2->getNumRows()
@@ -3760,11 +3811,7 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
   optimisers?
 */
       const int * originalColumns = presolve_[iPass]->originalColumns();
-      const double * columnLower2 = modelM2->getColLower(); 
-      const double * columnUpper2 = modelM2->getColUpper();
-      const double * columnLower = modelM->getColLower(); 
-      const double * columnUpper = modelM->getColUpper();
-      const double * solutionM2 = modelM2->getColSolution();
+      // and fix values
       for (iColumn=0;iColumn<numberColumns;iColumn++) {
 	int jColumn = originalColumns[iColumn];
 	if (!modelM2->isInteger(jColumn)) {

@@ -1713,10 +1713,10 @@ cut *Cgl012Cut::get_cut(
 iter++;
   if ( v_cut->violation > violation + EPS || 
        v_cut->violation < violation - EPS ) {
-    printf("Error in violation check\n");
-    printf("v_cut->violation %f  violation %f  gap %f  maxgap (previous) %f\n",
-	   v_cut->violation,violation,v_cut->violation-violation,maxgap);
-    printf("iter %d\n",iter);
+    //printf("Error in violation check\n");
+    //printf("v_cut->violation %f  violation %f  gap %f  maxgap (previous) %f\n",
+    //	   v_cut->violation,violation,v_cut->violation-violation,maxgap);
+    //printf("iter %d\n",iter);
     //exit(0);
     free_cut(v_cut);
     free(ccoef);

@@ -67,6 +67,12 @@ examples/cgl1.cpp -text
 /install-sh -text
 /ltmain.sh -text
 /missing -text
+src/CglGMI/CglGMI.cpp -text
+src/CglGMI/CglGMI.hpp -text
+src/CglGMI/CglGMIParam.cpp -text
+src/CglGMI/CglGMIParam.hpp -text
+src/CglGMI/Makefile.am -text
+src/CglGMI/Makefile.in -text
 src/CglGeneralisedClique.hpp -text
 src/CglLandP/CglLandP.cpp -text
 src/CglLandP/CglLandP.hpp -text
@@ -95,6 +101,13 @@ src/CglProbing/CglProbingProbe.cpp -text
 src/CglProbing/CglProbingRowCut.cpp -text
 src/CglProbing/CglProbingRowCut.hpp -text
 src/CglProbing/CglProbingTighten.cpp -text
+src/CglRedSplit2/CglRedSplit2.cpp -text
+src/CglRedSplit2/CglRedSplit2.hpp -text
+src/CglRedSplit2/CglRedSplit2Param.cpp -text
+src/CglRedSplit2/CglRedSplit2Param.hpp -text
+src/CglRedSplit2/CglRedSplit2Test.cpp -text
+src/CglRedSplit2/Makefile.am -text
+src/CglRedSplit2/Makefile.in -text
 src/CglZeroHalf/Cgl012cut.cpp -text
 src/CglZeroHalf/Cgl012cut.hpp -text
 src/CglZeroHalf/CglZeroHalf.cpp -text

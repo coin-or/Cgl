@@ -834,14 +834,29 @@ bool CglProbing::groomModel (bool useObj, int maxRowLen,
       rowLower[nKeep-1] = 0.0 ;
     }
 /*
-  If we actually strengthened a coefficient, stash the strengthened row in
-  strengthenRow for return to the caller.
+  If we actually strengthened a coefficient, groom the row and stash the
+  strengthened row in strengthenRow for return to the caller.
 */
     if (effectiveness) {
       OsiRowCut *rc = new OsiRowCut() ;
       rc->setLb(rowLower[nKeep-1]) ;
       rc->setUb(rowUpper[nKeep-1]) ;
       rc->setRow(leni,column+rstarti,elements+rstarti,false) ;
+      CoinPackedVector &row = rc.mutableRow() ;
+      double *elements = row.getElements() ;
+      int k = 0 ;
+      for ( ; k < leni ; k++)
+        if (fabs(elements[k] < 1.0e-12) break ;
+      if (k < leni) {
+        int *columns = row.getIndices() ;
+	for (int j = k+1 ; j < leni ; j++) {
+	  if (fabs(elements[j] > 1.0e-12) {
+	    elements[k] = elements[j] ;
+	    columns[k++] = columns[j] ;
+	  }
+	}
+	row.truncate(k) ;
+      }
       rc->setEffectiveness(effectiveness) ;
       assert (!info->strengthenRow[i]) ;
       info->strengthenRow[i] = rc ;

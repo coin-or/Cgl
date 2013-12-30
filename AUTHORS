@@ -20,23 +20,28 @@ CglFlowCover & FlowCoverTest
   Jeff Linderoth - contributor
   Martin Savelsbergh - contributor
 
+CglGMI 
+  John Forrest - PM
+  A more robust Gomory
+  Giacomo Nannicini - contributor 
+
 CglGomory & GomoryTest 
   JP Fasano
   John Forrest  - contributor & PM
   Laszlo Ladanyi - contributor
 
 CglKnapsackCover
-  John Forrest
-  Laszlo Ladanyi
-  Robin Lougee-Heimer - contributor & PM
+   John Forrest
+   Laszlo Ladanyi
+   Robin Lougee - contributor & PM
 
 CglLandP
   Pierre Bonami - contributor & PM
 
 CglLiftAndProject
-  John Forrest
-  Laszlo Ladanyi
-  Robin Lougee-Heimer - contributor & PM
+   John Forrest
+   Laszlo Ladanyi
+   Robin Lougee - contributor & PM
 
 CglMessage
   John Forrest - contributor & PM
@@ -70,21 +75,30 @@ CglRedSplit
   JP Fasano
   Francois Margot - contributor & PM
 
+CglRedSplit2 
+  John Forrest - PM
+  Based on CglRedSplit
+  Giacomo Nannicini - contributor 
+
 CglResidualCapacity
   Francisco Barahona - contributor & PM
 
 CglSimpleRounding 
-  John Forrest
-  Laszlo Ladanyi
-  Robin Lougee-Heimer - contributor & PM
+   John Forrest
+   Laszlo Ladanyi
+   Robin Lougee - contributor & PM
 
 CglStored
   John Forrest  - contributor & PM
 
 CglTwomir  
-  JP Fasano
-  John Forrest
-  Oktay Gunluk - contributor & PM
-  Laszlo Ladanyi
-  Sanjeeb Dash - contributor
-  Marcos Goycoolea - contributor
+   JP Fasano
+   John Forrest
+   Oktay Gunluk - contributor & PM
+   Laszlo Ladanyi
+   Sanjeeb Dash - contributor
+   Marcos Goycoolea - contributor
+
+CglZeroHalf
+    Alberto Caprara - contributor
+    John Forrest  - PM
