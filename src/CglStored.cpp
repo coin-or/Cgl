@@ -303,16 +303,21 @@ CglStored::CglStored (const char * fileName) :
 {  
   FILE *fp = fopen(fileName,"rb") ;
   if (fp) {
+#   ifndef NDEBUG
     size_t numberRead ;
+#   endif
     int maxInCut = 0 ;
     int *index = NULL ;
     double *coefficient = NULL ;
     double rhs[2] ;
     int n = 0 ;
     while (n >= 0) {
-      // Read number of elements
+#     ifndef NDEBUG
       numberRead = fread(&n,sizeof(int),1,fp) ;
       assert (numberRead == 1) ;
+#     else
+      fread(&n,sizeof(int),1,fp) ;
+#     endif
       if (n < 0)
 	break ;
       if (n > maxInCut) {
@@ -322,15 +327,14 @@ CglStored::CglStored (const char * fileName) :
 	index = new int [maxInCut] ;
 	coefficient = new double [maxInCut] ;
       }
-      // Read lower and upper row bounds
+#     ifndef NDEBUG
       numberRead = fread(rhs,sizeof(double),2,fp) ;
       assert (numberRead == 2) ;
-      // Read column indices
-      numberRead = fread(index,sizeof(int),n,fp) ;
-      //assert (numberRead == n) ;
-      // Read coefficients
-      numberRead = fread(coefficient,sizeof(double),n,fp) ;
-      //assert (numberRead == n) ;
+#     else
+      fread(rhs,sizeof(double),2,fp) ;
+#     endif
+      fread(index,sizeof(int),n,fp) ;
+      fread(coefficient,sizeof(double),n,fp) ;
       OsiRowCut rc ;
       rc.setRow(n,index,coefficient,false) ;
       rc.setLb(rhs[0]) ;

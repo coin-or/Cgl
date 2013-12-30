@@ -88,7 +88,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 #ifdef COIN_HAS_CLP_GOMORY
   double * objective = NULL;
   OsiClpSolverInterface * clpSolver = dynamic_cast<OsiClpSolverInterface *>(originalSolver_);
-  int numberOriginalRows;
+  int numberOriginalRows = -1;
   if (clpSolver) {
     useSolver = originalSolver_;
     assert (gomoryType_);
@@ -331,6 +331,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   }
   if ((gomoryType_%10)==2) {
     // back to original
+    assert(clpSolver);
     int numberRows = clpSolver->getNumRows();
     if (numberRows>numberOriginalRows) {
       int numberDelete = numberRows-numberOriginalRows;

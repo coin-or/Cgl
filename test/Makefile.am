@@ -28,7 +28,7 @@ AM_CPPFLAGS = \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglFlowCover` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglGomory` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglKnapsackCover` \
-        -I`$(CYGPATH_W) $(srcdir)/../src/CglLandP` \
+    -I`$(CYGPATH_W) $(srcdir)/../src/CglLandP` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglOddHole` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglProbing` \
 	-I`$(CYGPATH_W) $(srcdir)/../src/CglMixedIntegerRounding` \
@@ -45,8 +45,7 @@ if COIN_HAS_SAMPLE
 AM_CPPFLAGS += -DSAMPLEDIR=\"`$(CYGPATH_W) @SAMPLE_DATA@ | sed -e 's/\\\\/\\\\\\\\/g'`\"
 endif
 
-# This line is necessary to allow VPATH compilation with MS compilers
-# on Cygwin
+# This line is necessary to allow VPATH compilation
 DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/src
 
 # Depending of what solvers are available, we add the corresponding files,

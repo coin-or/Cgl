@@ -868,7 +868,6 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 
   int     ix;
   int     index  = 0;
-  double  temp1  = 0.0;
   double* mt     = new double [rowLen];
   double* M      = new double [rowLen + 1];
   // order to look at variables
@@ -944,8 +943,6 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
       break;
     }
   }
-    
-  temp1 = temp;
     
   /* Get t */
   t = 0;
@@ -1101,14 +1098,12 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
   }
     
   int     cutLen     = 0;
-  char    cutSense   = 'L';
   int*    cutInd     = 0;
   double* cutCoef    = 0;
 
   // If violated, transform the inequality back to original system
   if ( violation > TOLERANCE_ ) {
     cutLen = 0;
-    cutSense = 'L';
     cutInd  = new int [3*numCols];
     cutCoef = new double [3*numCols];
       

@@ -8,10 +8,6 @@
 //-----------------------------------------------------------------------------
 // Copyright (C) 2009, Giacomo Nannicini.  All Rights Reserved.
 
-#if defined(_MSC_VER)
-// Turn off compiler warning about long names
-#  pragma warning(disable:4786)
-#endif
 #include <cstdlib>
 #include <cstdio>
 #include <cmath>
@@ -21,12 +17,12 @@
 #include <fenv.h>
 #include <climits>
 
-#include "OsiSolverInterface.hpp"
-
+#include "CoinPragma.hpp"
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedVector.hpp"
 #include "CoinPackedMatrix.hpp"
 #include "CoinIndexedVector.hpp"
+#include "OsiSolverInterface.hpp"
 #include "OsiRowCutDebugger.hpp"
 #include "CoinFactorization.hpp"
 #include "CglGMI.hpp"
@@ -895,7 +891,7 @@ bool CglGMI::scaleCutIntegral(double* cutElem, int* cutIndex, int cutNz,
   long numerator = 0, denominator = 0;
   // Initialize gcd and lcm
   if (nearestRational(cutRhs, maxdelta, maxdnom, numerator, denominator)) {
-    gcd = abs(numerator);
+    gcd = labs(numerator);
     lcm = denominator;
   }
   else{
@@ -909,7 +905,7 @@ bool CglGMI::scaleCutIntegral(double* cutElem, int* cutIndex, int cutNz,
       continue;
     }
     if(nearestRational(cutElem[i], maxdelta, maxdnom, numerator, denominator)) {
-      gcd = computeGcd(gcd,abs(numerator));
+      gcd = computeGcd(gcd,labs(numerator));
       lcm *= denominator/(computeGcd(lcm,denominator));
     }
     else{
@@ -1068,11 +1064,11 @@ bool CglGMI::nearestRational(double val, double maxdelta, long maxdnom,
 /************************************************************************/
 long CglGMI::computeGcd(long a, long b) {
   // This is the standard Euclidean algorithm for gcd
-  int remainder = 1;
+  long remainder = 1;
   // Make sure a<=b (will always remain so)
   if (a > b) {
     // Swap a and b
-    int temp = a;
+    long temp = a;
     a = b;
     b = temp;
   }
