@@ -14,7 +14,6 @@
 #include <cfloat>
 #include <cassert>
 #include <iostream>
-#include <fenv.h>
 #include <climits>
 
 #include "CoinPragma.hpp"

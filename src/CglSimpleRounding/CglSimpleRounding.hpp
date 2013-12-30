@@ -11,7 +11,7 @@
 #include "CglCutGenerator.hpp"
 #include "CoinPackedMatrix.hpp"
 
-/** Simple Rounding Cut Generator Class<br> 
+/** Simple Rounding Cut Generator Class
 
  This class generates simple rounding cuts via the following method:
     For each contraint,

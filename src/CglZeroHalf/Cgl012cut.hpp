@@ -199,7 +199,7 @@ int n_it_zero; /* number of consecutive iterations (starting from the
                    last and going backward) in which each variable took
                    the value 0 in the LP solution */
 } log_var;
-/** 012Cut Generator Class<br> 
+/** 012Cut Generator Class
 
  This class is to make Cgl01cut thread safe etc
 */
