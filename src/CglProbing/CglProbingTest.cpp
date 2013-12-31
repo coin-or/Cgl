@@ -6,7 +6,7 @@
 #include <cstdio>
 
 
-#include "CglPragma.hpp"
+#include "CoinPragma.hpp"
 #include "CglProbing.hpp"
 #include "CglProbingDebug.hpp"
 

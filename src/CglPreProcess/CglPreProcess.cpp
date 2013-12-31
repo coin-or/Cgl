@@ -3739,9 +3739,9 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
 
   In r1107 John added a bunch of code here to touch up the basis prior to
   running the continuous postsolve. I should consider whether/how this
-  interacts with my updates to continuous presolve.  -- lh, 131230 --
+  interacts with my updates to continuous presolve/postsolve.  -- lh, 131230 --
 
-  And as I read the code, I really don't like this. We're abusing isFree as a
+  And as I read the code, I really don't like this. This abuses isFree as a
   standin for superBasic, and that's problematic.
 */
       const int * originalColumns = presolve_[iPass]->originalColumns();
@@ -3800,15 +3800,13 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
 	<< " x " << modelM2->getNumCols() << "." << std::endl ;
 #     endif
 /*
-  jjf: and fix
+  jjf: and fix values
 
   Fix continuous variables that were fixed in model_[i] but are not fixed
   in modifiedModel_[i-1]. In other words, propagate variable fixing back from
   level i to level i-1. Why only continuous? For the benefit of nonlinear
   optimisers?
 */
-      const int * originalColumns = presolve_[iPass]->originalColumns();
-      // and fix values
       for (iColumn=0;iColumn<numberColumns;iColumn++) {
 	int jColumn = originalColumns[iColumn];
 	if (!modelM2->isInteger(jColumn)) {

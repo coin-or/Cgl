@@ -1098,9 +1098,6 @@ Optional Features:
   --disable-interpackage-dependencies
                           disables deduction of Makefile dependencies from
                           package linker flags
-  --enable-interpackage-dependencies
-                          whether to deduce Makefile dependencies from package
-                          linker flags (default: yes)
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -2864,7 +2861,7 @@ if test x"$CFLAGS" = x; then
       *)
         coin_opt_cflags="-O3"
         coin_add_cflags="-pipe"
-        coin_dbg_cflags="-g"
+        coin_dbg_cflags="-g -O0"
         coin_warn_cflags="-Wimplicit -Wparentheses -Wsequence-point -Wreturn-type -Wcast-qual -Wall -Wno-unknown-pragmas -Wno-long-long"
         case $build in
           *-darwin*)
@@ -3746,8 +3743,8 @@ if test x"$CXXFLAGS" = x; then
 # ToDo decide about unroll-loops
         coin_opt_cxxflags="-O3"
         coin_add_cxxflags="-pipe"
-        coin_dbg_cxxflags="-g"
-        coin_warn_cxxflags="-Wimplicit -Wparentheses -Wreturn-type -Wcast-qual -Wall -Wpointer-arith -Wwrite-strings -Wconversion -Wno-unknown-pragmas -Wno-long-long"
+        coin_dbg_cxxflags="-g -O0"
+        coin_warn_cxxflags="-Wparentheses -Wreturn-type -Wcast-qual -Wall -Wpointer-arith -Wwrite-strings -Wconversion -Wno-unknown-pragmas -Wno-long-long"
         case $build in
           *-darwin*)
             ;;
@@ -20800,6 +20797,11 @@ if test "${with_coinutils_lib+set}" = set; then
          CGLLIB_PCLIBS="$withval $CGLLIB_PCLIBS"
          CGLLIB_LIBS="$withval $CGLLIB_LIBS"
 
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         COINUTILS_LIBS_INSTALLED="$withval"
+         CGLLIB_LIBS_INSTALLED="$withval $CGLLIB_LIBS_INSTALLED"
+       fi
      fi
 
 fi;
@@ -20815,7 +20817,12 @@ if test "${with_coinutils_incdir+set}" = set; then
      else
        coin_has_coinutils=yes
        COINUTILS_CFLAGS="-I`${CYGPATH_W} $withval`"
-       CGLLIB_CFLAGS="$withval $CGLLIB_CFLAGS"
+       CGLLIB_CFLAGS="-I`${CYGPATH_W} $withval` $CGLLIB_CFLAGS"
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         COINUTILS_CFLAGS_INSTALLED="$COINUTILS_CFLAGS"
+         CGLLIB_CFLAGS_INSTALLED="$COINUTILS_CFLAGS $CGLLIB_CFLAGS_INSTALLED"
+       fi
      fi
 
 fi;
@@ -20831,6 +20838,10 @@ if test "${with_coinutils_datadir+set}" = set; then
      else
        coin_has_coinutils=yes
        COINUTILS_DATA="$withval"
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         COINUTILS_DATA_INSTALLED="$withval"
+       fi
      fi
 
 fi;
@@ -20850,7 +20861,7 @@ if test $coin_has_coinutils = notGiven; then
 
 if test -n "$PKG_CONFIG" ; then
   if $PKG_CONFIG --exists "coinutils"; then
-    COINUTILS_VERSIONS="`$PKG_CONFIG --modversion "coinutils" 2>/dev/null | tr '\n' ' '`"
+    COINUTILS_VERSIONS=`$PKG_CONFIG --modversion "coinutils" 2>/dev/null | tr '\n' ' '`
      cflags=`$PKG_CONFIG --cflags "coinutils" 2>/dev/null`
     # pkg-config cannot handle spaces, so CYGPATH_W cannot be put into .pc files
 	# thus, we modify the cflags extracted from pkg-config by putting CYGPATH_W behind -I's
@@ -21303,6 +21314,11 @@ if test "${with_osi_lib+set}" = set; then
          CGLLIB_PCLIBS="$withval $CGLLIB_PCLIBS"
          CGLLIB_LIBS="$withval $CGLLIB_LIBS"
 
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSI_LIBS_INSTALLED="$withval"
+         CGLLIB_LIBS_INSTALLED="$withval $CGLLIB_LIBS_INSTALLED"
+       fi
      fi
 
 fi;
@@ -21318,7 +21334,12 @@ if test "${with_osi_incdir+set}" = set; then
      else
        coin_has_osi=yes
        OSI_CFLAGS="-I`${CYGPATH_W} $withval`"
-       CGLLIB_CFLAGS="$withval $CGLLIB_CFLAGS"
+       CGLLIB_CFLAGS="-I`${CYGPATH_W} $withval` $CGLLIB_CFLAGS"
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSI_CFLAGS_INSTALLED="$OSI_CFLAGS"
+         CGLLIB_CFLAGS_INSTALLED="$OSI_CFLAGS $CGLLIB_CFLAGS_INSTALLED"
+       fi
      fi
 
 fi;
@@ -21334,6 +21355,10 @@ if test "${with_osi_datadir+set}" = set; then
      else
        coin_has_osi=yes
        OSI_DATA="$withval"
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSI_DATA_INSTALLED="$withval"
+       fi
      fi
 
 fi;
@@ -21353,7 +21378,7 @@ if test $coin_has_osi = notGiven; then
 
 if test -n "$PKG_CONFIG" ; then
   if $PKG_CONFIG --exists "osi"; then
-    OSI_VERSIONS="`$PKG_CONFIG --modversion "osi" 2>/dev/null | tr '\n' ' '`"
+    OSI_VERSIONS=`$PKG_CONFIG --modversion "osi" 2>/dev/null | tr '\n' ' '`
      cflags=`$PKG_CONFIG --cflags "osi" 2>/dev/null`
     # pkg-config cannot handle spaces, so CYGPATH_W cannot be put into .pc files
 	# thus, we modify the cflags extracted from pkg-config by putting CYGPATH_W behind -I's
@@ -21795,7 +21820,9 @@ if test "${with_sample_lib+set}" = set; then
        SAMPLE_LIBS="$withval"
        SAMPLE_PCLIBS="$withval"
 
-     fi
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         SAMPLE_LIBS_INSTALLED="$withval"
 
        fi
      fi
@@ -21814,7 +21841,9 @@ if test "${with_sample_incdir+set}" = set; then
        coin_has_sample=yes
        SAMPLE_CFLAGS="-I`${CYGPATH_W} $withval`"
 
-     fi
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         SAMPLE_CFLAGS_INSTALLED="$SAMPLE_CFLAGS"
 
        fi
      fi
@@ -21832,6 +21861,10 @@ if test "${with_sample_datadir+set}" = set; then
      else
        coin_has_sample=yes
        SAMPLE_DATA="$withval"
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         SAMPLE_DATA_INSTALLED="$withval"
+       fi
      fi
 
 fi;
@@ -21851,7 +21884,7 @@ if test $coin_has_sample = notGiven; then
 
 if test -n "$PKG_CONFIG" ; then
   if $PKG_CONFIG --exists "coindatasample"; then
-    SAMPLE_VERSIONS="`$PKG_CONFIG --modversion "coindatasample" 2>/dev/null | tr '\n' ' '`"
+    SAMPLE_VERSIONS=`$PKG_CONFIG --modversion "coindatasample" 2>/dev/null | tr '\n' ' '`
      cflags=`$PKG_CONFIG --cflags "coindatasample" 2>/dev/null`
     # pkg-config cannot handle spaces, so CYGPATH_W cannot be put into .pc files
 	# thus, we modify the cflags extracted from pkg-config by putting CYGPATH_W behind -I's
@@ -22281,6 +22314,11 @@ if test "${with_osiclp_lib+set}" = set; then
          CGLLIB_PCLIBS="$withval $CGLLIB_PCLIBS"
          CGLLIB_LIBS="$withval $CGLLIB_LIBS"
 
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSICLP_LIBS_INSTALLED="$withval"
+         CGLLIB_LIBS_INSTALLED="$withval $CGLLIB_LIBS_INSTALLED"
+       fi
      fi
 
 fi;
@@ -22296,7 +22334,12 @@ if test "${with_osiclp_incdir+set}" = set; then
      else
        coin_has_osiclp=yes
        OSICLP_CFLAGS="-I`${CYGPATH_W} $withval`"
-       CGLLIB_CFLAGS="$withval $CGLLIB_CFLAGS"
+       CGLLIB_CFLAGS="-I`${CYGPATH_W} $withval` $CGLLIB_CFLAGS"
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSICLP_CFLAGS_INSTALLED="$OSICLP_CFLAGS"
+         CGLLIB_CFLAGS_INSTALLED="$OSICLP_CFLAGS $CGLLIB_CFLAGS_INSTALLED"
+       fi
      fi
 
 fi;
@@ -22312,6 +22355,10 @@ if test "${with_osiclp_datadir+set}" = set; then
      else
        coin_has_osiclp=yes
        OSICLP_DATA="$withval"
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSICLP_DATA_INSTALLED="$withval"
+       fi
      fi
 
 fi;
@@ -22331,7 +22378,7 @@ if test $coin_has_osiclp = notGiven; then
 
 if test -n "$PKG_CONFIG" ; then
   if $PKG_CONFIG --exists "osi-clp"; then
-    OSICLP_VERSIONS="`$PKG_CONFIG --modversion "osi-clp" 2>/dev/null | tr '\n' ' '`"
+    OSICLP_VERSIONS=`$PKG_CONFIG --modversion "osi-clp" 2>/dev/null | tr '\n' ' '`
      cflags=`$PKG_CONFIG --cflags "osi-clp" 2>/dev/null`
     # pkg-config cannot handle spaces, so CYGPATH_W cannot be put into .pc files
 	# thus, we modify the cflags extracted from pkg-config by putting CYGPATH_W behind -I's
@@ -22776,7 +22823,9 @@ if test "${with_osicpx_lib+set}" = set; then
        OSICPX_LIBS="$withval"
        OSICPX_PCLIBS="$withval"
 
-     fi
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSICPX_LIBS_INSTALLED="$withval"
 
        fi
      fi
@@ -22795,7 +22844,9 @@ if test "${with_osicpx_incdir+set}" = set; then
        coin_has_osicpx=yes
        OSICPX_CFLAGS="-I`${CYGPATH_W} $withval`"
 
-     fi
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSICPX_CFLAGS_INSTALLED="$OSICPX_CFLAGS"
 
        fi
      fi
@@ -22813,6 +22864,10 @@ if test "${with_osicpx_datadir+set}" = set; then
      else
        coin_has_osicpx=yes
        OSICPX_DATA="$withval"
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSICPX_DATA_INSTALLED="$withval"
+       fi
      fi
 
 fi;
@@ -22832,7 +22887,7 @@ if test $coin_has_osicpx = notGiven; then
 
 if test -n "$PKG_CONFIG" ; then
   if $PKG_CONFIG --exists "osi-cplex"; then
-    OSICPX_VERSIONS="`$PKG_CONFIG --modversion "osi-cplex" 2>/dev/null | tr '\n' ' '`"
+    OSICPX_VERSIONS=`$PKG_CONFIG --modversion "osi-cplex" 2>/dev/null | tr '\n' ' '`
      cflags=`$PKG_CONFIG --cflags "osi-cplex" 2>/dev/null`
     # pkg-config cannot handle spaces, so CYGPATH_W cannot be put into .pc files
 	# thus, we modify the cflags extracted from pkg-config by putting CYGPATH_W behind -I's
@@ -23249,7 +23304,9 @@ if test "${with_osiglpk_lib+set}" = set; then
        OSIGLPK_LIBS="$withval"
        OSIGLPK_PCLIBS="$withval"
 
-     fi
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSIGLPK_LIBS_INSTALLED="$withval"
 
        fi
      fi
@@ -23268,7 +23325,9 @@ if test "${with_osiglpk_incdir+set}" = set; then
        coin_has_osiglpk=yes
        OSIGLPK_CFLAGS="-I`${CYGPATH_W} $withval`"
 
-     fi
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSIGLPK_CFLAGS_INSTALLED="$OSIGLPK_CFLAGS"
 
        fi
      fi
@@ -23286,6 +23345,10 @@ if test "${with_osiglpk_datadir+set}" = set; then
      else
        coin_has_osiglpk=yes
        OSIGLPK_DATA="$withval"
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSIGLPK_DATA_INSTALLED="$withval"
+       fi
      fi
 
 fi;
@@ -23305,7 +23368,7 @@ if test $coin_has_osiglpk = notGiven; then
 
 if test -n "$PKG_CONFIG" ; then
   if $PKG_CONFIG --exists "osi-glpk"; then
-    OSIGLPK_VERSIONS="`$PKG_CONFIG --modversion "osi-glpk" 2>/dev/null | tr '\n' ' '`"
+    OSIGLPK_VERSIONS=`$PKG_CONFIG --modversion "osi-glpk" 2>/dev/null | tr '\n' ' '`
      cflags=`$PKG_CONFIG --cflags "osi-glpk" 2>/dev/null`
     # pkg-config cannot handle spaces, so CYGPATH_W cannot be put into .pc files
 	# thus, we modify the cflags extracted from pkg-config by putting CYGPATH_W behind -I's
@@ -23723,7 +23786,9 @@ if test "${with_osimsk_lib+set}" = set; then
        OSIMSK_LIBS="$withval"
        OSIMSK_PCLIBS="$withval"
 
-     fi
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSIMSK_LIBS_INSTALLED="$withval"
 
        fi
      fi
@@ -23742,7 +23807,9 @@ if test "${with_osimsk_incdir+set}" = set; then
        coin_has_osimsk=yes
        OSIMSK_CFLAGS="-I`${CYGPATH_W} $withval`"
 
-     fi
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSIMSK_CFLAGS_INSTALLED="$OSIMSK_CFLAGS"
 
        fi
      fi
@@ -23760,6 +23827,10 @@ if test "${with_osimsk_datadir+set}" = set; then
      else
        coin_has_osimsk=yes
        OSIMSK_DATA="$withval"
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSIMSK_DATA_INSTALLED="$withval"
+       fi
      fi
 
 fi;
@@ -23779,7 +23850,7 @@ if test $coin_has_osimsk = notGiven; then
 
 if test -n "$PKG_CONFIG" ; then
   if $PKG_CONFIG --exists "osi-mosek"; then
-    OSIMSK_VERSIONS="`$PKG_CONFIG --modversion "osi-mosek" 2>/dev/null | tr '\n' ' '`"
+    OSIMSK_VERSIONS=`$PKG_CONFIG --modversion "osi-mosek" 2>/dev/null | tr '\n' ' '`
      cflags=`$PKG_CONFIG --cflags "osi-mosek" 2>/dev/null`
     # pkg-config cannot handle spaces, so CYGPATH_W cannot be put into .pc files
 	# thus, we modify the cflags extracted from pkg-config by putting CYGPATH_W behind -I's
@@ -24196,7 +24267,9 @@ if test "${with_osixpr_lib+set}" = set; then
        OSIXPR_LIBS="$withval"
        OSIXPR_PCLIBS="$withval"
 
-     fi
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSIXPR_LIBS_INSTALLED="$withval"
 
        fi
      fi
@@ -24215,7 +24288,9 @@ if test "${with_osixpr_incdir+set}" = set; then
        coin_has_osixpr=yes
        OSIXPR_CFLAGS="-I`${CYGPATH_W} $withval`"
 
-     fi
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSIXPR_CFLAGS_INSTALLED="$OSIXPR_CFLAGS"
 
        fi
      fi
@@ -24233,6 +24308,10 @@ if test "${with_osixpr_datadir+set}" = set; then
      else
        coin_has_osixpr=yes
        OSIXPR_DATA="$withval"
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSIXPR_DATA_INSTALLED="$withval"
+       fi
      fi
 
 fi;
@@ -24252,7 +24331,7 @@ if test $coin_has_osixpr = notGiven; then
 
 if test -n "$PKG_CONFIG" ; then
   if $PKG_CONFIG --exists "osi-xpress"; then
-    OSIXPR_VERSIONS="`$PKG_CONFIG --modversion "osi-xpress" 2>/dev/null | tr '\n' ' '`"
+    OSIXPR_VERSIONS=`$PKG_CONFIG --modversion "osi-xpress" 2>/dev/null | tr '\n' ' '`
      cflags=`$PKG_CONFIG --cflags "osi-xpress" 2>/dev/null`
     # pkg-config cannot handle spaces, so CYGPATH_W cannot be put into .pc files
 	# thus, we modify the cflags extracted from pkg-config by putting CYGPATH_W behind -I's
@@ -24669,7 +24748,9 @@ if test "${with_osivol_lib+set}" = set; then
        OSIVOL_LIBS="$withval"
        OSIVOL_PCLIBS="$withval"
 
-     fi
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSIVOL_LIBS_INSTALLED="$withval"
 
        fi
      fi
@@ -24688,7 +24769,9 @@ if test "${with_osivol_incdir+set}" = set; then
        coin_has_osivol=yes
        OSIVOL_CFLAGS="-I`${CYGPATH_W} $withval`"
 
-     fi
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSIVOL_CFLAGS_INSTALLED="$OSIVOL_CFLAGS"
 
        fi
      fi
@@ -24706,6 +24789,10 @@ if test "${with_osivol_datadir+set}" = set; then
      else
        coin_has_osivol=yes
        OSIVOL_DATA="$withval"
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSIVOL_DATA_INSTALLED="$withval"
+       fi
      fi
 
 fi;
@@ -24725,7 +24812,7 @@ if test $coin_has_osivol = notGiven; then
 
 if test -n "$PKG_CONFIG" ; then
   if $PKG_CONFIG --exists "osi-vol"; then
-    OSIVOL_VERSIONS="`$PKG_CONFIG --modversion "osi-vol" 2>/dev/null | tr '\n' ' '`"
+    OSIVOL_VERSIONS=`$PKG_CONFIG --modversion "osi-vol" 2>/dev/null | tr '\n' ' '`
      cflags=`$PKG_CONFIG --cflags "osi-vol" 2>/dev/null`
     # pkg-config cannot handle spaces, so CYGPATH_W cannot be put into .pc files
 	# thus, we modify the cflags extracted from pkg-config by putting CYGPATH_W behind -I's
@@ -25142,7 +25229,9 @@ if test "${with_osidylp_lib+set}" = set; then
        OSIDYLP_LIBS="$withval"
        OSIDYLP_PCLIBS="$withval"
 
-     fi
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSIDYLP_LIBS_INSTALLED="$withval"
 
        fi
      fi
@@ -25161,7 +25250,9 @@ if test "${with_osidylp_incdir+set}" = set; then
        coin_has_osidylp=yes
        OSIDYLP_CFLAGS="-I`${CYGPATH_W} $withval`"
 
-     fi
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSIDYLP_CFLAGS_INSTALLED="$OSIDYLP_CFLAGS"
 
        fi
      fi
@@ -25179,6 +25270,10 @@ if test "${with_osidylp_datadir+set}" = set; then
      else
        coin_has_osidylp=yes
        OSIDYLP_DATA="$withval"
+       # if project flags are given by user and we build without pkg-config, then we need to setup the _INSTALLED variables
+       if test -z "$PKG_CONFIG" ; then
+         OSIDYLP_DATA_INSTALLED="$withval"
+       fi
      fi
 
 fi;
@@ -25198,7 +25293,7 @@ if test $coin_has_osidylp = notGiven; then
 
 if test -n "$PKG_CONFIG" ; then
   if $PKG_CONFIG --exists "osi-dylp"; then
-    OSIDYLP_VERSIONS="`$PKG_CONFIG --modversion "osi-dylp" 2>/dev/null | tr '\n' ' '`"
+    OSIDYLP_VERSIONS=`$PKG_CONFIG --modversion "osi-dylp" 2>/dev/null | tr '\n' ' '`
      cflags=`$PKG_CONFIG --cflags "osi-dylp" 2>/dev/null`
     # pkg-config cannot handle spaces, so CYGPATH_W cannot be put into .pc files
 	# thus, we modify the cflags extracted from pkg-config by putting CYGPATH_W behind -I's
@@ -26777,7 +26872,7 @@ fi
 
 # Here list all the files that configure should create (except for the
 # configuration header file)
-                                                                                                                                                                                                                                                                    ac_config_files="$ac_config_files Makefile examples/Makefile src/Makefile src/CglAllDifferent/Makefile src/CglClique/Makefile src/CglDuplicateRow/Makefile src/CglFlowCover/Makefile src/CglGMI/Makefile src/CglGomory/Makefile src/CglKnapsackCover/Makefile src/CglLandP/Makefile src/CglLiftAndProject/Makefile src/CglMixedIntegerRounding/Makefile src/CglMixedIntegerRounding2/Makefile src/CglOddHole/Makefile src/CglPreProcess/Makefile src/CglProbing/Makefile src/CglRedSplit/Makefile src/CglRedSplit2/Makefile src/CglResidualCapacity/Makefile src/CglSimpleRounding/Makefile src/CglTwomir/Makefile src/CglZeroHalf/Makefile test/Makefile cgl.pc cgl-uninstalled.pc"
+                                                                                                                                                                                                                                                                              ac_config_files="$ac_config_files Makefile examples/Makefile src/Makefile src/CglAllDifferent/Makefile src/CglClique/Makefile src/CglDuplicateRow/Makefile src/CglFlowCover/Makefile src/CglGMI/Makefile src/CglGomory/Makefile src/CglKnapsackCover/Makefile src/CglLandP/Makefile src/CglLiftAndProject/Makefile src/CglMixedIntegerRounding/Makefile src/CglMixedIntegerRounding2/Makefile src/CglOddHole/Makefile src/CglPhic/Makefile src/CglPreProcess/Makefile src/CglProbing/Makefile src/CglRedSplit/Makefile src/CglRedSplit2/Makefile src/CglResidualCapacity/Makefile src/CglSimpleRounding/Makefile src/CglTwomir/Makefile src/CglZeroHalf/Makefile test/Makefile cgl.pc cgl-uninstalled.pc"
 
           ac_config_files="$ac_config_files doxydoc/doxygen.conf"
 

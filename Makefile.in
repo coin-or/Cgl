@@ -62,8 +62,8 @@ DIST_COMMON = README $(am__configure_deps) \
 	$(srcdir)/Makefile.in $(srcdir)/cgl-uninstalled.pc.in \
 	$(srcdir)/cgl.pc.in $(top_srcdir)/configure \
 	$(top_srcdir)/doxydoc/doxygen.conf.in \
-	$(top_srcdir)/examples/Makefile.in AUTHORS config.guess \
-	config.sub depcomp install-sh ltmain.sh missing
+	$(top_srcdir)/examples/Makefile.in AUTHORS compile \
+	config.guess config.sub depcomp install-sh ltmain.sh missing
 @HAVE_EXTERNALS_TRUE@am__append_2 = Dependencies
 @HAVE_EXTERNALS_TRUE@am__append_3 = .Dependencies-stamp
 subdir = .
