@@ -367,7 +367,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	bool goodCut=true;
 	for (i=0;i<number2;i++) {
 	  double value=fabs(packed[i]);
-	  if (value<1.0e-9) {
+	  if (value<5.0e-7) { // was 1.0e-9
 	    int iColumn = cutIndex[i];
 	    if (colUpper[iColumn]-colLower[iColumn]<100.0) {
 	      // weaken cut
