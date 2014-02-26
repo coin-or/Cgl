@@ -1264,7 +1264,7 @@ CglGomory::generateCuts(
 		}
 	      }
 	    }
-	    if (largest>1.0e10*smallest||(number>20&&smallest<number*1.0e-10)) {
+	    if (largest>1.0e10*smallest||(number>20&&smallest<number*1.0e-8)) {
 	      number=limit+1; //reject
 	      numberNonInteger=1;
 	    } else if (largest>1.0e9*smallest) {
