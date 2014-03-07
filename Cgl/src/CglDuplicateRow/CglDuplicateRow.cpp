@@ -730,7 +730,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
 	int j;
 	for (j=rowStart[i];j<rowStart[i]+2;j++) {
 	  int iColumn = column[j];
-	  if (fabs(elementByRow[j])!=1.0||!si.isInteger(iColumn)) {
+	  if (fabs(elementByRow[j])!=1.0||!si.isBinary(iColumn)) {
 	    possible=false;
 	    break;
 	  }
@@ -804,7 +804,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
 	    } else {
 	      // found
 #ifndef COIN_DEVELOP
-	      if (logLevel_>1)
+              if (logLevel_>1)
 #endif 
 		printf("***Make %d %d %d >=2 and take out rows %d %d %d\n",
 		       columnB1,column0,column1,
