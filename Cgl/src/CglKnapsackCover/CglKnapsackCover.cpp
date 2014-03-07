@@ -818,6 +818,9 @@ CglKnapsackCover::liftAndUncomplementAndAdd(
   }
   
   if (goodCut) {
+    //int extendedCut = gubifyCut(cut);
+    //if (extendedCut)
+    //printf("XX extended cut\n");
     // Uncomplement the complemented variables in the cut
     int k;
     //if (fabs(b-rowub)> epsilon_) {
@@ -889,7 +892,11 @@ CglKnapsackCover::deriveAKnapsack(
        double & b,
        int *  complement,
        double *  xstar,
-       int /*rowIndex*/,
+       int
+#ifdef PRINT_DEBUG 
+       rowIndex
+#endif
+       ,
        int numberElements,
        const int * index,
        const double * element)
@@ -1020,7 +1027,7 @@ CglKnapsackCover::deriveAKnapsack(
 
 #ifdef PRINT_DEBUG
       printf("*** Doubleton Row is ");
-      for(i=0; i<2; i++){
+      for(int i=0; i<2; i++){
 	int iColumn = indices[i];
 	sum += elements[i]*xstar[iColumn];
 	printf("%d (coeff = %g, value = %g} ",indices[i],
@@ -1083,7 +1090,7 @@ CglKnapsackCover::deriveAKnapsack(
     if (krow.getElements()[i]> b){
       fixedBnd.insert(krow.getIndices()[i],complement[krow.getIndices()[i]]);
 #ifdef PRINT_DEBUG   
-      printf("Variable %i being fixed to %i due to row %i.\n",
+      printf("Variable %i being fixed to %i due to row %d.\n",
 	     krow.getIndices()[i],complement[krow.getIndices()[i]],rowIndex); 
 #endif
       fixed = 1;      
@@ -1150,7 +1157,11 @@ CglKnapsackCover::deriveAKnapsack(
 int 
 CglKnapsackCover::findLPMostViolatedMinCover(
       int nCols,
-      int /*row*/,
+      int
+#ifdef PRINT_DEBUG 
+      row
+#endif
+      ,
       CoinPackedVector & krow,
       double & b,
       double * xstar, 
@@ -1362,7 +1373,11 @@ Lp relax of most violated minimal cover: row %i has cover of size %i.\n",
 int 
 CglKnapsackCover::findExactMostViolatedMinCover(
         int nCols,
-        int /*row*/,
+	int
+#ifdef PRINT_DEBUG 
+	row
+#endif
+	,
         CoinPackedVector & krow,
         double b, 
         double *  xstar, 
@@ -1535,7 +1550,11 @@ CglKnapsackCover::findExactMostViolatedMinCover(
 //-------------------------------------------------------------------
 int
 CglKnapsackCover::findPseudoJohnAndEllisCover(
-					      int /*row*/,
+					      int
+#ifdef PRINT_DEBUG 
+					      row
+#endif
+      ,
      CoinPackedVector & krow,
      double & b,
      double * xstar, 
@@ -1782,7 +1801,11 @@ CglKnapsackCover::findPseudoJohnAndEllisCover(
 //-------------------------------------------------------------------
 int
 CglKnapsackCover::findJohnAndEllisCover(
-					int /*row*/,
+      int
+#ifdef PRINT_DEBUG 
+      row
+#endif
+      ,
      CoinPackedVector & krow,
      double & b,
      double * xstar, 
@@ -2028,7 +2051,11 @@ CglKnapsackCover::findJohnAndEllisCover(
 //-------------------------------------------------------------------
 int
 CglKnapsackCover::findGreedyCover(
-				  int /*row*/,
+      int
+#ifdef PRINT_DEBUG 
+      row
+#endif
+      ,
      CoinPackedVector & krow,
      double & b,
      double * xstar,
@@ -2854,84 +2881,7 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
 	   cutRhs, sum);
 #endif
     
-#ifdef GUBCOVER
-  if (numberCliques_) {
-    int n = cut.getNumElements();
-    const int * ind3;
-    const double * els3;
-    ind3 = cut.getIndices();
-    els3 = cut.getElements();
-    const CoinPackedMatrix * matrixByRow = solver_->getMatrixByRow();
-    const double * elementByRow = matrixByRow->getElements();
-    const int * column = matrixByRow->getIndices();
-    const CoinBigIndex * rowStart = matrixByRow->getVectorStarts();
-    const int * rowLength = matrixByRow->getVectorLengths();
-    int numberColumns = solver_->getNumCols();
-    double * els = elements_;
-    double * els2 = els+numberColumns;
-    for (i=0;i<n;i++) 
-      els[ind3[i]]=els3[i];
-    for (i=rowStart[whichRow_];i<rowStart[whichRow_]+rowLength[whichRow_];i++) {
-      int iColumn = column[i];
-      els2[iColumn]=elementByRow[i];
-    }
-#if CGL_DEBUG
-    bool found=false;
-#endif
-    for (i=0;i<n;i++) {
-      int iColumn = ind3[i];
-      // complement doesn't seem to work?
-      if (!complement_[iColumn]) {
-	if (oneFixStart_[iColumn]>=0) {
-	  for (int j=oneFixStart_[iColumn];j<zeroFixStart_[iColumn];j++) {
-	    int iClique = whichClique_[j];
-	    for (int k=cliqueStart_[iClique];k<cliqueStart_[iClique+1];k++) {
-	      int jColumn = sequenceInCliqueEntry(cliqueEntry_[k]);
-	      if (!els[jColumn]&&els2[jColumn]) {
-		assert (jColumn!=iColumn);
-		if (!complement_[jColumn]&&oneFixesInCliqueEntry(cliqueEntry_[k])) {
-		  //if (els2[iColumn]<0.0||els2[jColumn]<0.0)
-		    //printf("true els %g (c%d) and %g (c%d)\n",
-		    //   els2[iColumn],complement_[iColumn],
-		    //   els2[jColumn],complement_[jColumn]);
-		  if (fabs(els2[jColumn])>=fabs(els2[iColumn])) {
-#if CGL_DEBUG
-		    if (!found) {
-		      found=true;
-		      printf("Good cut can be improved");
-		      for (i=0;i<n;i++) 
-			printf("(%d,%g) ",ind3[i],els3[i]);
-		      printf("<= %g\n",b);
-		    }
-		    printf("can add! %d %d\n",iColumn,jColumn);
-#endif
-		    els[jColumn]=els[iColumn];
-		    cut.insert(jColumn,els[jColumn]);
-		    // recompute as may have changed
-		    ind3 = cut.getIndices();
-		  }
-		}
-	      }
-	    }
-	  }
-	}
-      }
-    }
-    // zero out
-    n = cut.getNumElements();
-    ind3 = cut.getIndices();
-    for (i=0;i<n;i++) 
-      els[ind3[i]]=0.0;
-    for (i=rowStart[whichRow_];i<rowStart[whichRow_]+rowLength[whichRow_];i++) {
-      int iColumn = column[i];
-      els2[iColumn]=0.0;
-    }
-    for (i=0;i<numberColumns;i++) {
-      assert (!els[i]);
-      assert (!els2[i]);
-    }
-  }
-#endif
+    gubifyCut(cut);
     // de-complement
     int k;
     const int s = cut.getNumElements();
@@ -3128,80 +3078,7 @@ CglKnapsackCover::seqLiftAndUncomplementAndAdd(
     printf("The cutRhs = %g, and the alpha_j*xstar_j sum is %g\n\n", cutRhs, sum);
 #endif
     
-#ifdef GUBCOVER
-  if (numberCliques_) {
-    int n = cut.getNumElements();
-    const int * ind3;
-    const double * els3;
-    ind3 = cut.getIndices();
-    els3 = cut.getElements();
-    const CoinPackedMatrix * matrixByRow = solver_->getMatrixByRow();
-    const double * elementByRow = matrixByRow->getElements();
-    const int * column = matrixByRow->getIndices();
-    const CoinBigIndex * rowStart = matrixByRow->getVectorStarts();
-    const int * rowLength = matrixByRow->getVectorLengths();
-    int numberColumns = solver_->getNumCols();
-    double * els = elements_;
-    double * els2 = els+numberColumns;
-    for (i=0;i<n;i++) 
-      els[ind3[i]]=els3[i];
-    for (i=rowStart[whichRow_];i<rowStart[whichRow_]+rowLength[whichRow_];i++) {
-      int iColumn = column[i];
-      els2[iColumn]=elementByRow[i];
-    }
-#if CGL_DEBUG
-    bool found=false;
-#endif
-    for (i=0;i<n;i++) {
-      int iColumn = ind3[i];
-      // complement doesn't seem to work?
-      if (!complement_[iColumn]) {
-	if (oneFixStart_[iColumn]>=0) {
-	  for (int j=oneFixStart_[iColumn];j<zeroFixStart_[iColumn];j++) {
-	    int iClique = whichClique_[j];
-	    for (int k=cliqueStart_[iClique];k<cliqueStart_[iClique+1];k++) {
-	      int jColumn = sequenceInCliqueEntry(cliqueEntry_[k]);
-	      if (!els[jColumn]&&els2[jColumn]) {
-		assert (jColumn!=iColumn);
-		if (!complement_[jColumn]&&oneFixesInCliqueEntry(cliqueEntry_[k])) {
-		  //if (els2[iColumn]<0.0||els2[jColumn]<0.0)
-		    //printf("true els %g (c%d) and %g (c%d)\n",
-		    //   els2[iColumn],complement_[iColumn],
-		    //   els2[jColumn],complement_[jColumn]);
-		  if (fabs(els2[jColumn])>=fabs(els2[iColumn])) {
-#if CGL_DEBUG
-		    if (!found) {
-		      found=true;
-		      printf("Good cut can be improved");
-		      for (i=0;i<n;i++) 
-			printf("(%d,%g) ",ind3[i],els3[i]);
-		      printf("<= %g\n",b);
-		    }
-		    printf("can add! %d %d\n",iColumn,jColumn);
-#endif
-		    els[jColumn]=els[iColumn];
-		    cut.insert(jColumn,els[jColumn]);
-		    // recompute as may have changed
-		    ind3 = cut.getIndices();
-		  }
-		}
-	      }
-	    }
-	  }
-	}
-      }
-    }
-    // zero out
-    n = cut.getNumElements();
-    ind3 = cut.getIndices();
-    for (i=0;i<n;i++) 
-      els[ind3[i]]=0.0;
-    for (i=rowStart[whichRow_];i<rowStart[whichRow_]+rowLength[whichRow_];i++) {
-      int iColumn = column[i];
-      els2[iColumn]=0.0;
-    }
-  }
-#endif
+    gubifyCut(cut);
     int k;
     const int s = cut.getNumElements();
     const int * indices = cut.getIndices();
@@ -3481,6 +3358,99 @@ CglKnapsackCover::liftCoverCut(
 #endif
   return goodCut;
 }
+// For testing gub stuff
+int 
+CglKnapsackCover::gubifyCut(CoinPackedVector & cut)
+{
+  int goodCut=0;
+#ifdef GUBCOVER
+  if (numberCliques_) {
+    int n = cut.getNumElements();
+    const int * ind3;
+    const double * els3;
+    ind3 = cut.getIndices();
+    els3 = cut.getElements();
+    const CoinPackedMatrix * matrixByRow = solver_->getMatrixByRow();
+    const double * elementByRow = matrixByRow->getElements();
+    const int * column = matrixByRow->getIndices();
+    const CoinBigIndex * rowStart = matrixByRow->getVectorStarts();
+    const int * rowLength = matrixByRow->getVectorLengths();
+    int numberColumns = solver_->getNumCols();
+    double * els = elements_;
+    double * els2 = els+numberColumns;
+    bool good = true;
+    for (int i=0;i<n;i++) {
+      int iColumn = ind3[i];
+      // complement doesn't seem to work?
+      if (!complement_[iColumn]) {
+	els[iColumn]=els3[i];
+      } else {
+	good=false;
+	break;
+      }
+    }
+    for (int i=rowStart[whichRow_];i<rowStart[whichRow_]+rowLength[whichRow_];i++) {
+      int iColumn = column[i];
+      els2[iColumn]=elementByRow[i];
+    }
+    if (good) {
+#if CGL_DEBUG
+      bool found=false;
+#endif
+      for (int i=0;i<n;i++) {
+	int iColumn = ind3[i];
+	if (oneFixStart_[iColumn]>=0) {
+	  for (int j=oneFixStart_[iColumn];j<zeroFixStart_[iColumn];j++) {
+	    int iClique = whichClique_[j];
+	    for (int k=cliqueStart_[iClique];k<cliqueStart_[iClique+1];k++) {
+	      int jColumn = sequenceInCliqueEntry(cliqueEntry_[k]);
+	      if (!els[jColumn]&&els2[jColumn]) {
+		assert (jColumn!=iColumn);
+		if (!complement_[jColumn]&&oneFixesInCliqueEntry(cliqueEntry_[k])) {
+		  //if (els2[iColumn]<0.0||els2[jColumn]<0.0)
+		  //printf("true els %g (c%d) and %g (c%d)\n",
+		  //   els2[iColumn],complement_[iColumn],
+		  //   els2[jColumn],complement_[jColumn]);
+		  if (fabs(els2[jColumn])>=fabs(els2[iColumn])) {
+#if CGL_DEBUG
+		    bool found=false;
+		    if (!found) {
+		      found=true;
+		      printf("Good cut can be improved");
+		      for (int i=0;i<n;i++) 
+			printf("(%d,%g) ",ind3[i],els3[i]);
+		      //printf("<= %g\n",b);
+		    }
+		    printf("can add! %d %d\n",iColumn,jColumn);
+#endif
+		    goodCut=1;
+#if 1
+		    els[jColumn]=els[iColumn];
+		    cut.insert(jColumn,els[jColumn]);
+		    // recompute as may have changed
+		    ind3 = cut.getIndices();
+#endif
+		  }
+		}
+	      }
+	    }
+	  }
+	}
+      }
+    }
+    // zero out
+    n = cut.getNumElements();
+    ind3 = cut.getIndices();
+    for (int i=0;i<n;i++) 
+      els[ind3[i]]=0.0;
+    for (int i=rowStart[whichRow_];i<rowStart[whichRow_]+rowLength[whichRow_];i++) {
+      int iColumn = column[i];
+      els2[iColumn]=0.0;
+    }
+  }
+#endif
+  return goodCut;
+}
 
 //-------------------------------------------------------------------
 // A goto-less implementation of the Horowitz-Sahni exact solution 
@@ -3669,12 +3639,12 @@ CglKnapsackCover::CglKnapsackCover (const CglKnapsackCover & source) :
   numberCliques_=source.numberCliques_;
   numberColumns_=source.numberColumns_;
   if (numberCliques_) {
-    cliqueType_ = new cliqueType [numberCliques_];
+    cliqueType_ = new CliqueType [numberCliques_];
     CoinMemcpyN(source.cliqueType_,numberCliques_,cliqueType_);
     cliqueStart_ = new int [numberCliques_+1];
     CoinMemcpyN(source.cliqueStart_,(numberCliques_+1),cliqueStart_);
     int n = cliqueStart_[numberCliques_];
-    cliqueEntry_ = new cliqueEntry [n];
+    cliqueEntry_ = new CliqueEntry [n];
     CoinMemcpyN(source.cliqueEntry_,n,cliqueEntry_);
     oneFixStart_ = new int [numberColumns_];
     CoinMemcpyN(source.oneFixStart_,numberColumns_,oneFixStart_);
@@ -3748,12 +3718,12 @@ CglKnapsackCover::operator=(const CglKnapsackCover& rhs)
       numberCliques_=rhs.numberCliques_;
       numberColumns_=rhs.numberColumns_;
       if (numberCliques_) {
-	cliqueType_ = new cliqueType [numberCliques_];
+	cliqueType_ = new CliqueType [numberCliques_];
 	CoinMemcpyN(rhs.cliqueType_,numberCliques_,cliqueType_);
 	cliqueStart_ = new int [numberCliques_+1];
 	CoinMemcpyN(rhs.cliqueStart_,(numberCliques_+1),cliqueStart_);
 	int n = cliqueStart_[numberCliques_];
-	cliqueEntry_ = new cliqueEntry [n];
+	cliqueEntry_ = new CliqueEntry [n];
 	CoinMemcpyN(rhs.cliqueEntry_,n,cliqueEntry_);
 	oneFixStart_ = new int [numberColumns_];
 	CoinMemcpyN(rhs.oneFixStart_,numberColumns_,oneFixStart_);
@@ -3983,9 +3953,9 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
     }
   }
   if (numberCliques_>0) {
-    cliqueType_ = new cliqueType [numberCliques_];
+    cliqueType_ = new CliqueType [numberCliques_];
     cliqueStart_ = new int [numberCliques_+1];
-    cliqueEntry_ = new cliqueEntry [numberEntries];
+    cliqueEntry_ = new CliqueEntry [numberEntries];
     oneFixStart_ = new int [numberColumns_];
     zeroFixStart_ = new int [numberColumns_];
     endFixStart_ = new int [numberColumns_];

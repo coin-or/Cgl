@@ -26,6 +26,11 @@
 #include "CglProbing.hpp"
 #include "CglDuplicateRow.hpp"
 #include "CglClique.hpp"
+//#define COIN_DEVELOP 1 
+#ifdef COIN_DEVELOP
+static int whichMps=0;
+char nameMps[50];
+#endif
 
 OsiSolverInterface *
 CglPreProcess::preProcess(OsiSolverInterface & model, 
@@ -2054,8 +2059,34 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   OsiSolverInterface * returnModel=NULL;
   int numberChanges;
   if ((tuning&128)!=0) {
-    // take out cliques
-    OsiSolverInterface * newSolver=cliqueIt(*startModel2,0.0001);
+    OsiSolverInterface * newSolver=NULL;
+    if ((tuning&2048)!=0) {
+      CglProbing generator1;
+      generator1.setUsingObjective(false);
+      generator1.setMaxPass(1);
+      generator1.setMaxPassRoot(1);
+      generator1.setMaxLook(100);
+      generator1.setRowCuts(3);
+      generator1.setMaxElements(300);
+      generator1.setMaxProbeRoot(startModel2->getNumCols());
+      CoinThreadRandom randomGenerator;
+      CglTreeProbingInfo info(startModel2);
+      info.level = 0;
+      info.formulation_rows = startModel2->getNumRows();
+      info.inTree = false;
+      info.options = !numberProhibited_ ? 0 : 2;
+      info.randomNumberGenerator=&randomGenerator;
+      info.pass=4;
+      generator1.setMode(8);
+      OsiCuts cs;
+      generator1.generateCutsAndModify(*startModel2,cs,&info);
+      OsiSolverInterface * temp = generator1.cliqueModel(startModel2,2);
+      newSolver=cliqueIt(*temp,0.0001);
+      delete temp;
+    } else {
+      // take out cliques
+      newSolver=cliqueIt(*startModel2,0.0001);
+    }
     if (newSolver) {
       if (startModel2 == modifiedModel_[0])
 	modifiedModel_[0]=newSolver;
@@ -3297,7 +3328,7 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
 #endif
 		    }
                     element[j]=newValue;
-		    handler_->message(CGL_ELEMENTS_CHANGED2,messages_)
+ 		    handler_->message(CGL_ELEMENTS_CHANGED2,messages_)
 		      <<iRow<<iColumn<<value<<newValue
 		      <<CoinMessageEol;
 #ifdef CGL_DEBUG
@@ -3365,6 +3396,13 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
     modelIn.resolve();
   }
   if (modelIn.isProvenOptimal()) {
+#if COIN_DEVELOP>1
+    whichMps++;
+    sprintf(nameMps,"start_%d",whichMps);
+    modelIn.writeMps(nameMps);
+    printf("Mps file %s saved in %s at line %d\n",
+	   nameMps,__FILE__,__LINE__);
+#endif
     OsiSolverInterface * modelM = &modelIn;
     // If some cuts add back rows
     if (cuts_.sizeRowCuts()) {
@@ -3457,7 +3495,8 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
 	model->setColSolution(solution);
 	delete [] solution;
       }
-      if (0) {
+#ifdef COIN_DEVELOP
+      {
 	int numberColumns = model->getNumCols();
 	int numberRows = model->getNumRows();
 	const double * lower = model->getColLower();
@@ -3495,16 +3534,27 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
 	  }
 	}
 	// check was feasible - if not adjust (cleaning may move)
+	bool feasible=true;
 	for (i=0;i<numberRows;i++) {
 	  if(rowActivity[i]<rowLower[i]) {
-	    assert (rowActivity[i]>rowLower[i]-1000.0*primalTolerance);
+	    if (rowActivity[i]<rowLower[i]-1000.0*primalTolerance) {
+	      feasible=false;
+	      printf("Bad row %d %g <= %g <= %g\n",
+		     i,rowLower[i],rowActivity[i],rowUpper[i]);
+	    }
 	    rowActivity[i]=rowLower[i];
 	  } else if(rowActivity[i]>rowUpper[i]) {
-	    assert (rowActivity[i]<rowUpper[i]+1000.0*primalTolerance);
+	    if (rowActivity[i]>rowUpper[i]+1000.0*primalTolerance) {
+	      feasible=false;
+	      printf("Bad row %d %g <= %g <= %g\n",
+		     i,rowLower[i],rowActivity[i],rowUpper[i]);
+	    }
 	    rowActivity[i]=rowUpper[i];
 	  }
 	}
+	assert (feasible);
       }
+#endif
       {
 	int numberFixed=0;
 	int numberColumns = model->getNumCols();
@@ -3524,11 +3574,29 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
       numberIterationsPost_ += model->getIterationCount();
       if (!model->isProvenOptimal()) {
 #ifdef COIN_DEVELOP
-	  model->writeMps("bad2");
+	  whichMps++;
+	  sprintf(nameMps,"bad2_%d",whichMps);
+	  model->writeMps(nameMps);
+	  printf("Mps file %s saved in %s at line %d\n",
+		 nameMps,__FILE__,__LINE__);
 	  printf("bad unwind in postprocess\n");
+	  OsiSolverInterface * temp = model->clone();
+	  temp->setDblParam(OsiDualObjectiveLimit,1.0e30);
+	  temp->setHintParam(OsiDoReducePrint,false,OsiHintTry);
+	  temp->initialSolve();
+	  if (temp->isProvenOptimal()) {
+	    printf("Was infeasible on objective limit\n");
+	  }
+	  delete temp;
 #endif
       } else {
-	//model->writeMps("good2");
+#if COIN_DEVELOP>1
+	whichMps++;
+	sprintf(nameMps,"good2_%d",whichMps);
+	  model->writeMps(nameMps);
+	  printf("Mps file %s saved in %s at line %d\n",
+		 nameMps,__FILE__,__LINE__);
+#endif
       }
       const int * originalColumns = presolve_[iPass]->originalColumns();
       const double * columnLower = modelM->getColLower(); 
@@ -3796,8 +3864,6 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
   delete clonedCopy;
   originalModel_->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
   originalModel_->setHintParam(OsiDoDualInInitial,false,OsiHintTry);
-  //printf("dumping ss.mps.gz in postprocess\n");
-  //originalModel_->writeMps("ss");
   {
     int numberFixed=0;
     int numberColumns = originalModel_->getNumCols();
@@ -3827,7 +3893,11 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
 				  fabs(objectiveValue))+1.0e-4;
   if (!originalModel_->isProvenOptimal()) {
 #ifdef COIN_DEVELOP
-    originalModel_->writeMps("bad3");
+    whichMps++;
+    sprintf(nameMps,"bad3_%d",whichMps);
+    originalModel_->writeMps(nameMps);
+    printf("Mps file %s saved in %s at line %d\n",
+		 nameMps,__FILE__,__LINE__);
     printf("bad end unwind in postprocess\n");
 #endif
     handler_->message(CGL_POST_INFEASIBLE,messages_)
@@ -3915,7 +3985,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
       break;
     }
   }
-#endif
+#endif 
   bool feasible=true;
   int firstGenerator=0;
   int lastGenerator=numberCutGenerators_;
@@ -3970,6 +4040,14 @@ CglPreProcess::modified(OsiSolverInterface * model,
         if (dupRow) {
           numberFromCglDuplicate = dupRow->numberOriginalRows();
           duplicate = dupRow->duplicate();
+	  if (cs.sizeRowCuts()) {
+	    // add to twoCuts (may be more, but ....)
+	    int numberRowCuts = cs.sizeRowCuts() ;
+	    for (int k = 0;k<numberRowCuts;k++) {
+	      OsiRowCut * thisCut = cs.rowCutPtr(k) ;
+	      twoCuts.insert(*thisCut);
+	    }
+	  }
         }
 	if (cliqueGen&&cs.sizeRowCuts()) {
 	  int n = cs.sizeRowCuts();
@@ -4064,7 +4142,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  //OsiRowCut & thisCut = cs.rowCut(i);
 	  //thisCut.print();
 	  //}
-	}
+	} 
       } else {
 #ifdef HEAVY_PROBING
         // special probing
@@ -4082,12 +4160,21 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	}
 	// out for now - think about cliques
         if(!generator1.snapshot(*newModel,NULL,false)) {
-          generator1.createCliques(*newModel,2,1000,true);
+          generator1.createCliques(*newModel,2,1000);
           // To get special stuff
           info.pass=4;
           CoinZeroN(whichCut,numberRows);
-          generator1.setMode(4);
+          generator1.setMode(16);
           generator1.generateCutsAndModify(*newModel,cs,&info);
+	  // can we extend cliques?
+	  // make fake model
+	  OsiSolverInterface * fakeModel = generator1.cliqueModel(newModel,1);
+	  // if above added rows then take out duplicates
+	  OsiSolverInterface * fakeModel2 = cliqueIt(*fakeModel,0.0);
+	  delete fakeModel;
+	  //delete fakeModel2;
+	  delete newModel;
+	  newModel=fakeModel2;
 #ifdef CLIQUE_ANALYSIS
 	  printf("special probing\n");
 	  info.analyze(*newModel);
@@ -4140,8 +4227,48 @@ CglPreProcess::modified(OsiSolverInterface * model,
           if (rowLower[iRow]>-1.0e20||rowUpper[iRow]<1.0e20) {
 #if 0
 	    if (thisCut) {
-	      printf("Cut on row %d\n",iRow);
-	      thisCut->print();
+	      double * allColumns = new double[numberColumns];
+	      int which[]={0,8,11,19,21,29,30,38,42,61,77,90,104,105,7,37};
+	      memset(allColumns,0,numberColumns*sizeof(double));
+	      for (int k=0;k<sizeof(which)/sizeof(int);k++) {
+		allColumns[which[k]]=1.0;
+	      }
+	      double lb = thisCut->lb();
+	      double ub = thisCut->ub();
+	      CoinPackedVector row = thisCut->row();
+	      printf("Cut on row %d - %g <= ",iRow,lb);
+	      bool feas1=true;
+	      double sum1=0.0;
+	      for (int k = 0; k < row.getNumElements(); ++k) {
+		CoinBigIndex j = row.getIndices()[k];
+		double value = row.getElements()[k];
+		printf("(%d,%g) ",j,value);
+		sum1 += value*allColumns[j];
+	      }
+	      if (sum1<lb-1.0e-3||sum1>ub+1.0e-3) {
+		printf(" ******** ");
+		feas1 = false;
+	      }
+	      printf("<= %g\n",ub);
+	      printf("Old row %g <= ",rowLower[iRow]);
+	      bool feas2=true;
+	      double sum2=0.0;
+              int start=rowStart[iRow];
+	      int end = start + rowLength[iRow];
+	      for (int k = start; k < end; ++k) {
+		CoinBigIndex j = column[k];
+		double value = rowElements[k];
+		printf("(%d,%g) ",j,value);
+		sum2 += value*allColumns[j];
+	      }
+	      if (sum2<rowLower[iRow]-1.0e-3||sum2>rowUpper[iRow]+1.0e-3) {
+		printf(" ******** ");
+		feas2 = false;
+	      }
+	      printf("<= %g\n",rowUpper[iRow]);
+	      if (feas1 && !feas2)
+		abort();
+	      delete [] allColumns;
 	    }
 #endif
             if (!thisCut) {
@@ -4523,7 +4650,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	// we could look harder for infeasibilities 
 	assert (info.numberVariables()==numberColumns);
 	int number01 = info.numberIntegers();
-	const cliqueEntry * entry = info.fixEntries();
+	const CliqueEntry * entry = info.fixEntries();
 	const int * toZero = info.toZero();
 	const int * toOne = info.toOne();
 	const int * which = info.integerVariable();
@@ -4802,7 +4929,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
     if (iPass<numberPasses-1) {
       if ((!numberFixed&&numberChangedThisPass<1000*(numberRows+numberColumns))||iPass==numberPasses-2) {
         // do special probing at end - but not if very last pass
-	if (iBigPass<numberSolvers_-1) {
+	if (iBigPass<numberSolvers_-1 && numberPasses > 4) {
 	  firstGenerator=-1;
 	  lastGenerator=0;
 	}
@@ -5888,6 +6015,7 @@ CglBK::CglBK(const OsiSolverInterface & model, const char * rowType,
 	int iRow = row[j];
 	if (rowType[iRow]>=0&&!dominated_[iRow]) {
 	  assert(element[j]==1.0);
+#if 0
 	  CoinBigIndex r=rowStart[iRow];
 	  assert (rowLength[iRow]==2);
 	  int kColumn = column[r];
@@ -5895,6 +6023,16 @@ CglBK::CglBK(const OsiSolverInterface & model, const char * rowType,
 	    kColumn=column[r+1];
 	  originalRow_[numberElements]=iRow;
 	  otherColumn_[numberElements++]=kColumn;
+#else
+	  for (CoinBigIndex r=rowStart[iRow];r<rowStart[iRow]+rowLength[iRow];r++) {
+	    int kColumn = column[r];
+	    if (kColumn!=iColumn) {
+	      originalRow_[numberElements]=iRow;
+	      otherColumn_[numberElements++]=kColumn;
+	    }
+	  }
+	    
+#endif
 	}
       }
       if (numberElements>start_[iColumn]) {
@@ -6175,6 +6313,10 @@ CglBK::newSolver(const OsiSolverInterface & model)
     //const int * rowLength = cliqueMatrix_->getVectorLengths();
     assert (cliqueMatrix_->getNumElements()==rowStart[nAdd]);
     newSolver->addRows(nAdd,rowStart,column,elementByRow,lower,upper);
+    for (int i=0;i<nAdd;i++) {
+      if (rowStart[i+1]-rowStart[i]>10)
+	printf("Clique %d has %d entries\n",i,rowStart[i+1]-rowStart[i]);
+    }
     delete [] lower;
     delete [] upper;
   }
