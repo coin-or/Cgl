@@ -3603,7 +3603,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	      doRowUpN=true;
 	      doRowUpP=true;
 	      rowUp2 = rowUp-minR[irow];
-	      if (rowUp2<-primalTolerance_) {
+	      if (rowUp2<-tolerance) {
 		notFeasible=true;
 		break;
 	      } else {
@@ -3625,7 +3625,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	      doRowLoN=true;
 	      doRowLoP=true;
 	      rowLo2 = rowLo-maxR[irow];
-	      if (rowLo2>primalTolerance_) {
+	      if (rowLo2>tolerance) {
 		notFeasible=true;
 		break;
 	      } else {
@@ -9029,7 +9029,7 @@ const double * CglProbing::relaxedRowUpper() const
 CglProbing::CglProbing ()
 :
 CglCutGenerator(),
-primalTolerance_(1.0e-07),
+primalTolerance_(1.1e-07),
 mode_(1),
 rowCuts_(1),
 maxPass_(3),
