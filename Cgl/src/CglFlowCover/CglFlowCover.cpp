@@ -1256,7 +1256,9 @@ CglFlowCover::determineOneRowType(const OsiSolverInterface& si,
 {
   if (rowLen == 0) 
     return CGLFLOW_ROW_UNDEFINED;
-    
+  if (sense == 'R')
+    return CGLFLOW_ROW_UNINTERSTED; // Could be fixed
+
   CglFlowRowType rowType = CGLFLOW_ROW_UNDEFINED;
   // Get integer types
   const char * columnType = si.getColType ();
