@@ -1183,7 +1183,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     cutLen = j;
     // Skip if no elements ? - bug somewhere
     if (cutLen == 0)
-        return;
+        return false;
         
     // Recheck the violation.
     violation = 0.0;
