@@ -3040,6 +3040,7 @@ void CglDuplicateRow::generateCuts8(const OsiSolverInterface & si, OsiCuts & cs,
       }
     }
   }
+  delete[] whichP;
   int * dups = new int [2*numberCliques];
   int * fixed = new int[CoinMax(numberIntegers,numberCliques)];
   memset(fixed,0,numberIntegers*sizeof(int));
