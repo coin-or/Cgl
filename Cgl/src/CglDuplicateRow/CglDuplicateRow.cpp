@@ -3048,6 +3048,7 @@ void CglDuplicateRow::generateCuts8(const OsiSolverInterface & si, OsiCuts & cs,
 	     cliqueStart, cliqueType, entry, fixed, printit ? 2 : 1);
   delete[] cliqueStart;
   delete[] entry;
+  delete[] cliqueType;
   int nFixed=0;
   CoinPackedVector ubs;
   for (int i=0;i<numberColumns;i++) {
