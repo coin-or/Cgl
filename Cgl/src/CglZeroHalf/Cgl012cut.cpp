@@ -7,7 +7,7 @@
 #include "CoinTime.hpp"
 #include "Cgl012cut.hpp"
 #include "CglZeroHalf.hpp"
-int MAX_CUTS = 1000;
+static int MAX_CUTS = 10000000;
 //#define PRINT_TABU
 //#define PRINT_CUTS
 //#define PRINT_TIME
