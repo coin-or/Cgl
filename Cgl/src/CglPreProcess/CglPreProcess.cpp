@@ -1169,6 +1169,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     tuning %= 10000;
     //minimumLength = tuning;
   }
+  if ((tuning&1)!=0)
+    options_ |= 16; // heavy stuff
   //bool heavyProbing = (tuning&1)!=0;
   int makeIntegers = (tuning&6)>>1;
   // See if we want to do initial presolve
@@ -4028,7 +4030,20 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	} else {
 	  info.options=64;
           probingCut->setMode(4);
+	  int saveMaxProbe=probingCut->getMaxProbeRoot();
+	  int saveMaxElements=probingCut->getMaxElementsRoot();
+	  int saveMaxLook=probingCut->getMaxLookRoot();
+	  if (!iBigPass&&!iPass&&(options_&16)!=0) {
+	    probingCut->setMaxProbeRoot(CoinMax(saveMaxProbe,1000));
+	    probingCut->setMaxElementsRoot(CoinMax(saveMaxElements,2000));
+	    probingCut->setMaxLookRoot(CoinMax(saveMaxLook,
+					       CoinMin(numberColumns,numberRows))/2);
+	    options_ &= ~16;
+	  }
 	  probingCut->generateCutsAndModify(*newModel,cs,&info);
+	  probingCut->setMaxProbeRoot(saveMaxProbe);
+	  probingCut->setMaxElementsRoot(saveMaxElements);
+	  probingCut->setMaxLookRoot(saveMaxLook);
 	}
 #if 1 //def CLIQUE_ANALYSIS
 	if (probingCut) {
