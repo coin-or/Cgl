@@ -1049,10 +1049,12 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
   delete [] count;
   return (totalNumberIntegers);
 }
-//#define CGL_WRITEMPS 
-#ifdef CGL_WRITEMPS
+//#define CGL_WRITEMPS 1 
+#if CGL_WRITEMPS
+#if CGL_WRITEMPS>1
 extern double * debugSolution;
 extern int debugNumberColumns;
+#endif
 static int mpsNumber=0;
 static void writeDebugMps(const OsiSolverInterface * solver,
 			  const char * where,
@@ -1063,6 +1065,7 @@ static void writeDebugMps(const OsiSolverInterface * solver,
   sprintf(name,"presolve%2.2d.mps",mpsNumber);
   printf("saving %s from %s\n",name,where);
   solver->writeMpsNative(name,NULL,NULL,0,1,0);
+#if CGL_WRITEMPS>1
   if (pinfo&&debugSolution) {
     int n = solver->getNumCols();
     if (n<debugNumberColumns) {
@@ -1099,6 +1102,7 @@ static void writeDebugMps(const OsiSolverInterface * solver,
 	   newSolver->getObjValue());
     delete newSolver;
   }
+#endif
 }
 #else
 #define writeDebugMps(x,y,z)
@@ -2461,7 +2465,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     int numberInSOS=0;
     for (iRow=0;iRow<numberRows;iRow++) {
       if (rowLower[iRow]==1.0&&rowUpper[iRow]==1.0) {
-        if ((rowLength[iRow]<5&&!justOnesWithObj)||(rowLength[iRow]<20&&allToGub))
+        if ((rowLength[iRow]<5&&!justOnesWithObj)/*||(rowLength[iRow]<20&&allToGub)*/)
           continue;
         bool goodRow=true;
 	int nObj=0;
@@ -3991,6 +3995,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
   bool feasible=true;
   int firstGenerator=0;
   int lastGenerator=numberCutGenerators_;
+  bool noStrengthening = false;
   for (int iPass=0;iPass<numberPasses;iPass++) {
     // Statistics
     int numberFixed=0;
@@ -4034,6 +4039,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  int saveMaxElements=probingCut->getMaxElementsRoot();
 	  int saveMaxLook=probingCut->getMaxLookRoot();
 	  if (!iBigPass&&!iPass&&(options_&16)!=0) {
+	    noStrengthening = true;
+	    numberPasses=1;
 	    probingCut->setMaxProbeRoot(CoinMax(saveMaxProbe,1000));
 	    probingCut->setMaxElementsRoot(CoinMax(saveMaxElements,2000));
 	    probingCut->setMaxLookRoot(CoinMax(saveMaxLook,
@@ -4562,6 +4569,11 @@ CglPreProcess::modified(OsiSolverInterface * model,
                 }
                 if (n1!=nFree) 
 		  good=false;
+		if (noStrengthening && n > n1) {
+		  good=false;
+		  //printf("Skipping row %d strengthened row has %d (%d)\n",
+		  //	 iRow,n,n1);
+		}
                 if (good) {
 #if 0
                   printf("Original row %.8d %g <= ",iRow,rowLower[iRow]);
@@ -4916,7 +4928,15 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  //dynamic_cast<CoinWarmStartBasis *>(newModel->getEmptyWarmStart()) ;
 	  //newModel->setWarmStart(slack);
 	  //delete slack ;
+	  bool saveHint;
+	  OsiHintStrength saveStrength;
+	  newModel->getHintParam(OsiDoPresolveInInitial,saveHint,saveStrength);
+	  // Do presolves
+	  if ((numberFixed+numberTwo)*4>numberColumns)
+	    newModel->setHintParam(OsiDoPresolveInInitial,true,OsiHintTry);
+	  newModel->setHintParam(OsiDoDualInInitial,true,OsiHintTry);
 	  newModel->initialSolve() ;
+	  newModel->setHintParam(OsiDoPresolveInInitial,saveHint,saveStrength);
 	} else {
 	  newModel->resolve() ;
 	}
