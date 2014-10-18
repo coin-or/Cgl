@@ -3162,7 +3162,7 @@ CglKnapsackCover::liftCoverCut(
   // Define lambda to be the "cover excess". 
   // By definition, lambda > 0. If this is not the case, something's screwy. Exit gracefully.
   double lambda = sum-b;
-  if (lambda < epsilon_) {
+  if (lambda < epsilon2_) {
 #ifdef PRINT_DEBUG
     printf("lambda < epsilon....aborting. \n");
     std::cout << "lambda " << lambda << " epsilon " << epsilon_ << std::endl;
