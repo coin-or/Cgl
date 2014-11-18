@@ -348,6 +348,7 @@ private:
       4 - don't do duplicate rows
       8 - don't do cliques
       16 - some heavy probing options
+      64 - very heavy probing
   */
   int options_;
   /** Row types (may be NULL) 

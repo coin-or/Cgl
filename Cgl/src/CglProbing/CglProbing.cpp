@@ -3260,7 +3260,13 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	}
       }
     }
-    int leftTotalStack=maxStack*CoinMax(200,maxProbe);
+    double leftTotalStackD=maxStack;
+    leftTotalStackD *= CoinMax(200,maxProbe);
+    int leftTotalStack;
+    if (leftTotalStackD<COIN_INT_MAX)
+      leftTotalStack=static_cast<int>(leftTotalStackD);
+    else
+      leftTotalStack=COIN_INT_MAX;
 #ifdef PROBING5
     if (!info->inTree&&!info->pass)
       leftTotalStack = 1234567890;

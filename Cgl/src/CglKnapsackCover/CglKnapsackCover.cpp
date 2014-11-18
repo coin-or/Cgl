@@ -111,6 +111,14 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
       vlbRow[k]=-10; // fixed
     }
   }
+  // tolerance for tight rows
+  double tightTolerance = 1.0e-5;
+  if (!info.inTree) {
+    if (!info.pass)
+      tightTolerance = 1.0e4;
+    else
+      tightTolerance = 1.0e-1;
+  }
 
   int rowIndex;
   int numberVub=0;
@@ -199,12 +207,12 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
     effectiveUpper[rowIndex] = upRhs;
     effectiveLower[rowIndex] = loRhs;
     bool possible = false;
-    if (fabs(sum-upRhs)<1.0e-5) {
+    if (fabs(sum-upRhs)<tightTolerance) {
       possible=true;
     } else {
       effectiveUpper[rowIndex]=COIN_DBL_MAX;
     }
-    if (fabs(sum-loRhs)<1.0e-5) {
+    if (fabs(sum-loRhs)<tightTolerance) {
       possible=true;
     } else {
       effectiveLower[rowIndex]=-COIN_DBL_MAX;
