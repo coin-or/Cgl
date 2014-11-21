@@ -4091,6 +4091,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
     double el[TRIPLE_COLS][2*TRIPLE_ROWS];
     double rhs[2*TRIPLE_ROWS],lower[TRIPLE_ROWS],upper[TRIPLE_ROWS];
     double modifiedRhs[2*TRIPLE_ROWS],scaleFactor[2*TRIPLE_ROWS];
+    memset(modifiedRhs,0,sizeof(modifiedRhs));
+    memset(scaleFactor,0,sizeof(scaleFactor));
     int rowNumber[2*TRIPLE_ROWS];
     double colLower[TRIPLE_COLS],colUpper[TRIPLE_COLS];
 #if CBC_USEFUL_PRINTING>0

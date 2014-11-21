@@ -1291,6 +1291,8 @@ CglGomory::generateCuts(
 		printf("\n");
 	      }
 #endif
+	      if (number>limit)  
+		continue;
 #if TRY7==1
 	      // Just scale
 	      double multiplier = 1.0/sqrt(largest*smallest);
