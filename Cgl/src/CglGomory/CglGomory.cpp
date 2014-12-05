@@ -883,6 +883,8 @@ CglGomory::generateCuts(
 	// adjustment to rhs
 	double rhs=0.0;
 	int number=0;
+	// number of terms (so includes modifications and cancellations)
+	int numberCoefficients=0;
 #ifdef CGL_DEBUG_GOMORY
 	    if (!gomory_try)
 	      printf("start for basic column %d\n",iColumn);
@@ -955,6 +957,7 @@ CglGomory::generateCuts(
 	      }
 	      if (fabs(coefficient)>= COIN_INDEXED_TINY_ELEMENT) {
 		cutElement[j] = coefficient;
+		numberCoefficients++;
 		cutIndex[number++]=j;
 		// If too many - break from loop
 		if (number>limit) 
@@ -1019,7 +1022,11 @@ CglGomory::generateCuts(
 		 k<rowStart[iRow]+rowLength[iRow];k++) {
 	      int jColumn=column[k];
 	      double value=rowElements[k];
+	      double oldValue=cutElement[jColumn];
 	      cutVector.quickAdd(jColumn,-coefficient*value);
+	      numberCoefficients++;
+	      if (!intVar[jColumn]&&!oldValue) 
+		numberNonInteger++;
 	    }
 	  }
 	}
@@ -1029,13 +1036,22 @@ CglGomory::generateCuts(
 	double sum=0.0;
 	rhs = - rhs;
 	int n = cutVector.getNumElements();
+	// If too many - just clear vector and skip
+	if (n>limit) {
+	  cutVector.clear();
+	  continue;
+	}
 #if MORE_GOMORY_CUTS==1||MORE_GOMORY_CUTS==3
 	double violation2=violation;
 #endif
 	number=0;
+	double sumCoefficients=0.0;
 	for (j=0;j<n;j++) {
 	  int jColumn =cutIndex[j];
 	  double value=-cutElement[jColumn];
+	  sumCoefficients += fabs(value);
+	  if (fabs(colsol[jColumn])>10.0)
+	    sumCoefficients += 2.0*fabs(value);
 	  cutElement[jColumn]=0.0;
 	  if (fabs(value)>1.0e-8) {
 	    sum+=value*colsol[jColumn];
@@ -1223,11 +1239,33 @@ CglGomory::generateCuts(
 	    CoinFillN(cutElement,number+1,0.0);
 	  } else {
 	    // relax rhs a tiny bit
+	    //#define CGL_GOMORY_OLD_RELAX
+#ifndef CGL_GOMORY_OLD_RELAX
+#if 0
+	    double rhs2=rhs;
+	    rhs2 += 1.0e-8;
+	    // relax if lots of elements for mixed gomory
+	    if (number>=20) {
+	      rhs2  += 1.0e-7*(static_cast<double> (number/20));
+	    }
+#endif
+	    rhs += 1.0e-7;
+	    if (numberCoefficients>=10||true) {
+	      rhs  += 1.0e-7*sumCoefficients+1.0e-8*numberCoefficients;
+	    }
+#if 0
+	    if (numberCoefficients>number*3)
+	    printf("old rhs %.18g new %.18g - n,nNon,nC,sumC %d,%d,%d %g\n",
+		   rhs2,rhs,number,numberNonInteger,numberCoefficients,
+		   sumCoefficients);
+#endif
+#else
 	    rhs += 1.0e-8;
 	    // relax if lots of elements for mixed gomory
 	    if (number>=20) {
 	      rhs  += 1.0e-7*(static_cast<double> (number/20));
 	    }
+#endif
 	  }
 	  // Take off tiny elements
 	  // for first pass reject
