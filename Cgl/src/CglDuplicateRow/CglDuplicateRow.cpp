@@ -202,7 +202,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
 	  for (int j=last;j<i;j++) {
 	    int jColumn = which[j];
 	    // skip if already fixed
-	    if (!colUpper2[jColumn])
+	    if (!colUpper2[jColumn]||columnLower[jColumn])
 	      continue;
 	    int nGeJ=0;
 	    int nEqualJ=0;
@@ -223,7 +223,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
 	    for (int k=j+1;k<i;k++) {
 	      int kColumn = which[k];
 	      // skip if already fixed
-	      if (!colUpper2[kColumn])
+	      if (!colUpper2[kColumn]||columnLower[kColumn])
 		continue;
 	      int nK=columnLength[kColumn];
 	      double objValueK = objective[kColumn]*direction;
