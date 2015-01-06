@@ -323,14 +323,18 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
 	    bool equality=false;
 	    int nC=0;
 	    int xxxx=0;
+#if CBC_USEFUL_PRINTING
 	    bool badCount=false;
+#endif
 	    for (CoinBigIndex j=start;j<end;j++) {
 	      int iRow = row[j];
 	      if (count[iRow]>1) {
 		singletonRow=false;
 		//printf("col %d row%d element %g - row count %d\n",iColumn,iRow,element[j],count[iRow]);
+#if CBC_USEFUL_PRINTING
 		if (count[iRow]==999999)
 		  badCount=true;
+#endif
 		if (element[j]==1.0) {
 		  if ((xxxx&1)==0)
 		    xxxx |= 1;
