@@ -5,13 +5,13 @@
 /***************************************************************************/
 
 /* Version number of project */
-#define CGL_VERSION "0.59"
+#define CGL_VERSION      "trunk"
 
 /* Major Version number of project */
-#define CGL_VERSION_MAJOR 0
+#define CGL_VERSION_MAJOR   9999
 
 /* Minor Version number of project */
-#define CGL_VERSION_MINOR 59
+#define CGL_VERSION_MINOR   9999
 
 /* Release Version number of project */
 #define CGL_VERSION_RELEASE 9999
