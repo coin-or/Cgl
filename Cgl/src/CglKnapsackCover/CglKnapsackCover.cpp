@@ -356,48 +356,54 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
           double thisCoefficient=thisElement[i];
           int replace = 0;
           if (vubRow[iColumn]>=0) {
-            iRow = vubRow[iColumn];
-            if (vub[iRow]==iColumn&&iRow!=rowIndex) {
-              vubCoefficient = vubValue[iRow];
+            int jRow = vubRow[iColumn];
+            if (vub[jRow]==iColumn&&jRow!=rowIndex) {
+              vubCoefficient = vubValue[jRow];
               // break it out - may be able to do better
               if (dSign*thisCoefficient>0.0) {
                 // we want valid lower bound on continuous
-                if (effectiveLower[iRow]>-1.0e20&&vubCoefficient>0.0) 
+                if (effectiveLower[jRow]>-1.0e20&&vubCoefficient>0.0) {
                   replace=-1;
-                else if (effectiveUpper[iRow]<1.0e20&&vubCoefficient<0.0) 
+		  iRow=jRow;
+                } else if (effectiveUpper[jRow]<1.0e20&&vubCoefficient<0.0) {
                   replace=1;
-                // q assert (replace!=-1);
-                // q assert (replace!=1);
+		  iRow=jRow;
+		}
               } else {
                 // we want valid upper bound on continuous
-                if (effectiveLower[iRow]>-1.0e20&&vubCoefficient<0.0) 
+                if (effectiveLower[jRow]>-1.0e20&&vubCoefficient<0.0) {
                   replace=-1;
-                else if (effectiveUpper[iRow]<1.0e20&&vubCoefficient>0.0) 
+		  iRow=jRow;
+                } else if (effectiveUpper[jRow]<1.0e20&&vubCoefficient>0.0) { 
                   replace=1;
-                //assert (replace!=-1);
+		  iRow=jRow;
+		}
               }
             }
           }
           if (vlbRow[iColumn]>=0) {
-            iRow = vlbRow[iColumn];
-            if (vub[iRow]==iColumn&&iRow!=rowIndex) {
-              vubCoefficient = vlbValue[iRow];
+            int jRow = vlbRow[iColumn];
+            if (vub[jRow]==iColumn&&jRow!=rowIndex) {
+              vubCoefficient = vlbValue[jRow];
               // break it out - may be able to do better
               if (dSign*thisCoefficient>0.0) {
                 // we want valid lower bound on continuous
-                if (effectiveLower[iRow]>-1.0e20&&vubCoefficient>0.0) 
+                if (effectiveLower[jRow]>-1.0e20&&vubCoefficient>0.0) {
                   replace=-1;
-                else if (effectiveUpper[iRow]<1.0e20&&vubCoefficient<0.0) 
+		  iRow=jRow;
+                } else if (effectiveUpper[jRow]<1.0e20&&vubCoefficient<0.0) { 
                   replace=1;
-                //assert (replace!=1);
+		  iRow=jRow;
+		}
               } else {
                 // we want valid upper bound on continuous
-                if (effectiveLower[iRow]>-1.0e20&&vubCoefficient<0.0) 
+                if (effectiveLower[jRow]>-1.0e20&&vubCoefficient<0.0) {
                   replace=-1;
-                else if (effectiveUpper[iRow]<1.0e20&&vubCoefficient>0.0) 
+		  iRow=jRow;
+                } else if (effectiveUpper[jRow]<1.0e20&&vubCoefficient>0.0) {
                   replace=1;
-                //q assert (replace!=-1);
-                //assert (replace!=1);
+		  iRow=jRow;
+		}
               }
             }
           }
