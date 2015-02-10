@@ -185,6 +185,9 @@ public:
   { return &cuts_;}
   /// Update prohibited and rowType
   void update(const OsiPresolve * pinfo,const OsiSolverInterface * solver);
+  /// Get options
+  inline int options() const
+  { return options_;}
   /// Set options
   inline void setOptions(int value)
   { options_=value;}

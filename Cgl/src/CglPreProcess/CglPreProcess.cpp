@@ -2017,6 +2017,14 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     // If trying for SOS don't allow some transfers
     if (makeEquality==2||makeEquality==3)
       presolveActions |= 8;
+    if ((options_&128)!=0)
+      presolveActions |= 4; // transfer costs
+    if ((options_&256)!=0)
+      presolveActions |= 32; // gub
+    if ((options_&512)!=0)
+      presolveActions |= 128; // do intersection in dups
+    if ((options_&1024)!=0)
+      presolveActions |= 64; // test redundant
     pinfo->setPresolveActions(presolveActions);
     if (prohibited_)
       assert (numberProhibited_==oldModel->getNumCols());
@@ -3621,6 +3629,13 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
       model->setHintParam(OsiDoDualInInitial, true, OsiHintTry);
       model->initialSolve();
       numberIterationsPost_ += model->getIterationCount();
+      if (!model->isProvenOptimal()) {
+	// try without basis
+	CoinWarmStartBasis * basis = dynamic_cast<CoinWarmStartBasis *> (model->getEmptyWarmStart());
+	model->setWarmStart(basis);
+	delete basis;
+	model->initialSolve();
+      }
       if (!model->isProvenOptimal()) {
 #if CBC_USEFUL_PRINTING>1
 	  whichMps++;
