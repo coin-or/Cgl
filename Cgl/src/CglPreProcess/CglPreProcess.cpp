@@ -3622,6 +3622,13 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
       model->initialSolve();
       numberIterationsPost_ += model->getIterationCount();
       if (!model->isProvenOptimal()) {
+	// try without basis
+	CoinWarmStartBasis * basis = dynamic_cast<CoinWarmStartBasis *> (model->getEmptyWarmStart());
+	model->setWarmStart(basis);
+	delete basis;
+	model->initialSolve();
+      }
+      if (!model->isProvenOptimal()) {
 #if CBC_USEFUL_PRINTING>1
 	  whichMps++;
 	  sprintf(nameMps,"bad2_%d",whichMps);
