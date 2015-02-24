@@ -4153,6 +4153,8 @@ CglPreProcess::modified(OsiSolverInterface * model,
       } else {
 	type=3;
       }
+      if (rowType_&&rowType_[iRow])
+	type=0; // not allowed if may be cut
       rowTypeAll[iRow]=type;
     }
     // clean model
