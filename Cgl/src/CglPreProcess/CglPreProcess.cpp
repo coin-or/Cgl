@@ -4247,11 +4247,13 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	for (CoinBigIndex j=columnStart[iColumn];
 	     j<columnStart[iColumn]+columnLength[iColumn];j++) {
 	  int iRow = row[j];
-	  if (!rowTypeAll[iRow])
-	    continue;
 	  markRow[iRow]=nMarkRow+1;
 	  backwardRow[iRow]=nMarkRow;
 	  bitMask[nMarkRow]=0;
+	  if (!rowTypeAll[iRow]) {
+	    // no good
+	    bitMask[nMarkRow] = 0xffffffff;
+	  }
 	  whichRow[nMarkRow++]=iRow;
 	}
 	for (CoinBigIndex j=columnStart[iColumn];
@@ -4262,10 +4264,12 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	     k<rowStart[iRow]+rowLength[iRow];k++) {
 	      int kColumn = column[k];
 	      if (!marked[kColumn]) {
+		int iMask = backwardRow[iRow];
 		if (nMarked==MAX_LOOK_COLS) {
 		  // say row no good
-		  int iMask = backwardRow[iRow];
 		  bitMask[iMask] = 0xffffffff;
+		  continue;
+		} else if (bitMask[iMask] == 0xffffffff) {
 		  continue;
 		}
 		backwardColumn[kColumn]=nMarked;
