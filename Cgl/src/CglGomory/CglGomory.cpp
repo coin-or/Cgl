@@ -345,7 +345,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 inline double above_integer(double value) {
   double value2=floor(value);
   double value3=floor(value+0.5);
-  if (fabs(value3-value)<1.0e-7*(fabs(value3)+1.0))
+  if (fabs(value3-value)<1.0e-9*(fabs(value3)+1.0))
     return 0.0;
   return value-value2;
 }
