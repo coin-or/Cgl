@@ -72,10 +72,10 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	  intVar[i] = 2; // other
 	} else {
 	  // negative bounds - I am not sure works
-	  intVar[i] = 0;
+	  intVar[i] = 3;
 	}
       } else {
-	intVar[i] = 0;
+	intVar[i] = 4;
       }
     } else {
       intVar[i]=0;
@@ -1239,7 +1239,7 @@ CglGomory::generateCuts(
 	    CoinFillN(cutElement,number+1,0.0);
 	  } else {
 	    // relax rhs a tiny bit
-	    //#define CGL_GOMORY_OLD_RELAX
+#define CGL_GOMORY_OLD_RELAX
 #ifndef CGL_GOMORY_OLD_RELAX
 #if 0
 	    double rhs2=rhs;
