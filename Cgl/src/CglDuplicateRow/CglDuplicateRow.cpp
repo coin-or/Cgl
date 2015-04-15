@@ -38,7 +38,7 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     return;
   }
   if ((mode_&3)!=0) {
-    generateCuts12(si,cs,info);
+    // bug generateCuts12(si,cs,info);
   } else if ((mode_&4)!=0) {
     generateCuts4(si,cs,info);
   } else {
