@@ -38,7 +38,7 @@ void CglDuplicateRow::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     return;
   }
   if ((mode_&3)!=0) {
-    generateCuts12(si,cs,info);
+    // bug generateCuts12(si,cs,info);
   } else if ((mode_&4)!=0) {
     generateCuts4(si,cs,info);
   } else {
@@ -74,7 +74,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
   int * effectiveRhs = CoinCopyOfArray(rhs_,numberRows);
   int * effectiveLower = CoinCopyOfArray(lower_,numberRows);
   double * effectiveRhs2 = new double [numberRows];
-  /* For L or G rows - compute effective lower we have to raech */
+  /* For L or G rows - compute effective lower we have to reach */
   // mark bad rows - also used for domination
   for (i=0;i<numberRows;i++) {
     int duplicate=-1;
@@ -516,11 +516,16 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
     }
   }
   // Look at <= rows
+  double maxLook=100*numberRows;
+  double nLook=maxLook;
   for (i=0;i<numberRows;i++) {
     // initially just one
     if (effectiveRhs[i]==1&&duplicate_[i]==-1) {
       int nn=0;
       int j,k;
+      nLook -= numberRows-i;
+      if (nLook<0)
+	break;
       for (j=rowStart[i];j<rowStart[i]+rowLength[i];j++) {
 	int iColumn = column[j];
 	if (columnLower[iColumn]!=colUpper2[iColumn]) {
@@ -557,6 +562,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
                        k,i,i);
               // treat i as duplicate
               duplicate_[i]=k;
+	      nLook=maxLook; // reset
               // zero out check so we can see what is extra
               for ( j=rowStart[k];j<rowStart[k]+rowLength[k];j++) {
                 int iColumn = column[j];
@@ -585,6 +591,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
                 printf("row %d identical to row %d\n",
                        k,i);
               duplicate_[k]=i;
+	      nLook=maxLook; // reset
 	      checked=true;
             } else if (nn2>=nn&&effectiveLower[i]==rhs_[i]&&effectiveLower[k]==rhs_[k]) {
               abort();
@@ -595,6 +602,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
                      k,i,k);
             // treat k as duplicate
             duplicate_[k]=i;
+	    nLook=maxLook; // reset
             // set check for k
             for ( j=rowStart[k];j<rowStart[k]+rowLength[k];j++) {
               int iColumn = column[j];
@@ -638,6 +646,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
                          k,i,k);
                 // treat k as duplicate
                 duplicate_[k]=i;
+		nLook=maxLook; // reset
               }
             } else if (nnsame==nn) {
               // i redundant ?
@@ -647,6 +656,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
                          i,k,i);
                 // treat i as duplicate
                 duplicate_[i]=k;
+		nLook=maxLook; // reset
               }
             }
           }
@@ -2441,7 +2451,7 @@ static int outDupsEtc(int numberIntegers, int numberCliques, int * statusClique,
   }
 #endif
   if (printit)
-    printf("%d duplicates\n",nDup);
+    printf("%d duplicates\n",nDup); 
   // For column version
   int numberElements=cliqueStart[numberCliques];
   int * start = new int [numberIntegers];
@@ -2861,7 +2871,7 @@ static int outDupsEtc(int numberIntegers, int numberCliques, int * statusClique,
 	    //statusClique[iClique]=-2;
 	    nOut--;
 	    // can fix all in iClique not in kClique
-	    printf("ZZ clique %d E, %d S\n",kClique,iClique);
+	    //printf("ZZ clique %d E, %d S\n",kClique,iClique);
 	    int offset = cliqueStart[iClique]-position[kClique];
 	    int j;
 	    for (j=cliqueStart[kClique];j<cliqueStart[kClique+1];j++) {
@@ -2869,7 +2879,7 @@ static int outDupsEtc(int numberIntegers, int numberCliques, int * statusClique,
 	      int iColumn = entry[j+offset];
 	      while (iColumn<kColumn) {
 		if (!fixed[iColumn]) {
-		  printf("ZZ fixing %d to zero\n",iColumn);
+		  //printf("ZZ fixing %d to zero\n",iColumn);
 		  fixed[iColumn]=-1;
 		} else {
 		  assert (fixed[iColumn]==-1);
@@ -3045,7 +3055,7 @@ void CglDuplicateRow::generateCuts8(const OsiSolverInterface & si, OsiCuts & cs,
   int * fixed = new int[CoinMax(numberIntegers,numberCliques)];
   memset(fixed,0,numberIntegers*sizeof(int));
   outDupsEtc(numberIntegers, numberCliques, dups,
-	     cliqueStart, cliqueType, entry, fixed, printit ? 2 : 1);
+	     cliqueStart, cliqueType, entry, fixed, printit ? 2 : 0);
   delete[] cliqueStart;
   delete[] entry;
   delete[] cliqueType;
