@@ -940,7 +940,7 @@ CglGomory::generateCuts(
 		} 
 	      } else {
 		// continuous
-		numberNonInteger++;
+		// numberNonInteger++;
 		if (value > 0.0) {
 		  coefficient = value;
 		} else {
@@ -1001,7 +1001,7 @@ CglGomory::generateCuts(
 		coefficient = ratio * (1.0-coefficient);
 	      } 
 	    } else {
-	      numberNonInteger++;
+	      // numberNonInteger++;
 	      // continuous
 	      if (value > 0.0) {
 		coefficient = value;
@@ -1025,8 +1025,8 @@ CglGomory::generateCuts(
 	      double oldValue=cutElement[jColumn];
 	      cutVector.quickAdd(jColumn,-coefficient*value);
 	      numberCoefficients++;
-	      if (!intVar[jColumn]&&!oldValue) 
-		numberNonInteger++;
+	      // if (!intVar[jColumn]&&!oldValue) 
+	      // numberNonInteger++;
 	    }
 	  }
 	}
@@ -1045,6 +1045,7 @@ CglGomory::generateCuts(
 	double violation2=violation;
 #endif
 	number=0;
+	numberNonInteger=0;
 	double sumCoefficients=0.0;
 	for (j=0;j<n;j++) {
 	  int jColumn =cutIndex[j];
@@ -1057,6 +1058,8 @@ CglGomory::generateCuts(
 	    sum+=value*colsol[jColumn];
 	    packed[number]=value;
 	    cutIndex[number++]=jColumn;
+	    if (!intVar[jColumn])
+	      numberNonInteger++;
           } else {
 #define LARGE_BOUND 1.0e20
             // small - adjust rhs if rhs reasonable
@@ -1077,6 +1080,8 @@ CglGomory::generateCuts(
               sum+=value*colsol[jColumn];
               packed[number]=value;
               cutIndex[number++]=jColumn;
+	      if (!intVar[jColumn])
+		numberNonInteger++;
             } 
           }
 	}
@@ -1120,6 +1125,7 @@ CglGomory::generateCuts(
 	  }
 #endif
 #endif
+	  bool cleanedCut=numberNonInteger>0;
 	  if (!numberNonInteger&&number) {
 #ifdef CGL_DEBUG
 	    assert (sizeof(Rational)==sizeof(double));
@@ -1155,6 +1161,7 @@ CglGomory::generateCuts(
 	    }
 	    if (lcm>0&&numberNonSmall) {
 	      double multiplier = lcm;
+	      cleanedCut=true;
 	      int nOverflow = 0; 
 	      for (j=0; j<number+1;j++) {
 		double value = fabs(packed[j]);
@@ -1239,7 +1246,7 @@ CglGomory::generateCuts(
 	    CoinFillN(cutElement,number+1,0.0);
 	  } else {
 	    // relax rhs a tiny bit
-#define CGL_GOMORY_OLD_RELAX
+	    //#define CGL_GOMORY_OLD_RELAX
 #ifndef CGL_GOMORY_OLD_RELAX
 #if 0
 	    double rhs2=rhs;
@@ -1282,6 +1289,8 @@ CglGomory::generateCuts(
 	      if (value<CGL_GOMORY_TINY_ELEMENT) {
 		int iColumn = cutIndex[i];
 		if (colUpper[iColumn]-colLower[iColumn]<LARGE_BOUND) {
+		  if (intVar[iColumn])
+		    numberNonInteger--;
 		  // weaken cut
 		  if (packed[i]>0.0) 
 		    rhs -= value*colLower[iColumn];
@@ -1304,10 +1313,13 @@ CglGomory::generateCuts(
 		} else {
 		  // fixed so subtract out
 		  rhs -= packed[i]*colLower[iColumn];
+		  if (intVar[iColumn])
+		    numberNonInteger--;
 		}
 	      }
 	    }
-	    if (largest>1.0e10*smallest||(number>20&&smallest<number*1.0e-6)) {
+	    if (largest>1.0e10*smallest||(number>20&&smallest<number*1.0e-6)||
+		numberNonInteger<-10) {
 	      number=limit+1; //reject
 	      numberNonInteger=1;
 	    } else if (largest>1.0e9*smallest) {
@@ -1409,10 +1421,38 @@ CglGomory::generateCuts(
 #else
 	    {
 #endif
+	      // tidy
+	      if (!cleanedCut) {
+		double range=0.0;
+		for (int k=0;k<number;k++) {
+		  int iColumn=cutIndex[k];
+		  double thisRange=CoinMin(colUpper[iColumn]-colLower[iColumn],1000.0);
+		  range += thisRange;
+		}
+		// see if close to integer
+		bool close=fabs(bounds[1]-floor(bounds[1]+0.5))*range<1.0e-6;
+		if (close) {
+		  for (int k=0;k<number;k++) {
+		    if(fabs(packed[k]-floor(packed[k]+0.5))*range>1.0e-6) {
+		      close=false;
+		      break;
+		    }
+		  }
+		  if (close) {
+		    //printf("yy %.18g >= ",bounds[1]);
+		    bounds[1]=floor(bounds[1]+0.5);
+		    for (int k=0;k<number;k++) {
+		      //printf("(%d,%.18g) ",cutIndex[k],packed[k]);
+		      packed[k]=floor(packed[k]+0.5);
+		    }
+		    //printf("\n");
+		  }
+		}
+	      }
 	      OsiRowCut rc;
 	      rc.setRow(number,cutIndex,packed,false);
 	      rc.setLb(bounds[0]);
-	      rc.setUb(bounds[1]);   
+	      rc.setUb(bounds[1]);
 #ifdef CGL_DEBUG
 	      if (debugger) {
 		assert(!debugger->invalidCut(rc));
