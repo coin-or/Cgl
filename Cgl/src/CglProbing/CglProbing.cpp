@@ -1866,7 +1866,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	if (info->strengthenRow&&!info->pass&&(rowLower[i]<-1.0e20||rowUpper[i]>1.0e20)) {
 	  int nPlus=0;
 	  int nMinus=0;
-	  for (CoinBigIndex j=rowStart[i];j<rowStart[i+1];j++) {
+	  for (CoinBigIndex j=rowStart[i];j<rowStart[i]+rowLength[i];j++) {
 	    int jColumn=column[j];
 	    if (intVar[jColumn]&&colLower[jColumn]==0.0&&colUpper[jColumn]==1.0) {
 	      double value=elements[j];
@@ -1884,7 +1884,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	  double effectiveness=0.0;
 	  if (nPlus==1&&rowUpper[i]>0.0&&rowUpper[i]<1.0e10) {
 	    // can make element smaller
-	    for (CoinBigIndex j=rowStart[i];j<rowStart[i+1];j++) {
+	    for (CoinBigIndex j=rowStart[i];j<rowStart[i]+rowLength[i];j++) {
 	      double value=elements[j];
 	      if (value>0.0) {
 		elements[j] -= rowUpper[i];
@@ -1896,7 +1896,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	    rowUpper[i]=0.0;
 	  } else if (nMinus==1&&rowLower[i]<0.0&&rowLower[i]>-1.0e10) {
 	    // can make element smaller in magnitude
-	    for (CoinBigIndex j=rowStart[i];j<rowStart[i+1];j++) {
+	    for (CoinBigIndex j=rowStart[i];j<rowStart[i]+rowLength[i];j++) {
 	      double value=elements[j];
 	      if (value<0.0) {
 		elements[j] -= rowLower[i];
