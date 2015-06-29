@@ -90,7 +90,11 @@ void
 CglClique::selectRowCliques(const OsiSolverInterface& si,int numOriginalRows)
 {
    const int numrows = si.getNumRows();
+#ifndef INTEL_COMPILER
    std::vector<int> clique(numrows, 1);
+#else
+   std::vector<int> clique(numrows);
+#endif
 
    int i, j, k;
    

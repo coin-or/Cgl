@@ -350,7 +350,11 @@ CglLandPSimplex::computeWeights(CglLandP::LHSnorm norm, CglLandP::Normalization 
     norm_weights_.resize(ncols_orig_ + nrows_orig_, 0.);
 
     double * rows_weights = &norm_weights_[ncols_orig_];
+#ifndef INTEL_COMPILER
     std::vector<int> nnz(nrows_orig_,0);
+#else
+    std::vector<int> nnz(nrows_orig_);
+#endif
     const CoinPackedMatrix * m = si_->getMatrixByCol();
     const double * val = m->getElements();
     const int * ind = m->getIndices();
