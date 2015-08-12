@@ -940,7 +940,7 @@ CglGomory::generateCuts(
 		} 
 	      } else {
 		// continuous
-		// numberNonInteger++;
+		numberNonInteger++;
 		if (value > 0.0) {
 		  coefficient = value;
 		} else {
@@ -1001,7 +1001,7 @@ CglGomory::generateCuts(
 		coefficient = ratio * (1.0-coefficient);
 	      } 
 	    } else {
-	      // numberNonInteger++;
+	      numberNonInteger++;
 	      // continuous
 	      if (value > 0.0) {
 		coefficient = value;
@@ -1025,8 +1025,8 @@ CglGomory::generateCuts(
 	      double oldValue=cutElement[jColumn];
 	      cutVector.quickAdd(jColumn,-coefficient*value);
 	      numberCoefficients++;
-	      // if (!intVar[jColumn]&&!oldValue) 
-	      // numberNonInteger++;
+	      if (!intVar[jColumn]&&!oldValue) 
+		numberNonInteger++;
 	    }
 	  }
 	}
@@ -1401,6 +1401,10 @@ CglGomory::generateCuts(
 	    bounds[1]=rhs;
 	    if (number>50&&numberNonInteger)
 	      bounds[1] = rhs+tolerance6+1.0e-8*fabs(rhs); // weaken
+#if GOMORY_RELAX_NUMBER
+	    else if (number>GOMORY_RELAX_NUMBER&&numberNonInteger>1)
+	      bounds[1] = rhs+tolerance6+1.0e-8*fabs(rhs); // weaken
+#endif
 	    // if close to integer - round up
 	    double nearest=floor(bounds[1]+0.5);
 	    if (bounds[1]<nearest&&bounds[1]>nearest-1.0e-4)
@@ -1439,13 +1443,26 @@ CglGomory::generateCuts(
 		    }
 		  }
 		  if (close) {
-		    //printf("yy %.18g >= ",bounds[1]);
+#ifdef PRINT_MORE
+		    bool printIt=false;
+		    for (int k=0;k<number;k++) {
+		      if(fabs(packed[k]-floor(packed[k]+0.5))>1.0e-12) {
+		        printIt=true;
+		        break;
+		      }
+		    }
+		    if (printIt) {
+		      printf("yy %.18g >= ",bounds[1]);
+  		      for (int k=0;k<number;k++) {
+		        printf("(%d,%.18g) ",cutIndex[k],packed[k]);
+		      }
+		      printf("\n");
+		    }
+#endif
 		    bounds[1]=floor(bounds[1]+0.5);
 		    for (int k=0;k<number;k++) {
-		      //printf("(%d,%.18g) ",cutIndex[k],packed[k]);
 		      packed[k]=floor(packed[k]+0.5);
 		    }
-		    //printf("\n");
 		  }
 		}
 	      }
