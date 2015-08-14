@@ -93,11 +93,11 @@ public:
     }
     /** @} */
 
-    const std::string& failureString(RejectionsReasons code) const
+    const char* failureString(RejectionsReasons code) const
     {
         return rejections_[static_cast<int> (code)];
     }
-    const std::string& failureString(int code) const
+    const char* failureString(int code) const
     {
         return rejections_[ code];
     }
@@ -110,7 +110,6 @@ public:
         return numRejected_[ code];
     }
 private:
-    static void fillRejectionReasons();
     /** max percentage of given formulation fillIn should be accepted for cut fillin.*/
     double maxFillIn_;
     /** max ratio between smallest and biggest coefficient */
@@ -122,7 +121,7 @@ private:
     /** Scale of right-hand-side.*/
     double rhsScale_;
     /** Strings explaining reason for rejections */
-    static std::vector<std::string> rejections_;
+    static const char* rejections_[DummyEnd];
     /** Number of cut rejected for each of the reasons.*/
     std::vector<int> numRejected_;
 };
