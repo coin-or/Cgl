@@ -23,8 +23,16 @@
 
 namespace LAP
 {
-std::vector<std::string> Validator::rejections_;
 
+const char* Validator::rejections_[DummyEnd] =
+{
+   "Cut was accepted.",
+   "Violation of the cut is too small.",
+   "There is a small coefficient we can not get rid off.",
+   "Dynamic of coefficient is too important.",
+   "Cut is too dense.",
+   "Cleaned cut is empty."
+};
 
 /** Clean an OsiCut
 \return 1 if min violation is too small
@@ -304,24 +312,6 @@ Validator::Validator(double maxFillIn,
         scale_(scale),
         rhsScale_(rhsScale),
         numRejected_(DummyEnd,0)
-{
-    fillRejectionReasons();
-}
-
-
-void
-Validator::fillRejectionReasons()
-{
-    if (rejections_.size() == 0)
-    {
-        rejections_.resize(DummyEnd) ;
-        rejections_[NoneAccepted] = "Cut was accepted";
-        rejections_[SmallViolation] = "Violation of the cut is too small ";
-        rejections_[SmallCoefficient] = "There is a small coefficient we can not get rid off.";
-        rejections_[BigDynamic] = "Dynamic of coefficinet is too important. ";
-        rejections_[DenseCut] = "Cut is too dense.";
-        rejections_[EmptyCut] = "Cleaned cut is empty";
-    }
-}
+{ }
 
 } /* Ends namespace LAP.*/
