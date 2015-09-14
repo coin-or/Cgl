@@ -62,7 +62,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 #ifndef CLP_INVESTIGATE2
   if ((info.options&16)!=0)
 #endif
-    printf("%d %d %d\n",info.inTree,info.options,info.pass);
+     //printf("%d %d %d\n",info.inTree,info.options,info.pass);
   for (i=0;i<numberColumns;i++) {
     if (si.isInteger(i)) {
       if (colUpper[i]>colLower[i]+0.5) {
