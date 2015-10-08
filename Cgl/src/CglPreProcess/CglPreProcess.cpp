@@ -23,6 +23,9 @@
 #include "CoinBuild.hpp"
 #include "CoinHelperFunctions.hpp"
 #include "CoinWarmStartBasis.hpp"
+#ifdef COIN_HAS_CLP
+#include "OsiClpSolverInterface.hpp"
+#endif
 
 #include "CglProbing.hpp"
 #include "CglDuplicateRow.hpp"
@@ -2013,8 +2016,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     OsiPresolve * pinfo = new OsiPresolve();
     int presolveActions=0;
     // Allow dual stuff on integers
-    // Allow stuff which may not unroll cleanly
-    presolveActions=1+16;
+    // Allow stuff which may not unroll cleanly - unless told not to
+    if ((tuning&4096)==0)
+      presolveActions=1+16;
+    else
+      presolveActions=16; // actually just switch off duplicate columns for ints
     if ((tuning&32)!=0)
       presolveActions |= 32;
     // Do not allow all +1 to be tampered with
@@ -2346,8 +2352,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       OsiPresolve * pinfo = new OsiPresolve();
       int presolveActions=0;
       // Allow dual stuff on integers
-      // Allow stuff which may not unroll cleanly
-      presolveActions=1+16;
+      // Allow stuff which may not unroll cleanly - unless told not to
+      if ((tuning&4096)==0)
+	presolveActions=1+16;
+      else
+	presolveActions=16; // actually just switch off duplicate columns for ints
       // Do not allow all +1 to be tampered with
       //if (allPlusOnes)
       //presolveActions |= 2;
@@ -3747,6 +3756,38 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
       if (numberChanged)
 	model->setWarmStart(presolvedBasis);
       delete presolvedBasis;
+#if 0
+      // may come in useful
+      if (!presolve_[iPass]->model()->isProvenOptimal()) {
+	OsiSolverInterface * solver = presolve_[iPass]->model();
+	bool doDual,doPresolve,doPrint;
+	OsiHintStrength hintDual,hintPresolve,hintPrint;
+	solver->getHintParam(OsiDoDualInResolve,doDual,hintDual);
+	solver->getHintParam(OsiDoPresolveInResolve,doPresolve,hintPresolve);
+	solver->getHintParam(OsiDoReducePrint,doPrint,hintPrint);
+	solver->setHintParam(OsiDoDualInResolve,false,OsiHintTry);
+	solver->setHintParam(OsiDoPresolveInResolve,false,OsiHintTry);
+	solver->setHintParam(OsiDoReducePrint,false,OsiHintTry);
+#ifdef COIN_HAS_CLP
+	int specialOptions;
+	OsiClpSolverInterface * clpSolver
+	  = dynamic_cast<OsiClpSolverInterface *> (solver);
+	if (clpSolver) {
+	  specialOptions = clpSolver->specialOptions();
+	  clpSolver->setSpecialOptions(specialOptions|2048);
+        }
+#endif
+	solver->resolve();
+	solver->setHintParam(OsiDoDualInResolve,doDual,hintDual);
+	solver->setHintParam(OsiDoPresolveInResolve,doPresolve,hintPresolve);
+	solver->setHintParam(OsiDoReducePrint,doPrint,hintPrint);
+#ifdef COIN_HAS_CLP
+	if (clpSolver) {
+	  clpSolver->setSpecialOptions(specialOptions);
+        }
+#endif
+      }
+#endif
       presolve_[iPass]->postsolve(true);
       // and fix values
       for (iColumn=0;iColumn<numberColumns;iColumn++) {
