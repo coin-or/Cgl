@@ -1380,8 +1380,8 @@ CglGomory::generateCuts(
 		      //       iColumn,rhs,value,ratio,packed[i]);
 		      //assert (fabs(value-packed[i])<1.0e-4);
 		    } else {
-		      printf("column %d rhs %g element %g ratio %.18g - bounds %g,%g\n",
-			     iColumn,rhs,value,ratio,colLower[iColumn],colUpper[iColumn]);
+		      //printf("column %d rhs %g element %g ratio %.18g - bounds %g,%g\n",
+			   //  iColumn,rhs,value,ratio,colLower[iColumn],colUpper[iColumn]);
 		    }
 		  }
 		}
