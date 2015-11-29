@@ -3324,7 +3324,14 @@ CglKnapsackCover::liftCoverCut(
       // complement doesn't seem to work?
       if (!complement_[iColumn]) {
 	if (oneFixStart_[iColumn]>=0) {
+	  /* I (JJF) don't think this is valid for more than one clique
+	     Best would be to choose largest set of additions - but that means code
+	     and I don't really understand existing code
+	   */
+	  bool skipClique=false;
 	  for (int j=oneFixStart_[iColumn];j<zeroFixStart_[iColumn];j++) {
+	    if (skipClique)
+	      break;
 	    int iClique = whichClique_[j];
 	    for (int k=cliqueStart_[iClique];k<cliqueStart_[iClique+1];k++) {
 	      int jColumn = sequenceInCliqueEntry(cliqueEntry_[k]);
@@ -3336,6 +3343,7 @@ CglKnapsackCover::liftCoverCut(
 		    //   els2[iColumn],complement_[iColumn],
 		    //   els2[jColumn],complement_[jColumn]);
 		  if (fabs(els2[jColumn])>=fabs(els2[iColumn])) {
+		    skipClique=true;
 #if CGL_DEBUG
 		    if (!found) {
 		      found=true;
@@ -3422,7 +3430,14 @@ CglKnapsackCover::gubifyCut(CoinPackedVector & cut)
       for (int i=0;i<n;i++) {
 	int iColumn = ind3[i];
 	if (oneFixStart_[iColumn]>=0) {
+	  /* I (JJF) don't think this is valid for more than one clique
+	     Best would be to choose largest set of additions - but that means code
+	     and I don't really understand existing code
+	   */
+	  bool skipClique=false;
 	  for (int j=oneFixStart_[iColumn];j<zeroFixStart_[iColumn];j++) {
+	    if (skipClique)
+	      break;
 	    int iClique = whichClique_[j];
 	    for (int k=cliqueStart_[iClique];k<cliqueStart_[iClique+1];k++) {
 	      int jColumn = sequenceInCliqueEntry(cliqueEntry_[k]);
@@ -3434,8 +3449,8 @@ CglKnapsackCover::gubifyCut(CoinPackedVector & cut)
 		  //   els2[iColumn],complement_[iColumn],
 		  //   els2[jColumn],complement_[jColumn]);
 		  if (fabs(els2[jColumn])>=fabs(els2[iColumn])) {
+		    skipClique=true;
 #if CGL_DEBUG
-		    bool found=false;
 		    if (!found) {
 		      found=true;
 		      printf("Good cut can be improved");
