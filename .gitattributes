@@ -1,4 +1,5 @@
 * text=auto !eol
+/.travis.yml -text
 /AUTHORS -text
 Cgl/LICENSE -text
 Cgl/MSVisualStudio/v10/Cgl.sln -text
