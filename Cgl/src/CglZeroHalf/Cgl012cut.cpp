@@ -3552,6 +3552,8 @@ char **csense /* senses of the cuts: 'L', 'G' or 'E' */
   
   //ilp_load(mr,mc,mnz,mtbeg,mtcnt,mtind,mtval,
   //   vlb,vub,mrhs,msense);
+  if (!inp_ilp)
+      return FALSE;
   inp_ilp->xstar = xstar;
   
 
