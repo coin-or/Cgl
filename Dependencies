@@ -1,5 +1,6 @@
 BuildTools  https://projects.coin-or.org/svn/BuildTools/stable/0.8
 Data/Sample https://projects.coin-or.org/svn/Data/Sample/stable/1.2
 CoinUtils   https://projects.coin-or.org/svn/CoinUtils/stable/2.10/CoinUtils
-Osi         https://projects.coin-or.org/svn/Osi/stable/0.107/OsiClp         https://projects.coin-or.org/svn/Clp/stable/1.16/Clp
+Osi         https://projects.coin-or.org/svn/Osi/stable/0.107/Osi
+Clp         https://projects.coin-or.org/svn/Clp/stable/1.16/Clp
 
