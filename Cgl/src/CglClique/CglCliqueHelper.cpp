@@ -31,7 +31,7 @@ CglClique::selectFractionalBinaries(const OsiSolverInterface& si)
        if (si.isBinary(i))
 	 n++;
      }
-     if (n<5000)
+     if (n<maxNumber_)
        lclPetol=-1.0e-5;
    }
    const double* x = si.getColSolution();

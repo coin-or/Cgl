@@ -86,6 +86,8 @@ public:
 
     void setMinViolation(double minviol) { petol = minviol; }
     double getMinViolation() const { return petol; }
+    /// Maximum number of binaries for looking at all
+    inline void setMaxNumber(int value) { maxNumber_ = value; }
 
 private:
 
@@ -157,6 +159,8 @@ protected:
 
     /** The primal tolerance in the solverinterface. */
     double petol;
+    /// Maximum number of binaries for looking at all
+    int maxNumber_; 
 
     /** data for the star clique algorithm */
 
