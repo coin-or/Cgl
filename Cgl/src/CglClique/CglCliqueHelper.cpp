@@ -31,7 +31,7 @@ CglClique::selectFractionalBinaries(const OsiSolverInterface& si)
        if (si.isBinary(i))
 	 n++;
      }
-     if (n<5000)
+     if (n<maxNumber_)
        lclPetol=-1.0e-5;
    }
    const double* x = si.getColSolution();
@@ -90,7 +90,11 @@ void
 CglClique::selectRowCliques(const OsiSolverInterface& si,int numOriginalRows)
 {
    const int numrows = si.getNumRows();
+#ifndef INTEL_COMPILER
    std::vector<int> clique(numrows, 1);
+#else
+   std::vector<int> clique(numrows);
+#endif
 
    int i, j, k;
    

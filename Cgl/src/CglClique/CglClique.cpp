@@ -28,6 +28,7 @@ CglClique::CglClique(bool setPacking, bool justOriginalRows) :
    sp_row_ind(0),
    node_node(0),
    petol(-1.0),
+   maxNumber_(5000),
    do_row_clique(true),
    do_star_clique(true),
    scl_next_node_rule(SCL_MAX_XJ_MAX_DEG),
@@ -58,6 +59,7 @@ CglClique::CglClique(const CglClique& rhs)
     sp_row_ind(rhs.sp_row_ind),
     node_node(rhs.node_node),
     petol(rhs.petol),
+    maxNumber_(rhs.maxNumber_),
     do_row_clique(rhs.do_row_clique),
     do_star_clique(rhs.do_star_clique),
     scl_next_node_rule(rhs.scl_next_node_rule),
@@ -109,7 +111,15 @@ CglClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
    // Just original rows
    if (justOriginalRows_&&info.inTree) 
      sp_numrows = CoinMin(info.formulation_rows,sp_numrows);
-     
+   
+#ifndef MAX_CGLCLIQUE_ROWS
+#define MAX_CGLCLIQUE_ROWS 100000
+#endif
+   if (sp_numrows > MAX_CGLCLIQUE_ROWS) {
+     //printf("sp_numrows is %d\n",sp_numrows);
+     deleteSetPackingSubMatrix();
+     return; // too many
+   }
 
    createSetPackingSubMatrix(si);
    fgraph.edgenum = createNodeNode();
