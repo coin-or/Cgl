@@ -3687,7 +3687,7 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
 	model->initialSolve();
       }
       if (!model->isProvenOptimal()) {
-#if CBC_USEFUL_PRINTING>1
+#if COIN_DEVELOP
 	  whichMps++;
 	  sprintf(nameMps,"bad2_%d",whichMps);
 	  model->writeMps(nameMps);
@@ -4038,7 +4038,7 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
   double testObj = 1.0e-8*CoinMax(fabs(saveObjectiveValue),
 				  fabs(objectiveValue))+1.0e-4;
   if (!originalModel_->isProvenOptimal()) {
-#if CBC_USEFUL_PRINTING>1
+#if COIN_DEVELOP
     whichMps++;
     sprintf(nameMps,"bad3_%d",whichMps);
     originalModel_->writeMps(nameMps);
@@ -4270,6 +4270,14 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  handler_->message(CGL_INFEASIBLE,messages_)
 	    <<CoinMessageEol;
 	  feasible=false;
+	}
+	if (lower<0.0) {
+	  // take out for now
+	  for (CoinBigIndex j=columnStart[iColumn];
+	       j<columnStart[iColumn]+columnLength[iColumn];j++) {
+	    int iRow = row[j];
+	    rowTypeAll[iRow]=0;
+	  }
 	}
       }
     }
