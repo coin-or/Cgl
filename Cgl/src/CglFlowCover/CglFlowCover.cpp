@@ -25,7 +25,6 @@
 // added #define to get rid of warnings (so uncomment if =true)
 //#define CGLFLOW_DEBUG2
 static bool CGLFLOW_DEBUG=false;
-static bool doLift=true;
 #include <iomanip>
 //-------------------------------------------------------------------
 // Overloaded operator<< for printing VUB and VLB.
@@ -489,7 +488,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
   static int count=0;
   ++count;
   CGLFLOW_DEBUG=false;
-  doLift=true;
+  bool doLift=true;
   // Get integer types
   const char * columnType = si.getColType ();
   for (i = 0; i < rowLen; ++i) {
