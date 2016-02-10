@@ -5735,20 +5735,20 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	std::sort(whichCut,whichCut+numberRows);
 	int nCuts=cs.sizeRowCuts();
 	OsiRowCut ** tempCuts = new OsiRowCut * [nCuts+1];
-	tempCuts[nCuts]=whichCut[numberRows-1]+1;
 	for (int i=0;i<nCuts;i++)
 	  tempCuts[i]=cs.rowCutPtr(i);
 	std::sort(tempCuts,tempCuts+nCuts);
+	tempCuts[nCuts]=CoinMax(whichCut[numberRows-1],tempCuts[nCuts-1])+1;
 	int iCut=0;
 	void * cut = tempCuts[0];
 	for (int i=0;i<numberRows;i++) {
-	  if (!whichCut[i])
+	  OsiRowCut * thisCut = whichCut[i];
+	  if (!thisCut)
 	    continue;
-	  if (cut>whichCut[i]) {
-	    delete whichCut[i];
-	  } else if (cut<whichCut[i]) {
+	  while (cut<thisCut)
 	    cut = tempCuts[++iCut];
-	  }
+	  if (cut>thisCut) 
+	    delete thisCut;
 	  whichCut[i]=NULL;
 	}
 	delete [] tempCuts;
