@@ -5405,7 +5405,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
         for (iRow=0;iRow<numberRows;iRow++) {
 	  keepRow[iRow]=0;
           OsiRowCut * thisCut = whichCut[iRow];
-          whichCut[iRow]=NULL;
+          //whichCut[iRow]=NULL;
           if (rowLower[iRow]>-1.0e20||rowUpper[iRow]<1.0e20) {
 #if 0
 	    if (thisCut) {
@@ -5772,6 +5772,27 @@ CglPreProcess::modified(OsiSolverInterface * model,
             }
           }
         }
+	// Get rid of all whichCut not in cs
+	std::sort(whichCut,whichCut+numberRows);
+	int nCuts=cs.sizeRowCuts();
+	OsiRowCut ** tempCuts = new OsiRowCut * [nCuts+1];
+	for (int i=0;i<nCuts;i++)
+	  tempCuts[i]=cs.rowCutPtr(i);
+	std::sort(tempCuts,tempCuts+nCuts);
+	tempCuts[nCuts]=CoinMax(whichCut[numberRows-1],tempCuts[nCuts-1])+1;
+	int iCut=0;
+	void * cut = tempCuts[0];
+	for (int i=0;i<numberRows;i++) {
+	  OsiRowCut * thisCut = whichCut[i];
+	  if (!thisCut)
+	    continue;
+	  while (cut<thisCut)
+	    cut = tempCuts[++iCut];
+	  if (cut>thisCut) 
+	    delete thisCut;
+	  whichCut[i]=NULL;
+	}
+	delete [] tempCuts;
 	if (rowType_) {
 	  assert (numberRowType_==numberRows);
 	  int numberRowType_=0;
