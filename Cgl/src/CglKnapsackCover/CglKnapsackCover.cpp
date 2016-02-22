@@ -469,6 +469,10 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
 	  continue; // no good
 	}
       }
+#ifdef CGL_DEBUG
+      for (int i=0;i<nCols;i++)
+	assert (!complement[i]);
+#endif
       if (!deriveAKnapsack(si, cs, krow, rowType[itry], b, complement, 
 			   xstar, rowIndex, 
 			   length,thisColumnIndex,thisElement)) {
@@ -712,14 +716,14 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
       // Reset xstar and complement to their initialized values for the next
       // go-around 
       int k;
-      if (fabs(b-rowUpper[rowIndex]) > epsilon_) {
+      // could get == if (fabs(b-rowUpper[rowIndex]) > epsilon_) {
 	for(k=0; k<krow.getNumElements(); k++) {
 	  if (complement[krow.getIndices()[k]]){
 	    xstar[krow.getIndices()[k]]= 1.0-xstar[krow.getIndices()[k]];
 	    complement[krow.getIndices()[k]]=0;
 	  }
 	}
-      }
+	//}
       krow.setVector(0,NULL,NULL);
 #ifdef CGL_DEBUG
       int nnow = cs.sizeRowCuts();
