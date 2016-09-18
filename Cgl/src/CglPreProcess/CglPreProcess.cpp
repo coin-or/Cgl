@@ -1061,7 +1061,7 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
   delete [] count;
   return (totalNumberIntegers);
 }
-//#define CGL_WRITEMPS 1 
+//#define CGL_WRITEMPS 1
 #ifdef CGL_WRITEMPS
 #if CGL_WRITEMPS>1
 extern double * debugSolution;
@@ -1938,7 +1938,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	 (nMinus==1&&startModel_->isInteger(iMinus)&&nPlus>0))&&numberContinuous&&true) {
       int jColumn;
       double multiplier;
-      if (nPlus==1) {
+      if (nPlus==1&&startModel_->isInteger(iPlus)) {
 	jColumn = iPlus;
 	multiplier = fabs(valuePlus/valueMinus);
 	rhs /= -valueMinus;
