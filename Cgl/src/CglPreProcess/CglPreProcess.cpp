@@ -1941,7 +1941,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	 (nMinus==1&&startModel_->isInteger(iMinus)&&nPlus>0))&&numberContinuous&&true) {
       int jColumn;
       double multiplier;
-      if (nPlus==1) {
+      if (nPlus==1&&startModel_->isInteger(iPlus)) {
 	jColumn = iPlus;
 	multiplier = fabs(valuePlus/valueMinus);
 	rhs /= -valueMinus;
