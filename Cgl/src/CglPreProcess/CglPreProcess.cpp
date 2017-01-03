@@ -2013,8 +2013,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     OsiPresolve * pinfo = new OsiPresolve();
     int presolveActions=0;
     // Allow dual stuff on integers
-    // Allow stuff which may not unroll cleanly
-    presolveActions=1+16;
+    // Allow stuff which may not unroll cleanly - unless told not to
+    if ((tuning&4096)==0)
+      presolveActions=1+16;
+    else
+      presolveActions=16; // actually just switch off duplicate columns for ints
     if ((tuning&32)!=0)
       presolveActions |= 32;
     // Do not allow all +1 to be tampered with
@@ -2347,7 +2350,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       int presolveActions=0;
       // Allow dual stuff on integers
       // Allow stuff which may not unroll cleanly
-      presolveActions=1+16;
+      if ((tuning&4096)==0)
+	presolveActions=1+16;
+      else
+	presolveActions=16; // actually just switch off duplicate columns for ints
       // Do not allow all +1 to be tampered with
       //if (allPlusOnes)
       //presolveActions |= 2;
