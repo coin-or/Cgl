@@ -3046,7 +3046,28 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #define MOVE_SINGLETONS
 #ifdef MOVE_SINGLETONS
   const double * objective = si.getObjCoefficients();
-  const int * columnLength2 = si.getMatrixByCol()->getVectorLengths(); 
+  const int * columnLength2 = si.getMatrixByCol()->getVectorLengths();
+  // see whether to do
+  int moveSingletonRows=nRows;
+  if (nRows>si.getNumRows()) {
+    // skip objective constraint
+    moveSingletonRows=nRowsSafe;
+  } else if (nRows<si.getNumRows()) {
+    // some rows missing
+    moveSingletonRows=0;
+  } else {
+    // check objective constraint and one row dropped
+    double direction = si.getObjSense();
+    double cutoff;
+    bool cutoff_available = si.getDblParam(OsiDualObjectiveLimit,cutoff);
+    if (!cutoff_available||usingObjective_<1)  
+      cutoff = si.getInfinity();
+    cutoff *= direction;
+    if (cutoff<1.0e30) {
+      // switch off
+      moveSingletonRows=0;
+    }
+  }
 #endif
   bool anyColumnCuts=false;
   int ninfeas=0;
@@ -4804,7 +4825,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		  // Taken out as should be found elsewhere
 		  // and has to be original column length
 #ifdef MOVE_SINGLETONS
-                  bool moveSingletons=true;
+                  bool moveSingletons=(irow<moveSingletonRows);
 #endif
                   for (int kk =rowStart[irow];kk<rowStart[irow+1];
                        kk++) {
@@ -4957,7 +4978,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                   sum =0.0;
                   // also see if singletons can go to good objective
 #ifdef MOVE_SINGLETONS
-                  bool moveSingletons=true;
+                  bool moveSingletons=(irow<moveSingletonRows);
 #endif
                   for (int kk =rowStart[irow];kk<rowStart[irow+1];
                        kk++) {
@@ -5111,6 +5132,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
               if ((rowCuts&2)!=0&&goingToTrueBound&&info->strengthenRow) {
                 for (istackR=0;istackR<nstackR;istackR++) {
                   int irow=stackR[istackR];
+                  if(irow>=moveSingletonRows)
+		    continue;
                   double gap = rowUpper[irow]-maxR[irow];
                   if (gap>primalTolerance_) {
                     // also see if singletons can go to good objective
