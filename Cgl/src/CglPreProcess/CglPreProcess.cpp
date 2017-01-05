@@ -6105,8 +6105,10 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  //newModel->writeMpsNative("infeas.mps",NULL,NULL,2,1);
 	}
       }
-      if (!feasible)
+      if (!feasible) {
+	writeDebugMps(newModel,"infeasible",NULL);
         break;
+      }
     }
     if (!feasible)
       break;
