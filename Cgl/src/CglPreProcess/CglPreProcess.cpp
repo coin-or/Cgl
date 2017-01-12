@@ -6092,7 +6092,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	}
 	numberIterationsPre_ += newModel->getIterationCount();
 	feasible = newModel->isProvenOptimal();
-	if (!feasible&&getCutoff()>1.0e20) {
+	if (!feasible) {
 	  // Better double check
 	  CoinWarmStartBasis *slack =
 	    dynamic_cast<CoinWarmStartBasis *>(newModel->getEmptyWarmStart()) ;
