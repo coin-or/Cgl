@@ -24,7 +24,8 @@
 
 // added #define to get rid of warnings (so uncomment if =true)
 //#define CGLFLOW_DEBUG2
-static bool CGLFLOW_DEBUG=false;
+//static bool CGLFLOW_DEBUG=false;
+#define CGLFLOW_DEBUG 0
 #include <iomanip>
 //-------------------------------------------------------------------
 // Overloaded operator<< for printing VUB and VLB.
@@ -34,9 +35,6 @@ std::ostream& operator<<( std::ostream& os, const CglFlowVUB &v )
   os << " VAR = " << v.getVar() << "\t VAL = " << v.getVal() << std::endl; 
   return os; 
 }
-
-// Initialize static memeber
-int CglFlowCover::numFlowCuts_ = 0;
 
 //-------------------------------------------------------------------
 // Determine row types. Find the VUBS and VLBS. 
@@ -228,11 +226,9 @@ CglFlowCover::flowPreprocess(const OsiSolverInterface& si)
 void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 				const CglTreeInfo info)
 {
-  static int count=0;
   if (getMaxNumCuts() <= 0) return;
     
   if (getNumFlowCuts() >= getMaxNumCuts()) return;
-  ++count;
 
 #if 0
   bool preInit = false;
@@ -349,7 +345,7 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 CglFlowCover::CglFlowCover()
   :
   CglCutGenerator(),
-  maxNumCuts_(2000),
+  maxNumCuts_(2000000),
   EPSILON_(1.0e-6),
   UNDEFINED_(-1),
   INFTY_(1.0e30),
@@ -357,6 +353,7 @@ CglFlowCover::CglFlowCover()
   firstProcess_(true),
   numRows_(0),
   numCols_(0),
+  numFlowCuts_(0),
   doneInitPre_(false),
   vubs_(0),
   vlbs_(0),
@@ -485,9 +482,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     
   CglFlowVLB VLB;
   CglFlowVUB VUB;
-  static int count=0;
-  ++count;
-  CGLFLOW_DEBUG=false;
+  //CGLFLOW_DEBUG=false;
   bool doLift=true;
   // Get integer types
   const char * columnType = si.getColType ();
