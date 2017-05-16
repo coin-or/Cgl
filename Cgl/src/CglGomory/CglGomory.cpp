@@ -394,7 +394,13 @@ static int gcd(int a, int b)
 #endif
   return b;
 }
-
+#ifdef GOMORY_LONG
+#define SMALL_VALUE1 1.0e-14
+#define GOMORY_INT long long int
+#else
+#define SMALL_VALUE1 1.0e-10
+#define GOMORY_INT int
+#endif
 //-------------------------------------------------------------------
 // Returns the nearest rational with denominator < maxDenominator
 //-------------------------------------------------------------------
@@ -402,11 +408,15 @@ typedef struct {
   int numerator;
   int denominator;
 } Rational;
+typedef struct {
+  GOMORY_INT numerator;
+  GOMORY_INT denominator;
+} RationalLong;
 inline Rational nearestRational(double value, int maxDenominator) 
 {
-  Rational tryThis;
-  Rational tryA;
-  Rational tryB;
+  RationalLong tryThis;
+  RationalLong tryA;
+  RationalLong tryB;
   double integerPart;
 
 #if CGL_DEBUG>1
@@ -418,17 +428,21 @@ inline Rational nearestRational(double value, int maxDenominator)
   tryA.denominator=1;
   tryB.numerator=1;
   tryB.denominator=0;
+  Rational returnRational;
 
-  if (fabs(value)<1.0e-10)
-    return tryA;
+  if (fabs(value)<SMALL_VALUE1) {
+    returnRational.numerator=static_cast<int>(tryA.numerator);
+    returnRational.denominator=static_cast<int>(tryA.denominator);
+    return returnRational;
+  }
   integerPart = floor(value);
   value -= integerPart;
-  tryThis.numerator = tryB.numerator* static_cast<int> (integerPart) + tryA.numerator;
-  tryThis.denominator = tryB.denominator* static_cast<int> (integerPart) + tryA.denominator;
+  tryThis.numerator = tryB.numerator* static_cast<GOMORY_INT> (integerPart) + tryA.numerator;
+  tryThis.denominator = tryB.denominator* static_cast<GOMORY_INT> (integerPart) + tryA.denominator;
   tryA = tryB;
   tryB = tryThis;
 
-  while (value>1.0e-10 && tryB.denominator <=maxDenominator) {
+  while (value>SMALL_VALUE1 && tryB.denominator <=maxDenominator) {
     nLoop++;
     if (nLoop>50) {
       Rational bad;
@@ -440,24 +454,43 @@ inline Rational nearestRational(double value, int maxDenominator)
       return bad;
     }
     value = 1.0/value;
-    integerPart = floor(value+1.0e-10);
+    integerPart = floor(value+SMALL_VALUE1);
     value -= integerPart;
-    tryThis.numerator = tryB.numerator* static_cast<int> (integerPart) + tryA.numerator;
-    tryThis.denominator = tryB.denominator* static_cast<int>(integerPart) + tryA.denominator;
+    tryThis.numerator = tryB.numerator* static_cast<GOMORY_INT> (integerPart) + tryA.numerator;
+    tryThis.denominator = tryB.denominator* static_cast<GOMORY_INT>(integerPart) + tryA.denominator;
     tryA = tryB;
     tryB = tryThis;
   }
   if (tryB.denominator <= maxDenominator) {
 #if CGL_DEBUG>1
-    printf("%d/%d\n",tryB.numerator,tryB.denominator);
+    printf("%lld/%lld\n",tryB.numerator,tryB.denominator);
 #endif
-    return tryB;
+    if (tryB.denominator<COIN_INT_MAX) {
+      returnRational.numerator=static_cast<int>(tryB.numerator);
+      returnRational.denominator=static_cast<int>(tryB.denominator);
+    } else {
+      returnRational.numerator=-1;
+      returnRational.denominator=-1;
+#if CGL_DEBUG>1
+      printf(" *** bad rational\n");
+#endif
+    }
   } else {
 #if CGL_DEBUG>1
-    printf("%d/%d\n",tryA.numerator,tryA.denominator);
+    printf("%lld/%lld\n",tryA.numerator,tryA.denominator);
 #endif
-    return tryA;
+    if (tryA.denominator<COIN_INT_MAX) {
+      returnRational.numerator=static_cast<int>(tryA.numerator);
+      returnRational.denominator=static_cast<int>(tryA.denominator);
+    } else {
+      returnRational.numerator=-1;
+      returnRational.denominator=-1;
+#if CGL_DEBUG>1
+      printf(" *** bad rational\n");
+#endif
+    }
   }
+  return returnRational;
 }
 // Does actual work - returns number of cuts
 int
