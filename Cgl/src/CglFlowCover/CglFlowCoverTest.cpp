@@ -31,7 +31,7 @@ CglFlowCoverUnitTest(
   // Test default constructor
   {
     CglFlowCover aGenerator;
-    assert (aGenerator.getMaxNumCuts() == 2000);
+    assert (aGenerator.getMaxNumCuts() >= 2000);
   }
   
   // Test copy & assignment
