@@ -1819,7 +1819,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     // add variables to make equality rows
     // Get new model
     if (!startModel_) {
-      assert (!startModel_);
       startModel_ = originalModel_->clone();
     }
     for (int i=0;i<numberSlacks;i++) {
@@ -1841,6 +1840,16 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	startModel_->setRowLower(iRow,rowUpper[iRow]);
       else
 	startModel_->setRowUpper(iRow,rowLower[iRow]);
+    }
+    if (prohibited_) {
+      // extend
+      int numberColumns = startModel_->getNumCols();
+      char * temp = new char [numberColumns];
+      memcpy(temp,prohibited_,numberProhibited_);
+      memset(temp+numberProhibited_,0,numberColumns-numberProhibited_);
+      numberProhibited_ = numberColumns;
+      delete [] prohibited_;
+      prohibited_ = temp;
     }
   } else if (!startModel_) {
     // make clone anyway so can tighten bounds
