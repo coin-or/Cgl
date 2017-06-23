@@ -1715,6 +1715,7 @@ originalSolver_(NULL),
 limit_(50),
 limitAtRoot_(0),
 dynamicLimitInTree_(-1),
+numberTimesStalled_(0),
 alternateFactorization_(0),
 gomoryType_(0)
 {
@@ -1734,6 +1735,7 @@ CglGomory::CglGomory (const CglGomory & source) :
   limit_(source.limit_),
   limitAtRoot_(source.limitAtRoot_),
   dynamicLimitInTree_(source.dynamicLimitInTree_),
+  numberTimesStalled_(source.numberTimesStalled_),
   alternateFactorization_(source.alternateFactorization_),
   gomoryType_(source.gomoryType_)
 { 
@@ -1773,6 +1775,7 @@ CglGomory::operator=(const CglGomory& rhs)
     limit_=rhs.limit_;
     limitAtRoot_=rhs.limitAtRoot_;
     dynamicLimitInTree_ = rhs.dynamicLimitInTree_;
+    numberTimesStalled_ = rhs.numberTimesStalled_;
     alternateFactorization_=rhs.alternateFactorization_; 
     gomoryType_ = rhs.gomoryType_;
     delete originalSolver_;
