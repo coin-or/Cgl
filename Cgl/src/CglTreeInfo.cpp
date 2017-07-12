@@ -21,6 +21,7 @@
 // Default constructor 
 CglTreeInfo::CglTreeInfo ()
   : level(-1), pass(-1), formulation_rows(-1), options(0), inTree(false),
+    childModel(0),originalColumns(NULL),
     strengthenRow(NULL),randomNumberGenerator(NULL) {}
 
 // Copy constructor 
@@ -30,6 +31,8 @@ CglTreeInfo::CglTreeInfo (const CglTreeInfo & rhs)
     formulation_rows(rhs.formulation_rows), 
     options(rhs.options),
     inTree(rhs.inTree),
+    childModel(rhs.childModel),
+    originalColumns(rhs.originalColumns),
     strengthenRow(rhs.strengthenRow),
     randomNumberGenerator(rhs.randomNumberGenerator)
 {
@@ -52,6 +55,8 @@ CglTreeInfo::operator=(const CglTreeInfo& rhs)
     formulation_rows = rhs.formulation_rows; 
     options = rhs.options;
     inTree = rhs.inTree;
+    childModel = rhs.childModel;
+    originalColumns = rhs.originalColumns;
     strengthenRow = rhs.strengthenRow;
     randomNumberGenerator = rhs.randomNumberGenerator;
   }

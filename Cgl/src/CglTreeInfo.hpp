@@ -38,6 +38,10 @@ public:
   int options;
   /// Set true if in tree (to avoid ambiguity at first branch)
   bool inTree;
+  /// nonzero if called from child of main model
+  int childModel;
+  /// Original columns (if preprocessed)
+  int * originalColumns;
   /** Replacement array.  Before Branch and Cut it may be beneficial to strengthen rows
       rather than adding cuts.  If this array is not NULL then the cut generator can
       place a pointer to the stronger cut in this array which is number of rows in size.
