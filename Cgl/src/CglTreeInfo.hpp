@@ -38,8 +38,13 @@ public:
   int options;
   /// Set true if in tree (to avoid ambiguity at first branch)
   bool inTree;
-  /// nonzero if called from child of main model
-  int childModel;
+  /** nonzero if called from child of main model
+      1 if heuristic run
+      2 if doing full search
+  */
+  int hasParent;
+  /// parent solver
+  OsiSolverInterface * parentSolver;
   /// Original columns (if preprocessed)
   int * originalColumns;
   /** Replacement array.  Before Branch and Cut it may be beneficial to strengthen rows
