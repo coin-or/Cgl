@@ -1972,6 +1972,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       }
       if (smallestPos>0.0) {
 	double move=0.0;
+        double multiply = (smallestNeg==-COIN_DBL_MAX) ? -1.0 : 1.0;
 	if(smallestNeg==-COIN_DBL_MAX)
 	  move=smallestPos;
 	else if (smallestPos==COIN_DBL_MAX)
@@ -1984,7 +1985,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	    printf("ZZZ on col %d move %g offset %g\n",
 		   jColumn,move,move*rhs);
 #endif
-	  offset -= move*rhs;
+          offset -= move*multiply*rhs;
 	  for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
 	    int iColumn = column[j];
 	    if (iColumn!=jColumn) {
