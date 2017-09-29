@@ -179,7 +179,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	numberAdd=0;
 	for (int iRow=numberOriginalRows;iRow<numberRows;iRow++) {
 	  bool simple = true;
-	  for (int k=rowStart[iRow];
+	  for (CoinBigIndex k=rowStart[iRow];
 	       k<rowStart[iRow]+rowLength[iRow];k++) {
 	    double value = rowElements[k];
 	    if (value!=floor(value+0.5)) {
@@ -211,7 +211,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	if (!copy[iRow-numberOriginalRows]) {
 	  double value = pi[iRow];
 	  offset += rowSolution[iRow]*value;
-	  for (int k=rowStart[iRow];
+	  for (CoinBigIndex k=rowStart[iRow];
 	       k<rowStart[iRow]+rowLength[iRow];k++) {
 	    int iColumn=column[k];
 	    obj[iColumn] -= value*rowElements[k];
@@ -219,7 +219,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	} else {
 	  rowLower2[numberCopy]=rowLower[iRow];
 	  rowUpper2[numberCopy]=rowUpper[iRow];
-	  for (int k=rowStart[iRow];
+	  for (CoinBigIndex k=rowStart[iRow];
 	       k<rowStart[iRow]+rowLength[iRow];k++) {
 	    column2[numberAdd]=column[k];
 	    rowElements2[numberAdd++]=rowElements[k];
@@ -645,7 +645,8 @@ DGG_data_t* DGG_getData(const void *osi_ptr )
 
   /* retrieve the matrix in row format */
   const CoinPackedMatrix *rowMatrixPtr = si->getMatrixByRow();
-  const int *rowBeg = 0, *rowCnt = 0, *rowInd = 0;
+  const int *rowCnt , *rowInd;
+  const CoinBigIndex *rowBeg = 0;
   const double *rowMat;
     
   rowBeg = rowMatrixPtr->getVectorStarts();
@@ -755,7 +756,7 @@ DGG_data_t* DGG_getData(const void *osi_ptr )
          For the moment, we will store the inverse of this value in 
          the 'x' field (since it is in fact a partial computation of it)  */
       {
-        int k;
+        CoinBigIndex k;
  
         activity = 0.0;
 	for(k=rowBeg[i]; k < rowBeg[i]+rowCnt[i]; k++)
@@ -803,7 +804,7 @@ DGG_data_t* DGG_getData(const void *osi_ptr )
          and check that the rhs is integer, and that all of the coefficients
          and variables participating in the constraint are also integer.    */
       {
-        int k;
+        CoinBigIndex k;
      
         if( DGG_isConstraintBoundedAbove(data,j)) {
           if ( frac_part(rowUpper[i]) > DGG_INTEGRALITY_THRESH )
@@ -838,12 +839,14 @@ DGG_constraint_t*
 DGG_getSlackExpression(const void *osi_ptr, DGG_data_t* data, int row_index)
 {
   DGG_constraint_t *row = 0;
-  int i,j;
+  CoinBigIndex i;
+  int j;
 
   /* retrieve the matrix in row format */
   const OsiSolverInterface *si = reinterpret_cast<const OsiSolverInterface *> (osi_ptr);
   const CoinPackedMatrix *rowMatrixPtr = si->getMatrixByRow();
-  const int *rowBeg = 0, *rowCnt = 0, *rowInd = 0;
+  const int *rowCnt , *rowInd ;
+  const CoinBigIndex *rowBeg;
   const double *rowMat;
   const double *rowUpper;
   const double *rowLower;
@@ -906,7 +909,7 @@ DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
 
   /* obtain address of the LP matrix */
   const CoinPackedMatrix *colMatrixPtr = si->getMatrixByCol();
-  const int* colBeg = colMatrixPtr->getVectorStarts();
+  const CoinBigIndex* colBeg = colMatrixPtr->getVectorStarts();
   const int* colCnt = colMatrixPtr->getVectorLengths();
   const int* colInd = colMatrixPtr->getIndices();
   const double* colMat = colMatrixPtr->getElements();
@@ -944,7 +947,7 @@ DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
     /* compute column (structural) variable coefficients */
     for(j = 0; j < data->ncol; j++) {
       value[j] = 0.0;
-      for(i=colBeg[j]; i < colBeg[j]+colCnt[j]; i++)
+      for(CoinBigIndex i=colBeg[j]; i < colBeg[j]+colCnt[j]; i++)
         value[j] += colMat[i]*arrayElements[ colInd[i] ];
     }
 
@@ -1038,7 +1041,7 @@ DGG_getFormulaConstraint( int da_row,
   
   /* obtain address of the LP matrix */
   const CoinPackedMatrix *rowMatrixPtr = si->getMatrixByRow();
-  const int* rowBeg = rowMatrixPtr->getVectorStarts();
+  const CoinBigIndex* rowBeg = rowMatrixPtr->getVectorStarts();
   const int* rowCnt = rowMatrixPtr->getVectorLengths();
   const int* rowInd = rowMatrixPtr->getIndices();
   const double* rowMat = rowMatrixPtr->getElements();

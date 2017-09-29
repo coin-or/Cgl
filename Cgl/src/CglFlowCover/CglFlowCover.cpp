@@ -52,7 +52,7 @@ CglFlowCover::flowPreprocess(const OsiSolverInterface& si)
 
   const double* coefByRow  = matrixByRow.getElements();
   const int* colInds       = matrixByRow.getIndices();
-  const int* rowStarts     = matrixByRow.getVectorStarts();
+  const CoinBigIndex* rowStarts     = matrixByRow.getVectorStarts();
   const int* rowLengths    = matrixByRow.getVectorLengths();
   int iRow      = -1; 
   int iCol      = -1;
@@ -174,7 +174,7 @@ CglFlowCover::flowPreprocess(const OsiSolverInterface& si)
 	 (rowType2 == CGLFLOW_ROW_VARLB) || 
 	 (rowType2 == CGLFLOW_ROW_VAREQ) )  { 
       
-      int startPos = rowStarts[iRow];
+      CoinBigIndex startPos = rowStarts[iRow];
       int index0   = colInds[startPos];
       int index1   = colInds[startPos + 1];
       double coef0 = coefByRow[startPos];
@@ -259,7 +259,8 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     
   int* ind        = 0;
   double* coef    = 0;
-  int iRow, iCol;
+  int iRow;
+  CoinBigIndex iCol;
 
   CglFlowRowType rType;
 
@@ -273,7 +274,7 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	( rType != CGLFLOW_ROW_SUMVAREQ ) )
       continue;  
 
-    const int sta = rowStart[iRow];     // Start position of iRow
+    const CoinBigIndex sta = rowStart[iRow];     // Start position of iRow
     const int rowLen = rowLength[iRow]; // iRow length / non-zero elements
 
     if (ind != 0) { delete [] ind; ind = 0; }
@@ -281,7 +282,7 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     if (coef != 0) { delete [] coef; coef = 0; }
     coef = new double [rowLen];
 
-    int lastPos = sta + rowLen;
+    CoinBigIndex lastPos = sta + rowLen;
     for (iCol = sta; iCol < lastPos; ++iCol) {
       ind[iCol - sta]  = colInd[iCol];
       coef[iCol - sta] = elementByRow[iCol];

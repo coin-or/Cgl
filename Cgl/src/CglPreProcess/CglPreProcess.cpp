@@ -1273,7 +1273,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
           continue;
         bool goodRow=true;
 	bool overlap=false;
-        for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+        for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
           int iColumn = column[j];
           if (elementByRow[j]!=1.0||!originalModel_->isInteger(iColumn)||lower[iColumn]) {
             goodRow=false;
@@ -1287,7 +1287,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
         if (goodRow) {
 	  if (!overlap) {
 	    // mark all
-	    for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+	    for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
 	      int iColumn = column[j];
 	      mark[iColumn]=numberSOS;
 	    }
@@ -1315,7 +1315,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	    bool goodRow=true;
 	    bool overlap=false;
 	    int nObj=0;
-	    for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+	    for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
 	      int iColumn = column[j];
 	      if (elementByRow[j]!=1.0||!originalModel_->isInteger(iColumn)||lower[iColumn]) {
 		goodRow=false;
@@ -1331,7 +1331,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	      if (goodRow) {
 		if (!overlap) {
 		  // mark all
-		  for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+		  for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
 		    int iColumn = column[j];
 		    mark[iColumn]=numberSOS;
 		  }
@@ -1377,15 +1377,14 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       memset(rowCount,0,numberRows*sizeof(int));
       double * rowValue = new double [numberRows];
       int numberY=0;
-      int numberElements=0;
+      CoinBigIndex numberElements=0;
       int numberSOS=0;
       for (int kRow=firstOther;kRow<numberRows;kRow++) {
 	int iRow=whichRow[kRow];
 	int n=0;
-	int j;
-	for (j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+	for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
 	  int iColumn = column[j];
-	  for (int k=columnStart[iColumn];k<columnStart[iColumn]+columnLength[iColumn];
+	  for (CoinBigIndex k=columnStart[iColumn];k<columnStart[iColumn]+columnLength[iColumn];
 	       k++) {
 	    int jRow = row[k];
 	    double value = columnElements[k];
@@ -1405,7 +1404,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	}
 	int bestRow=-1;
 	int bestCount=4;
-	for (j=0;j<n;j++) {
+	for (int j=0;j<n;j++) {
 	  int jRow = whichRow[j];
 	  int count=rowCount[jRow];
 	  rowCount[jRow]=0;
@@ -1457,11 +1456,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	for (int kRow=firstOther;kRow<numberRows;kRow++) {
 	  int iRow=whichRow[kRow];
 	  int n=0;
-	  int j;
 	  int saveNumberY=numberY;
-	  for (j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+	  for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
 	    int iColumn = column[j];
-	    for (int k=columnStart[iColumn];k<columnStart[iColumn]+columnLength[iColumn];
+	    for (CoinBigIndex k=columnStart[iColumn];k<columnStart[iColumn]+columnLength[iColumn];
 		 k++) {
 	      int jRow = row[k];
 	      double value = columnElements[k];
@@ -1495,9 +1493,9 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	      double hashValue=0.0;
 	      int nInSOS=0;
 	      double valueOfY=0.0;
-	      for (j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+	      for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
 		int iColumn = column[j];
-		for (int k=columnStart[iColumn];k<columnStart[iColumn]+columnLength[iColumn];
+		for (CoinBigIndex k=columnStart[iColumn];k<columnStart[iColumn]+columnLength[iColumn];
 		     k++) {
 		  if (row[k]==jRow) {
 		    value = columnElements[k];
@@ -1513,13 +1511,14 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 		}
 	      }
 	      // See if already exists
-	      int n=numberElements-newStart[numberY];
+	      int n=static_cast<int>(numberElements-newStart[numberY]);
+	      int j;
 	      for (j=0;j<numberY;j++) {
 		if (hashValue==hash[j]) {
 		  // Double check
-		  int offset=newStart[numberY]-newStart[j];
+		  CoinBigIndex offset=newStart[numberY]-newStart[j];
 		  if (n==newStart[j+1]-newStart[j]) {
-		    int k;
+		    CoinBigIndex k;
 		    for (k=newStart[j];k<newStart[j]+n;k++) {
 		      if (newColumn[k]!=newColumn[k+offset])
 			break;
@@ -1545,7 +1544,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 		  columnY[numberElementsY]=j;
 		  valueY[numberElementsY++]=1;
 		  for (int i=0;i<n;i++) {
-		    int iEl = where[i];
+		    CoinBigIndex iEl = where[i];
 		    columnElements[iEl]=0.0;
 		  }
 		}
@@ -1668,7 +1667,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   for (iRow=0;iRow<numberRows;iRow++) {
     int numberP1=0, numberM1=0;
     int numberTotal=0;
-    int j;
+    CoinBigIndex j;
     double upperValue=rowUpper[iRow];
     double lowerValue=rowLower[iRow];
     bool good=true;
@@ -2538,7 +2537,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
           continue;
         bool goodRow=true;
 	int nObj=0;
-        for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+        for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
           iColumn = column[j];
           if (element[j]!=1.0||!returnModel->isInteger(iColumn)||columnLower[iColumn]) {
             goodRow=false;
@@ -2557,7 +2556,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	}
         if (goodRow) {
           // mark all
-          for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+          for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
             int iColumn = column[j];
             mark[iColumn]=numberSOS;
           }
@@ -2596,7 +2595,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
           int numberObj=0;
           CoinZeroN(numberInRow,numberRows);
 	  int kRow = sosRow[iSOS];
-          for (int j=rowStart[kRow];j<rowStart[kRow]+rowLength[kRow];j++) {
+          for (CoinBigIndex j=rowStart[kRow];j<rowStart[kRow]+rowLength[kRow];j++) {
             int iColumn = column[j];
 	    whichSOS_[numberInSOS]=iColumn;
 	    weightSOS_[numberInSOS]=n;
@@ -2770,7 +2769,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	}
 	for (int jRow=0;jRow<nDelete;jRow++) {
 	  iRow=whichRow[jRow];
-	  int start = rowStart[iRow];
+	  CoinBigIndex start = rowStart[iRow];
 	  stored.addCut(rowLower[iRow],rowUpper[iRow],rowLength[iRow],
 			column+start,element+start);
 	}
@@ -5397,7 +5396,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	      bool feas1=true;
 	      double sum1=0.0;
 	      for (int k = 0; k < row.getNumElements(); ++k) {
-		CoinBigIndex j = row.getIndices()[k];
+		int j = row.getIndices()[k];
 		double value = row.getElements()[k];
 		printf("(%d,%g) ",j,value);
 		sum1 += value*allColumns[j];
@@ -5430,19 +5429,19 @@ CglPreProcess::modified(OsiSolverInterface * model,
 #endif
             if (!thisCut) {
               // put in old row
-              int start=rowStart[iRow];
+              CoinBigIndex start=rowStart[iRow];
 	      int kInt=-1;
 	      double newValue=0.0;
 	      if (!iPass&&!iBigPass) {
 		// worthwhile seeing if odd gcd
-		int end = start + rowLength[iRow];
+		CoinBigIndex end = start + rowLength[iRow];
 		double rhsAdjustment=0.0;
 		int nPosInt=0;
 		int nNegInt=0;
 		// Find largest integer coefficient
-		int k;
+		CoinBigIndex k;
 		for ( k = start; k < end; ++k) {
-		  CoinBigIndex j = column[k];
+		  int j = column[k];
 		  if (columnUpper[j]>columnLower[j]) {
 		    if (newModel->isInteger(j)) {
 		      if (rowElements[k]>0.0)
@@ -5484,7 +5483,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 		    double smallestSum = 0.0;
 		    double largestSum = 0.0;
 		    for ( k = start; k < end; ++k) {
-		      CoinBigIndex j = column[k];
+		      int j = column[k];
 		      double value=multiplier*rowElements[k];
 		      if (columnUpper[j]>columnLower[j]) {
 			if (value>0.0) {
@@ -5696,7 +5695,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
                 bool good = (n==nFree);
 		nFree=0;
                 int n1=rowLength[iRow];
-                int start=rowStart[iRow];
+                CoinBigIndex start=rowStart[iRow];
                 for ( i=0;i<n1;i++) {
                   int iColumn = column[start+i];
                   if (columnUpper[iColumn]>columnLower[iColumn]+1.0e-12)
@@ -5725,7 +5724,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
                   n=-1;
 		  numberStrengthened--;
                   // put in old row
-                  int start=rowStart[iRow];
+                  CoinBigIndex start=rowStart[iRow];
                   build.addRow(rowLength[iRow],column+start,rowElements+start,
                                rowLower[iRow],rowUpper[iRow]);
 		  keepRow[iRow]=1;
@@ -6870,7 +6869,7 @@ CglPreProcess::makeInteger()
           if (fabs(value1)==1.0&&value1*value2==-1.0&&!lower[jColumn1]
               &&!lower[jColumn2]) {
             int n=0;
-            int i;
+            CoinBigIndex i;
             double objChange=direction*(objective[jColumn1]+objective[jColumn2]);
             double bound = CoinMin(upper[jColumn1],upper[jColumn2]);
             bound = CoinMin(bound,1.0e20);
@@ -7250,8 +7249,8 @@ CglBK::CglBK(const OsiSolverInterface & model, const char * rowType,
   int nSort=0;
   for (int i=0;i<numberRows_;i++) {
     if (rowLength[i]==2&&rowUpper[i]==1.0) {
-      int first = rowStart[i];
-      int last = first+1;
+      CoinBigIndex first = rowStart[i];
+      CoinBigIndex last = first+1;
       if (column[first]>column[last]) {
 	first=last;
 	last=rowStart[i];
@@ -7272,16 +7271,16 @@ CglBK::CglBK(const OsiSolverInterface & model, const char * rowType,
       int i1=which[i-1];
       int i2=which[i];
       if (rowLower[i1]==rowLower[i2]) {
-	int first1 = rowStart[i1];
-	int last1 = first1+1;
+	CoinBigIndex first1 = rowStart[i1];
+	CoinBigIndex last1 = first1+1;
 	if (column[first1]>column[last1]) {
 	  first1=last1;
 	  last1=rowStart[i1];
 	}
 	int iColumn11 = column[first1];
 	int iColumn12 = column[last1];
-	int first2 = rowStart[i2];
-	int last2 = first2+1;
+	CoinBigIndex first2 = rowStart[i2];
+	CoinBigIndex last2 = first2+1;
 	if (column[first2]>column[last2]) {
 	  first2=last2;
 	  last2=rowStart[i2];
@@ -7445,7 +7444,7 @@ CglBK::bronKerbosch()
       for (int i=0;i<numberIn_;i++) {
 	elements[i]=1.0;
 	int iColumn=column[i];
-	for (int j=start_[iColumn];j<start_[iColumn+1];j++) {
+	for (CoinBigIndex j=start_[iColumn];j<start_[iColumn+1];j++) {
 	  int jColumn = otherColumn_[j];
 	  if (mark_[jColumn]) {
 	    int iRow=originalRow_[j];
@@ -7484,7 +7483,7 @@ CglBK::bronKerbosch()
     for (int i=numberPossible_-1;i>=firstNot_;i--) {
       int iColumn = candidates_[i];
       int n=0;
-      for (int j=start_[iColumn];j<start_[iColumn+1];j++) {
+      for (CoinBigIndex j=start_[iColumn];j<start_[iColumn+1];j++) {
 	int jColumn = otherColumn_[j];
 	n += mark_[jColumn];
       }
@@ -7497,7 +7496,7 @@ CglBK::bronKerbosch()
       for (int i=0;i<numberCandidates_;i++) {
 	int iColumn = candidates_[i];
 	int n=0;
-	for (int j=start_[iColumn];j<start_[iColumn+1];j++) {
+	for (CoinBigIndex j=start_[iColumn];j<start_[iColumn+1];j++) {
 	  int jColumn = otherColumn_[j];
 	  n += mark_[jColumn];
 	}
@@ -7517,7 +7516,7 @@ CglBK::bronKerbosch()
     int nTemp=0;
     if (nMax<numberCandidates_) {
       // Neighborhood of iColumn
-      for (int j=start_[iChoose];j<start_[iChoose+1];j++) {
+      for (CoinBigIndex j=start_[iChoose];j<start_[iChoose+1];j++) {
 	int jColumn = otherColumn_[j];
 	mark_[jColumn]=1;
       }
@@ -7526,7 +7525,7 @@ CglBK::bronKerbosch()
 	if (!mark_[jColumn])
 	  temp[nTemp++]=jColumn;
       }
-      for (int j=start_[iChoose];j<start_[iChoose+1];j++) {
+      for (CoinBigIndex j=start_[iChoose];j<start_[iChoose+1];j++) {
 	int jColumn = otherColumn_[j];
 	mark_[jColumn]=0;
       }
@@ -7556,7 +7555,7 @@ CglBK::bronKerbosch()
       newCandidates[numberPossible_+numberIn_]=iColumn;
       bk2.numberIn_=numberIn_+1;
       // Neighborhood of iColumn
-      for (int j=start_[iColumn];j<start_[iColumn+1];j++) {
+      for (CoinBigIndex j=start_[iColumn];j<start_[iColumn+1];j++) {
 	int jColumn = otherColumn_[j];
 	mark_[jColumn]=1;
       }
@@ -7576,7 +7575,7 @@ CglBK::bronKerbosch()
 	  newCandidates[--firstNot]=jColumn;
       }
       bk2.firstNot_=firstNot;
-      for (int j=start_[iColumn];j<start_[iColumn+1];j++) {
+      for (CoinBigIndex j=start_[iColumn];j<start_[iColumn+1];j++) {
 	int jColumn = otherColumn_[j];
 	mark_[jColumn]=0;
       }

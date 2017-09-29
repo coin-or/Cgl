@@ -113,7 +113,7 @@ public:
   virtual
     ~CglTreeProbingInfo ();
   OsiSolverInterface * analyze(const OsiSolverInterface & si, int createSolver=0,
-			       int numberExtraCliques=0,const int * starts=NULL,
+			       int numberExtraCliques=0,const CoinBigIndex * starts=NULL,
 			       const CliqueEntry * entries=NULL,const char * type=NULL);
   /** Take action if cut generator can fix a variable 
       (toValue -1 for down, +1 for up)

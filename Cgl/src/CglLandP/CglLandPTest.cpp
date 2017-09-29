@@ -117,7 +117,7 @@ CglLandPUnitTest(
         // Can be improved by first pivoting s2 in and s4 out, then s1 in and s3 out
         // to x2 <= 0.25
         {
-            int start[2] = {0,4};
+            CoinBigIndex start[2] = {0,4};
             int length[2] = {4,4};
             int rows[8] = {0,1,2,3,0,1,2,3};
             double elements[8] = {2.0,-2.0,7.0,-7.0,2.0,2.0,4.0,4.0};

@@ -240,7 +240,7 @@ public:
   inline CliqueType * cliqueType() const
   { return cliqueType_;}
   /// Start of each clique
-  inline int * cliqueStart() const
+  inline CoinBigIndex * cliqueStart() const
   { return cliqueStart_;}
   /// Entries for clique
   inline CliqueEntry * cliqueEntry() const
@@ -430,7 +430,7 @@ private:
   /// Clique type
   CliqueType * cliqueType_;
   /// Start of each clique
-  int * cliqueStart_;
+  CoinBigIndex * cliqueStart_;
   /// Entries for clique
   CliqueEntry * cliqueEntry_;
   /** Start of oneFixes cliques for a column in matrix or -1 if not

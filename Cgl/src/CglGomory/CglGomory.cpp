@@ -24,7 +24,7 @@
 #endif
 #include "CoinFactorization.hpp"
 #undef CLP_OSL
-#if 1
+#if COIN_BIG_INDEX<2
 #define CLP_OSL 1
 #if CLP_OSL!=1&&CLP_OSL!=3
 #undef CLP_OSL
@@ -135,7 +135,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	numberAdd=0;
 	for (int iRow=numberOriginalRows;iRow<numberRows;iRow++) {
 	  bool simple = true;
-	  for (int k=rowStart[iRow];
+	  for (CoinBigIndex k=rowStart[iRow];
 	       k<rowStart[iRow]+rowLength[iRow];k++) {
 	    double value = rowElements[k];
 	    if (value!=floor(value+0.5)) {
@@ -167,7 +167,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	if (!copy[iRow-numberOriginalRows]) {
 	  double value = pi[iRow];
 	  offset += rowSolution[iRow]*value;
-	  for (int k=rowStart[iRow];
+	  for (CoinBigIndex k=rowStart[iRow];
 	       k<rowStart[iRow]+rowLength[iRow];k++) {
 	    int iColumn=column[k];
 	    obj[iColumn] -= value*rowElements[k];
@@ -175,7 +175,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	} else {
 	  rowLower2[numberCopy]=rowLower[iRow];
 	  rowUpper2[numberCopy]=rowUpper[iRow];
-	  for (int k=rowStart[iRow];
+	  for (CoinBigIndex k=rowStart[iRow];
 	       k<rowStart[iRow]+rowLength[iRow];k++) {
 	    column2[numberAdd]=column[k];
 	    rowElements2[numberAdd++]=rowElements[k];
@@ -517,7 +517,7 @@ CglGomory::generateCuts(
   double away = info.inTree ? away_ : CoinMin(away_,awayAtRoot_);
   int numberRows=columnCopy.getNumRows();
   int numberColumns=columnCopy.getNumCols(); 
-  int numberElements=columnCopy.getNumElements();
+  CoinBigIndex numberElements=columnCopy.getNumElements();
   // Allow bigger length on initial matrix (if special setting)
   //if (limit==512&&!info.inTree&&!info.pass)
   //limit=1024;
@@ -626,7 +626,7 @@ CglGomory::generateCuts(
   CoinFillN(rowActivity,numberRows,0.0);
   for (iColumn=0;iColumn<numberColumns;iColumn++) {
     double value = colsol[iColumn];
-    int k;
+    CoinBigIndex k;
     for (k=columnStart[iColumn];k<columnStart[iColumn]+columnLength[iColumn];k++) {
       iRow = row[k];
       rowActivity[iRow] += columnElements[k]*value;
@@ -669,7 +669,7 @@ CglGomory::generateCuts(
       if (above_integer(rhs)<1.0e-10) {
 	// could be integer slack
 	bool allInteger=true;
-	int k;
+	CoinBigIndex k;
 	for (k=rowStart[iRow];
 	     k<rowStart[iRow]+rowLength[iRow];k++) {
 	  int iColumn=column[k];
@@ -788,13 +788,13 @@ CglGomory::generateCuts(
       }
     }
   }
-  int nTotalEls=COIN_INT_MAX;
+  CoinBigIndex nTotalEls=COIN_INT_MAX;
   if (doSorted) {
     CoinSort_2(sort,sort+nCandidates,which);
-    int nElsNow = columnCopy.getNumElements();
-    int nAdd;
-    int nAdd2;
-    int nReasonable;
+    CoinBigIndex nElsNow = columnCopy.getNumElements();
+    CoinBigIndex nAdd;
+    CoinBigIndex nAdd2;
+    CoinBigIndex nReasonable;
     int depth=info.level;
     if (depth<2) {
       nAdd=10000;
@@ -817,7 +817,7 @@ CglGomory::generateCuts(
     nTotalEls=nReasonable;
   }
 #ifdef MORE_GOMORY_CUTS
-  int saveTotalEls=nTotalEls;
+  CoinBigIndex saveTotalEls=nTotalEls;
 #endif
 #if MORE_GOMORY_CUTS==2||MORE_GOMORY_CUTS==3
   saveLimit=limit;
@@ -926,7 +926,7 @@ CglGomory::generateCuts(
 	for (j=0;j<numberColumns;j++) {
 	  if (columnIsBasic[j]<0&&colUpper[j]>colLower[j]+testFixed) {
 	    double value=0.0;
-	    int k;
+	    CoinBigIndex k;
 	    // add in row of tableau
 	    for (k=columnStart[j];k<columnStart[j]+columnLength[j];k++) {
 	      iRow = row[k];
@@ -1050,7 +1050,7 @@ CglGomory::generateCuts(
 	      coefficient = - coefficient;
 	      rhs -= coefficient*rowLower[iRow];
 	    }
-	    int k;
+	    CoinBigIndex k;
 	    for (k=rowStart[iRow];
 		 k<rowStart[iRow]+rowLength[iRow];k++) {
 	      int jColumn=column[k];

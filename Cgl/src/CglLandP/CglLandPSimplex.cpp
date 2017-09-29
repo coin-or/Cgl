@@ -1245,7 +1245,7 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
     const CoinPackedMatrix* mat = si_->getMatrixByCol();
 
     const CoinBigIndex* starts = mat->getVectorStarts();
-    const CoinBigIndex * lengths = mat->getVectorLengths();
+    const int * lengths = mat->getVectorLengths();
     const int * indices = mat->getIndices();
     const double * elements = mat->getElements();
 
@@ -2638,12 +2638,12 @@ CglLandPSimplex::createIntersectionCut(TabRow & row, OsiRowCut &cut) const
     const CoinBigIndex * starts = mat->getVectorStarts();
     const int * lengths = mat->getVectorLengths();
     const double * values = mat->getElements();
-    const CoinBigIndex * indices = mat->getIndices();
+    const int * indices = mat->getIndices();
     for (int j = 0 ; j < ncols_ ; j++)
     {
-        const int& start = starts[j];
-        int end = start + lengths[j];
-        for (int k = start ; k < end ; k++)
+        const CoinBigIndex& start = starts[j];
+        CoinBigIndex end = start + lengths[j];
+        for (CoinBigIndex k = start ; k < end ; k++)
         {
             vec[original_index_[j]] -= vec[original_index_[ncols_ + indices[k]]] * values[k];
         }
@@ -2809,7 +2809,7 @@ CglLandPSimplex::eliminate_slacks(double * vec) const
     const CoinBigIndex * starts = mat->getVectorStarts();
     const int * lengths = mat->getVectorLengths();
     const double * values = mat->getElements();
-    const CoinBigIndex * indices = mat->getIndices();
+    const int * indices = mat->getIndices();
     const double * vecSlacks = vec + ncols_orig_;
     for (int j = 0 ; j < ncols_ ; j++)
     {

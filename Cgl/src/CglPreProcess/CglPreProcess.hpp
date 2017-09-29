@@ -424,7 +424,7 @@ private:
   /// Array to mark stuff 
   char * mark_;
   /// Starts for graph (numberPossible+1)
-  int * start_;
+  CoinBigIndex * start_;
   /// Other column/node
   int * otherColumn_;
   /// Original row (in parallel with otherColumn_)

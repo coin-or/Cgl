@@ -218,7 +218,7 @@ CglTreeProbingInfo::~CglTreeProbingInfo ()
   delete [] fixingEntry_;
 }
 static int outDupsEtc(int numberIntegers, int & numberCliques, int & numberMatrixCliques,
-		      int * & cliqueStart, char * & cliqueType, CliqueEntry *& entry, 
+		      CoinBigIndex * & cliqueStart, char * & cliqueType, CliqueEntry *& entry, 
 		      int numberLastTime, int printit)
 {
   bool allNew=false;
@@ -231,8 +231,8 @@ static int outDupsEtc(int numberIntegers, int & numberCliques, int & numberMatri
   if (numberCliques-numberMatrixCliques>KEEP_CLIQUES) {
     int * sort = new int [numberCliques];
     for (iClique=numberMatrixCliques;iClique<numberCliques;iClique++) {
-      int j = cliqueStart[iClique];
-      int n = cliqueStart[iClique+1]-j;
+      CoinBigIndex j = cliqueStart[iClique];
+      int n = static_cast<int>(cliqueStart[iClique+1]-j);
       sort[iClique]=n;
     }
     std::sort(sort+numberMatrixCliques,sort+numberCliques);
@@ -245,12 +245,12 @@ static int outDupsEtc(int numberIntegers, int & numberCliques, int & numberMatri
 	nEqual++;
     }
     delete [] sort;
-    int j=cliqueStart[numberMatrixCliques];
-    int put=j;
+    CoinBigIndex j=cliqueStart[numberMatrixCliques];
+    CoinBigIndex put=j;
     int nClique=numberMatrixCliques;
     for (iClique=numberMatrixCliques;iClique<numberCliques;iClique++) {
-      int end = cliqueStart[iClique+1];
-      int n = end-j;
+      CoinBigIndex end = cliqueStart[iClique+1];
+      int n = static_cast<int>(end-j);
       bool copy=false;
       if (n>allow) {
 	copy=true;
@@ -270,15 +270,15 @@ static int outDupsEtc(int numberIntegers, int & numberCliques, int & numberMatri
   }
   // sort
   for (iClique=0;iClique<numberCliques;iClique++) {
-    int j = cliqueStart[iClique];
-    int n = cliqueStart[iClique+1]-j;
+    CoinBigIndex j = cliqueStart[iClique];
+    int n = static_cast<int>(cliqueStart[iClique+1]-j);
     for (int i=0;i<n;i++) 
       whichP[i]=sequenceInCliqueEntry(entry[i+j]);
     CoinSort_2(whichP,whichP+n,(reinterpret_cast<int *>(entry))+j);
   }
   // lexicographic sort
   int * which = new int [numberCliques];
-  int * position = new int [numberCliques];
+  CoinBigIndex * position = new CoinBigIndex [numberCliques];
   int * sort = new int [numberCliques];
   int * value = new int [numberCliques];
   for (iClique=0;iClique<numberCliques;iClique++) {
@@ -290,13 +290,13 @@ static int outDupsEtc(int numberIntegers, int & numberCliques, int & numberMatri
   CoinSort_2(sort,sort+numberCliques,which);
   int lastDone=-1;
   int nDup=0;
-  int nSave=0;
+  CoinBigIndex nSave=0;
   while (lastDone<numberCliques-1) {
     int jClique=lastDone+1;
     int jFirst = jClique;
     int iFirst = which[jFirst];
     int iValue = value[iFirst];
-    int iPos = position[iFirst];
+    CoinBigIndex iPos = position[iFirst];
     jClique++;
     for (;jClique<numberCliques;jClique++) {
       int kClique = which[jClique];
@@ -315,7 +315,7 @@ static int outDupsEtc(int numberIntegers, int & numberCliques, int & numberMatri
 	int iValue = value[kClique];
 	// put at end if finished
 	if (iValue<numberIntegers) {
-	  int kPos=position[kClique]+1;
+	  CoinBigIndex kPos=position[kClique]+1;
 	  position[kClique]=kPos;
 	  kPos += cliqueStart[kClique];
 	  if (kPos==cliqueStart[kClique+1]) {
@@ -388,7 +388,7 @@ static int outDupsEtc(int numberIntegers, int & numberCliques, int & numberMatri
       }
       if (iValue<kValue) {
 	while (iValue<kValue) {
-	  int iPos=position[iClique]+1;
+	  CoinBigIndex iPos=position[iClique]+1;
 	  position[iClique]=iPos;
 	  if (iPos==cliqueStart[iClique+1]) {
 	    iValue = numberIntegers;
@@ -404,8 +404,8 @@ static int outDupsEtc(int numberIntegers, int & numberCliques, int & numberMatri
       if (cliqueStart[iClique+1]-position[iClique]>
 	  cliqueStart[kClique+1]-cliqueStart[kClique]) {
 	// could be subset ?
-	int offset = cliqueStart[iClique]-position[kClique];
-	int j;
+	CoinBigIndex offset = cliqueStart[iClique]-position[kClique];
+	CoinBigIndex j;
 	bool subset=true;
 	// what about different fixes bool odd=false;
 	for (j=cliqueStart[kClique]+1;j<cliqueStart[kClique+1];j++) {
@@ -442,20 +442,20 @@ static int outDupsEtc(int numberIntegers, int & numberCliques, int & numberMatri
       printf("Can get rid of %d cliques\n",nOut);
     // make new copy
     int nNewC=numberCliques-nOut;
-    int size = cliqueStart[numberCliques]-nSave;
+    int size = static_cast<int>(cliqueStart[numberCliques]-nSave);
     int n=0;
-    int * start = new int [nNewC+1];
+    CoinBigIndex * start = new CoinBigIndex [nNewC+1];
     char * type = new char [nNewC];
     start[0]=0;
     CliqueEntry * entryC = new CliqueEntry [size];
-    int nel=0;
+    CoinBigIndex nel=0;
     allNew = true;
     for (int jClique=0;jClique<numberCliques;jClique++) {
       int kClique = which[jClique];
       if (value[kClique]!=-2&&kClique<numberMatrixCliques) {
 	if (kClique>=numberLastTime)
 	  allNew=false;
-	int nn=cliqueStart[kClique+1]-cliqueStart[kClique];
+	int nn=static_cast<int>(cliqueStart[kClique+1]-cliqueStart[kClique]);
 	memcpy(entryC+nel,entry+cliqueStart[kClique],nn*sizeof(CliqueEntry));
 	nel += nn;
 	type[n++]=cliqueType[kClique];
@@ -468,7 +468,7 @@ static int outDupsEtc(int numberIntegers, int & numberCliques, int & numberMatri
       if (value[kClique]!=-2&&kClique>=numberMatrixCliques) {
 	if (kClique>=numberLastTime)
 	  allNew=false;
-	int nn=cliqueStart[kClique+1]-cliqueStart[kClique];
+	int nn=static_cast<int>(cliqueStart[kClique+1]-cliqueStart[kClique]);
 	memcpy(entryC+nel,entry+cliqueStart[kClique],nn*sizeof(CliqueEntry));
 	nel += nn;
 	type[n++]=cliqueType[kClique];
@@ -487,7 +487,7 @@ static int outDupsEtc(int numberIntegers, int & numberCliques, int & numberMatri
     if (printit>1) {
       for (int jClique=0;jClique<numberCliques;jClique++) {
 	printf("%d [ ",jClique);
-	for (int i=cliqueStart[jClique];i<cliqueStart[jClique+1];i++)
+	for (CoinBigIndex i=cliqueStart[jClique];i<cliqueStart[jClique+1];i++)
 	  printf("%d(%d) ",sequenceInCliqueEntry(entry[i]),oneFixesInCliqueEntry(entry[i]));
 	printf("]\n");
       }
@@ -507,7 +507,7 @@ static int outDupsEtc(int numberIntegers, int & numberCliques, int & numberMatri
 }
 OsiSolverInterface *
 CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver,
-			    int numberExtraCliques,const int * starts,
+			    int numberExtraCliques,const CoinBigIndex * starts,
 			    const CliqueEntry * entries,const char * type)
 {
   if (!createSolver)
@@ -522,8 +522,8 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver,
   }
   bool printit=false;
   int numberCliques=0;
-  int numberEntries=0;
-  int * cliqueStart = NULL;
+  CoinBigIndex numberEntries=0;
+  CoinBigIndex * cliqueStart = NULL;
   CliqueEntry * entry = NULL;
   char * cliqueType=NULL;
   int * whichP = new int [numberIntegers_];
@@ -544,10 +544,10 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver,
   const double * rowUpper = si.getRowUpper();
   for (int iPass=0;iPass<2;iPass++) {
     if (iPass) {
-      int numberExtraEntries=0;
+      CoinBigIndex numberExtraEntries=0;
       if (numberExtraCliques) 
 	numberExtraEntries = starts[numberExtraCliques];
-      cliqueStart = new int [numberCliques+1+numberExtraCliques];
+      cliqueStart = new CoinBigIndex [numberCliques+1+numberExtraCliques];
       cliqueStart[0]=0;
       entry = new CliqueEntry [numberEntries+numberExtraEntries];
       cliqueType = new char [numberCliques+numberExtraCliques];
@@ -659,7 +659,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver,
     }
 #endif
     if (numberExtraCliques) {
-      int numberExtraEntries = starts[numberExtraCliques];
+      CoinBigIndex numberExtraEntries = starts[numberExtraCliques];
       memcpy(entry+numberEntries,entries,numberExtraEntries*sizeof(CliqueEntry));
       for (int iClique=0;iClique<numberExtraCliques;iClique++) {
 	cliqueType[numberCliques] = type[iClique];
@@ -914,7 +914,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver,
     CoinZeroN(zeroCount,numberIntegers_);
     CoinZeroN(oneCount,numberIntegers_);
     for (iClique=0;iClique<numberCliques;iClique++) {
-      for (int j=cliqueStart[iClique];j<cliqueStart[iClique+1];j++) {
+      for (CoinBigIndex j=cliqueStart[iClique];j<cliqueStart[iClique+1];j++) {
 	int iColumn = static_cast<int> (sequenceInCliqueEntry(entry[j]));
 	if (oneFixesInCliqueEntry(entry[j])) {
 	  oneCount[iColumn]++;
@@ -936,7 +936,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver,
       zeroStart[j+1] = oneStart[j]+n;
     }
     for (iClique=0;iClique<numberCliques;iClique++) {
-      for (int j=cliqueStart[iClique];j<cliqueStart[iClique+1];j++) {
+      for (CoinBigIndex j=cliqueStart[iClique];j<cliqueStart[iClique+1];j++) {
 	int iColumn = static_cast<int> (sequenceInCliqueEntry(entry[j]));
 	if (oneFixesInCliqueEntry(entry[j])) {
 	  int k=oneCount[iColumn];
@@ -952,8 +952,8 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver,
       }
     }
     nStrengthen=0;
-    int numberEntries=cliqueStart[numberCliques];
-    int maximumEntries=numberEntries;
+    CoinBigIndex numberEntries=cliqueStart[numberCliques];
+    CoinBigIndex maximumEntries=numberEntries;
     int maximumCliques=numberCliques;
     for (iColumn=0;iColumn<numberIntegers_;iColumn++) {
       int i;
@@ -964,7 +964,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver,
 	int jClique = whichClique[i];
 	//if (jClique<numberMatrixCliques) 
 	//continue;
-	int j = cliqueStart[jClique];
+	CoinBigIndex j = cliqueStart[jClique];
 	//assert (cliqueStart[jClique+1]==j+2);
 	for (;j<cliqueStart[jClique+1];j++) {
 	  CliqueEntry eJ = entry[j];
@@ -998,7 +998,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver,
 	count[jClique]=0;
 	if (jCount==cliqueStart[jClique+1]-cliqueStart[jClique]) {
 	  printf("Zero can extend %d [ ",jClique);
-	  for (int i=cliqueStart[jClique];i<cliqueStart[jClique+1];i++)
+	  for (CoinBigIndex i=cliqueStart[jClique];i<cliqueStart[jClique+1];i++)
 	    printf("%d(%d) ",sequenceInCliqueEntry(entry[i]),oneFixesInCliqueEntry(entry[i]));
 	  printf("] by %d(0)\n",iColumn);
 	  nStrengthen++;
@@ -1015,8 +1015,8 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver,
 	  }
 	  if (numberCliques==maximumCliques) {
 	    maximumCliques = (maximumCliques*12)/10+100;
-	    int * temp = new int [maximumCliques+1];
-	    memcpy(temp,cliqueStart,(numberCliques+1)*sizeof(int));
+	    CoinBigIndex * temp = new CoinBigIndex [maximumCliques+1];
+	    memcpy(temp,cliqueStart,(numberCliques+1)*sizeof(CoinBigIndex));
 	    delete [] cliqueStart;
 	    cliqueStart=temp;
 	    char * tempT = new char [maximumCliques];
@@ -1031,7 +1031,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver,
 	  entry[numberEntries++]=eI;
 	  whichM[0]=iColumn;
 	  int n=1;
-	  for (int i=cliqueStart[jClique];i<cliqueStart[jClique+1];i++) {
+	  for (CoinBigIndex i=cliqueStart[jClique];i<cliqueStart[jClique+1];i++) {
 	    entry[numberEntries++]=entry[i];
 	    whichM[n++]=sequenceInCliqueEntry(entry[i]);
 	  }
@@ -1049,7 +1049,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver,
 	int jClique = whichClique[i];
 	//if (jClique<numberMatrixCliques) 
 	//continue;
-	int j = cliqueStart[jClique];
+	CoinBigIndex j = cliqueStart[jClique];
 	//assert (cliqueStart[jClique+1]==j+2);
 	for (;j<cliqueStart[jClique+1];j++) {
 	  CliqueEntry eJ = entry[j];
@@ -1085,7 +1085,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver,
 #if 1
 		if (printit) {
 	    printf("One can extend %d [ ",jClique);
-	    for (int i=cliqueStart[jClique];i<cliqueStart[jClique+1];i++)
+	    for (CoinBigIndex i=cliqueStart[jClique];i<cliqueStart[jClique+1];i++)
 	      printf("%d(%d) ",sequenceInCliqueEntry(entry[i]),oneFixesInCliqueEntry(entry[i]));
 	    printf("] by %d(1)\n",iColumn);
 	  }
@@ -1104,8 +1104,8 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver,
 	  }
 	  if (numberCliques==maximumCliques) {
 	    maximumCliques = (maximumCliques*12)/10+100;
-	    int * temp = new int [maximumCliques+1];
-	    memcpy(temp,cliqueStart,(numberCliques+1)*sizeof(int));
+	    CoinBigIndex * temp = new CoinBigIndex [maximumCliques+1];
+	    memcpy(temp,cliqueStart,(numberCliques+1)*sizeof(CoinBigIndex));
 	    delete [] cliqueStart;
 	    cliqueStart=temp;
 	    char * tempT = new char [maximumCliques];
@@ -1120,7 +1120,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver,
 	  entry[numberEntries++]=eI;
 	  whichM[0]=iColumn;
 	  int n=1;
-	  for (int i=cliqueStart[jClique];i<cliqueStart[jClique+1];i++) {
+	  for (CoinBigIndex i=cliqueStart[jClique];i<cliqueStart[jClique+1];i++) {
 	    entry[numberEntries++]=entry[i];
 	    whichM[n++]=sequenceInCliqueEntry(entry[i]);
 	  }
@@ -1169,13 +1169,14 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver,
   if (numberCliques>numberMatrixCliques||alwaysDo) {
     newSolver = si.clone();
     // Delete all rows
-    int * start = new int [ CoinMax(numberRows,numberCliques+1)];
+    CoinBigIndex * start = new CoinBigIndex [ CoinMax(numberRows,numberCliques+1)];
     int i;
+    int * start2 = reinterpret_cast<int *>(start);
     for (i=0;i<numberRows;i++)
-      start[i]=i;
-    newSolver->deleteRows(numberRows,start);
+      start2[i]=i;
+    newSolver->deleteRows(numberRows,start2);
     start[0]=0;
-    int numberElements = cliqueStart[numberCliques];
+    CoinBigIndex numberElements = cliqueStart[numberCliques];
     int * column = new int [numberElements];
     double * element = new double [numberElements];
     double * lower = new double [numberCliques];
@@ -1183,7 +1184,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface & si,int createSolver,
     numberElements=0;
     for (iClique=0;iClique<numberCliques;iClique++) {
       double rhs=1.0;
-      for (int i=cliqueStart[iClique];i<cliqueStart[iClique+1];i++) {
+      for (CoinBigIndex i=cliqueStart[iClique];i<cliqueStart[iClique+1];i++) {
 	CliqueEntry eI=entry[i];
 	int iColumn = integerVariable_[sequenceInCliqueEntry(eI)];
 	column[numberElements]=iColumn;
