@@ -251,6 +251,8 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   CoinPackedMatrix matrixByRow(*si.getMatrixByRow());
   const char* sense = si.getRowSense();
   const double* rhs = si.getRightHandSide();
+  const double * colLower = si.getColLower();
+  const double * colUpper = si.getColUpper();
 
   const double* elementByRow = matrixByRow.getElements();
   const int* colInd = matrixByRow.getIndices();
@@ -275,7 +277,7 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       continue;  
 
     const CoinBigIndex sta = rowStart[iRow];     // Start position of iRow
-    const int rowLen = rowLength[iRow]; // iRow length / non-zero elements
+    int rowLen = rowLength[iRow]; // iRow length / non-zero elements
 
     if (ind != 0) { delete [] ind; ind = 0; }
     ind = new int [rowLen];
@@ -283,9 +285,16 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     coef = new double [rowLen];
 
     CoinBigIndex lastPos = sta + rowLen;
+    double thisRhs = rhs[iRow];
+    rowLen=0;
     for (iCol = sta; iCol < lastPos; ++iCol) {
-      ind[iCol - sta]  = colInd[iCol];
-      coef[iCol - sta] = elementByRow[iCol];
+      int jCol=colInd[iCol];
+      if (colLower[jCol]<colUpper[jCol]) {
+	ind[rowLen]  = jCol;
+	coef[rowLen++] = elementByRow[iCol];
+      } else {
+	thisRhs -= colLower[jCol]*elementByRow[iCol];
+      }
     }
 
     OsiRowCut flowCut1, flowCut2, flowCut3;
@@ -294,7 +303,7 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 
     if (sense[iRow] == 'E') {
       hasCut = generateOneFlowCut(si, rowLen, ind, coef, 'L', 
-				  rhs[iRow], flowCut1, violation);
+				  thisRhs, flowCut1, violation);
       if (hasCut)  {                         // If find a cut
 	cs.insert(flowCut1);
 	incNumFlowCuts();
@@ -303,7 +312,7 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       }
       hasCut = false;
       hasCut = generateOneFlowCut(si, rowLen, ind, coef, 'G', 
-				  rhs[iRow], flowCut2, violation);
+				  thisRhs, flowCut2, violation);
       if (hasCut)  {
 	cs.insert(flowCut2);
 	incNumFlowCuts();
@@ -313,7 +322,7 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     }
     if (sense[iRow] == 'L' || sense[iRow] == 'G') {
       hasCut = generateOneFlowCut(si, rowLen, ind, coef, sense[iRow], 
-				  rhs[iRow], flowCut3, violation);
+				  thisRhs, flowCut3, violation);
       if (hasCut)  {
 	cs.insert(flowCut3);
 	incNumFlowCuts();
@@ -621,6 +630,7 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	knapRHS += up[i];
 	if( y[i] < up[i] ) {
 	  candidate[i] = CGLFLOW_COL_PRIME;
+	  assert (up[i]);
 	  ratio[i] = x[i] / up[i];
 	  tempSum += up[i];
 	}

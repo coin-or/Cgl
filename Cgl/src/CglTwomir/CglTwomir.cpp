@@ -1782,7 +1782,7 @@ DGG_add2stepToList ( DGG_constraint_t *base, char *isint, double * /*x*/,
       norm_val += (cut->coeff[i]*cut->coeff[i]);
     }
 
-    norm_val /= cut->rhs * cut->rhs;
+    norm_val /= (cut->rhs * cut->rhs + 1.0);
          
     if (rc_val < best_rc_val )  {	
       best_rc_val = rc_val; best_rc_alpha = alpha;  }

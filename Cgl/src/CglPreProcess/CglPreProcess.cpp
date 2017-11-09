@@ -3738,11 +3738,11 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
 	dynamic_cast<CoinWarmStartBasis*>(model->getWarmStart()) ;
       assert (presolvedBasis);
       int numberChanged=0;
-      // Have to use free as superBasic does not exist
       for (iColumn=0;iColumn<numberColumns;iColumn++) {
 	int jColumn = originalColumns[iColumn];
 	switch (presolvedBasis->getStructStatus(iColumn)) {
 	case CoinWarmStartBasis::basic:
+	case CoinWarmStartBasis::superBasic:
 	case CoinWarmStartBasis::isFree:
 	  break;
 	case CoinWarmStartBasis::atLowerBound:
