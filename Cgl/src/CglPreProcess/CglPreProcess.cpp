@@ -1611,6 +1611,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	    <<numberY<<numberSOS<<numberElements
 	    <<CoinMessageEol;
 	  numberColumns += numberY;
+	  delete [] which;
+	  which = new int[numberColumns];
 	  bool saveTakeHint;
 	  OsiHintStrength saveStrength;
 	  startModel_->getHintParam(OsiDoDualInResolve,
