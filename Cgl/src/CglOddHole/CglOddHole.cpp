@@ -144,7 +144,7 @@ void CglOddHole::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   delete [] fixed;
     
 }
-void CglOddHole::generateCuts(const OsiRowCutDebugger * /*debugger*/,
+void CglOddHole::generateCuts(const OsiRowCutDebugger * debugger,
 			      const CoinPackedMatrix & rowCopy, 
 				 const double * solution, 
 			      const double * dj, OsiCuts & cs,

@@ -589,7 +589,7 @@ CglMixedIntegerRounding::determineRowType(const OsiSolverInterface& si,
   numInt = numNegInt + numPosInt;
   numCon = numNegCon + numPosCon;
 
-#if CGL_DEBUG
+#if CGL_DEBUG>1
   std::cout << "numNegInt = " << numNegInt << std::endl;
   std::cout << "numPosInt = " << numPosInt << std::endl;
   std::cout << "numInt = " << numInt << std::endl;

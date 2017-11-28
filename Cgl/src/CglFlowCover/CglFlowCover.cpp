@@ -1155,10 +1155,10 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 	if ( fabs(lastCoef) >= EPSILON_ ) {
 	  cutCoef[j]=lastCoef;
 	  cutInd[j++]=lastInd;
-	  lastCoef = cutCoef[i];
-	  if (i<cutLen)
-	    lastInd=cutInd[i];
 	}
+	lastCoef = cutCoef[i];
+	if (i<cutLen)
+	  lastInd=cutInd[i];
       } else {
 	lastCoef += cutCoef[i];
       }
@@ -1190,11 +1190,13 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
         return false;
         
     // Recheck the violation.
+    double saveViolation = violation;
     violation = 0.0;
     for (i = 0; i < cutLen; ++i) 
       violation += cutCoef[i] * xlp[cutInd[i]];
     
     violation -= cutRHS;
+    assert (fabs(violation-saveViolation)<1.0e-2);
 
     if ( violation > TOLERANCE_ ) {
       flowCut.setRow(cutLen, cutInd, cutCoef);

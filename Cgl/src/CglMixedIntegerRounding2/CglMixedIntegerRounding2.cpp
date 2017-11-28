@@ -612,7 +612,7 @@ CglMixedIntegerRounding2::determineRowType(//const OsiSolverInterface& si,
   numInt = numNegInt + numPosInt;
   numCon = numNegCon + numPosCon;
 
-#if CGL_DEBUG
+#if CGL_DEBUG>1
   std::cout << "numNegInt = " << numNegInt << std::endl;
   std::cout << "numPosInt = " << numPosInt << std::endl;
   std::cout << "numInt = " << numInt << std::endl;
@@ -816,7 +816,7 @@ CglMixedIntegerRounding2::generateMirCuts(
 	// or there are no integer or continuous variables.
 	// In this case, we continue without trying to generate a c-MIR
 	if (!foundMixedKnapsack) {
-#if CGL_DEBUG	  
+#if CGL_DEBUG > 1	  
 	  std::cout << "couldn't create mixed knapsack" << std::endl;
 #endif
 	  continue;
@@ -833,7 +833,7 @@ CglMixedIntegerRounding2::generateMirCuts(
 				     rhsMixedKnapsack, contVariablesInS,
 				     workVectors,cMirCut);
 
-#if CGL_DEBUG
+#if CGL_DEBUG > 1
 	// PRINT STATISTICS
 	printStats(fout, hasCut, si, rowAggregated, rhsAggregated, xlp,
 		   xlpExtra, listRowsAggregated, listColsSelected, 
@@ -862,7 +862,7 @@ CglMixedIntegerRounding2::generateMirCuts(
 	    printf("<= %g\n",cMirCut.ub());
 #endif
 	  } else {
-#if CGL_DEBUG
+#if CGL_DEBUG > 1
 	    std::cout << "MIR cut generated " << std::endl;
 #endif
 	    cs.insert(cMirCut);
@@ -880,7 +880,7 @@ CglMixedIntegerRounding2::generateMirCuts(
   delete [] listRowsAggregated; listRowsAggregated = 0;
   delete [] xlpExtra; xlpExtra = 0;
   
-#if CGL_DEBUG
+#if CGL_DEBUG > 1
   // CLOSE FILE
   fout.close();
 #endif
@@ -1137,7 +1137,7 @@ CglMixedIntegerRounding2::boundSubstitution(
       // if both bounds are infinite, then we cannot form a mixed knapsack
       if ( (LB == -1.0 * infinity) &&
 	   (UB == infinity) ) {
-#if CGL_DEBUG
+#if CGL_DEBUG > 1
 	std::cout << "continuous var with infinite bounds. " <<
                      "Cannot form mixed Knapsack = " << std::endl;
 #endif
@@ -1191,7 +1191,7 @@ CglMixedIntegerRounding2::boundSubstitution(
   }
 
   // if there are no continuous variables to form s, then we stop
-#if CGL_DEBUG
+#if CGL_DEBUG > 1
   std::cout << "# of continuous var in mixedKnapsack = " << numCont <<
     std::endl;
 #endif
@@ -1201,7 +1201,7 @@ CglMixedIntegerRounding2::boundSubstitution(
   const int numInt = mixedKnapsack.getNumElements();
   // if there are not integer variables in mixedKnapsack, then we stop
   // CAUTION: all the coefficients could be zero
-#if CGL_DEBUG
+#if CGL_DEBUG > 1
   std::cout << "# of integer var in mixedKnapsack = " << numInt <<
     std::endl;
 #endif

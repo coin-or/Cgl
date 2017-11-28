@@ -685,7 +685,7 @@ CglGomory::generateCuts(
   int * which = reinterpret_cast<int *>(doSorted ? (sort+numberColumns): (sort));
   double tolerance1=1.0e-6;
   double tolerance2=0.9;
-  double tolerance3=1.0e-4;
+  double tolerance3=1.0e-10;
   double tolerance6=1.0e-6;
   double tolerance9=1.0e-4;
 #define MORE_GOMORY_CUTS 1
@@ -705,7 +705,7 @@ CglGomory::generateCuts(
     if (!info.pass) {
       tolerance1=1.0;
       tolerance2=1.0e-2;
-      tolerance3=1.0e-6;
+      //tolerance3=1.0e-6;
       tolerance6=1.0e-7;
       tolerance9=1.0e-5;
       if (!limit)
@@ -1126,6 +1126,7 @@ CglGomory::generateCuts(
 #endif
 #endif
 	  bool cleanedCut=numberNonInteger>0;
+	  double rhsBeforeRelax=rhs;
 	  if (!numberNonInteger&&number) {
 #ifdef CGL_DEBUG
 	    assert (sizeof(Rational)==sizeof(double));
@@ -1142,7 +1143,7 @@ CglGomory::generateCuts(
 	    for (j=0;j<number+1;j++) {
 	      double value=above_integer(fabs(packed[j]));
 	      if (fabs(value)<tolerance3) {
-		// too small
+		// very close to integer
 		continue;
 	      } else {
 		numberNonSmall++;
@@ -1355,7 +1356,8 @@ CglGomory::generateCuts(
 	      }
 #elif TRY7==2
 	      // Look at ratio
-	      double scaleFactor=fabs(rhs);
+	      double scaleFactor=fabs(rhsBeforeRelax);
+	      //double scaleFactor=fabs(rhs);
 	      for (int i=0;i<number;i++) {
 		double value=packed[i];
 		double ratio = fabs(rhs/value);
