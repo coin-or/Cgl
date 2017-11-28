@@ -814,7 +814,7 @@ CglGomory::generateCuts(
   double tolerance1=1.0e-6;
   double tolerance2=0.9;
 #if USE_CGL_RATIONAL <= 0
-  double tolerance3=1.0e-4;
+  double tolerance3=1.0e-10;
 #endif
   double tolerance6=1.0e-6;
   double tolerance9=1.0e-4;
@@ -836,7 +836,7 @@ CglGomory::generateCuts(
       tolerance1=1.0;
       tolerance2=1.0e-2;
 #if USE_CGL_RATIONAL <= 0
-      tolerance3=1.0e-6;
+      //tolerance3=1.0e-6;
 #endif
       tolerance6=1.0e-7;
       tolerance9=1.0e-5;
@@ -1259,6 +1259,7 @@ CglGomory::generateCuts(
 #endif
 	  bool cleanedCut=numberNonInteger>0;
 	  bool dontRelax = false;
+	  double rhsBeforeRelax=rhs;
 	  if (!numberNonInteger&&number&&USE_CGL_RATIONAL>=0) {
 #if USE_CGL_RATIONAL==0
 #ifdef CGL_DEBUG
@@ -1276,7 +1277,7 @@ CglGomory::generateCuts(
 	    for (j=0;j<number+1;j++) {
 	      double value=above_integer(fabs(packed[j]));
 	      if (fabs(value)<tolerance3) {
-		// too small
+		// very close to integer
 		continue;
 	      } else {
 		numberNonSmall++;
@@ -1376,6 +1377,8 @@ CglGomory::generateCuts(
 #endif
 		assert(maxMultiplier/minMultiplier>0.9999&&maxMultiplier/minMultiplier<1.0001);
 	      }
+	    } else if (!numberNonSmall) {
+	      dontRelax=true;
 	    }
 	    // erase cutElement
 	    CoinFillN(cutElement,number+1,0.0);
@@ -1521,7 +1524,7 @@ CglGomory::generateCuts(
 	      }
 #elif TRY7==2
 	      // Look at ratio
-	      double scaleFactor=fabs(rhs);
+	      double scaleFactor=fabs(rhsBeforeRelax);
 	      for (int i=0;i<number;i++) {
 		double value=packed[i];
 		double ratio = fabs(rhs/value);
