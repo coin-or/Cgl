@@ -1500,7 +1500,7 @@ CglGomory::generateCuts(
 	      accurate=false;
 #endif
 	    } else {
-#define TRY7 2
+#define TRY7 1
 #define PRINT_NUMBER 0
 #if PRINT_NUMBER
 	      if (number==PRINT_NUMBER) {
