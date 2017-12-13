@@ -18,13 +18,23 @@
 #include "CoinPackedMatrix.hpp"
 #include "CoinIndexedVector.hpp"
 #include "OsiRowCutDebugger.hpp"
+#ifndef USE_CGL_RATIONAL
+#define USE_CGL_RATIONAL 0
+#endif
+// -1 no rational, 0 as before, 1 use code from CglGmi
+#if USE_CGL_RATIONAL>0
+#if USE_CGL_RATIONAL<=10
+#error "If USE_CGL_RATIONAL>0 must be at least 10 (maybe not more than 1000)" 
+#endif
+#include "CoinRational.hpp"
+#endif
 #define COIN_HAS_CLP_GOMORY
 #ifdef COIN_HAS_CLP_GOMORY
 #include "OsiClpSolverInterface.hpp"
 #endif
 #include "CoinFactorization.hpp"
 #undef CLP_OSL
-#if 1
+#if COIN_BIG_INDEX<2
 #define CLP_OSL 1
 #if CLP_OSL!=1&&CLP_OSL!=3
 #undef CLP_OSL
@@ -62,7 +72,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 #ifndef CLP_INVESTIGATE2
   if ((info.options&16)!=0)
 #endif
-    printf("%d %d %d\n",info.inTree,info.options,info.pass);
+     printf("%d %d %d\n",info.inTree,info.options,info.pass);
   for (i=0;i<numberColumns;i++) {
     if (si.isInteger(i)) {
       if (colUpper[i]>colLower[i]+0.5) {
@@ -135,7 +145,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	numberAdd=0;
 	for (int iRow=numberOriginalRows;iRow<numberRows;iRow++) {
 	  bool simple = true;
-	  for (int k=rowStart[iRow];
+	  for (CoinBigIndex k=rowStart[iRow];
 	       k<rowStart[iRow]+rowLength[iRow];k++) {
 	    double value = rowElements[k];
 	    if (value!=floor(value+0.5)) {
@@ -167,7 +177,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	if (!copy[iRow-numberOriginalRows]) {
 	  double value = pi[iRow];
 	  offset += rowSolution[iRow]*value;
-	  for (int k=rowStart[iRow];
+	  for (CoinBigIndex k=rowStart[iRow];
 	       k<rowStart[iRow]+rowLength[iRow];k++) {
 	    int iColumn=column[k];
 	    obj[iColumn] -= value*rowElements[k];
@@ -175,7 +185,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	} else {
 	  rowLower2[numberCopy]=rowLower[iRow];
 	  rowUpper2[numberCopy]=rowUpper[iRow];
-	  for (int k=rowStart[iRow];
+	  for (CoinBigIndex k=rowStart[iRow];
 	       k<rowStart[iRow]+rowLength[iRow];k++) {
 	    column2[numberAdd]=column[k];
 	    rowElements2[numberAdd++]=rowElements[k];
@@ -349,6 +359,7 @@ inline double above_integer(double value) {
     return 0.0;
   return value-value2;
 }
+#if USE_CGL_RATIONAL <= 0
 //-------------------------------------------------------------------
 // Returns the greatest common denominator of two 
 // positive integers, a and b, found using Euclid's algorithm 
@@ -394,7 +405,96 @@ static int gcd(int a, int b)
 #endif
   return b;
 }
-
+#endif
+#define GOMORY_LONG
+#ifdef GOMORY_LONG
+#define SMALL_VALUE1 1.0e-14
+#define GOMORY_INT long long int
+#else
+#define SMALL_VALUE1 1.0e-10
+#define GOMORY_INT int
+#endif
+#if USE_CGL_RATIONAL>0
+static long computeGcd(long a, long b) {
+  // This is the standard Euclidean algorithm for gcd
+  long remainder = 1;
+  // Make sure a<=b (will always remain so)
+  if (a > b) {
+    // Swap a and b
+    long temp = a;
+    a = b;
+    b = temp;
+  }
+  // If zero then gcd is nonzero
+  if (!a) {
+    if (b) {
+      return b;
+    } 
+    else {
+      printf("### WARNING: CglGMI::computeGcd() given two zeroes!\n");
+      exit(1);
+    }
+  }
+  while (remainder) {
+    remainder = b % a;
+    b = a;
+    a = remainder;
+  }
+  return b;
+} /* computeGcd */
+static bool scaleCutIntegral(double* cutElem, int* cutIndex, int cutNz,
+			     double& cutRhs, double maxdelta) {
+  long gcd, lcm;
+  double maxscale = 1000; 
+  long maxdnom = USE_CGL_RATIONAL;
+  //long numerator = 0, denominator = 0;
+  // Initialize gcd and lcm
+  CoinRational r = CoinRational(cutRhs, maxdelta, maxdnom);
+  if (r.getNumerator() != 0){
+     gcd = labs(r.getNumerator());
+     lcm = r.getDenominator();
+  }
+  else{
+#if defined GMI_TRACE_CLEAN
+      printf("Cannot compute rational number, scaling procedure aborted\n");
+#endif
+    return false;
+  }
+  for (int i = 0; i < cutNz; ++i) {
+    CoinRational r = CoinRational(cutElem[i], maxdelta, maxdnom);
+    if (r.getNumerator() != 0){
+       gcd = computeGcd(gcd, r.getNumerator());
+       lcm *= r.getDenominator()/(computeGcd(lcm,r.getDenominator()));
+    }
+    else{
+#if defined GMI_TRACE_CLEAN
+      printf("Cannot compute rational number, scaling procedure aborted\n");
+#endif
+      return false;
+    } 
+  }
+  double scale = ((double)lcm)/((double)gcd);
+  if (fabs(scale) > maxscale) {
+#if defined GMI_TRACE_CLEAN
+      printf("Scaling factor too large, scaling procedure aborted\n");
+#endif
+      return false;
+  }
+  scale = fabs(scale);
+  // Looks like we have a good scaling factor; scale and return;
+  for (int i = 0; i < cutNz; ++i) {
+    double value = cutElem[i]*scale;
+    cutElem[i] = floor(value+0.5);
+    assert (fabs(cutElem[i]-value)<1.0e-9);
+  }
+  {
+    double value = cutRhs*scale;
+    cutRhs = floor(value+0.5);
+    assert (fabs(cutRhs-value)<1.0e-9);
+  }
+  return true;
+} /* scaleCutIntegral */
+#elif USE_CGL_RATIONAL == 0
 //-------------------------------------------------------------------
 // Returns the nearest rational with denominator < maxDenominator
 //-------------------------------------------------------------------
@@ -402,11 +502,15 @@ typedef struct {
   int numerator;
   int denominator;
 } Rational;
+typedef struct {
+  GOMORY_INT numerator;
+  GOMORY_INT denominator;
+} RationalLong;
 inline Rational nearestRational(double value, int maxDenominator) 
 {
-  Rational tryThis;
-  Rational tryA;
-  Rational tryB;
+  RationalLong tryThis;
+  RationalLong tryA;
+  RationalLong tryB;
   double integerPart;
 
 #if CGL_DEBUG>1
@@ -418,17 +522,21 @@ inline Rational nearestRational(double value, int maxDenominator)
   tryA.denominator=1;
   tryB.numerator=1;
   tryB.denominator=0;
+  Rational returnRational;
 
-  if (fabs(value)<1.0e-10)
-    return tryA;
+  if (fabs(value)<SMALL_VALUE1) {
+    returnRational.numerator=static_cast<int>(tryA.numerator);
+    returnRational.denominator=static_cast<int>(tryA.denominator);
+    return returnRational;
+  }
   integerPart = floor(value);
   value -= integerPart;
-  tryThis.numerator = tryB.numerator* static_cast<int> (integerPart) + tryA.numerator;
-  tryThis.denominator = tryB.denominator* static_cast<int> (integerPart) + tryA.denominator;
+  tryThis.numerator = tryB.numerator* static_cast<GOMORY_INT> (integerPart) + tryA.numerator;
+  tryThis.denominator = tryB.denominator* static_cast<GOMORY_INT> (integerPart) + tryA.denominator;
   tryA = tryB;
   tryB = tryThis;
 
-  while (value>1.0e-10 && tryB.denominator <=maxDenominator) {
+  while (value>SMALL_VALUE1 && tryB.denominator <=maxDenominator) {
     nLoop++;
     if (nLoop>50) {
       Rational bad;
@@ -440,25 +548,45 @@ inline Rational nearestRational(double value, int maxDenominator)
       return bad;
     }
     value = 1.0/value;
-    integerPart = floor(value+1.0e-10);
+    integerPart = floor(value+SMALL_VALUE1);
     value -= integerPart;
-    tryThis.numerator = tryB.numerator* static_cast<int> (integerPart) + tryA.numerator;
-    tryThis.denominator = tryB.denominator* static_cast<int>(integerPart) + tryA.denominator;
+    tryThis.numerator = tryB.numerator* static_cast<GOMORY_INT> (integerPart) + tryA.numerator;
+    tryThis.denominator = tryB.denominator* static_cast<GOMORY_INT>(integerPart) + tryA.denominator;
     tryA = tryB;
     tryB = tryThis;
   }
   if (tryB.denominator <= maxDenominator) {
 #if CGL_DEBUG>1
-    printf("%d/%d\n",tryB.numerator,tryB.denominator);
+    printf("%lld/%lld\n",tryB.numerator,tryB.denominator);
 #endif
-    return tryB;
+    if (tryB.denominator<COIN_INT_MAX) {
+      returnRational.numerator=static_cast<int>(tryB.numerator);
+      returnRational.denominator=static_cast<int>(tryB.denominator);
+    } else {
+      returnRational.numerator=-1;
+      returnRational.denominator=-1;
+#if CGL_DEBUG>1
+      printf(" *** bad rational\n");
+#endif
+    }
   } else {
 #if CGL_DEBUG>1
-    printf("%d/%d\n",tryA.numerator,tryA.denominator);
+    printf("%lld/%lld\n",tryA.numerator,tryA.denominator);
 #endif
-    return tryA;
+    if (tryA.denominator<COIN_INT_MAX) {
+      returnRational.numerator=static_cast<int>(tryA.numerator);
+      returnRational.denominator=static_cast<int>(tryA.denominator);
+    } else {
+      returnRational.numerator=-1;
+      returnRational.denominator=-1;
+#if CGL_DEBUG>1
+      printf(" *** bad rational\n");
+#endif
+    }
   }
+  return returnRational;
 }
+#endif
 // Does actual work - returns number of cuts
 int
 CglGomory::generateCuts( 
@@ -484,7 +612,7 @@ CglGomory::generateCuts(
   double away = info.inTree ? away_ : CoinMin(away_,awayAtRoot_);
   int numberRows=columnCopy.getNumRows();
   int numberColumns=columnCopy.getNumCols(); 
-  int numberElements=columnCopy.getNumElements();
+  CoinBigIndex numberElements=columnCopy.getNumElements();
   // Allow bigger length on initial matrix (if special setting)
   //if (limit==512&&!info.inTree&&!info.pass)
   //limit=1024;
@@ -593,7 +721,7 @@ CglGomory::generateCuts(
   CoinFillN(rowActivity,numberRows,0.0);
   for (iColumn=0;iColumn<numberColumns;iColumn++) {
     double value = colsol[iColumn];
-    int k;
+    CoinBigIndex k;
     for (k=columnStart[iColumn];k<columnStart[iColumn]+columnLength[iColumn];k++) {
       iRow = row[k];
       rowActivity[iRow] += columnElements[k]*value;
@@ -636,7 +764,7 @@ CglGomory::generateCuts(
       if (above_integer(rhs)<1.0e-10) {
 	// could be integer slack
 	bool allInteger=true;
-	int k;
+	CoinBigIndex k;
 	for (k=rowStart[iRow];
 	     k<rowStart[iRow]+rowLength[iRow];k++) {
 	  int iColumn=column[k];
@@ -685,7 +813,9 @@ CglGomory::generateCuts(
   int * which = reinterpret_cast<int *>(doSorted ? (sort+numberColumns): (sort));
   double tolerance1=1.0e-6;
   double tolerance2=0.9;
+#if USE_CGL_RATIONAL <= 0
   double tolerance3=1.0e-10;
+#endif
   double tolerance6=1.0e-6;
   double tolerance9=1.0e-4;
 #define MORE_GOMORY_CUTS 1
@@ -705,7 +835,9 @@ CglGomory::generateCuts(
     if (!info.pass) {
       tolerance1=1.0;
       tolerance2=1.0e-2;
+#if USE_CGL_RATIONAL <= 0
       //tolerance3=1.0e-6;
+#endif
       tolerance6=1.0e-7;
       tolerance9=1.0e-5;
       if (!limit)
@@ -755,13 +887,13 @@ CglGomory::generateCuts(
       }
     }
   }
-  int nTotalEls=COIN_INT_MAX;
+  CoinBigIndex nTotalEls=COIN_INT_MAX;
   if (doSorted) {
     CoinSort_2(sort,sort+nCandidates,which);
-    int nElsNow = columnCopy.getNumElements();
-    int nAdd;
-    int nAdd2;
-    int nReasonable;
+    CoinBigIndex nElsNow = columnCopy.getNumElements();
+    CoinBigIndex nAdd;
+    CoinBigIndex nAdd2;
+    CoinBigIndex nReasonable;
     int depth=info.level;
     if (depth<2) {
       nAdd=10000;
@@ -784,7 +916,7 @@ CglGomory::generateCuts(
     nTotalEls=nReasonable;
   }
 #ifdef MORE_GOMORY_CUTS
-  int saveTotalEls=nTotalEls;
+  CoinBigIndex saveTotalEls=nTotalEls;
 #endif
 #if MORE_GOMORY_CUTS==2||MORE_GOMORY_CUTS==3
   saveLimit=limit;
@@ -893,7 +1025,7 @@ CglGomory::generateCuts(
 	for (j=0;j<numberColumns;j++) {
 	  if (columnIsBasic[j]<0&&colUpper[j]>colLower[j]+testFixed) {
 	    double value=0.0;
-	    int k;
+	    CoinBigIndex k;
 	    // add in row of tableau
 	    for (k=columnStart[j];k<columnStart[j]+columnLength[j];k++) {
 	      iRow = row[k];
@@ -1017,7 +1149,7 @@ CglGomory::generateCuts(
 	      coefficient = - coefficient;
 	      rhs -= coefficient*rowLower[iRow];
 	    }
-	    int k;
+	    CoinBigIndex k;
 	    for (k=rowStart[iRow];
 		 k<rowStart[iRow]+rowLength[iRow];k++) {
 	      int jColumn=column[k];
@@ -1126,8 +1258,10 @@ CglGomory::generateCuts(
 #endif
 #endif
 	  bool cleanedCut=numberNonInteger>0;
+	  bool dontRelax = false;
 	  double rhsBeforeRelax=rhs;
-	  if (!numberNonInteger&&number) {
+	  if (!numberNonInteger&&number&&USE_CGL_RATIONAL>=0) {
+#if USE_CGL_RATIONAL==0
 #ifdef CGL_DEBUG
 	    assert (sizeof(Rational)==sizeof(double));
 #endif
@@ -1138,7 +1272,7 @@ CglGomory::generateCuts(
 	    cutIndex[number]=numberColumns+1;
 	    packed[number]=rhs;
 	    int numberNonSmall=0;
-	    int lcm = 1;
+	    long long int lcm = 1;
 	    
 	    for (j=0;j<number+1;j++) {
 	      double value=above_integer(fabs(packed[j]));
@@ -1215,6 +1349,7 @@ CglGomory::generateCuts(
 		printf("The gcd of xInt is %i\n",thisGcd);    
 #endif
 		
+		dontRelax=true;
 		// construct new cut by dividing through by gcd and 
 		double minMultiplier=1.0e100;
 		double maxMultiplier=0.0;
@@ -1242,10 +1377,43 @@ CglGomory::generateCuts(
 #endif
 		assert(maxMultiplier/minMultiplier>0.9999&&maxMultiplier/minMultiplier<1.0001);
 	      }
+	    } else if (!numberNonSmall) {
+	      dontRelax=true;
 	    }
 	    // erase cutElement
 	    CoinFillN(cutElement,number+1,0.0);
-	  } else {
+#elif USE_CGL_RATIONAL>0
+	    // Use coding from CglGmi
+	    double maxdelta = 1.0e-12; //param.getEPS();
+	    if (0) {
+	      double total=0.0;
+	      for (j=0;j<number;j++) {
+		int jColumn =cutIndex[j];
+		double value=packed[j];
+		std::cout<<"("<<jColumn<<","<<value<<","<<colsol[jColumn]
+			 <<") ";
+		total += value*colsol[jColumn];
+	      }
+	      std::cout<<std::endl;
+	      printf("before %g <= %g <= %g\n",bounds[0],total,rhs);
+	    }
+	    dontRelax=scaleCutIntegral(packed,cutIndex,number,
+				       rhs,maxdelta);
+	    if (dontRelax&&false) {
+	      double total=0.0;
+	      for (j=0;j<number;j++) {
+		int jColumn =cutIndex[j];
+		double value=packed[j];
+		std::cout<<"("<<jColumn<<","<<value<<","<<colsol[jColumn]
+			 <<") ";
+		total += value*colsol[jColumn];
+	      }
+	      std::cout<<std::endl;
+	      printf("after %g <= %g <= %g\n",bounds[0],total,rhs);
+	    }
+#endif
+	  }
+	  if (!dontRelax) {
 	    // relax rhs a tiny bit
 	    //#define CGL_GOMORY_OLD_RELAX
 #ifndef CGL_GOMORY_OLD_RELAX
@@ -1332,7 +1500,7 @@ CglGomory::generateCuts(
 	      accurate=false;
 #endif
 	    } else {
-#define TRY7 2
+#define TRY7 1
 #define PRINT_NUMBER 0
 #if PRINT_NUMBER
 	      if (number==PRINT_NUMBER) {
@@ -1357,7 +1525,6 @@ CglGomory::generateCuts(
 #elif TRY7==2
 	      // Look at ratio
 	      double scaleFactor=fabs(rhsBeforeRelax);
-	      //double scaleFactor=fabs(rhs);
 	      for (int i=0;i<number;i++) {
 		double value=packed[i];
 		double ratio = fabs(rhs/value);
@@ -1472,6 +1639,18 @@ CglGomory::generateCuts(
 	      rc.setRow(number,cutIndex,packed,false);
 	      rc.setLb(bounds[0]);
 	      rc.setUb(bounds[1]);
+#if 0
+	      double total=0.0;
+	      for (j=0;j<number;j++) {
+		int jColumn =cutIndex[j];
+		double value=packed[j];
+		std::cout<<"("<<jColumn<<","<<value<<","<<colsol[jColumn]
+			 <<") ";
+		total += value*colsol[jColumn];
+	      }
+	      std::cout<<std::endl;
+	      printf("above CUT %g <= %g <= %g\n",bounds[0],total,bounds[1]);
+#endif	      
 #ifdef CGL_DEBUG
 	      if (debugger) {
 		assert(!debugger->invalidCut(rc));
