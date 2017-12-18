@@ -1518,10 +1518,12 @@ CglGomory::generateCuts(
 	      for (int i=0;i<number;i++)
 		packed[i] *= multiplier;
 	      rhs *= multiplier;
+#if PRINT_NUMBER
 	      if (number==PRINT_NUMBER) {
 		printf("multiplier %g %g %g\n",
 		       multiplier,smallest,largest);
 	      }
+#endif
 #elif TRY7==2
 	      // Look at ratio
 	      double scaleFactor=fabs(rhsBeforeRelax);
