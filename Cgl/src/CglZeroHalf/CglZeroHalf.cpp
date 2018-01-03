@@ -333,7 +333,7 @@ CglZeroHalf::refreshSolver(OsiSolverInterface * solver)
 	break;
       } else {
 	double value = rowElements[j];
-	if (fabs(value-floor(value+0.5))>1.0e-15) {
+	if (fabs(value-floor(value+0.5))>1.0e-15||fabs(value)>=COIN_INT_MAX) {
 	  // not integer coefficient
 	  good=false;
 	  break;
@@ -397,7 +397,7 @@ CglZeroHalf::refreshSolver(OsiSolverInterface * solver)
 	  break;
 	} else {
 	  double value = rowElements[j];
-	  if (fabs(value-floor(value+0.5))>1.0e-15) {
+	  if (fabs(value-floor(value+0.5))>1.0e-15||fabs(value)>=COIN_INT_MAX) {
 	    // not integer coefficient
 	    good=false;
 	    break;
