@@ -6719,9 +6719,15 @@ CglPreProcess::reducedCostFix(OsiSolverInterface & model)
 void 
 CglPreProcess::passInProhibited(const char * prohibited,int numberColumns)
 {
-  delete [] prohibited_;
+  char * temp = prohibited_;
   prohibited_ = CoinCopyOfArray(prohibited,numberColumns);
+  if (temp&&numberProhibited_==numberColumns) {
+    // merge
+    for (int i=0;i<numberColumns;i++)
+      prohibited_[i] |= temp[i];
+  }
   numberProhibited_ = numberColumns;
+  delete [] temp;
 }
 /* Pass in row types
    0 normal
