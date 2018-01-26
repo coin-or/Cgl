@@ -364,17 +364,17 @@ inline double above_integer(double value) {
 // Returns the greatest common denominator of two 
 // positive integers, a and b, found using Euclid's algorithm 
 //-------------------------------------------------------------------
-static int gcd(int a, int b) 
+static long long int gcd(long long int a, long long int b) 
 {
-  int remainder = -1;
+  long long int remainder = -1;
 #if CGL_DEBUG>1
-  printf("gcd of %d and %d\n",a,b);
+  printf("gcd of %ld and %ld\n",a,b);
   int nLoop=0;
 #endif
   // make sure a<=b (will always remain so)
   if(a > b) {
     // Swap a and b
-    int temp = a;
+    long long int temp = a;
     a = b;
     b = temp;
   }
@@ -1168,6 +1168,7 @@ CglGomory::generateCuts(
 	double sum=0.0;
 	rhs = - rhs;
 	int n = cutVector.getNumElements();
+	//assert (n); can be 0!
 	// If too many - just clear vector and skip
 	if (n>limit) {
 	  cutVector.clear();
@@ -1247,8 +1248,9 @@ CglGomory::generateCuts(
 	  //#ifdef CGL_DEBUG
 #ifdef CGL_DEBUG
 #if CGL_DEBUG<=1
-	  if (number<=-10) {
+	  if (number<=10) {
 #endif
+	    std::cout<<"col "<<iColumn;
 	    for (j=0;j<number;j++) {
 	      std::cout<<" ["<<cutIndex[j]<<","<<packed[j]<<"]";
 	    }
@@ -1259,8 +1261,13 @@ CglGomory::generateCuts(
 #endif
 	  bool cleanedCut=numberNonInteger>0;
 	  bool dontRelax = false;
+#define TRY7 1
+#if TRY7==2
 	  double rhsBeforeRelax=rhs;
-	  if (!numberNonInteger&&number&&USE_CGL_RATIONAL>=0) {
+#endif
+	  if ((!numberNonInteger||number<6)&&number&&USE_CGL_RATIONAL>=0) {
+	    // pretend not integer
+	    numberNonInteger=0;
 #if USE_CGL_RATIONAL==0
 #ifdef CGL_DEBUG
 	    assert (sizeof(Rational)==sizeof(double));
@@ -1289,13 +1296,19 @@ CglGomory::generateCuts(
 		lcm=-1;
 		break;
 	      }
-	      int thisGcd = gcd(lcm,cleaned[j].denominator);
+	      long long int thisGcd = gcd(lcm,cleaned[j].denominator);
 	      // may need to check for overflow
 	      lcm /= thisGcd;
-	      lcm *= cleaned[j].denominator;
+	      if (static_cast<double>(lcm)*cleaned[j].denominator<
+		  1.0e18) {
+		lcm *= cleaned[j].denominator;
+	      } else {
+		lcm=-1;
+		break;
+	      }
 	    }
 	    if (lcm>0&&numberNonSmall) {
-	      double multiplier = lcm;
+	      double multiplier = static_cast<double>(lcm);
 	      cleanedCut=true;
 	      int nOverflow = 0; 
 	      for (j=0; j<number+1;j++) {
@@ -1322,7 +1335,7 @@ CglGomory::generateCuts(
 		j=0;
 		while (!xInt[j])
 		  j++; // skip zeros
-		int thisGcd = gcd(xInt[j],xInt[j+1]);
+		long long int thisGcd = gcd(xInt[j],xInt[j+1]);
 		j++;
 		for (;j<number+1;j++) {
 		  if (xInt[j])
@@ -1356,9 +1369,9 @@ CglGomory::generateCuts(
 		for (j=0; j<number+1;j++) {
 		  double old=packed[j];
 		  if (old>0.0) {
-		    packed[j]=xInt[j]/thisGcd;
+		    packed[j]=static_cast<double>(xInt[j]/thisGcd);
 		  } else {
-		    packed[j]=-xInt[j]/thisGcd;
+		    packed[j]=-static_cast<double>(xInt[j]/thisGcd);
 		  }
 #if CGL_DEBUG>1
 		  printf("%g => %g   \n",old,packed[j]);
@@ -1488,7 +1501,8 @@ CglGomory::generateCuts(
 	      }
 	    }
 	    if (largest>1.0e10*smallest||(number>20&&smallest<number*1.0e-6)||
-		numberNonInteger<-10) {
+		numberNonInteger<-10||!number) {
+	      //assert (number); // debug this - looks as if it could be
 	      number=limit+1; //reject
 	      numberNonInteger=1;
 	    } else if (largest>1.0e9*smallest) {
@@ -1500,7 +1514,6 @@ CglGomory::generateCuts(
 	      accurate=false;
 #endif
 	    } else {
-#define TRY7 1
 #define PRINT_NUMBER 0
 #if PRINT_NUMBER
 	      if (number==PRINT_NUMBER) {
@@ -1513,11 +1526,21 @@ CglGomory::generateCuts(
 	      if (number>limit)  
 		continue;
 #if TRY7==1
-	      // Just scale
-	      double multiplier = 1.0/sqrt(largest*smallest);
-	      for (int i=0;i<number;i++)
-		packed[i] *= multiplier;
-	      rhs *= multiplier;
+	      // Just scale - unless small integers
+	      bool dontScale=true;
+	      if (fabs(rhs-floor(rhs+0.5))>1.0e-14)
+		dontScale=false;
+	      for (int i=0;i<number;i++) {
+		if (fabs(packed[i]-floor(packed[i]+0.5))>1.0e-14||
+		    fabs(packed[i])>1.0e4)
+		  dontScale=false;
+	      }
+	      if (!dontScale) {
+		double multiplier = 1.0/sqrt(largest*smallest);
+		for (int i=0;i<number;i++)
+		  packed[i] *= multiplier;
+		rhs *= multiplier;
+	      }
 #if PRINT_NUMBER
 	      if (number==PRINT_NUMBER) {
 		printf("multiplier %g %g %g\n",
