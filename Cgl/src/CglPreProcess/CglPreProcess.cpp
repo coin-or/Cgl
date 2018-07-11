@@ -6673,6 +6673,7 @@ CglPreProcess::someFixed(OsiSolverInterface & model,
       newModel->setColUpper(iColumn,lower[iColumn]);
     }
   }
+  delete [] sort;
   return newModel;
 }
 // If we have a cutoff - fix variables
