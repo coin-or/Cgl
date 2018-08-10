@@ -2462,7 +2462,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       modifiedModel_[iPass]=newModel;
       oldModel=newModel;
       writeDebugMps(newModel,"ordinary3",NULL);
-      if (!numberChanges&&!numberFixed) {
+      newModel->resolve();
+      if ((!numberChanges&&!numberFixed)||!newModel->isProvenOptimal()) {
 #if CBC_USEFUL_PRINTING>1
 	printf("exiting after pass %d of %d\n",iPass,numberSolvers_);
 #endif
