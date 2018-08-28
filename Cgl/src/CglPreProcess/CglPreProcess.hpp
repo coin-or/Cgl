@@ -263,6 +263,10 @@ public:
   
   /// Clears out as much as possible
   void gutsOfDestructor();
+  
+  /// Set time limit
+  void setTimeLimit( const double timeLimit, const bool useElapsedTime );
+
   //@}
 private:
 
@@ -363,8 +367,19 @@ private:
   char * rowType_;
   /// Cuts from dropped rows
   CglStored cuts_;
+
+  /// use elapsed (wallclock time) or cpu time
+  bool useElapsedTime_;
+
+  /// time limit (default COIN_DBL_MAX)
+  double timeLimit_;
+
+  /// current elapsed or cpu time
+  double getCurrentCPUTime() const;
+
  //@}
 };
+
 /// For Bron-Kerbosch
 class CglBK  {
   

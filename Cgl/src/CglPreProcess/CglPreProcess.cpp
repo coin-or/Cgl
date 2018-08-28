@@ -1125,6 +1125,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 				    int makeEquality, int numberPasses,
 				    int tuning)
 {
+   double ppstart = getCurrentCPUTime();
 #ifdef CGL_WRITEMPS
    bool rcdActive = true ;
    std::string modelName ;
@@ -2248,7 +2249,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
       addCutGenerator(&dupCuts);
 #endif
     }
-    for (int iPass=doInitialPresolve;iPass<numberSolvers_;iPass++) {
+    for ( int iPass=doInitialPresolve ; ( (iPass<numberSolvers_) && ((getCurrentCPUTime()-ppstart)<timeLimit_) ) ; iPass++ ) {
       // Look at Vubs
       {
         const double * columnLower = oldModel->getColLower();
@@ -6181,7 +6182,6 @@ CglPreProcess::modified(OsiSolverInterface * model,
 
 */
 CglPreProcess::CglPreProcess() 
-
 :
   originalModel_(NULL),
   startModel_(NULL),
@@ -6207,7 +6207,9 @@ CglPreProcess::CglPreProcess()
   prohibited_(NULL),
   numberRowType_(0),
   options_(0),
-  rowType_(NULL)
+  rowType_(NULL),
+  useElapsedTime_(true),
+  timeLimit_(COIN_DBL_MAX)    
 {
   handler_ = new CoinMessageHandler();
   handler_->setLogLevel(2);
@@ -6228,7 +6230,9 @@ CglPreProcess::CglPreProcess(const CglPreProcess & rhs)
   numberIterationsPre_(rhs.numberIterationsPre_),
   numberIterationsPost_(rhs.numberIterationsPost_),
   numberRowType_(rhs.numberRowType_),
-  options_(rhs.options_)
+  options_(rhs.options_),
+  useElapsedTime_(true),
+  timeLimit_(COIN_DBL_MAX)    
 {
   if (defaultHandler_) {
     handler_ = new CoinMessageHandler();
@@ -7983,3 +7987,18 @@ CglUniqueRowCuts::addCuts(OsiCuts & cs)
   }
   numberCuts_=0;
 }
+
+void CglPreProcess::setTimeLimit( const double timeLimit, const bool useElapsedTime )
+{
+    this->timeLimit_ = timeLimit;
+    this->useElapsedTime_ = useElapsedTime;
+}
+
+double CglPreProcess::getCurrentCPUTime() const
+{ 
+    if (!useElapsedTime_)
+      return CoinCpuTime();
+    else
+      return CoinGetTimeOfDay();
+}
+
