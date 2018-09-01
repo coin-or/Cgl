@@ -7345,33 +7345,33 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
                         //if(info->strengthenRow)
                         //printf("c point to row %d\n",irow);
 #ifdef STRENGTHEN_PRINT
-		      if (rowLower[irow]<-1.0e20) {
-			printf("7Cut %g <= ",rc.lb());
-			int k;
-			for ( k=0;k<n;k++) {
-			  int iColumn = index[k];
-			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
+			if (rowLower[irow]<-1.0e20) {
+			  printf("7Cut %g <= ",rc.lb());
+			  int k;
+			  for ( k=0;k<n;k++) {
+			    int iColumn = index[k];
+			    printf("%g*",element[k]);
+			    if (si.isInteger(iColumn))
+			      printf("i%d ",iColumn);
+			    else
+			      printf("x%d ",iColumn);
+			  }
+			  printf("<= %g\n",rc.ub());
+			  printf("Row %g <= ",rowLower[irow]);
+			  for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
+			    int iColumn = column[k];
+			    printf("%g*",rowElements[k]);
+			    if (si.isInteger(iColumn))
+			      printf("i%d ",iColumn);
+			    else
+			      printf("x%d ",iColumn);
+			  }
+			  printf("<= %g\n",rowUpper[irow]);
 			}
-			printf("<= %g\n",rc.ub());
-			printf("Row %g <= ",rowLower[irow]);
-			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
-			  int iColumn = column[k];
-			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rowUpper[irow]);
-		      }
 #endif
-		      int realRow = (rowLower[irow]<-1.0e20) ? irow : -1;
-		      if (realRows&&realRow>0)
-			realRow=realRows[realRow];
+			int realRow = (rowLower[irow]<-1.0e20) ? irow : -1;
+			if (realRows&&realRow>0)
+			  realRow=realRows[realRow];
 			rowCut.addCutIfNotDuplicate(rc,realRow);
 		      }
 		    }
@@ -7424,33 +7424,33 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
                         //if(info->strengthenRow)
                         //printf("d point to row %d\n",irow);
 #ifdef STRENGTHEN_PRINT
-		      if (rowUpper[irow]>1.0e20) {
-			printf("8Cut %g <= ",rc.lb());
-			int k;
-			for ( k=0;k<n;k++) {
-			  int iColumn = index[k];
-			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
+			if (rowUpper[irow]>1.0e20) {
+			  printf("8Cut %g <= ",rc.lb());
+			  int k;
+			  for ( k=0;k<n;k++) {
+			    int iColumn = index[k];
+			    printf("%g*",element[k]);
+			    if (si.isInteger(iColumn))
+			      printf("i%d ",iColumn);
+			    else
+			      printf("x%d ",iColumn);
+			  }
+			  printf("<= %g\n",rc.ub());
+			  printf("Row %g <= ",rowLower[irow]);
+			  for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
+			    int iColumn = column[k];
+			    printf("%g*",rowElements[k]);
+			    if (si.isInteger(iColumn))
+			      printf("i%d ",iColumn);
+			    else
+			      printf("x%d ",iColumn);
+			  }
+			  printf("<= %g\n",rowUpper[irow]);
 			}
-			printf("<= %g\n",rc.ub());
-			printf("Row %g <= ",rowLower[irow]);
-			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
-			  int iColumn = column[k];
-			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
-			    printf("i%d ",iColumn);
-			  else
-			    printf("x%d ",iColumn);
-			}
-			printf("<= %g\n",rowUpper[irow]);
-		      }
 #endif
-		      int realRow = (rowUpper[irow]>1.0e20) ? irow : -1;
-		      if (realRows&&realRow>0)
-			realRow=realRows[realRow];
+			int realRow = (rowUpper[irow]>1.0e20) ? irow : -1;
+			if (realRows&&realRow>0)
+			  realRow=realRows[realRow];
 			rowCut.addCutIfNotDuplicate(rc,realRow);
 		      }
 		    }

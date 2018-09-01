@@ -1457,7 +1457,8 @@ CglTreeProbingInfo::fixColumns(int iColumn,int value, OsiSolverInterface & si) c
   const double * upper = si.getColUpper();
   bool feasible=true;
   int jColumn = backward_[iColumn];
-  assert (jColumn>=0);
+  if (jColumn<0 || !toZero_)
+    return 0;
   if (!value) {
     int j;
     for ( j=toZero_[jColumn];j<toOne_[jColumn];j++) {

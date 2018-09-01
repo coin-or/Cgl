@@ -1466,7 +1466,8 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
   free(rowIsBasic);
   free(colIsBasic);
 
-   if(talk) printf ("2mir_test: generated %d tab cuts\n", cut_list->n - nc); fflush (stdout);
+  if(talk)
+    printf ("2mir_test: generated %d tab cuts\n", cut_list->n - nc);
   DGG_freeConstraint(base);
   return rval;
 }
@@ -1484,7 +1485,8 @@ int DGG_generateFormulationCuts( DGG_list_t *cut_list,
 
   base = DGG_newConstraint(data->ncol + data->nrow);
 
-  if(talk) printf ("2mir_test: generating form row cuts %d\n", num_rows);
+  if(talk)
+    printf ("2mir_test: generating form row cuts %d\n", num_rows);
   for(k=0; k<num_rows; k++) {
     base->nz = 0;
 
@@ -1505,7 +1507,8 @@ int DGG_generateFormulationCuts( DGG_list_t *cut_list,
   }
 
  CLEANUP:
-  if(talk) printf ("2mir_test: generated %d form cuts\n", cut_list->n - nc); fflush (stdout);
+  if(talk)
+    printf ("2mir_test: generated %d form cuts\n", cut_list->n - nc);
   DGG_freeConstraint(base);
   return rval;
 }
@@ -1626,7 +1629,9 @@ DGG_generateCutsFromBase( DGG_constraint_t *orig_base,
     DGG_CHECKRVAL(rval, rval);
 
     if (orig_base->nz == 0){
-      if(talk) printf ("2mir_test: Nicefy returns empty constraint\n"); rval = 0; goto CLEANUP;
+      if(talk)
+	printf ("2mir_test: Nicefy returns empty constraint\n");
+      rval = 0; goto CLEANUP;
     }
   }
 
@@ -1642,7 +1647,9 @@ DGG_generateCutsFromBase( DGG_constraint_t *orig_base,
       rval = DGG_nicefyConstraint(solver_ptr, data, base);
       DGG_CHECKRVAL(rval, rval);
       if (base->nz == 0){
-	 if(talk) printf ("2mir_test: Nicefy returns empty constraint\n"); goto MIR_DONE;
+	 if(talk)
+	   printf ("2mir_test: Nicefy returns empty constraint\n");
+	 goto MIR_DONE;
       }
     }
     
@@ -1667,7 +1674,9 @@ DGG_generateCutsFromBase( DGG_constraint_t *orig_base,
       rval = DGG_nicefyConstraint(solver_ptr, data, base);
       DGG_CHECKRVAL(rval, rval);
       if (base->nz == 0){
-	 if(talk) printf ("2mir_test: Nicefy returns empty constraint\n"); goto TWOMIR_DONE;
+	 if(talk)
+	   printf ("2mir_test: Nicefy returns empty constraint\n");
+	 goto TWOMIR_DONE;
       }
     }
     

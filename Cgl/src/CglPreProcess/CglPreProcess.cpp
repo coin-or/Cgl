@@ -3966,14 +3966,6 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
     }
   } else {
     // infeasible 
-    for (int iPass=numberSolvers_-1;iPass>=0;iPass--) {
-      delete modifiedModel_[iPass];;
-      delete model_[iPass];;
-      delete presolve_[iPass];
-      modifiedModel_[iPass]=NULL;
-      model_[iPass]=NULL;
-      presolve_[iPass]=NULL;
-    }
     // Back to startModel_;
     OsiSolverInterface * model = originalModel_;
     // Use number of columns in original
@@ -4026,6 +4018,14 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
 #endif
     handler_->message(CGL_POST_INFEASIBLE,messages_)
       <<CoinMessageEol;
+    for (int iPass=numberSolvers_-1;iPass>=0;iPass--) {
+      delete modifiedModel_[iPass];;
+      delete model_[iPass];;
+      delete presolve_[iPass];
+      modifiedModel_[iPass]=NULL;
+      model_[iPass]=NULL;
+      presolve_[iPass]=NULL;
+    }
   } else if (fabs(saveObjectiveValue-objectiveValue)>testObj
 	     &&deleteStuff
 	     ) {

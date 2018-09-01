@@ -118,9 +118,15 @@ public:
   /// The original solver associated with this model.
   inline OsiSolverInterface * originalModel() const
   { return originalModel_;}
+  /// Set original model (probably acopy)
+  inline void setOriginalModel(OsiSolverInterface * originalModel) 
+  { originalModel_ = originalModel;}
   /// Solver after making clique equalities (may == original)
   inline OsiSolverInterface * startModel() const
   { return startModel_;}
+  /// Number of solvers
+  inline int numberSolvers() const
+  { return numberSolvers_;}
   /// Copies of solver at various stages after presolve
   inline OsiSolverInterface * modelAtPass(int iPass) const
   { if (iPass>=0&&iPass<numberSolvers_) return model_[iPass]; else return NULL;}
@@ -130,6 +136,9 @@ public:
   /// Matching presolve information
   inline OsiPresolve * presolve(int iPass) const
   { if (iPass>=0&&iPass<numberSolvers_) return presolve_[iPass]; else return NULL;}
+  /// Set matching presolve information
+  inline void setPresolve(int iPass,OsiPresolve * presolve) 
+  { if (iPass>=0&&iPass<numberSolvers_) presolve_[iPass] = presolve;}
   /** Return a pointer to the original columns (with possible  clique slacks)
       MUST be called before postProcess otherwise you just get 0,1,2.. */
   const int * originalColumns();
@@ -507,4 +516,10 @@ private:
   int numberCuts_;
   int lastHash_;
 };
+// to access preprocessed model
+class OsiBabSolver;
+typedef struct {
+    CglPreProcess * preProcessPointer;
+    const OsiBabSolver * previousBabSolver;
+} CglProcessStack;
 #endif
