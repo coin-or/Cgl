@@ -516,10 +516,4 @@ private:
   int numberCuts_;
   int lastHash_;
 };
-// to access preprocessed model
-class OsiBabSolver;
-typedef struct {
-    CglPreProcess * preProcessPointer;
-    const OsiBabSolver * previousBabSolver;
-} CglProcessStack;
 #endif
