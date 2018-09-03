@@ -64,9 +64,10 @@ public:
   OsiSolverInterface * preProcessNonDefault(OsiSolverInterface & model, 
                                   int makeEquality=0, int numberPasses=5,
 					    int tuning=0);
-  /// Creates solution in original model
+  /** Creates solution in original model
+      deleteStuff 0 - don't, 1 do (but not if infeasible), 2 always */
   void postProcess(OsiSolverInterface &model
-		   ,bool deleteStuff=true);
+		   ,int deleteStuff=2);
   /** Tightens primal bounds to make dual and branch and cutfaster.  Unless
       fixed or integral, bounds are slightly looser than they could be.
       Returns non-zero if problem infeasible

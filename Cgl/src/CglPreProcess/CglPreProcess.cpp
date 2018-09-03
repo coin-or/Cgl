@@ -3484,9 +3484,11 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface & model,double factor)
   return (numberInfeasible);
 }
 
+/* Creates solution in original model
+   deleteStuff 0 - don't, 1 do (but not if infeasible), 2 always */
 void
 CglPreProcess::postProcess(OsiSolverInterface & modelIn
-			   ,bool deleteStuff)
+			   ,int deleteStuff)
 {
   // Do presolves
   bool saveHint;
@@ -4018,13 +4020,15 @@ CglPreProcess::postProcess(OsiSolverInterface & modelIn
 #endif
     handler_->message(CGL_POST_INFEASIBLE,messages_)
       <<CoinMessageEol;
-    for (int iPass=numberSolvers_-1;iPass>=0;iPass--) {
-      delete modifiedModel_[iPass];;
-      delete model_[iPass];;
-      delete presolve_[iPass];
-      modifiedModel_[iPass]=NULL;
-      model_[iPass]=NULL;
-      presolve_[iPass]=NULL;
+    if (deleteStuff) {
+      for (int iPass=numberSolvers_-1;iPass>=0;iPass--) {
+	delete modifiedModel_[iPass];;
+	delete model_[iPass];;
+	delete presolve_[iPass];
+	modifiedModel_[iPass]=NULL;
+	model_[iPass]=NULL;
+	presolve_[iPass]=NULL;
+      }
     }
   } else if (fabs(saveObjectiveValue-objectiveValue)>testObj
 	     &&deleteStuff
