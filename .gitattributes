@@ -1,6 +1,8 @@
 * text=auto !eol
 /.travis.yml -text
 /AUTHORS -text
+Cgl/Dependencies -text
+Cgl/INSTALL -text
 Cgl/LICENSE -text
 Cgl/MSVisualStudio/v10/Cgl.sln -text
 Cgl/MSVisualStudio/v10/CglUnitTest/CglUnitTest.vcxproj -text
@@ -55,7 +57,6 @@ Cgl/MSVisualStudio/v9alt/libCglResidualCapacity.vcproj -text
 Cgl/MSVisualStudio/v9alt/libCglSimpleRounding.vcproj -text
 Cgl/MSVisualStudio/v9alt/libCglTwomir.vcproj -text
 Cgl/README -text
-Cgl/cgl-uninstalled.pc.in -text
 Cgl/cgl.pc.in -text
 Cgl/config.guess -text
 Cgl/config.sub -text
