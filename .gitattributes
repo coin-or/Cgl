@@ -1,6 +1,5 @@
 * text=auto !eol
 /.travis.yml -text
-/AUTHORS -text
 Cgl/Dependencies -text
 Cgl/INSTALL -text
 Cgl/LICENSE -text
@@ -69,15 +68,4 @@ Cgl/examples/cgl1.cpp -text
 Cgl/install-sh -text
 Cgl/ltmain.sh -text
 Cgl/missing -text
-/Dependencies -text
-/LICENSE -text
-/README -text
 /appveyor.yml -text
-/config.guess -text
-/config.sub -text
-/configure -text
-/configure.ac -text
-/depcomp -text
-doxydoc/doxygen.conf.in -text
-/install-sh -text
-/missing -text
