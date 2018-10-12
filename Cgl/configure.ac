@@ -10,9 +10,8 @@
 #                       Names and other basic things                        #
 #############################################################################
 
-AC_PREREQ(2.59)
-
-AC_INIT([Cgl],[trunk],[cgl@list.coin-or.org])
+AC_INIT([Cgl],[trunk],[cgl@list.coin-or.org],[coin-or-cgl],
+	[https://projects.coin-or.org/Cgl])
 
 AC_COPYRIGHT([
 Copyright 2006 International Business Machines and others.
@@ -20,123 +19,137 @@ All Rights Reserved.
 This file is part of the open source package Coin which is distributed
 under the Eclipse Public License.])
 
-# List one file in the package so that the configure script can test
-# whether the package is actually there
-AC_CONFIG_SRCDIR(src/CglMessage.hpp)
+# List one file in the package so that the configure script can test whether
+# the package is actually there.
 
-# Where should everything be installed by default?  Here, we want it
-# to be installed directly in 'bin', 'lib', 'include' subdirectories
-# of the directory where configure is run.  The default would be
-# /usr/local.
-AC_PREFIX_DEFAULT([`pwd`])
+AC_CONFIG_SRCDIR(src/CglCommon/CglMessage.hpp)
+
+# Do some initialization work (version numbers, change prefix default, ...)
+
+AC_COIN_INITIALIZE(Cgl)
 
 #############################################################################
 #                         Standard build tool stuff                         #
 #############################################################################
 
-# Get the system type
-AC_CANONICAL_BUILD
+# Get the name of the C++ compiler and appropriate compiler options.
 
-# If this project depends on external projects, the Externals file in
-# the source root directory contains definition of where to find those
-# externals.  The following macro ensures that those externals are
-# retrieved by svn if they are not there yet.
-AC_COIN_PROJECTDIR_INIT(Cgl)
-
-# Check if user wants to produce debugging code
-AC_COIN_DEBUG_COMPILE(Cgl)
-
-# Get the name of the C++ compiler and appropriate compiler options
 AC_COIN_PROG_CXX
 
-# Initialize automake and libtool
-AC_COIN_INIT_AUTO_TOOLS
+# This is a C++ package, set the language accordingly.
+
+AC_LANG_PUSH(C++)
+
+# Initialize libtool.
+
+AC_COIN_PROG_LIBTOOL
 
 #############################################################################
-#                            COIN-OR components                             #
+#                   Math headers                                            #
 #############################################################################
 
-AC_COIN_CHECK_PACKAGE(CoinUtils, [coinutils], [CglLib])
-if test $coin_has_coinutils != yes ; then
-  AC_MSG_ERROR([Required package CoinUtils not available.])
-fi
+# Check for cmath/math.h, cfloat/float.h, cieeefp/ieeefp.h
 
-AC_COIN_CHECK_PACKAGE(Osi, [osi], [CglLib])
-if test $coin_has_osi != yes ; then
-  AC_MSG_ERROR([Required package Osi not available.])
-fi
-
-AC_COIN_CHECK_PACKAGE(Sample, [coindatasample])
-
-# Clp can be used by CglLandP
-AC_COIN_CHECK_PACKAGE(OsiClp, [osi-clp], [CglLib])
-
-#############################################################################
-#                       Solvers for unittesting                             #
-#############################################################################
-
-# These are not really required for the compilation of Cgl, but we
-# need to know which are available in order to compile the unitTest
-# correctly.
-
-AC_COIN_CHECK_PACKAGE(OsiCpx,  [osi-cplex])
-AC_COIN_CHECK_PACKAGE(OsiGlpk, [osi-glpk])
-#AC_COIN_CHECK_PACKAGE(OsiGrb,  [osi-gurobi])
-AC_COIN_CHECK_PACKAGE(OsiMsk,  [osi-mosek])
-AC_COIN_CHECK_PACKAGE(OsiXpr,  [osi-xpress])
-AC_COIN_CHECK_PACKAGE(OsiVol,  [osi-vol])
-AC_COIN_CHECK_PACKAGE(OsiDyLP, [osi-dylp])
-#AC_COIN_CHECK_PACKAGE(OsiSpx,  [osi-soplex])
-
-#############################################################################
-#                  System header                                            #
-#############################################################################
-
-AC_COIN_CHECK_CXX_CHEADER(math)
-AC_COIN_CHECK_CXX_CHEADER(float)
-AC_COIN_CHECK_CXX_CHEADER(ieeefp)
+AC_COIN_CHECK_MATH_HDRS
 
 #############################################################################
 #                   Determine list of all Cgl subprojects                   #
 #############################################################################
 
-# In order to avoid that one has to update this configure.ac and the
-# Makefile.am whenever a new cut generator is added, we automatically determine
-# the list of all subdirectories of src with a Makefile.in (CGL_SUBDIRS),
-# and also a list of all sublibraries relative to src (CGL_SUBLIBS) that
-# can be used in the src/Makefile.am.  (It is still necessary to manually
-# add an entry to write the Makefile in the AC_CONFIG_FILES list below.)
+# To avoid updating the main Makefile.am whenever a new cut generator is
+# added, automatically determine all subdirectories of src with a Makefile.am
+# and create variables CGL_SUBDIRS (all subdirectories) and CGL_SUBLIBS
+# (all sublibraries) for use in Makefile.am. Exclude CglCommon
+# because that's where we do final assembly of libCgl. It is still necessary
+# to manually add an entry to write the Makefile in the AC_CONFIG_FILES
+# list below.
 
 AC_SUBST(CGL_SUBDIRS)
 AC_SUBST(CGL_SUBLIBS)
 
 curr_dir=`pwd`
 cd $srcdir/src
-for file in `ls */Makefile.in`; do
-  newdir=`echo $file | sed -e s%/Makefile.in%% | sed -e s%^./%% `
-  CGL_SUBDIRS="$CGL_SUBDIRS $newdir"
-  CGL_SUBLIBS="$CGL_SUBLIBS $newdir/lib${newdir}.la"
+for file in `ls */Makefile.am`; do
+  newdir=`echo $file | sed -e s'%\(.*\)/Makefile.am%\1%'`
+  if test "$newdir" != CglCommon ; then
+    CGL_SUBDIRS="$CGL_SUBDIRS src/$newdir"
+    CGL_SUBLIBS="$CGL_SUBLIBS ../$newdir/lib${newdir}.la"
+  fi
 done
+CGL_SUBDIRS="$CGL_SUBDIRS src/CglCommon"
 cd $curr_dir
+
+#############################################################################
+#                            COIN-OR components                             #
+#############################################################################
+
+# Initialize variables for CglLib
+
+AC_COIN_INIT_LIBVARS([CglLib],[-L\${libdir} -lCgl],[-I\${includedir}])
+
+AC_COIN_CHK_PKG(CoinUtils,[CglLib])
+if test $coin_has_coinutils != yes ; then
+  AC_MSG_ERROR([Required package CoinUtils not available.])
+fi
+
+AC_COIN_CHK_PKG(Osi,[CglLib])
+if test $coin_has_osi != yes ; then
+  AC_MSG_ERROR([Required package Osi not available.])
+fi
+
+# Clp can be used by CglLandP, and also by the unitTest.
+
+AC_COIN_CHK_PKG(OsiClp,[CglLib CglUnitTest],[osi-clp])
+
+# Finalize libs and cflags for building CglLib components, then add one
+# last component to access header files in CglCommon. This should be absolute
+# from top_srcdir so it works for both the individual cut generators and the
+# unit test.
+
+AC_COIN_FINALIZE_FLAGS(CglLib)
+CGLLIB_CFLAGS="-I\$(top_srcdir)/src/CglCommon $CGLLIB_CFLAGS"
+
+#############################################################################
+#                       Solvers for unittesting                             #
+#############################################################################
+
+# These are not really required for the compilation of Cgl, but we need to
+# know which are available in order to compile the unitTest correctly. The
+# CglUnitTest unit is simply a convenient handle, allowing us to accumulate
+# linker and compiler flags in a single variable.
+
+AC_COIN_CHK_PKG(OsiCpx,[CglUnitTest],[osi-cplex])
+AC_COIN_CHK_PKG(OsiGlpk,[CglUnitTest],[osi-glpk])
+AC_COIN_CHK_PKG(OsiGrb,[CglUnitTest],[osi-gurobi])
+AC_COIN_CHK_PKG(OsiMsk,[CglUnitTest],[osi-mosek])
+AC_COIN_CHK_PKG(OsiXpr,[CglUnitTest],[osi-xpress])
+AC_COIN_CHK_PKG(OsiVol,[CglUnitTest],[osi-vol])
+AC_COIN_CHK_PKG(OsiDyLP,[CglUnitTest],[osi-dylp])
+AC_COIN_CHK_PKG(OsiSpx,[CglUnitTest],[osi-soplex])
+
+AC_COIN_FINALIZE_FLAGS(CglUnitTest)
+
+# We just need the COIN_HAS_SAMPLE and SAMPLE_DATA variables for Sample.
+
+AC_COIN_CHK_PKG(Sample,,[coindatasample],,dataonly)
+
 
 #############################################################################
 #                  Check for doxygen                                        #
 #############################################################################
 
-AC_COIN_DOXYGEN(CoinUtils)
+AC_COIN_DOXYGEN([CoinUtils Osi Clp])
 
 ##############################################################################
 #                   Finishing up by writing all the output                   #
 ##############################################################################
 
-# Install files for unitTest
-AC_COIN_VPATH_LINK([test/CglTestData/capPlan1.mps test/CglTestData/l152lav.mps test/CglTestData/egout.mps test/CglTestData/lseu.mps])
-
 # Here list all the files that configure should create (except for the
 # configuration header file)
+
 AC_CONFIG_FILES([Makefile
                  examples/Makefile
-                 src/Makefile
+                 src/CglCommon/Makefile
                  src/CglAllDifferent/Makefile
                  src/CglClique/Makefile
                  src/CglDuplicateRow/Makefile
@@ -158,12 +171,14 @@ AC_CONFIG_FILES([Makefile
                  src/CglTwomir/Makefile
                  src/CglZeroHalf/Makefile
                  test/Makefile
-                 cgl.pc
-                 cgl-uninstalled.pc])
+                 cgl.pc])
 AC_CONFIG_FILES([doxydoc/doxygen.conf])
 
 # Here put the location and name of the configuration header file
-AC_CONFIG_HEADER([src/config.h src/config_cgl.h])
+
+AC_CONFIG_HEADER([src/CglCommon/config.h src/CglCommon/config_cgl.h])
 
 # Finally, we let configure write all the output...
+
 AC_COIN_FINALIZE
+

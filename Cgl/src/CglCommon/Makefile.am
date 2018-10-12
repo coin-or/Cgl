@@ -8,8 +8,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-# We need to recurse into all Cgl subproject subdirectories
-SUBDIRS = $(CGL_SUBDIRS)
+include $(top_srcdir)/BuildTools/Makemain.inc
 
 ########################################################################
 #                               libCgl                                 #
@@ -17,9 +16,11 @@ SUBDIRS = $(CGL_SUBDIRS)
 
 # Name of the library compiled in this directory.  We want it to be installed
 # in the $libdir directory
+
 lib_LTLIBRARIES = libCgl.la
 
 # List all source files for this library, including headers
+
 libCgl_la_SOURCES = \
 	CglConfig.h \
 	CglCutGenerator.cpp CglCutGenerator.hpp\
@@ -29,33 +30,31 @@ libCgl_la_SOURCES = \
 	CglTreeInfo.cpp CglTreeInfo.hpp
 
 # This is for libtool (on Windows)
+
 libCgl_la_LDFLAGS = $(LT_LDFLAGS)
 
 # We want to have all the sublibraries from the Cgl subprojects collected into
 # this library
-libCgl_la_LIBADD = $(CGL_SUBLIBS)
-if DEPENDENCY_LINKING
-libCgl_la_LIBADD += $(CGLLIB_LIBS)
-endif
 
-# Since automake is not doing this on its own, we need to declare the
-# dependencies to the subdirectory libraries here
-libCgl_la_DEPENDENCIES = $(CGL_SUBLIBS)
+libCgl_la_LIBADD = $(CGL_SUBLIBS)
+
+if DEPENDENCY_LINKING
+libCgl_la_LIBADD += $(CGLLIB_LFLAGS)
+endif
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.
-AM_CPPFLAGS = $(COINUTILS_CFLAGS) $(OSI_CFLAGS)
 
-# This line is necessary to allow VPATH compilation
-DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)`
+AM_CPPFLAGS = -DCGL_BUILD `$(CYGPATH_W) $(CGLLIB_CFLAGS)`
 
 ########################################################################
 #                Headers that need to be installed                     #
 ########################################################################
 
 # Here list all the header files that are required by a user of the library,
-# and that therefore should be installed in 'include/coin'
-includecoindir = $(includedir)/coin
+# and that therefore should be installed in pkgincludedir.
+
+includecoindir = $(pkgincludedir)
 includecoin_HEADERS = \
 	CglCutGenerator.hpp \
 	CglMessage.hpp \

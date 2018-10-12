@@ -98,6 +98,32 @@ int main (int argc, const char *argv[])
     }
   }
 
+  std::string solvers ;
+#ifdef COIN_HAS_OSICPX
+  solvers += " Cplex" ;
+#endif
+#ifdef COIN_HAS_OSIXPR
+  solvers += " Xpress" ;
+#endif
+#ifdef COIN_HAS_OSICLP
+  solvers += " Clp" ;
+#endif
+#ifdef COIN_HAS_OSIDYLP
+  solvers += " DyLP" ;
+#endif
+#ifdef COIN_HAS_OSIGLPK
+  solvers += " Glpk" ;
+#endif
+#ifdef COIN_HAS_OSIVOL
+  solvers += " Vol" ;
+#endif
+
+  std::cout << std::endl ;
+  std::cout << "Testing cut generators ..." << std::endl ;
+  std::cout << "Sample directory: " << mpsDir << std::endl ;
+  std::cout << "Test directory: " << testDir << std::endl ;
+  std::cout << "Solvers:" << solvers << std::endl ;
+
 #ifdef COIN_HAS_OSICPX
   {
     OsiCpxSolverInterface cpxSi;
