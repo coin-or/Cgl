@@ -376,7 +376,22 @@ unitTest_LDADD = ../src/CglCommon/libCgl.la $(CGLLIB_LIBS) \
 AM_CPPFLAGS = -DCGL_BUILD `$(CYGPATH_W) $(CGLLIB_CFLAGS)` \
 	$(am__append_1) -DTESTDIR=\"`$(CYGPATH_W) \
 	$(srcdir)/CglTestData | sed -e 's/\\\\/\\\\\\\\/g'`\" \
-	`$(CYGPATH_W) $(CGLUNITTEST_CFLAGS)`
+	`$(CYGPATH_W) $(CGLUNITTEST_CFLAGS)` `$(CYGPATH_W) \
+	-I$(srcdir)/../src/CglSimpleRounding` `$(CYGPATH_W) \
+	-I$(srcdir)/../src/CglKnapsackCover` `$(CYGPATH_W) \
+	-I$(srcdir)/../src/CglOddHole` `$(CYGPATH_W) \
+	-I$(srcdir)/../src/CglProbing` `$(CYGPATH_W) \
+	-I$(srcdir)/../src/CglGomory` `$(CYGPATH_W) \
+	-I$(srcdir)/../src/CglLandP` `$(CYGPATH_W) \
+	-I$(srcdir)/../src/CglMixedIntegerRounding` `$(CYGPATH_W) \
+	-I$(srcdir)/../src/CglMixedIntegerRounding2` `$(CYGPATH_W) \
+	-I$(srcdir)/../src/CglResidualCapacity` `$(CYGPATH_W) \
+	-I$(srcdir)/../src/CglRedSplit` `$(CYGPATH_W) \
+	-I$(srcdir)/../src/CglRedSplit2` `$(CYGPATH_W) \
+	-I$(srcdir)/../src/CglTwomir` `$(CYGPATH_W) \
+	-I$(srcdir)/../src/CglClique` `$(CYGPATH_W) \
+	-I$(srcdir)/../src/CglFlowCover` `$(CYGPATH_W) \
+	-I$(srcdir)/../src/CglZeroHalf`
 
 ########################################################################
 #                          Cleaning stuff                              #

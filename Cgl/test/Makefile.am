@@ -39,6 +39,22 @@ AM_CPPFLAGS += -DTESTDIR=\"`$(CYGPATH_W) $(srcdir)/CglTestData | sed -e 's/\\\\/
 
 AM_CPPFLAGS += `$(CYGPATH_W) $(CGLUNITTEST_CFLAGS)`
 
+AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglSimpleRounding`
+AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglKnapsackCover`
+AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglOddHole`
+AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglProbing`
+AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglGomory`
+AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglLandP`
+AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglMixedIntegerRounding`
+AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglMixedIntegerRounding2`
+AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglResidualCapacity`
+AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglRedSplit`
+AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglRedSplit2`
+AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglTwomir`
+AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglClique`
+AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglFlowCover`
+AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglZeroHalf`
+
 unitTest_LDADD += $(CGLUNITTEST_LFLAGS)
 
 test: unitTest$(EXEEXT)
