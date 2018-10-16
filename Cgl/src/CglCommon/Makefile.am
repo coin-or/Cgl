@@ -38,9 +38,7 @@ libCgl_la_LDFLAGS = $(LT_LDFLAGS)
 
 libCgl_la_LIBADD = $(CGL_SUBLIBS)
 
-if DEPENDENCY_LINKING
 libCgl_la_LIBADD += $(CGLLIB_LFLAGS)
-endif
 
 # Here list all include flags, relative to this "srcdir" directory.  This
 # "cygpath" stuff is necessary to compile with native compilers on Windows.

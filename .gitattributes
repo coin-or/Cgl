@@ -57,6 +57,7 @@ Cgl/MSVisualStudio/v9alt/libCglSimpleRounding.vcproj -text
 Cgl/MSVisualStudio/v9alt/libCglTwomir.vcproj -text
 Cgl/README -text
 Cgl/cgl.pc.in -text
+Cgl/compile -text
 Cgl/config.guess -text
 Cgl/config.sub -text
 Cgl/configure -text
