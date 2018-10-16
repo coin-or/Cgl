@@ -277,6 +277,10 @@ public:
   /// Set time limit
   void setTimeLimit( const double timeLimit, const bool useElapsedTime );
 
+  /// Keeps original column names
+  void setKeepColumnNames( const bool keep );
+
+
   //@}
 private:
 
@@ -383,6 +387,9 @@ private:
 
   /// time limit (default COIN_DBL_MAX)
   double timeLimit_;
+
+  /// keep column names
+  bool keepColumnNames_;
 
   /// current elapsed or cpu time
   double getCurrentCPUTime() const;
