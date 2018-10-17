@@ -367,31 +367,20 @@ unitTest_SOURCES = unitTest.cpp
 unitTest_LDADD = ../src/CglCommon/libCgl.la $(CGLLIB_LIBS) \
 	$(CGLUNITTEST_LFLAGS)
 
-# Here list all include flags, relative to this "srcdir" directory.  This
-# "cygpath" stuff is necessary to compile with native compilers on Windows
-
-# Add the include dirs, flags, and libraries for potential solvers to use
-# in the unit test. If a solver is not available, the variables should just
-# resolve to an empty string, so it's no harm to list them all
-AM_CPPFLAGS = -DCGL_BUILD `$(CYGPATH_W) $(CGLLIB_CFLAGS)` \
+# Here list all include flags, relative to this "srcdir" directory.
+AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS) $(CGLUNITTEST_CFLAGS) \
+	-I$(srcdir)/../src/CglSimpleRounding \
+	-I$(srcdir)/../src/CglKnapsackCover \
+	-I$(srcdir)/../src/CglOddHole -I$(srcdir)/../src/CglProbing \
+	-I$(srcdir)/../src/CglGomory -I$(srcdir)/../src/CglLandP \
+	-I$(srcdir)/../src/CglMixedIntegerRounding \
+	-I$(srcdir)/../src/CglMixedIntegerRounding2 \
+	-I$(srcdir)/../src/CglResidualCapacity \
+	-I$(srcdir)/../src/CglRedSplit -I$(srcdir)/../src/CglRedSplit2 \
+	-I$(srcdir)/../src/CglTwomir -I$(srcdir)/../src/CglClique \
+	-I$(srcdir)/../src/CglFlowCover -I$(srcdir)/../src/CglZeroHalf \
 	$(am__append_1) -DTESTDIR=\"`$(CYGPATH_W) \
-	$(srcdir)/CglTestData | sed -e 's/\\\\/\\\\\\\\/g'`\" \
-	`$(CYGPATH_W) $(CGLUNITTEST_CFLAGS)` `$(CYGPATH_W) \
-	-I$(srcdir)/../src/CglSimpleRounding` `$(CYGPATH_W) \
-	-I$(srcdir)/../src/CglKnapsackCover` `$(CYGPATH_W) \
-	-I$(srcdir)/../src/CglOddHole` `$(CYGPATH_W) \
-	-I$(srcdir)/../src/CglProbing` `$(CYGPATH_W) \
-	-I$(srcdir)/../src/CglGomory` `$(CYGPATH_W) \
-	-I$(srcdir)/../src/CglLandP` `$(CYGPATH_W) \
-	-I$(srcdir)/../src/CglMixedIntegerRounding` `$(CYGPATH_W) \
-	-I$(srcdir)/../src/CglMixedIntegerRounding2` `$(CYGPATH_W) \
-	-I$(srcdir)/../src/CglResidualCapacity` `$(CYGPATH_W) \
-	-I$(srcdir)/../src/CglRedSplit` `$(CYGPATH_W) \
-	-I$(srcdir)/../src/CglRedSplit2` `$(CYGPATH_W) \
-	-I$(srcdir)/../src/CglTwomir` `$(CYGPATH_W) \
-	-I$(srcdir)/../src/CglClique` `$(CYGPATH_W) \
-	-I$(srcdir)/../src/CglFlowCover` `$(CYGPATH_W) \
-	-I$(srcdir)/../src/CglZeroHalf`
+	$(srcdir)/CglTestData | sed -e 's/\\\\/\\\\\\\\/g'`\"
 
 ########################################################################
 #                          Cleaning stuff                              #
