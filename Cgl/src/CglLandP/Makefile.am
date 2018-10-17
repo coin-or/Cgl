@@ -35,11 +35,8 @@ endif
 # This is for libtool (on Windows)
 libCglLandP_la_LDFLAGS = $(LT_LDFLAGS)
 
-# Here list all include flags, relative to this "srcdir" directory.  This
-# "cygpath" stuff is necessary to compile with native compilers on Windows.
-AM_CPPFLAGS = -DCGL_BUILD \
-	`$(CYGPATH_W) $(CGLLIB_CFLAGS)` \
-        -I`$(CYGPATH_W) $(srcdir)/../CglGomory`
+# Here list all include flags, relative to this "srcdir" directory.
+AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS) -I$(srcdir)/../CglGomory
 
 ########################################################################
 #                Headers that need to be installed                     #

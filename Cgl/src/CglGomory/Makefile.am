@@ -24,9 +24,8 @@ libCglGomory_la_SOURCES = CglGomory.cpp CglGomory.hpp CglGomoryTest.cpp
 # This is for libtool (on Windows)
 libCglGomory_la_LDFLAGS = $(LT_LDFLAGS)
 
-# Here list all include flags, relative to this "srcdir" directory.  This
-# "cygpath" stuff is necessary to compile with native compilers on Windows.
-AM_CPPFLAGS = -DCGL_BUILD `$(CYGPATH_W) $(CGLLIB_CFLAGS)`
+# Here list all include flags, relative to this "srcdir" directory.
+AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS)
 
 ########################################################################
 #                Headers that need to be installed                     #

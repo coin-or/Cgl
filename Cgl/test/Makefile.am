@@ -22,38 +22,29 @@ unitTest_SOURCES = unitTest.cpp
 
 unitTest_LDADD = ../src/CglCommon/libCgl.la $(CGLLIB_LIBS)
 
-# Here list all include flags, relative to this "srcdir" directory.  This
-# "cygpath" stuff is necessary to compile with native compilers on Windows
-
-AM_CPPFLAGS = -DCGL_BUILD `$(CYGPATH_W) $(CGLLIB_CFLAGS)`
+# Here list all include flags, relative to this "srcdir" directory.
+AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS) $(CGLUNITTEST_CFLAGS)
+AM_CPPFLAGS += -I$(srcdir)/../src/CglSimpleRounding
+AM_CPPFLAGS += -I$(srcdir)/../src/CglKnapsackCover
+AM_CPPFLAGS += -I$(srcdir)/../src/CglOddHole
+AM_CPPFLAGS += -I$(srcdir)/../src/CglProbing
+AM_CPPFLAGS += -I$(srcdir)/../src/CglGomory
+AM_CPPFLAGS += -I$(srcdir)/../src/CglLandP
+AM_CPPFLAGS += -I$(srcdir)/../src/CglMixedIntegerRounding
+AM_CPPFLAGS += -I$(srcdir)/../src/CglMixedIntegerRounding2
+AM_CPPFLAGS += -I$(srcdir)/../src/CglResidualCapacity
+AM_CPPFLAGS += -I$(srcdir)/../src/CglRedSplit
+AM_CPPFLAGS += -I$(srcdir)/../src/CglRedSplit2
+AM_CPPFLAGS += -I$(srcdir)/../src/CglTwomir
+AM_CPPFLAGS += -I$(srcdir)/../src/CglClique
+AM_CPPFLAGS += -I$(srcdir)/../src/CglFlowCover
+AM_CPPFLAGS += -I$(srcdir)/../src/CglZeroHalf
 
 if COIN_HAS_SAMPLE
 AM_CPPFLAGS += -DSAMPLEDIR=\"`$(CYGPATH_W) @SAMPLE_DATA@ | sed -e 's/\\\\/\\\\\\\\/g'`\"
 endif
 
 AM_CPPFLAGS += -DTESTDIR=\"`$(CYGPATH_W) $(srcdir)/CglTestData | sed -e 's/\\\\/\\\\\\\\/g'`\" 
-
-# Add the include dirs, flags, and libraries for potential solvers to use
-# in the unit test. If a solver is not available, the variables should just
-# resolve to an empty string, so it's no harm to list them all
-
-AM_CPPFLAGS += `$(CYGPATH_W) $(CGLUNITTEST_CFLAGS)`
-
-AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglSimpleRounding`
-AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglKnapsackCover`
-AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglOddHole`
-AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglProbing`
-AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglGomory`
-AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglLandP`
-AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglMixedIntegerRounding`
-AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglMixedIntegerRounding2`
-AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglResidualCapacity`
-AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglRedSplit`
-AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglRedSplit2`
-AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglTwomir`
-AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglClique`
-AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglFlowCover`
-AM_CPPFLAGS += `$(CYGPATH_W) -I$(srcdir)/../src/CglZeroHalf`
 
 unitTest_LDADD += $(CGLUNITTEST_LFLAGS)
 

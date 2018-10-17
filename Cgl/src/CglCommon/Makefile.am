@@ -40,10 +40,8 @@ libCgl_la_LIBADD = $(CGL_SUBLIBS)
 
 libCgl_la_LIBADD += $(CGLLIB_LFLAGS)
 
-# Here list all include flags, relative to this "srcdir" directory.  This
-# "cygpath" stuff is necessary to compile with native compilers on Windows.
-
-AM_CPPFLAGS = -DCGL_BUILD `$(CYGPATH_W) $(CGLLIB_CFLAGS)`
+# Here list all include flags, relative to this "srcdir" directory.
+AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS)
 
 ########################################################################
 #                Headers that need to be installed                     #
