@@ -1,5 +1,11 @@
 /* src/CglCommon/config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Library Visibility Attribute */
+#undef CGLLIB_EXPORT
+
+/* Library Visibility Attribute */
+#undef CGLUNITTEST_EXPORT
+
 /* SVN revision number of project */
 #undef CGL_SVN_REV
 

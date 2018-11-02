@@ -6213,7 +6213,8 @@ CglPreProcess::CglPreProcess()
   options_(0),
   rowType_(NULL),
   useElapsedTime_(true),
-  timeLimit_(COIN_DBL_MAX)    
+  timeLimit_(COIN_DBL_MAX),
+  keepColumnNames_(false)
 {
   handler_ = new CoinMessageHandler();
   handler_->setLogLevel(2);
@@ -6236,7 +6237,8 @@ CglPreProcess::CglPreProcess(const CglPreProcess & rhs)
   numberRowType_(rhs.numberRowType_),
   options_(rhs.options_),
   useElapsedTime_(true),
-  timeLimit_(COIN_DBL_MAX)    
+  timeLimit_(COIN_DBL_MAX),
+  keepColumnNames_(false)
 {
   if (defaultHandler_) {
     handler_ = new CoinMessageHandler();
@@ -6365,6 +6367,8 @@ CglPreProcess::operator=(const CglPreProcess& rhs)
     prohibited_ = CoinCopyOfArray(rhs.prohibited_,numberProhibited_);
     rowType_ = CoinCopyOfArray(rhs.rowType_,numberRowType_);
     cuts_ = rhs.cuts_;
+    timeLimit_ = rhs.timeLimit_;
+    keepColumnNames_ = rhs.keepColumnNames_;
   }
   return *this;
 }
@@ -7998,6 +8002,11 @@ void CglPreProcess::setTimeLimit( const double timeLimit, const bool useElapsedT
     this->useElapsedTime_ = useElapsedTime;
 }
 
+void CglPreProcess::setKeepColumnNames( const bool keep )
+{
+  this->keepColumnNames_ = keep;
+}
+
 double CglPreProcess::getCurrentCPUTime() const
 { 
     if (!useElapsedTime_)
@@ -8005,4 +8014,6 @@ double CglPreProcess::getCurrentCPUTime() const
     else
       return CoinGetTimeOfDay();
 }
+
+// # vim: ts=2 sw=2 et
 
