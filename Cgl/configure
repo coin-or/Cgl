@@ -693,10 +693,6 @@ COIN_HAS_PKGCONFIG_FALSE
 COIN_HAS_PKGCONFIG_TRUE
 ac_ct_PKG_CONFIG
 PKG_CONFIG
-CGLLIB_DATA_PUB
-CGLLIB_PCFILES_PUB
-CGLLIB_CFLAGS_PUB
-CGLLIB_LFLAGS_PUB
 CGL_SUBLIBS
 CGL_SUBDIRS
 LT_LDFLAGS
@@ -16568,19 +16564,6 @@ cd $curr_dir
 #############################################################################
 #                            COIN-OR components                             #
 #############################################################################
-
-# Initialize variables for CglLib
-
-
-  CGLLIB_LFLAGS_PUB="-L\${libdir} -lCgl"
-
-  CGLLIB_CFLAGS_PUB="-I\${includedir}"
-
-  CGLLIB_PCFILES_PUB=""
-
-  CGLLIB_DATA_PUB=\${datarootdir}/$PACKAGE_TARNAME
-
-
 
 
 

@@ -83,10 +83,6 @@ cd $curr_dir
 #                            COIN-OR components                             #
 #############################################################################
 
-# Initialize variables for CglLib
-
-AC_COIN_INIT_LIBVARS([CglLib],[-L\${libdir} -lCgl],[-I\${includedir}])
-
 AC_COIN_CHK_PKG(CoinUtils,[CglLib])
 if test $coin_has_coinutils != yes ; then
   AC_MSG_ERROR([Required package CoinUtils not available.])

@@ -1,14 +1,14 @@
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 libdir=@libdir@
-includedir=@includedir@/coin
+includedir=@includedir@/coin-or
 
 Name: CGL
 Description: COIN-OR Cut Generation Library
 URL: https://projects.coin-or.org/Cgl
 Version: @PACKAGE_VERSION@
-Libs: @CGLLIB_LFLAGS_PUB@
+Libs: -L${libdir} -lCgl
 Libs.private: @CGLLIB_LFLAGS_NOPC@
-Cflags: @CGLLIB_CFLAGS_PUB@
-Requires: @CGLLIB_PCFILES_PUB@
+Cflags: -I${includedir}
+Requires:
 Requires.private: @CGLLIB_PCFILES@
