@@ -11,6 +11,12 @@
 #include "OsiRowCut.hpp"
 #include "CglClique.hpp"
 
+/* to prevent the creation of very
+ * large incidence matrixes */
+#ifndef MAX_CGLCLIQUE_COLS
+#define MAX_CGLCLIQUE_COLS 10000
+#endif
+
 /*****************************************************************************/
 
 CglClique::CglClique(bool setPacking, bool justOriginalRows) :
@@ -115,7 +121,7 @@ CglClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
 #ifndef MAX_CGLCLIQUE_ROWS
 #define MAX_CGLCLIQUE_ROWS 100000
 #endif
-   if (sp_numrows > MAX_CGLCLIQUE_ROWS || sp_numcols < 2) {
+   if (sp_numrows > MAX_CGLCLIQUE_ROWS || sp_numcols < 2 || sp_numcols>MAX_CGLCLIQUE_COLS) {
      //printf("sp_numrows is %d\n",sp_numrows);
      deleteSetPackingSubMatrix();
      return; // too many rows or too few columns!
