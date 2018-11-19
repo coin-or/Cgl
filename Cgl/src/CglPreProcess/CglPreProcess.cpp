@@ -1650,7 +1650,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     delete [] mark;
     if (numberSOS) {
       if (makeEquality==2) {
-	if(numberOverlap||numberIntegers>numberInSOS+1) {
+	if(numberOverlap||numberIntegers*4>numberInSOS*5+1) {
 	  handler_->message(CGL_PROCESS_SOS2,messages_)
 	    <<numberSOS<<numberInSOS<<numberIntegers<<numberOverlap
 	    <<CoinMessageEol;
@@ -1819,7 +1819,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
         <<numberFixed
         <<CoinMessageEol;
   }
-  if (numberSlacks&&makeEquality&&!justOnesWithObj) {
+  if (numberSlacks&&makeEquality==2&&!justOnesWithObj) {
     handler_->message(CGL_SLACKS,messages_)
       <<numberSlacks
       <<CoinMessageEol;
@@ -1828,19 +1828,58 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
     if (!startModel_) {
       startModel_ = originalModel_->clone();
     }
+    CoinBigIndex * starts = new CoinBigIndex [numberSlacks+1];
+    double * loweretc = new double [3*numberSlacks];
+    double * upperetc = loweretc+numberSlacks;
+    double * objetc = upperetc+numberSlacks;
     for (int i=0;i<numberSlacks;i++) {
       int iRow = rows[i];
-      double value = element[i];
-      double lowerValue = 0.0;
       double upperValue = 1.0;
-      double objValue  = 0.0;
       if (iRow>=numberRows) {
 	// just a slack not a clique
 	upperValue=COIN_DBL_MAX;
 	iRow -= numberRows;
       }
-      CoinPackedVector column(1,&iRow,&value);
-      startModel_->addCol(column,lowerValue,upperValue,objValue);
+      rows[i]=iRow;
+      loweretc[i]=0.0;
+      upperetc[i]=upperValue;
+      objetc[i]=0.0;
+      starts[i]=i;
+    }
+    starts[numberSlacks]=numberSlacks;
+    startModel_->addCols(numberSlacks,starts,rows,element,
+			 loweretc,upperetc,objetc);
+    delete [] starts;
+    delete [] loweretc;
+    CoinWarmStartBasis* basis =
+      dynamic_cast <CoinWarmStartBasis*>(startModel_->getWarmStart()) ;
+    if (basis) {
+      const double * rowActivity = startModel_->getRowActivity();
+      double * solution = CoinCopyOfArray(startModel_->getColSolution(),
+					  numberColumns+numberSlacks);
+      for (int i=0;i<numberSlacks;i++) {
+	int iRow = rows[i];
+	if (basis->getArtifStatus(iRow)==CoinWarmStartBasis::basic) {
+	  basis->setArtifStatus(iRow,CoinWarmStartBasis::atLowerBound);
+	  basis->setStructStatus(i+numberColumns,CoinWarmStartBasis::basic);
+	}
+	double value = element[i];
+	double slackvalue=rowActivity[iRow];
+	if (value >0) {
+	  slackvalue = rowUpper[iRow]-slackvalue;
+	} else {
+	  slackvalue = slackvalue-rowLower[iRow];
+	}
+	solution[i+numberColumns]=slackvalue;
+      }
+      startModel_->setWarmStart(basis);
+      startModel_->setColSolution(solution);
+      delete basis;
+      delete [] solution; 
+    }
+    for (int i=0;i<numberSlacks;i++) {
+      int iRow = rows[i];
+      double value = element[i];
       // set integer
       startModel_->setInteger(numberColumns+i);
       if (value >0)
@@ -5148,7 +5187,7 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  int saveMaxElements = probingCut->getMaxElementsRoot();
 	  int saveMaxProbe = probingCut->getMaxProbeRoot();
 	  int saveMaxLook = probingCut->getMaxLookRoot();
-	  if (!iBigPass&&!iPass&&(options_&(16|64))!=0) {
+	  if (!iBigPass&&!iPass/*&&(options_&(16|64))!=0*/) {
 	    noStrengthening = true;
 	    numberPasses=1;
 	    probingCut->setMaxProbeRoot(CoinMax(saveMaxProbe,1000));
@@ -5355,9 +5394,26 @@ CglPreProcess::modified(OsiSolverInterface * model,
       // check changes
       // first are any rows strengthened by cuts
       int iRow;
+#ifdef MAX_ADD_ELEMENTS_PREPROCESS
+      const CoinPackedMatrix * tempRowCopy = newModel->getMatrixByRow();
+      const int * tempRowLength = tempRowCopy->getVectorLengths(); 
+#endif
       for (iRow=0;iRow<numberRows;iRow++) {
-        if(whichCut[iRow])
-          numberStrengthened++;
+        if(whichCut[iRow]) {
+#ifdef MAX_ADD_ELEMENTS_PREPROCESS
+          OsiRowCut * thisCut = whichCut[iRow];
+	  CoinPackedVector row = thisCut->row();
+	  if (row.getNumElements()<=tempRowLength[iRow]
+	      +MAX_ADD_ELEMENTS_PREPROCESS) {
+	    numberStrengthened++;
+	  } else {
+	    delete thisCut;
+	    whichCut[iRow]=NULL;
+	  }
+#else
+	  numberStrengthened++;
+#endif
+	}
       }
       // Also can we get rid of duplicate rows
       int numberDrop=0;
