@@ -551,6 +551,8 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
     }
     // do if some but not too many
     if (nNew&&nNew<currentNumber) {
+      double tolerance;
+      model->getDblParam(OsiPrimalTolerance,tolerance);
       for (int i=0;i<nNew;i++) {
 	int iColumn = newInts[i];
 	double objValue = objective[iColumn];
@@ -566,6 +568,9 @@ static int makeIntegers2(OsiSolverInterface * model,int mode)
 	} 
 	if (thisGood&&upper[iColumn]<lower[iColumn]+10.0) {
 	  model->setInteger(iColumn);
+	  // clean up bounds
+	  model->setColLower(iColumn,ceil(lower[iColumn]-tolerance));
+	  model->setColUpper(iColumn,floor(upper[iColumn]+tolerance));
 	  if (objValue)
 	    numberNonZero++;
 	  else

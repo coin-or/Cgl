@@ -2098,14 +2098,17 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	CoinPackedVector ubs;
 	for (i = 0; i < nCols; ++i) {
 	  if (intVar[i]) {
-	    colUpper[i] = CoinMin(upper[i],floor(colUpper[i]+1.0e-4));
+	    // check integer
+	    assert (colUpper[i]==floor(colUpper[i]+0.5));
+	    assert (colLower[i]==floor(colLower[i]+0.5));
+	    //colUpper[i] = CoinMin(upper[i],floor(colUpper[i]+1.0e-4));
 	    if (colUpper[i]<upper[i]-1.0e-8) {
 	      if (colUpper[i]<colsol[i]-1.0e-8)
 		ifCut=1;
 	      ubs.insert(i,colUpper[i]);
 	      numberChanged++;
 	    }
-	    colLower[i] = CoinMax(lower[i],ceil(colLower[i]-1.0e-4));
+	    //colLower[i] = CoinMax(lower[i],ceil(colLower[i]-1.0e-4));
 	    if (colLower[i]>lower[i]+1.0e-8) {
 	      if (colLower[i]>colsol[i]+1.0e-8)
 		ifCut=1;
@@ -3771,8 +3774,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      }
 		      if (newLower>colsol[kcol]) {
 			if (djs[kcol]<0.0) {
-			  /* should be infeasible */
-			  assert (newLower>colUpper[kcol]+primalTolerance_);
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (newLower>colUpper[kcol]+primalTolerance_);
 			} else {
 			  objVal += moveUp*djs[kcol];
 			}
@@ -3839,8 +3843,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      }
 		      if (newUpper<colsol[kcol]) {
 			if (djs[kcol]>0.0) {
-			  /* should be infeasible */
-			  assert (colLower[kcol]>newUpper+primalTolerance_);
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (colLower[kcol]>newUpper+primalTolerance_);
 			} else {
 			  objVal += moveDown*djs[kcol];
 			}
@@ -3954,8 +3959,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      }
 		      if (newLower>colsol[kcol]) {
 			if (djs[kcol]<0.0) {
-			  /* should be infeasible */
-			  assert (newLower>colUpper[kcol]+primalTolerance_);
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (newLower>colUpper[kcol]+primalTolerance_);
 			} else {
 			  objVal += moveUp*djs[kcol];
 			}
@@ -4069,8 +4075,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      }
 		      if (newUpper<colsol[kcol]) {
 			if (djs[kcol]>0.0) {
-			  /* should be infeasible */
-			  assert (colLower[kcol]>newUpper+primalTolerance_);
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (colLower[kcol]>newUpper+primalTolerance_);
 			} else {
 			  objVal += moveDown*djs[kcol];
 			}
@@ -4213,8 +4220,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      }
 		      if (newLower>colsol[kcol]) {
 			if (djs[kcol]<0.0) {
-			  /* should be infeasible */
-			  assert (newLower>colUpper[kcol]+primalTolerance_);
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (newLower>colUpper[kcol]+primalTolerance_);
 			} else {
 			  objVal += moveUp*djs[kcol];
 			}
@@ -4283,8 +4291,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      }
 		      if (newUpper<colsol[kcol]) {
 			if (djs[kcol]>0.0) {
-			  /* should be infeasible */
-			  assert (colLower[kcol]>newUpper+primalTolerance_);
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (colLower[kcol]>newUpper+primalTolerance_);
 			} else {
 			  objVal += moveDown*djs[kcol];
 			}
@@ -4398,8 +4407,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      }
 		      if (newUpper<colsol[kcol]) {
 			if (djs[kcol]>0.0) {
-			  /* should be infeasible */
-			  assert (colLower[kcol]>newUpper+primalTolerance_);
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (colLower[kcol]>newUpper+primalTolerance_);
 			} else {
 			  objVal += moveDown*djs[kcol];
 			}
@@ -4513,8 +4523,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      }
 		      if (newLower>colsol[kcol]) {
 			if (djs[kcol]<0.0) {
-			  /* should be infeasible */
-			  assert (newLower>colUpper[kcol]+primalTolerance_);
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (newLower>colUpper[kcol]+primalTolerance_);
 			} else {
 			  objVal += moveUp*djs[kcol];
 			}
@@ -6534,8 +6545,9 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		      }
 		      if (newLower>colsol[kcol]) {
 			if (djs[kcol]<0.0) {
-			  /* should be infeasible */
-			  assert (newLower>colUpper[kcol]+primalTolerance_);
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (newLower>colUpper[kcol]+primalTolerance_);
 			} else {
 			  objVal += moveUp*djs[kcol];
 			}
@@ -6615,8 +6627,9 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		      }
 		      if (newUpper<colsol[kcol]) {
 			if (djs[kcol]>0.0) {
-			  /* should be infeasible */
-			  assert (colLower[kcol]>newUpper+primalTolerance_);
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (colLower[kcol]>newUpper+primalTolerance_);
 			} else {
 			  objVal += moveDown*djs[kcol];
 			}
