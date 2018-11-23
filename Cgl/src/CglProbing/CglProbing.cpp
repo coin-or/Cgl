@@ -501,7 +501,7 @@ CglProbing::tighten(double *colLower, double * colUpper,
 		    if (dbound > colLower[j] + 1.0e-8) {
 		      /* we can tighten the lower bound */
 		      /* the paper mentions this as a possibility on p. 227 */
-		      colLower[j] = dbound;
+ 		      colLower[j] = dbound;
 		      ++nchange;
 		      
 		      /* this may have fixed the variable */
@@ -607,6 +607,11 @@ CglProbing::tighten(double *colLower, double * colUpper,
 	      /*printf("infeasible\n");*/
 	      ninfeas++;
 	    }
+	  } else {
+	    // clean
+	    colUpper[j]=floor(colUpper[j]+1.0e-4);
+	    colLower[j]=ceil(colLower[j]-1.0e-4);
+	    assert (colUpper[j]==colLower[j]);
 	  }
 	}
       }
