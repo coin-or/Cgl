@@ -11,44 +11,42 @@
 #include "CoinPragma.hpp"
 #include "CglCutGenerator.hpp"
 #include "CoinHelperFunctions.hpp"
- 
 
 //-------------------------------------------------------------------
-// Default Constructor 
+// Default Constructor
 //-------------------------------------------------------------------
-CglCutGenerator::CglCutGenerator ()
-  : aggressive_(0),
-canDoGlobalCuts_(false)
+CglCutGenerator::CglCutGenerator()
+  : aggressive_(0)
+  , canDoGlobalCuts_(false)
 {
   // nothing to do here
 }
 
 //-------------------------------------------------------------------
-// Copy constructor 
+// Copy constructor
 //-------------------------------------------------------------------
-CglCutGenerator::CglCutGenerator (
-                  const CglCutGenerator & source)         
-  : aggressive_(source.aggressive_),
-    canDoGlobalCuts_(source.canDoGlobalCuts_)
-{  
+CglCutGenerator::CglCutGenerator(
+  const CglCutGenerator &source)
+  : aggressive_(source.aggressive_)
+  , canDoGlobalCuts_(source.canDoGlobalCuts_)
+{
   // nothing to do here
 }
 
-
 //-------------------------------------------------------------------
-// Destructor 
+// Destructor
 //-------------------------------------------------------------------
-CglCutGenerator::~CglCutGenerator ()
+CglCutGenerator::~CglCutGenerator()
 {
   // nothing to do here
 }
 
 //----------------------------------------------------------------
-// Assignment operator 
+// Assignment operator
 //-------------------------------------------------------------------
 CglCutGenerator &
 CglCutGenerator::operator=(
-                   const CglCutGenerator& rhs)
+  const CglCutGenerator &rhs)
 {
   if (this != &rhs) {
     aggressive_ = rhs.aggressive_;
@@ -56,14 +54,12 @@ CglCutGenerator::operator=(
   }
   return *this;
 }
-bool 
-CglCutGenerator::mayGenerateRowCutsInTree() const
+bool CglCutGenerator::mayGenerateRowCutsInTree() const
 {
   return true;
 }
 // Return true if needs optimal basis to do cuts
-bool 
-CglCutGenerator::needsOptimalBasis() const
+bool CglCutGenerator::needsOptimalBasis() const
 {
   return false;
 }
@@ -81,3 +77,6 @@ CglCutGenerator::unitTest()
 {
 }
 #endif
+
+/* vi: softtabstop=2 shiftwidth=2 expandtab tabstop=2
+*/
