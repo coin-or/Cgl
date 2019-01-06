@@ -69,6 +69,7 @@ Cgl/examples/cgl1.cpp -text
 Cgl/install-sh -text
 Cgl/ltmain.sh -text
 Cgl/missing -text
+Cgl/src/CglPreProcess/format-source.sh -text
 /Dependencies -text
 /LICENSE -text
 /README -text
