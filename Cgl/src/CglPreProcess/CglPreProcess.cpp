@@ -1199,6 +1199,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
   }
   if ((tuning&1)!=0)
     options_ |= 16; // heavy stuff
+  if ((tuning&64)!=0)
+    options_ |= 64; // heavier stuff
   //bool heavyProbing = (tuning&1)!=0;
   int makeIntegers = (tuning&6)>>1;
   // See if we want to do initial presolve
@@ -1987,7 +1989,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	    printf("ZZZ on col %d move %g offset %g\n",
 		   jColumn,move,move*rhs);
 #endif
-          offset -= move*multiply*rhs;
+          offset += move*multiply*rhs;
 	  for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
 	    int iColumn = column[j];
 	    if (iColumn!=jColumn) {
@@ -2366,6 +2368,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface & model,
 	presolveActions=1+16;
       else
 	presolveActions=16; // actually just switch off duplicate columns for ints
+      if ((tuning & 32) != 0)
+	presolveActions |= 32;
       // Do not allow all +1 to be tampered with
       //if (allPlusOnes)
       //presolveActions |= 2;
@@ -5139,9 +5143,11 @@ CglPreProcess::modified(OsiSolverInterface * model,
 	  int saveMaxElements = probingCut->getMaxElementsRoot();
 	  int saveMaxProbe = probingCut->getMaxProbeRoot();
 	  int saveMaxLook = probingCut->getMaxLookRoot();
-	  if (!iBigPass&&!iPass&&(options_&(16|64))!=0) {
-	    noStrengthening = true;
-	    numberPasses=1;
+	  if ((!iBigPass||(options_&64)!=0)&&!iPass&&(options_&(16|64))!=0) {
+	    if (!iBigPass) {
+	      noStrengthening = true;
+	      numberPasses=1;
+	    }
 	    probingCut->setMaxProbeRoot(CoinMax(saveMaxProbe,1000));
 	    probingCut->setMaxElementsRoot(CoinMax(saveMaxElements,2000));
 	    probingCut->setMaxLookRoot(CoinMax(saveMaxLook,
