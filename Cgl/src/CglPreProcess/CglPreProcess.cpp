@@ -2025,7 +2025,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
             printf("ZZZ on col %d move %g offset %g\n",
               jColumn, move, move * rhs);
 #endif
-          offset -= move * multiply * rhs;
+          offset += move * multiply * rhs;
           for (CoinBigIndex j = rowStart[iRow]; j < rowStart[iRow] + rowLength[iRow]; j++) {
             int iColumn = column[j];
             if (iColumn != jColumn) {
@@ -2074,7 +2074,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     //if (allPlusOnes)
     //presolveActions |= 2;
     // allow transfer of costs
-    // presolveActions |= 4;
+    //presolveActions |= 4; can be slow
     // If trying for SOS don't allow some transfers
     if (makeEquality == 2 || makeEquality == 3)
       presolveActions |= 8;
@@ -2097,6 +2097,34 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     presolvedModel = pinfo->presolvedModel(*oldModel, feasibilityTolerance, true, 5, prohibited_, keepSolution, rowType_);
     oldModel->messageHandler()->setLogLevel(saveLogLevel);
     if (presolvedModel) {
+      //#define MAKE_LESS_THAN
+#ifdef MAKE_LESS_THAN
+      {
+        int numberRows = presolvedModel->getNumRows();
+        int numberColumns = presolvedModel->getNumCols();
+        CoinPackedMatrix *matrix = presolvedModel->getMutableMatrixByCol();
+        const int *row = matrix->getIndices();
+        const CoinBigIndex *columnStart = matrix->getVectorStarts();
+        const int *columnLength = matrix->getVectorLengths();
+        double *element = const_cast< double * >(matrix->getElements());
+        const double *rowLower = presolvedModel->getRowLower();
+        const double *rowUpper = presolvedModel->getRowUpper();
+        for (int iColumn = 0; iColumn < numberColumns; iColumn++) {
+          for (CoinBigIndex j = columnStart[iColumn];
+               j < columnStart[iColumn] + columnLength[iColumn]; j++) {
+            int iRow = row[j];
+            if (rowUpper[iRow] == COIN_DBL_MAX)
+              element[j] = -element[j];
+          }
+        }
+        for (int iRow = 0; iRow < numberRows; iRow++) {
+          if (rowUpper[iRow] == COIN_DBL_MAX) {
+            presolvedModel->setRowUpper(iRow, -rowLower[iRow]);
+            presolvedModel->setRowLower(iRow, -COIN_DBL_MAX);
+          }
+        }
+      }
+#endif
       presolvedModel->messageHandler()->setLogLevel(saveLogLevel);
       //presolvedModel->writeMps("new");
       writeDebugMps(presolvedModel, "ordinary", pinfo);
@@ -2402,6 +2430,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
         presolveActions = 1 + 16;
       else
         presolveActions = 16; // actually just switch off duplicate columns for ints
+      if ((tuning & 32) != 0)
+	presolveActions |= 32;
       // Do not allow all +1 to be tampered with
       //if (allPlusOnes)
       //presolveActions |= 2;
@@ -5151,7 +5181,8 @@ CglPreProcess::modified(OsiSolverInterface *model,
           int saveMaxElements = probingCut->getMaxElementsRoot();
           int saveMaxProbe = probingCut->getMaxProbeRoot();
           int saveMaxLook = probingCut->getMaxLookRoot();
-          if (!iBigPass && !iPass /*&&(options_&(16|64))!=0*/) {
+	  if ((!iBigPass||(options_&64)!=0)&&!iPass&&(options_&(16|64))!=0) {
+	    //if (/*!iBigPass &&*/ !iPass /*&&(options_&(16|64))!=0*/) {
             noStrengthening = true;
             numberPasses = 1;
             probingCut->setMaxProbeRoot(CoinMax(saveMaxProbe, 1000));
