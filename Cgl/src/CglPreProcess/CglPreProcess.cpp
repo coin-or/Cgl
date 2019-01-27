@@ -3007,11 +3007,20 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     //exit(2);
   }
 #endif
-  writeDebugMps(returnModel, "returnModel", NULL);
+  //writeDebugMps(returnModel, "returnModel", NULL);
 #if CGL_WRITEMPS
   if (debugger)
     assert(returnModel->getRowCutDebugger());
 #endif
+
+
+  if (returnModel != &model && keepColumnNames_)
+  {
+    returnModel->setIntParam( OsiNameDiscipline, 1 );
+    for ( int i=0 ; (i<returnModel->getNumCols()) ; i++ )
+      returnModel->setColName( i, model.getColName( originalColumns()[i] ) );
+  }
+
   return returnModel;
 }
 
