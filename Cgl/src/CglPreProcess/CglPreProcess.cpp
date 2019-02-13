@@ -1165,7 +1165,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     tuning %= 1000000;
     //minimumLength = tuning;
   }
-  numberSolvers_ = numberPasses;
+  if (numberPasses != 99) {
+    numberSolvers_ = numberPasses;
+  } else {
+    numberSolvers_ = 1;
+  }
   model_ = new OsiSolverInterface *[numberSolvers_];
   modifiedModel_ = new OsiSolverInterface *[numberSolvers_];
   presolve_ = new OsiPresolve *[numberSolvers_];
@@ -1179,6 +1183,40 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   delete[] originalRow_;
   originalColumn_ = NULL;
   originalRow_ = NULL;
+  if (numberPasses==99) {
+    // keep very simple
+    OsiSolverInterface *presolvedModel;
+    OsiPresolve *pinfo = new OsiPresolve();
+    int presolveActions = 0;
+    // Allow dual stuff on integers
+    // Allow stuff which may not unroll cleanly - unless told not to
+    if ((tuning & 4096) == 0)
+      presolveActions = 1 + 16;
+    else
+      presolveActions = 16; // actually just switch off duplicate columns for ints
+    if ((tuning & 32) != 0)
+      presolveActions |= 32;
+    presolveActions |= 8;
+    pinfo->setPresolveActions(presolveActions);
+    if (prohibited_)
+      assert(numberProhibited_ == originalModel_->getNumCols());
+    presolvedModel =
+      pinfo->presolvedModel(*originalModel_, 1.0e-7, true,
+			    5, prohibited_, true, rowType_);
+    startModel_ = originalModel_;
+    if (presolvedModel) {
+      // update prohibited and rowType
+      update(pinfo, presolvedModel);
+      model_[0] = presolvedModel;
+      presolve_[0] = pinfo;
+      modifiedModel_[0] = presolvedModel->clone();
+      createOriginalIndices();
+      numberSolvers_ = 99; // mark as odd
+      return modifiedModel_[0];
+    } else {
+      numberSolvers_ = 1;
+    }
+  }
   //startModel_=&model;
   // make clone
   delete startModel_;
@@ -3597,6 +3635,10 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
       CoinWarmStartBasis empty;
       modelM->setWarmStart(&empty);
     }
+    if (numberSolvers_==99) {
+      // was simple presolve
+      numberSolvers_ = 1;
+    }
     for (int iPass = numberSolvers_ - 1; iPass >= 0; iPass--) {
       OsiSolverInterface *model = model_[iPass];
       if (model->getNumCols()) {
@@ -3630,6 +3672,7 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
           } else if (columnUpper[iColumn] == columnLower[iColumn]) {
             if (columnUpper2[iColumn] > columnLower2[iColumn] && !model->isInteger(iColumn)) {
               model->setColUpper(iColumn, columnLower[iColumn]);
+              model->setColLower(iColumn, columnLower[iColumn]);
             }
           }
         }
@@ -3837,6 +3880,7 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
                 jColumn, value, solutionM2[jColumn], columnLower2[jColumn], columnUpper2[jColumn],
                 columnLower[iColumn], columnUpper[iColumn]);
 #endif
+              modelM2->setColLower(jColumn, value);
               modelM2->setColUpper(jColumn, value);
             }
           } else {
@@ -3913,6 +3957,7 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
       } else if (columnUpper[iColumn] == columnLower[iColumn]) {
         if (columnUpper2[iColumn] > columnLower2[iColumn] && !model->isInteger(iColumn)) {
           model->setColUpper(iColumn, columnLower[iColumn]);
+          model->setColLower(iColumn, columnLower[iColumn]);
         }
       }
     }
