@@ -6503,6 +6503,8 @@ void CglPreProcess::gutsOfDestructor()
   }
   delete[] generator_;
   generator_ = NULL;
+  if (numberSolvers_==99) 
+    numberSolvers_ = 1;
   for (i = 0; i < numberSolvers_; i++) {
     delete model_[i];
     delete modifiedModel_[i];
