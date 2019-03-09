@@ -15,36 +15,36 @@ The Cgl website is https://github.com/coin-or/Cgl.
 Available cut generators are:
 
  * Combinatorial cuts:
-   * CglAllDifferent
-   * CglClique
-   * CglKnapsackCover
-   * CglOddHole
+   * [CglAllDifferent](https://github.com/coin-or/Cgl/wiki/CglAllDifferent)
+   * [CglClique][https://github.com/coin-or/Cgl/wiki/CglClique]
+   * [CglKnapsackCover](https://github.com/coin-or/Cgl/wiki/CglKnapsackCover)
+   * [CglOddHole](https://github.com/coin-or/Cgl/wiki/CglOddHole)
    * CglZeroHalf
 
  * Flow cover cuts:
-   * CglFlowCover
+   * [CglFlowCover](https://github.com/coin-or/Cgl/wiki/CglFlowCover)
 
  * Gomory cuts and variants:
-   * CglGomory
+   * [CglGomory](https://github.com/coin-or/Cgl/wiki/CglGomory)
    * CglGMI
-   * CglRedSplit
+   * [CglRedSplit](https://github.com/coin-or/Cgl/wiki/CglRedSplit)
    * CglRedSplit2
 
  * Lift-and-project cuts:
-   * CglLiftAndProject
-   * CglLandP
+   * [CglLiftAndProject](https://github.com/coin-or/Cgl/wiki/CglLiftAndProject)
+   * [CglLandP](https://github.com/coin-or/Cgl/wiki/CglLandP)
 
  * Mixed integer rounding cuts and variants:
-   * CglMixedIntegerRounding
-   * CglMixedIntegerRounding2
-   * CglTwomir
-   * CglResidualCapacity
+   * [CglMixedIntegerRounding](https://github.com/coin-or/Cgl/wiki/CglMixedIntegerRounding)
+   * [CglMixedIntegerRounding2](https://github.com/coin-or/Cgl/wiki/CglMixedIntegerRounding2)
+   * [CglTwomir](https://github.com/coin-or/Cgl/wiki/CglTwomir)
+   * [CglResidualCapacity](https://github.com/coin-or/Cgl/wiki/CglResidualCapacity)
 
  * Strengthening:
-   * CglDuplicateRow
-   * CglPreprocess
-   * CglProbing
-   * CglSimpleRounding
+   * [CglDuplicateRow](https://github.com/coin-or/Cgl/wiki/CglDuplicateRow)
+   * [CglPreprocess](https://github.com/coin-or/Cgl/wiki/CglPreprocess)
+   * [CglProbing](https://github.com/coin-or/Cgl/wiki/CglProbing)
+   * [CglSimpleRounding](https://github.com/coin-or/Cgl/wiki/CglSimpleRounding)
 
 
 ## Getting Started using CoinBrew
@@ -72,6 +72,7 @@ The `coinbrew` script will fetch [these](Dependencies) additional projects.
 
 ## Project Links
 
+ * [Cgl Wiki](https://github.com/coin-or/Cgl/wiki) with more information on available cut generators
  * [Doxygen-generated html documentation](http://www.coin-or.org/Doxygen/Cgl)
  * [Cgl general mailing list](http://list.coin-or.org/mailman/listinfo/cgl), [Cgl subproject managers mailing list](http://list.coin-or.org/mailman/listinfo/cgl-managers)
  * [Report a bug](https://github.com/coin-or/Cgl/issues/new)
