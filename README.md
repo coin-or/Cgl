@@ -16,7 +16,7 @@ Available cut generators are:
 
  * Combinatorial cuts:
    * [CglAllDifferent](https://github.com/coin-or/Cgl/wiki/CglAllDifferent)
-   * [CglClique][https://github.com/coin-or/Cgl/wiki/CglClique]
+   * [CglClique](https://github.com/coin-or/Cgl/wiki/CglClique)
    * [CglKnapsackCover](https://github.com/coin-or/Cgl/wiki/CglKnapsackCover)
    * [CglOddHole](https://github.com/coin-or/Cgl/wiki/CglOddHole)
    * CglZeroHalf
