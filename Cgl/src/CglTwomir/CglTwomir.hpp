@@ -296,9 +296,6 @@ private:
 /* 0 = min steepness, 1 = max norm */
 #define DGG_NORM_CRITERIA 1
 
-/* internal representation of +infinity */
-#define UB_MAX DBL_MAX
-
 /* used to define how fractional a basic-integer variable must be
    before choosing to use it to generate a TMIR cut on.
    OSI's default is 1.0e-7 */
