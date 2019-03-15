@@ -12,6 +12,8 @@ All generators are combined in one library when `Cgl` is compiled.
 
 The Cgl website is https://github.com/coin-or/Cgl.
 
+The project managers of Cgl are Robin Lougee (@rlougee) and Francois Margot.
+
 Available cut generators are:
 
  * Combinatorial cuts:
