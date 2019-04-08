@@ -56,9 +56,9 @@ https://coin-or.github.io/coinbrew/
 and run
 
 
-    /path/to/coinbrew fetch --mainProj=Cgl
-    /path/to/coinbrew build --mainProj=Cgl --test
-    /path/to/coinbrew install --mainProj=Cgl
+    /path/to/coinbrew fetch --main-proj=Cgl
+    /path/to/coinbrew build --main-proj=Cgl --test
+    /path/to/coinbrew install --main-proj=Cgl
 
 
 The `coinbrew` script will fetch [these](Dependencies) additional projects.
