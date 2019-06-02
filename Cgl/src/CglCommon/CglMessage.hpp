@@ -6,14 +6,12 @@
 #ifndef CglMessage_H
 #define CglMessage_H
 
-
 #include "CoinPragma.hpp"
 
 // This deals with Cgl messages (as against Osi messages etc)
 
 #include "CoinMessageHandler.hpp"
-enum CGL_Message
-{
+enum CGL_Message {
   CGL_INFEASIBLE,
   CGL_CLIQUES,
   CGL_FIXED,
@@ -38,13 +36,14 @@ enum CGL_Message
 class CglMessage : public CoinMessages {
 
 public:
-
   /**@name Constructors etc */
   //@{
   /** Constructor */
-  CglMessage(Language language=us_en);
+  CglMessage(Language language = us_en);
   //@}
-
 };
 
 #endif
+
+/* vi: softtabstop=2 shiftwidth=2 expandtab tabstop=2
+*/

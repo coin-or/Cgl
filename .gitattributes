@@ -29,6 +29,7 @@ Cgl/MSVisualStudio/v10alt/libCglRedSplit.vcxproj -text
 Cgl/MSVisualStudio/v10alt/libCglResidualCapacity.vcxproj -text
 Cgl/MSVisualStudio/v10alt/libCglSimpleRounding.vcxproj -text
 Cgl/MSVisualStudio/v10alt/libCglTwomir.vcxproj -text
+Cgl/MSVisualStudio/v14/libCgl/libCgl.vcxproj -text
 Cgl/MSVisualStudio/v9/Cgl.sln -text
 Cgl/MSVisualStudio/v9/CglUnitTest/CglUnitTest.vcproj -text
 Cgl/MSVisualStudio/v9/libCgl/libCgl.vcproj -text
@@ -69,4 +70,5 @@ Cgl/examples/cgl1.cpp -text
 Cgl/install-sh -text
 Cgl/ltmain.sh -text
 Cgl/missing -text
+Cgl/src/CglPreProcess/format-source.sh -text
 /appveyor.yml -text

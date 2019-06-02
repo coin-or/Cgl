@@ -1685,8 +1685,9 @@ cut *Cgl012Cut::get_cut(
   crhs = 0;
   for ( e = 0; e < s_cyc->length; e++ ) {
     i = (s_cyc->edge_list[e])->constr; 
-    if ( i >= 0 ) {
+    if ( i >= 0 && flag_comb[i] != IN) {
       /* the edge is not associated with a bound constraint */
+      assert (ncomb<inp_ilp->mr);
       comb[ncomb] = i; ncomb++; flag_comb[i] = IN;
     }
   }

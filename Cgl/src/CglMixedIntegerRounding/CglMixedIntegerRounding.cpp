@@ -1693,7 +1693,7 @@ CglMixedIntegerRounding::generateCpp( FILE * fp)
   if (CRITERION_!=other.CRITERION_)
   fprintf(fp,"3  mixedIntegerRounding.setCRITERION_(%d);\n",CRITERION_);
   if (doPreproc_!=other.doPreproc_)
-    fprintf(fp,"3  mixedIntegerRounding.setDoPreproc_(%d);\n", doPreproc_);
+    fprintf(fp,"3  mixedIntegerRounding.setDoPreproc(%d);\n", doPreproc_);
   if (getAggressiveness()!=other.getAggressiveness())
     fprintf(fp,"3  mixedIntegerRounding.setAggressiveness(%d);\n",getAggressiveness());
   else
