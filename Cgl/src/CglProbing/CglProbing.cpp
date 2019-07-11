@@ -293,7 +293,7 @@ public:
     if (numberCuts_<nRows_) {
       if ((iPass&1)==1) {
 	for (i=0;i<numberCuts_;i++) {
-	  cs.insert(*rowCut_[i]);
+	  cs.insertIfNotDuplicate(*rowCut_[i]);
 	  if (whichRow) {
 	    int iRow= rowCut_[i]->whichRow();
 	    if (iRow>=0&&!whichRow[iRow])
@@ -303,7 +303,7 @@ public:
 	}
       } else {
 	for (i=numberCuts_-1;i>=0;i--) {
-	  cs.insert(*rowCut_[i]);
+	  cs.insertIfNotDuplicate(*rowCut_[i]);
 	  if (whichRow) {
 	    int iRow= rowCut_[i]->whichRow();
 	    if (iRow>=0&&!whichRow[iRow])
@@ -331,7 +331,7 @@ public:
         threshold = effectiveness[nRows_];
       for ( i=0;i<numberCuts_;i++) {
         if (rowCut_[i]->effectiveness()>threshold) {
-          cs.insert(*rowCut_[i]);
+          cs.insertIfNotDuplicate(*rowCut_[i]);
           if (whichRow) {
             int iRow= rowCut_[i]->whichRow();
             if (iRow>=0&&!whichRow[iRow])
@@ -611,7 +611,10 @@ CglProbing::tighten(double *colLower, double * colUpper,
 	    // clean
 	    colUpper[j]=floor(colUpper[j]+1.0e-4);
 	    colLower[j]=ceil(colLower[j]-1.0e-4);
-	    assert (colUpper[j]==colLower[j]);
+	    if (colUpper[j]<colLower[j]) {
+	      /*printf("infeasible\n");*/
+	      ninfeas++;
+	    }
 	  }
 	}
       }
@@ -1286,7 +1289,7 @@ void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     OsiRowCut rc;
     rc.setLb(COIN_DBL_MAX);
     rc.setUb(0.0);   
-    cs.insert(rc);
+    cs.insertIfNotDuplicate(rc);
 #ifdef CGL_DEBUG
     const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
     if (debugger&&debugger->onOptimalPath(si))
@@ -1363,7 +1366,7 @@ int CglProbing::generateCutsAndModify(const OsiSolverInterface & si,
     OsiRowCut rc;
     rc.setLb(COIN_DBL_MAX);
     rc.setUb(0.0);   
-    cs.insert(rc);
+    cs.insertIfNotDuplicate(rc);
 #ifdef CGL_DEBUG
     const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
     if (debugger&&debugger->onOptimalPath(si))
@@ -2759,7 +2762,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                       element[1]= 1.0;
                     }
                     rc.setRow(2,index,element,false);
-                    cs.insert(rc);
+                    cs.insertIfNotDuplicate(rc);
                   }
                 } else {
                   if (action<22) {
@@ -3216,7 +3219,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 element[0]=1.0;
                 element[1]=-upper;
                 rc.setRow(2,index,element,false);
-                cs.insert(rc);
+                cs.insertIfNotDuplicate(rc);
               }
             }
           }
@@ -5310,7 +5313,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      if (fabs(element[0])>1.0e-8) {
 			element[1]=1.0;
 			rc.setRow(2,index,element,false);
-			cs.insert(rc);
+			cs.insertIfNotDuplicate(rc);
 		      }
                     } else if (upperWhenUp<lowerOriginal+1.0e-12&&lowerWhenDown>upperOriginal-1.0e-12) {
                       OsiRowCut rc;
@@ -5324,7 +5327,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       element[0]=upperOriginal-lowerOriginal;
                       element[1]=1.0;
                       rc.setRow(2,index,element,false);
-                      cs.insert(rc);
+                      cs.insertIfNotDuplicate(rc);
                     } 
                   }
                 }
@@ -8322,7 +8325,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
               checkBounds(debugger,cc);
 #endif
-              cs.insert(cc);
+              cs.insertIfNotDuplicate(cc);
             }
           }
           for (istackC=0;istackC<nstackC;istackC++) {
@@ -8591,7 +8594,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
                   checkBounds(debugger,cc);
 #endif
-                  cs.insert(cc);
+                  cs.insertIfNotDuplicate(cc);
                 }
               }
             }

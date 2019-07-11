@@ -305,7 +305,7 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       hasCut = generateOneFlowCut(si, rowLen, ind, coef, 'L', 
 				  thisRhs, flowCut1, violation);
       if (hasCut)  {                         // If find a cut
-	cs.insert(flowCut1);
+	cs.insertIfNotDuplicate(flowCut1);
 	incNumFlowCuts();
 	if (getNumFlowCuts() >= getMaxNumCuts())
 	  break;
@@ -314,7 +314,7 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       hasCut = generateOneFlowCut(si, rowLen, ind, coef, 'G', 
 				  thisRhs, flowCut2, violation);
       if (hasCut)  {
-	cs.insert(flowCut2);
+	cs.insertIfNotDuplicate(flowCut2);
 	incNumFlowCuts();
 	if (getNumFlowCuts() >= getMaxNumCuts())
 	  break;
@@ -324,7 +324,7 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       hasCut = generateOneFlowCut(si, rowLen, ind, coef, sense[iRow], 
 				  thisRhs, flowCut3, violation);
       if (hasCut)  {
-	cs.insert(flowCut3);
+	cs.insertIfNotDuplicate(flowCut3);
 	incNumFlowCuts();
 	if (getNumFlowCuts() >= getMaxNumCuts())
 	  break;

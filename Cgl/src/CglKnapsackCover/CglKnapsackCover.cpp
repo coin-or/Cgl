@@ -893,7 +893,7 @@ CglKnapsackCover::liftAndUncomplementAndAdd(
       }
     }
 #endif
-    cs.insert(rc);
+    cs.insertIfNotDuplicate(rc);
     
     return 1;
   } else {
@@ -2954,7 +2954,7 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
       }
     }
 #endif
-    cs.insert(rc);
+    cs.insertIfNotDuplicate(rc);
   }
 }
 
@@ -3148,7 +3148,7 @@ CglKnapsackCover::seqLiftAndUncomplementAndAdd(
       }
     }
 #endif
-    cs.insert(rc);
+    cs.insertIfNotDuplicate(rc);
   }
 }
 

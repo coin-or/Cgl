@@ -662,7 +662,7 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
                 cut.setGloballyValid(true);
             }
             cs.insertIfNotDuplicate(cut, eq);
-            //cs.insert(cut);
+            //cs.insertIfNotDuplicate(cut);
             {
                 //std::cout<<"Violation "<<cut.violated(cached_.colsol_)<<std::endl;
                 nCut++;

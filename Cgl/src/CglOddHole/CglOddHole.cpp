@@ -563,7 +563,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * /*debugger*/,
 	      if (debugger) 
 		assert(!debugger->invalidCut(rc)); 
 #endif
-	      cs.insert(rc);
+	      cs.insertIfNotDuplicate(rc);
 	    }
 	  }
 	}
