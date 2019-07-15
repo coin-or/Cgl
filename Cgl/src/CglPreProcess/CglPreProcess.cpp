@@ -6789,6 +6789,7 @@ CglPreProcess::someFixed(OsiSolverInterface &model,
     }
   }
   delete[] sort;
+  delete[] dj;
   return newModel;
 }
 // If we have a cutoff - fix variables
