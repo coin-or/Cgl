@@ -293,23 +293,27 @@ public:
     if (numberCuts_<nRows_) {
       if ((iPass&1)==1) {
 	for (i=0;i<numberCuts_;i++) {
-	  cs.insertIfNotDuplicate(*rowCut_[i]);
-	  if (whichRow) {
-	    int iRow= rowCut_[i]->whichRow();
-	    if (iRow>=0&&!whichRow[iRow])
-	      whichRow[iRow]=cs.rowCutPtr(numberCuts);;
+	  bool inserted = cs.insertIfNotDuplicate(*rowCut_[i]);
+	  if (inserted) {
+	    if (whichRow) {
+	      int iRow= rowCut_[i]->whichRow();
+	      if (iRow>=0&&!whichRow[iRow])
+		whichRow[iRow]=cs.rowCutPtr(numberCuts);;
+	    }
+	    numberCuts++;
 	  }
-	  numberCuts++;
 	}
       } else {
 	for (i=numberCuts_-1;i>=0;i--) {
-	  cs.insertIfNotDuplicate(*rowCut_[i]);
-	  if (whichRow) {
-	    int iRow= rowCut_[i]->whichRow();
-	    if (iRow>=0&&!whichRow[iRow])
-	      whichRow[iRow]=cs.rowCutPtr(numberCuts);;
+	  bool inserted = cs.insertIfNotDuplicate(*rowCut_[i]);
+	  if (inserted) {
+	    if (whichRow) {
+	      int iRow= rowCut_[i]->whichRow();
+	      if (iRow>=0&&!whichRow[iRow])
+		whichRow[iRow]=cs.rowCutPtr(numberCuts);;
+	    }
+	    numberCuts++;
 	  }
-	  numberCuts++;
 	}
       }
     } else {
@@ -331,13 +335,15 @@ public:
         threshold = effectiveness[nRows_];
       for ( i=0;i<numberCuts_;i++) {
         if (rowCut_[i]->effectiveness()>threshold) {
-          cs.insertIfNotDuplicate(*rowCut_[i]);
-          if (whichRow) {
-            int iRow= rowCut_[i]->whichRow();
-            if (iRow>=0&&!whichRow[iRow])
-              whichRow[iRow]=cs.rowCutPtr(numberCuts);;
-          }
-          numberCuts++;
+	  bool inserted = cs.insertIfNotDuplicate(*rowCut_[i]);
+	  if (inserted) {
+	    if (whichRow) {
+	      int iRow= rowCut_[i]->whichRow();
+	      if (iRow>=0&&!whichRow[iRow])
+		whichRow[iRow]=cs.rowCutPtr(numberCuts);;
+	    }
+	    numberCuts++;
+	  }
         }
       }
       delete[] effectiveness ;
