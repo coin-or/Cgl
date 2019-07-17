@@ -1726,6 +1726,7 @@ void CglTreeProbingInfo::generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
       }
     }
     delete[] fixed;
+    fixed = NULL;
     if (feasible) {
       //printf("IMP fixed %d\n",numberFixed);
       OsiColCut cc;
@@ -1743,6 +1744,9 @@ void CglTreeProbingInfo::generateCuts(const OsiSolverInterface &si, OsiCuts &cs,
       //printf("IMPINFEAS!\n");
     }
   }
+
+  if (fixed)
+    delete[] fixed;
 }
 
 /* vi: softtabstop=2 shiftwidth=2 expandtab tabstop=2
