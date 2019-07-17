@@ -1197,8 +1197,35 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
 #endif
     cutLen = j;
     // Skip if no elements ? - bug somewhere
-    if (cutLen == 0)
+    if (cutLen == 0) {
+        if (xCoef)
+            delete[] xCoef;
+        if (cutCoef)
+            delete[] cutCoef;
+        if (yCoef)
+            delete[] yCoef;
+        if (M)
+            delete[] M;
+        if (label)
+            delete[] label;
+        if (sign)
+            delete[] sign;
+        if (up)
+            delete[] up;
+        if (candidate)
+            delete[] candidate;
+        if (y)
+            delete[] y;
+        if (x)
+            delete[] x;
+        if (mt)
+            delete[] mt;
+        if (rho)
+            delete[] rho;
+        if (order)
+            delete[] order;
         return false;
+    }
         
     // Recheck the violation.
     double saveViolation = violation;
