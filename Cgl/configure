@@ -26885,7 +26885,7 @@ fi
 
 # Here list all the files that configure should create (except for the
 # configuration header file)
-                                                                                                                                                                                                                                                                    ac_config_files="$ac_config_files Makefile examples/Makefile src/Makefile src/CglAllDifferent/Makefile src/CglClique/Makefile src/CglDuplicateRow/Makefile src/CglFlowCover/Makefile src/CglGMI/Makefile src/CglGomory/Makefile src/CglKnapsackCover/Makefile src/CglLandP/Makefile src/CglLiftAndProject/Makefile src/CglMixedIntegerRounding/Makefile src/CglMixedIntegerRounding2/Makefile src/CglOddHole/Makefile src/CglPreProcess/Makefile src/CglProbing/Makefile src/CglRedSplit/Makefile src/CglRedSplit2/Makefile src/CglResidualCapacity/Makefile src/CglSimpleRounding/Makefile src/CglTwomir/Makefile src/CglZeroHalf/Makefile test/Makefile cgl.pc cgl-uninstalled.pc"
+                                                                                                                                                                                                                                                                                                  ac_config_files="$ac_config_files Makefile examples/Makefile src/Makefile src/CglAllDifferent/Makefile src/CglBKClique/Makefile src/CglClique/Makefile src/CglCliqueMerging/Makefile src/CglDuplicateRow/Makefile src/CglFlowCover/Makefile src/CglGMI/Makefile src/CglGomory/Makefile src/CglKnapsackCover/Makefile src/CglLandP/Makefile src/CglLiftAndProject/Makefile src/CglMixedIntegerRounding/Makefile src/CglMixedIntegerRounding2/Makefile src/CglOddHole/Makefile src/CglOddHoleWC/Makefile src/CglPreProcess/Makefile src/CglProbing/Makefile src/CglRedSplit/Makefile src/CglRedSplit2/Makefile src/CglResidualCapacity/Makefile src/CglSimpleRounding/Makefile src/CglTwomir/Makefile src/CglZeroHalf/Makefile test/Makefile cgl.pc cgl-uninstalled.pc"
 
           ac_config_files="$ac_config_files doxydoc/doxygen.conf"
 
@@ -27720,7 +27720,9 @@ do
   "examples/Makefile" ) CONFIG_FILES="$CONFIG_FILES examples/Makefile" ;;
   "src/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
   "src/CglAllDifferent/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglAllDifferent/Makefile" ;;
+  "src/CglBKClique/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglBKClique/Makefile" ;;
   "src/CglClique/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglClique/Makefile" ;;
+  "src/CglCliqueMerging/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglCliqueMerging/Makefile" ;;
   "src/CglDuplicateRow/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglDuplicateRow/Makefile" ;;
   "src/CglFlowCover/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglFlowCover/Makefile" ;;
   "src/CglGMI/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglGMI/Makefile" ;;
@@ -27731,6 +27733,7 @@ do
   "src/CglMixedIntegerRounding/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglMixedIntegerRounding/Makefile" ;;
   "src/CglMixedIntegerRounding2/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglMixedIntegerRounding2/Makefile" ;;
   "src/CglOddHole/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglOddHole/Makefile" ;;
+  "src/CglOddHoleWC/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglOddHoleWC/Makefile" ;;
   "src/CglPreProcess/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglPreProcess/Makefile" ;;
   "src/CglProbing/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglProbing/Makefile" ;;
   "src/CglRedSplit/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/CglRedSplit/Makefile" ;;
