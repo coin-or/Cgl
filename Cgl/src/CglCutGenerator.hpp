@@ -106,6 +106,8 @@ public:
   virtual bool mayGenerateRowCutsInTree() const;
   /// Return true if needs optimal basis to do cuts
   virtual bool needsOptimalBasis() const;
+  /// Return true if needs original model with the corr. solution (not preprocessed)
+  virtual bool needsOriginalModel() const;
   /// Return maximum length of cut in tree
   virtual int maximumLengthOfCutInTree() const
   {
