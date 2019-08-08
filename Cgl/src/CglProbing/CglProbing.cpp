@@ -293,27 +293,23 @@ public:
     if (numberCuts_<nRows_) {
       if ((iPass&1)==1) {
 	for (i=0;i<numberCuts_;i++) {
-	  bool inserted = cs.insertIfNotDuplicate(*rowCut_[i]);
-	  if (inserted) {
-	    if (whichRow) {
-	      int iRow= rowCut_[i]->whichRow();
-	      if (iRow>=0&&!whichRow[iRow])
-		whichRow[iRow]=cs.rowCutPtr(numberCuts);;
-	    }
-	    numberCuts++;
+	  cs.insert(*rowCut_[i]);
+	  if (whichRow) {
+	    int iRow= rowCut_[i]->whichRow();
+	    if (iRow>=0&&!whichRow[iRow])
+	      whichRow[iRow]=cs.rowCutPtr(numberCuts);;
 	  }
+	  numberCuts++;
 	}
       } else {
 	for (i=numberCuts_-1;i>=0;i--) {
-	  bool inserted = cs.insertIfNotDuplicate(*rowCut_[i]);
-	  if (inserted) {
-	    if (whichRow) {
-	      int iRow= rowCut_[i]->whichRow();
-	      if (iRow>=0&&!whichRow[iRow])
-		whichRow[iRow]=cs.rowCutPtr(numberCuts);;
-	    }
-	    numberCuts++;
+	  cs.insert(*rowCut_[i]);
+	  if (whichRow) {
+	    int iRow= rowCut_[i]->whichRow();
+	    if (iRow>=0&&!whichRow[iRow])
+	      whichRow[iRow]=cs.rowCutPtr(numberCuts);;
 	  }
+	  numberCuts++;
 	}
       }
     } else {
@@ -335,15 +331,13 @@ public:
         threshold = effectiveness[nRows_];
       for ( i=0;i<numberCuts_;i++) {
         if (rowCut_[i]->effectiveness()>threshold) {
-	  bool inserted = cs.insertIfNotDuplicate(*rowCut_[i]);
-	  if (inserted) {
-	    if (whichRow) {
-	      int iRow= rowCut_[i]->whichRow();
-	      if (iRow>=0&&!whichRow[iRow])
-		whichRow[iRow]=cs.rowCutPtr(numberCuts);;
-	    }
-	    numberCuts++;
-	  }
+          cs.insert(*rowCut_[i]);
+          if (whichRow) {
+            int iRow= rowCut_[i]->whichRow();
+            if (iRow>=0&&!whichRow[iRow])
+              whichRow[iRow]=cs.rowCutPtr(numberCuts);;
+          }
+          numberCuts++;
         }
       }
       delete[] effectiveness ;
@@ -1295,7 +1289,7 @@ void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     OsiRowCut rc;
     rc.setLb(COIN_DBL_MAX);
     rc.setUb(0.0);   
-    cs.insertIfNotDuplicate(rc);
+    cs.insert(rc);
 #ifdef CGL_DEBUG
     const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
     if (debugger&&debugger->onOptimalPath(si))
@@ -1372,7 +1366,7 @@ int CglProbing::generateCutsAndModify(const OsiSolverInterface & si,
     OsiRowCut rc;
     rc.setLb(COIN_DBL_MAX);
     rc.setUb(0.0);   
-    cs.insertIfNotDuplicate(rc);
+    cs.insert(rc);
 #ifdef CGL_DEBUG
     const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
     if (debugger&&debugger->onOptimalPath(si))
@@ -2768,7 +2762,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                       element[1]= 1.0;
                     }
                     rc.setRow(2,index,element,false);
-                    cs.insertIfNotDuplicate(rc);
+                    cs.insert(rc);
                   }
                 } else {
                   if (action<22) {
@@ -3225,7 +3219,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 element[0]=1.0;
                 element[1]=-upper;
                 rc.setRow(2,index,element,false);
-                cs.insertIfNotDuplicate(rc);
+                cs.insert(rc);
               }
             }
           }
@@ -5319,7 +5313,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		      if (fabs(element[0])>1.0e-8) {
 			element[1]=1.0;
 			rc.setRow(2,index,element,false);
-			cs.insertIfNotDuplicate(rc);
+			cs.insert(rc);
 		      }
                     } else if (upperWhenUp<lowerOriginal+1.0e-12&&lowerWhenDown>upperOriginal-1.0e-12) {
                       OsiRowCut rc;
@@ -5333,7 +5327,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                       element[0]=upperOriginal-lowerOriginal;
                       element[1]=1.0;
                       rc.setRow(2,index,element,false);
-                      cs.insertIfNotDuplicate(rc);
+                      cs.insert(rc);
                     } 
                   }
                 }
@@ -8331,7 +8325,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
               checkBounds(debugger,cc);
 #endif
-              cs.insertIfNotDuplicate(cc);
+              cs.insert(cc);
             }
           }
           for (istackC=0;istackC<nstackC;istackC++) {
@@ -8600,7 +8594,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 #ifdef CGL_DEBUG
                   checkBounds(debugger,cc);
 #endif
-                  cs.insertIfNotDuplicate(cc);
+                  cs.insert(cc);
                 }
               }
             }
