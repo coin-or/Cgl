@@ -27,7 +27,7 @@ class SpsMtx {
 public:
     explicit SpsMtx(size_t lines, size_t nzsToReserve = std::numeric_limits<int>::max()) :
     starts(lines + 1, std::numeric_limits<int>::max()), nzs(lines, 0) {
-        if (nzsToReserve != std::numeric_limits<int>::max()) {
+        if (nzsToReserve != (size_t)std::numeric_limits<int>::max()) {
             elements.reserve(nzsToReserve);
         }
     }
@@ -51,7 +51,7 @@ public:
 #endif
 
         if (nzs[line] == 0) {
-            return nullptr;
+            return NULL;
         }
 
         return &(elements[starts[line]]);
@@ -382,7 +382,7 @@ public:
 };
 
 CglCliqueMerging::CglCliqueMerging()
-        : maxExtensions_(2), maxItBK_(4096), nExtended_(0), nDominated_(0), handler_(nullptr), defaultHandler_(true) {
+        : maxExtensions_(2), maxItBK_(4096), nExtended_(0), nDominated_(0), handler_(NULL), defaultHandler_(true) {
     handler_ = new CoinMessageHandler();
     handler_->setLogLevel(2);
     messages_ = CglMessage();
@@ -431,7 +431,7 @@ void CglCliqueMerging::gutsOfDestructor() {
 
     if (defaultHandler_) {
         delete handler_;
-        handler_ = nullptr;
+        handler_ = NULL;
     }
 }
 
@@ -470,9 +470,9 @@ void CglCliqueMerging::mergeCliques(OsiSolverInterface &model) {
 
     CliqueSet *newCliques = clq_set_create(); // where new cliques will be stored
 
-    size_t *nColClqs = nullptr; // number of cliques that a column is involved
-    size_t *allCollClqs = nullptr; // contiguous vector to store column cliques
-    size_t **colClqs = nullptr; // cliques that a column is involved
+    size_t *nColClqs = NULL; // number of cliques that a column is involved
+    size_t *allCollClqs = NULL; // contiguous vector to store column cliques
+    size_t **colClqs = NULL; // cliques that a column is involved
 
     /* here cliques are stored only with column indexes
        * complimentary variables are stores with indexes
@@ -609,10 +609,18 @@ void CglCliqueMerging::mergeCliques(OsiSolverInterface &model) {
                     if (nCliquesToInsert) {
                         cliqueState[row] = Dominated;
                         if (nCliquesToInsert == 1) {
+#if __cplusplus >= 201103L
                             clqsSize.emplace_back(0, clq_set_clique_size(clqs, 0));
+#else
+                            clqsSize.push_back(CliqueSize(0, clq_set_clique_size(clqs, 0)));
+#endif
                         } else {
                             for (size_t ic = 0; ic < clq_set_number_of_cliques(clqs); ic++) {
+#if __cplusplus >= 201103L
                                 clqsSize.emplace_back(ic, clq_set_clique_size(clqs, ic));
+#else
+                                clqsSize.push_back(CliqueSize(ic, clq_set_clique_size(clqs, ic)));
+#endif
                             }
 
                             sort(clqsSize.begin(), clqsSize.end());

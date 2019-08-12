@@ -82,7 +82,7 @@ OddHoleSep *oddhs_create(const CGraph *cgraph) {
     oddhs->dohIV = new char[numCols];
     oddhs->ivreIdx = new char[numCols];
 
-    oddhs->spf = nullptr;
+    oddhs->spf = NULL;
 
     return oddhs;
 }
@@ -372,8 +372,8 @@ bool oddhs_doh_already_exists(OddHoleSep *oddhs, const std::vector<size_t> &doh)
 
     std::fill(oddhs->dohIV, oddhs->dohIV + cols, 0);
 
-    for (size_t idx : doh) {
-        oddhs->dohIV[idx] = 1;
+    for (std::vector<size_t>::const_iterator it = doh.begin(); it != doh.end(); ++it ) {
+        oddhs->dohIV[*it] = 1;
     }
 
     for (size_t idxDOH = 0; idxDOH < oddhs->doh.size(); idxDOH++) {
@@ -439,7 +439,7 @@ size_t oddhs_find_wheel_centers(OddHoleSep *oddhs, const size_t dohIdx) {
     assert(!oh.empty());
 #endif
 
-    oddhs->dohWC.emplace_back();
+    oddhs->dohWC.push_back(std::vector<size_t>());
     std::vector<size_t> &dohWC = oddhs->dohWC[oddhs->dohWC.size() - 1];
     dohWC.reserve(std::min(ODDHS_SEP_DEF_MAX_WHEEL_CENTERS, numCols));
 
@@ -475,8 +475,8 @@ size_t oddhs_find_wheel_centers(OddHoleSep *oddhs, const size_t dohIdx) {
         }
 
         bool insert = true;
-        for (const size_t &j : oh) {
-            if (!cgraph_conflicting_nodes(oddhs->cgraph, idx, j)) {
+        for (std::vector<size_t>::const_iterator it = oh.begin(); it != oh.end(); ++it) {
+            if (!cgraph_conflicting_nodes(oddhs->cgraph, idx, *it)) {
                 insert = false;
                 break;
             }
@@ -513,8 +513,8 @@ size_t oddhs_find_wheel_centers(OddHoleSep *oddhs, const size_t dohIdx) {
             const size_t node = np[i].node;
             /* must have conflict with all other centers */
             bool insert = true;
-            for (const size_t &c : dohWC) {
-                if (!cgraph_conflicting_nodes(oddhs->cgraph, node, c)) {
+            for (std::vector<size_t>::const_iterator it = dohWC.begin(); it != dohWC.end(); ++it) {
+                if (!cgraph_conflicting_nodes(oddhs->cgraph, node, *it)) {
                     insert = false;
                     break;
                 }
@@ -561,5 +561,5 @@ void oddhs_free(OddHoleSepPtr *oddhs) {
     }
 
     delete (*oddhs);
-    *oddhs = nullptr;
+    *oddhs = NULL;
 }

@@ -182,7 +182,7 @@ void spf_free(ShortestPathsFinderPtr *spf) {
     delete[] (*spf)->path;
 
     delete (*spf);
-    (*spf) = nullptr;
+    (*spf) = NULL;
 }
 
 void spf_update_arc(ShortestPathsFinder *spf, const size_t head, const size_t tail, const size_t cost) {
