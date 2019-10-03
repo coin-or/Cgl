@@ -153,7 +153,7 @@ CglSimpleRounding::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       rc.setRow(cut.getNumElements(),cut.getIndices(),cut.getElements());
       rc.setLb(-COIN_DBL_MAX);
       rc.setUb(cutRhs);   
-      cs.insert(rc);
+      cs.insertIfNotDuplicate(rc);
 
 #ifdef CGL_DEBUG
       printf("Row %i had a simple rounding cut:\n",rowIndex);
