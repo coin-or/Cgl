@@ -134,6 +134,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\..\src\CglAllDifferent\CglAllDifferent.cpp" />
+    <ClCompile Include="..\..\..\src\CglBKClique\CglBKClique.cpp" />
+    <ClCompile Include="..\..\..\src\CglCliqueMerging\CglCliqueMerging.cpp" />
     <ClCompile Include="..\..\..\src\CglClique\CglClique.cpp" />
     <ClCompile Include="..\..\..\src\CglClique\CglCliqueHelper.cpp" />
     <ClCompile Include="..\..\..\src\CglCutGenerator.cpp" />
@@ -153,6 +155,9 @@
     <ClCompile Include="..\..\..\src\CglMessage.cpp" />
     <ClCompile Include="..\..\..\src\CglMixedIntegerRounding\CglMixedIntegerRounding.cpp" />
     <ClCompile Include="..\..\..\src\CglMixedIntegerRounding2\CglMixedIntegerRounding2.cpp" />
+    <ClCompile Include="..\..\..\src\CglOddHoleWC\CglOddHoleWC.cpp" />
+    <ClCompile Include="..\..\..\src\CglOddHoleWC\oddhs.cpp" />
+    <ClCompile Include="..\..\..\src\CglOddHoleWC\spaths.cpp" />
     <ClCompile Include="..\..\..\src\CglOddHole\CglOddHole.cpp" />
     <ClCompile Include="..\..\..\src\CglParam.cpp" />
     <ClCompile Include="..\..\..\src\CglPreProcess\CglPreProcess.cpp" />
