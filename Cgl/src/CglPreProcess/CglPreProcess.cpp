@@ -6789,6 +6789,7 @@ CglPreProcess::someFixed(OsiSolverInterface &model,
     }
   }
   delete[] sort;
+  delete[] dj;
   return newModel;
 }
 // If we have a cutoff - fix variables
@@ -8079,7 +8080,7 @@ int CglUniqueRowCuts::insertIfNotDuplicate(const OsiRowCut &cut)
 void CglUniqueRowCuts::addCuts(OsiCuts &cs)
 {
   for (int i = 0; i < numberCuts_; i++) {
-    cs.insert(*rowCut_[i]);
+    cs.insertIfNotDuplicate(*rowCut_[i]);
     delete rowCut_[i];
     rowCut_[i] = NULL;
   }

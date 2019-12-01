@@ -63,6 +63,10 @@ bool CglCutGenerator::needsOptimalBasis() const
 {
   return false;
 }
+bool CglCutGenerator::needsOriginalModel() const
+{
+  return false;
+}
 
 #ifdef NDEBUG
 #undef NDEBUG

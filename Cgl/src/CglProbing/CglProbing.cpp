@@ -611,7 +611,10 @@ CglProbing::tighten(double *colLower, double * colUpper,
 	    // clean
 	    colUpper[j]=floor(colUpper[j]+1.0e-4);
 	    colLower[j]=ceil(colLower[j]-1.0e-4);
-	    assert (colUpper[j]==colLower[j]);
+	    if (colUpper[j]<colLower[j]) {
+	      /*printf("infeasible\n");*/
+	      ninfeas++;
+	    }
 	  }
 	}
       }

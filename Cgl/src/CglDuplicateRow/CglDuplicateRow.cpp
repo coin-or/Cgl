@@ -830,7 +830,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
 	      index[1]=column1;
 	      index[2]=columnB1;
 	      rc.setRow(3,index,element,false);
-	      cs.insert(rc);
+	      cs.insertIfNotDuplicate(rc);
 	      // drop rows
 	      duplicate_[i]=-2;
 	      duplicate_[k]=-2;
@@ -883,7 +883,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
     OsiRowCut rc;
     rc.setLb(COIN_DBL_MAX);
     rc.setUb(0.0);   
-    cs.insert(rc);
+    cs.insertIfNotDuplicate(rc);
   }
 }
 void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
@@ -2264,7 +2264,7 @@ void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
     OsiRowCut rc;
     rc.setLb(COIN_DBL_MAX);
     rc.setUb(0.0);   
-    cs.insert(rc);
+    cs.insertIfNotDuplicate(rc);
   }
 }
 #if 0
@@ -3109,7 +3109,7 @@ void CglDuplicateRow::generateCuts8(const OsiSolverInterface & si, OsiCuts & cs,
     OsiRowCut rc;
     rc.setLb(COIN_DBL_MAX);
     rc.setUb(0.0);   
-    cs.insert(rc);
+    cs.insertIfNotDuplicate(rc);
   }
 }
 //-------------------------------------------------------------------

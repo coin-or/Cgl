@@ -397,13 +397,13 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	  rowcut.setRow(number, cutIndex, packed);
 	  rowcut.setUb(si.getInfinity());
 	  rowcut.setLb(rhs);
-	  cs.insert(rowcut);
+	  cs.insertIfNotDuplicate(rowcut);
 	}
 #else
 	rowcut.setRow(cut->nz, cut->index, cut->coeff);
 	rowcut.setUb(si->getInfinity());
 	rowcut.setLb(cut->rhs);
-	cs.insert(rowcut);
+	cs.insertIfNotDuplicate(rowcut);
 #endif
       }
     
