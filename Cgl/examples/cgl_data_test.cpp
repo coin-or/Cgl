@@ -32,7 +32,7 @@ int main(int argc, char **argv)
   }
   last_dot_pos = strrchr(f_name, '.');
   if(last_dot_pos != NULL) {
-    last_dot_pos = '\0';
+    *last_dot_pos = '\0';
   }
 
   // Do for both RedSplit and RedSplit2

@@ -15,4 +15,7 @@
 /* Release Version number of project */
 #undef CGL_VERSION_RELEASE
 
+/* Library Visibility Attribute */
+#undef CGLLIB_EXPORT
+
 #endif
