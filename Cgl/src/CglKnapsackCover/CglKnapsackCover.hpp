@@ -12,7 +12,7 @@
 #include "CglTreeInfo.hpp"
 
 /** Knapsack Cover Cut Generator Class */
-class CglKnapsackCover : public CglCutGenerator {
+class CGLLIB_EXPORT CglKnapsackCover : public CglCutGenerator {
    friend void CglKnapsackCoverUnitTest(const OsiSolverInterface * siP,
 					const std::string mpdDir );
 
@@ -304,6 +304,7 @@ private:
     have to be compiled into the library. And that's a gain, because the
     library should be compiled with optimization on, but this method should be
     compiled with debugging. */
+CGLLIB_EXPORT
 void CglKnapsackCoverUnitTest(const OsiSolverInterface * siP,
 			      const std::string mpdDir );
   

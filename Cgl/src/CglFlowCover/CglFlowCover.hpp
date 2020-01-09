@@ -99,7 +99,7 @@ enum CglFlowRowType {
 //=============================================================================
 
 /** Variable upper bound class. */
-class CglFlowVUB
+class CGLLIB_EXPORT CglFlowVUB
 {
 protected:
     int    varInd_;            /** The index of the associated 0-1 variable.*/
@@ -145,7 +145,7 @@ std::ostream& operator<<( std::ostream& os, const CglFlowVUB &v );
 /** 
  *  Lifed Simple Generalized Flow Cover Cut Generator Class. 
  */
-class CglFlowCover : public CglCutGenerator {
+class CGLLIB_EXPORT CglFlowCover : public CglCutGenerator {
     friend void CglFlowCoverUnitTest(const OsiSolverInterface * siP,
 				     const std::string mpdDir );
     
@@ -365,6 +365,7 @@ private:
     have to be compiled into the library. And that's a gain, because the
     library should be compiled with optimization on, but this method should be
     compiled with debugging. */
+CGLLIB_EXPORT
 void CglFlowCoverUnitTest(const OsiSolverInterface * siP,
 			  const std::string mpdDir );
 

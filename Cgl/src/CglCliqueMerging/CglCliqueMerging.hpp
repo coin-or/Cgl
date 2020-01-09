@@ -15,7 +15,7 @@
  *  @param nDominated fills number of cliques that were dominated
  **/
 
-class CglCliqueMerging {
+class CGLLIB_EXPORT CglCliqueMerging {
 public:
 	CglCliqueMerging();
 	CglCliqueMerging(const CglCliqueMerging &rhs);

@@ -85,7 +85,7 @@
   */
   //@}
 
-class CglRedSplit2Param : public CglParam {
+class CGLLIB_EXPORT CglRedSplit2Param : public CglParam {
 
 public:
   /** Enumerations for parameters */

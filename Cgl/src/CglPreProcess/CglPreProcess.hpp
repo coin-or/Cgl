@@ -34,7 +34,7 @@
 
 */
 
-class CglPreProcess {
+class CGLLIB_EXPORT CglPreProcess {
 
 public:
   ///@name Main methods
@@ -460,7 +460,7 @@ private:
 };
 
 /// For Bron-Kerbosch
-class CglBK {
+class CGLLIB_EXPORT CglBK {
 
 public:
   ///@name Main methods
@@ -552,7 +552,7 @@ typedef struct {
   int index, next;
 } CglHashLink;
 class OsiRowCut;
-class CglUniqueRowCuts {
+class CGLLIB_EXPORT CglUniqueRowCuts {
 public:
   CglUniqueRowCuts(int initialMaxSize = 0, int hashMultiplier = 4);
   ~CglUniqueRowCuts();

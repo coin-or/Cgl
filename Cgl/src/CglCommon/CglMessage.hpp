@@ -7,6 +7,7 @@
 #define CglMessage_H
 
 #include "CoinPragma.hpp"
+#include "CglConfig.h"
 
 // This deals with Cgl messages (as against Osi messages etc)
 
@@ -34,7 +35,7 @@ enum CGL_Message {
 
 /** This deals with Cgl messages (as against Osi messages etc)
  */
-class CglMessage : public CoinMessages {
+class CGLLIB_EXPORT CglMessage : public CoinMessages {
 
 public:
   /**@name Constructors etc */

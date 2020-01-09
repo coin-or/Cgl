@@ -46,7 +46,7 @@ public:
 class CglLandPSimplex;
 }
 
-class CglLandP : public CglCutGenerator
+class CGLLIB_EXPORT CglLandP : public CglCutGenerator
 {
     friend void CglLandPUnitTest(OsiSolverInterface *si, const std::string & mpsDir);
 
@@ -300,6 +300,7 @@ private:
     /** Store some extra cut which could be cheaply generated but do not cut current incumbent.*/
     OsiCuts extraCuts_;
 };
+CGLLIB_EXPORT
 void CglLandPUnitTest(OsiSolverInterface *si, const std::string & mpsDir);
 
 #endif

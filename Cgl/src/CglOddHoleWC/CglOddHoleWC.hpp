@@ -3,7 +3,7 @@
 
 #include "CglCutGenerator.hpp"
 
-class CglOddHoleWC : public CglCutGenerator
+class CGLLIB_EXPORT CglOddHoleWC : public CglCutGenerator
 {
 public:
 

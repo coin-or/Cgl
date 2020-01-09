@@ -11,7 +11,7 @@
 #include "CglCutGenerator.hpp"
 
 /** Odd Hole Cut Generator Class */
-class CglOddHole : public CglCutGenerator {
+class CGLLIB_EXPORT CglOddHole : public CglCutGenerator {
    friend void CglOddHoleUnitTest(const OsiSolverInterface * siP,
 				  const std::string mpdDir );
  
@@ -154,6 +154,7 @@ private:
     have to be compiled into the library. And that's a gain, because the
     library should be compiled with optimization on, but this method should be
     compiled with debugging. */
+CGLLIB_EXPORT
 void CglOddHoleUnitTest(const OsiSolverInterface * siP,
 			const std::string mpdDir );
   

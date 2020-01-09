@@ -44,7 +44,7 @@
     "On splittable and unsplittable flow capacitated network design 
     arc-set polyhedra," Math Programming 92 (2002), 315-333. **/
 
-class CglResidualCapacity : public CglCutGenerator {
+class CGLLIB_EXPORT CglResidualCapacity : public CglCutGenerator {
     
     friend void CglResidualCapacityUnitTest(const OsiSolverInterface * siP,
 					    const std::string mpdDir );
@@ -233,6 +233,7 @@ private:
     have to be compiled into the library. And that's a gain, because the
     library should be compiled with optimization on, but this method should be
     compiled with debugging. */
+CGLLIB_EXPORT
 void CglResidualCapacityUnitTest(const OsiSolverInterface * siP,
 				 const std::string mpdDir);
 

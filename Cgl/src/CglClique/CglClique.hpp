@@ -11,7 +11,7 @@
 //class OsiCuts;
 //class OsiSolverInterface;
 
-class CglClique : public CglCutGenerator {
+class CGLLIB_EXPORT CglClique : public CglCutGenerator {
 
     friend void CglCliqueUnitTest(const OsiSolverInterface * siP,
 				  const std::string mpdDir );
@@ -259,11 +259,14 @@ private:
     have to be compiled into the library. And that's a gain, because the
     library should be compiled with optimization on, but this method should be
     compiled with debugging. */
+    
+CGLLIB_EXPORT
 void CglCliqueUnitTest(const OsiSolverInterface * siP,
 		       const std::string mpdDir);
+
 /// This works on a fake solver i.e. invented rows
 class CglProbing;
-class CglFakeClique : public CglClique {
+class CGLLIB_EXPORT CglFakeClique : public CglClique {
   
 public:
   /// Copy constructor

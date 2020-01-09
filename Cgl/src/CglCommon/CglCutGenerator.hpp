@@ -7,6 +7,7 @@
 
 #include "OsiCuts.hpp"
 #include "OsiSolverInterface.hpp"
+#include "CglConfig.h"
 #include "CglTreeInfo.hpp"
 
 //-------------------------------------------------------------------
@@ -20,7 +21,7 @@
 This is an abstract base class for generating cuts.  A specific cut 
 generator will inherit from this class.
 */
-class CglCutGenerator {
+class CGLLIB_EXPORT CglCutGenerator {
 
 public:
   /**@name Generate Cuts */

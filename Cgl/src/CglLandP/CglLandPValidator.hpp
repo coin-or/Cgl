@@ -23,7 +23,7 @@ namespace LAP
 {
 
 /** Class to validate or reject a cut */
-class Validator
+class CGLLIB_EXPORT Validator
 {
 public:
     /** Reasons for rejecting a cut */

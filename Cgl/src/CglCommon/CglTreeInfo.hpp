@@ -9,10 +9,12 @@
 #include "OsiCuts.hpp"
 #include "OsiSolverInterface.hpp"
 #include "CoinHelperFunctions.hpp"
+#include "CglConfig.h"
+
 class CglStored;
 /** Information about where the cut generator is invoked from. */
 
-class CglTreeInfo {
+class CGLLIB_EXPORT CglTreeInfo {
 public:
   /// The level of the search tree node
   int level;
@@ -89,7 +91,7 @@ typedef struct {
   unsigned int fixes;
 } CliqueEntry;
 
-class CglTreeProbingInfo : public CglTreeInfo {
+class CGLLIB_EXPORT CglTreeProbingInfo : public CglTreeInfo {
 public:
   /// Default constructor
   CglTreeProbingInfo();

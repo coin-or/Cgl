@@ -28,7 +28,7 @@
     INFORMS Journal on Computing. Part of this code is based on
     CglRedSplit by F. Margot. */
 
-class CglRedSplit2 : public CglCutGenerator {
+class CGLLIB_EXPORT CglRedSplit2 : public CglCutGenerator {
 
   friend void CglRedSplit2UnitTest(const OsiSolverInterface * siP,
 				  const std::string mpdDir);
@@ -487,6 +487,7 @@ private:
     that's a gain, because the library should be compiled with
     optimization on, but this method should be compiled with
     debugging. */
+CGLLIB_EXPORT
 void CglRedSplit2UnitTest(const OsiSolverInterface * siP,
 			 const std::string mpdDir );
 

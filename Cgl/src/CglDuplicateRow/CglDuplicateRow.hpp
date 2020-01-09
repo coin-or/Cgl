@@ -12,7 +12,7 @@
 class CglStored;
 
 /** DuplicateRow Cut Generator Class */
-class CglDuplicateRow : public CglCutGenerator {
+class CGLLIB_EXPORT CglDuplicateRow : public CglCutGenerator {
  
 public:
     
