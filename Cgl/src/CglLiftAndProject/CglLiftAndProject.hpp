@@ -11,7 +11,7 @@
 
 /** Lift And Project Cut Generator Class */
 class CGLLIB_EXPORT CglLiftAndProject : public CglCutGenerator {
-   friend void CglLiftAndProjectUnitTest(const OsiSolverInterface * siP,
+   friend CGLLIB_EXPORT void CglLiftAndProjectUnitTest(const OsiSolverInterface * siP,
 					const std::string mpdDir );
 
 public:

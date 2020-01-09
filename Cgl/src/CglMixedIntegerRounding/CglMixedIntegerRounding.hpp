@@ -85,7 +85,7 @@ typedef CglMixIntRoundVUB CglMixIntRoundVLB;
 
 class CGLLIB_EXPORT CglMixedIntegerRounding : public CglCutGenerator {
 
-  friend void CglMixedIntegerRoundingUnitTest(const OsiSolverInterface * siP,
+  friend CGLLIB_EXPORT void CglMixedIntegerRoundingUnitTest(const OsiSolverInterface * siP,
 					      const std::string mpdDir);
 
 

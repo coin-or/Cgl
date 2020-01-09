@@ -90,7 +90,7 @@ class CoinWarmStartBasis;
 /** Twostep MIR Cut Generator Class */
 class CGLLIB_EXPORT CglTwomir : public CglCutGenerator {
 
-  friend void CglTwomirUnitTest(const OsiSolverInterface * siP,
+  friend CGLLIB_EXPORT void CglTwomirUnitTest(const OsiSolverInterface * siP,
 					  const std::string mpdDir );
 
 

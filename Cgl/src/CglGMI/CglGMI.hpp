@@ -36,7 +36,7 @@
 
 class CGLLIB_EXPORT CglGMI : public CglCutGenerator {
 
-  friend void CglGMIUnitTest(const OsiSolverInterface * siP,
+  friend CGLLIB_EXPORT void CglGMIUnitTest(const OsiSolverInterface * siP,
 			     const std::string mpdDir);
 public:
 

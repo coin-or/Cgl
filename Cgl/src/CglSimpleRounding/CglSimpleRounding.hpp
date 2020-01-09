@@ -27,7 +27,7 @@
 */
 
 class CGLLIB_EXPORT CglSimpleRounding : public CglCutGenerator {
-   friend void CglSimpleRoundingUnitTest(const OsiSolverInterface * siP,
+   friend CGLLIB_EXPORT void CglSimpleRoundingUnitTest(const OsiSolverInterface * siP,
 					 const std::string mpdDir );
  
 public:

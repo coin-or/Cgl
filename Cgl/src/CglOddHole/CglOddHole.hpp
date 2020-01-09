@@ -12,7 +12,7 @@
 
 /** Odd Hole Cut Generator Class */
 class CGLLIB_EXPORT CglOddHole : public CglCutGenerator {
-   friend void CglOddHoleUnitTest(const OsiSolverInterface * siP,
+   friend CGLLIB_EXPORT void CglOddHoleUnitTest(const OsiSolverInterface * siP,
 				  const std::string mpdDir );
  
 public:

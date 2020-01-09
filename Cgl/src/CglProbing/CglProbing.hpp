@@ -23,7 +23,7 @@
 
 /** Probing Cut Generator Class */
 class CGLLIB_EXPORT CglProbing : public CglCutGenerator {
-   friend void CglProbingUnitTest(const OsiSolverInterface * siP,
+   friend CGLLIB_EXPORT void CglProbingUnitTest(const OsiSolverInterface * siP,
 				  const std::string mpdDir );
  
 public:

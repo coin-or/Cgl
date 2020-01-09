@@ -48,7 +48,7 @@ class CglLandPSimplex;
 
 class CGLLIB_EXPORT CglLandP : public CglCutGenerator
 {
-    friend void CglLandPUnitTest(OsiSolverInterface *si, const std::string & mpsDir);
+    friend CGLLIB_EXPORT void CglLandPUnitTest(OsiSolverInterface *si, const std::string & mpsDir);
 
     friend class LAP::CglLandPSimplex;
     friend class CftCglp;

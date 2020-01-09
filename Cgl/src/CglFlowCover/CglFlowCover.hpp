@@ -146,7 +146,7 @@ std::ostream& operator<<( std::ostream& os, const CglFlowVUB &v );
  *  Lifed Simple Generalized Flow Cover Cut Generator Class. 
  */
 class CGLLIB_EXPORT CglFlowCover : public CglCutGenerator {
-    friend void CglFlowCoverUnitTest(const OsiSolverInterface * siP,
+    friend CGLLIB_EXPORT void CglFlowCoverUnitTest(const OsiSolverInterface * siP,
 				     const std::string mpdDir );
     
 public:

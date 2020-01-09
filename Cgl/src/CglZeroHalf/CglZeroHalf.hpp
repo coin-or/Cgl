@@ -24,7 +24,7 @@ G. Andreello, A. Caprara, M. Fischetti,
 */
 
 class CGLLIB_EXPORT CglZeroHalf : public CglCutGenerator {
-   friend void CglZeroHalfUnitTest(const OsiSolverInterface * siP,
+   friend CGLLIB_EXPORT void CglZeroHalfUnitTest(const OsiSolverInterface * siP,
 					 const std::string mpdDir );
  
 public:

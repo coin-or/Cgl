@@ -46,7 +46,7 @@
 
 class CGLLIB_EXPORT CglResidualCapacity : public CglCutGenerator {
     
-    friend void CglResidualCapacityUnitTest(const OsiSolverInterface * siP,
+    friend CGLLIB_EXPORT void CglResidualCapacityUnitTest(const OsiSolverInterface * siP,
 					    const std::string mpdDir );
     
     

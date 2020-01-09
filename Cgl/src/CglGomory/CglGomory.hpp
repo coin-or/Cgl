@@ -12,7 +12,7 @@
 class CoinWarmStartBasis;
 /** Gomory Cut Generator Class */
 class CGLLIB_EXPORT CglGomory : public CglCutGenerator {
-   friend void CglGomoryUnitTest(const OsiSolverInterface * siP,
+   friend CGLLIB_EXPORT void CglGomoryUnitTest(const OsiSolverInterface * siP,
 				  const std::string mpdDir );
  
 public:

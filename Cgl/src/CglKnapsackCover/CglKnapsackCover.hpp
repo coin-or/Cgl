@@ -13,7 +13,7 @@
 
 /** Knapsack Cover Cut Generator Class */
 class CGLLIB_EXPORT CglKnapsackCover : public CglCutGenerator {
-   friend void CglKnapsackCoverUnitTest(const OsiSolverInterface * siP,
+   friend CGLLIB_EXPORT void CglKnapsackCoverUnitTest(const OsiSolverInterface * siP,
 					const std::string mpdDir );
 
 public:

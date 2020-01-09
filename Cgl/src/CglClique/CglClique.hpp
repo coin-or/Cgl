@@ -13,7 +13,7 @@
 
 class CGLLIB_EXPORT CglClique : public CglCutGenerator {
 
-    friend void CglCliqueUnitTest(const OsiSolverInterface * siP,
+    friend CGLLIB_EXPORT void CglCliqueUnitTest(const OsiSolverInterface * siP,
 				  const std::string mpdDir );
 public:
     /// Copy constructor

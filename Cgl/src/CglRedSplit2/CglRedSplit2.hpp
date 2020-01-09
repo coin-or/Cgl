@@ -30,7 +30,7 @@
 
 class CGLLIB_EXPORT CglRedSplit2 : public CglCutGenerator {
 
-  friend void CglRedSplit2UnitTest(const OsiSolverInterface * siP,
+  friend CGLLIB_EXPORT void CglRedSplit2UnitTest(const OsiSolverInterface * siP,
 				  const std::string mpdDir);
 public:
   /**@name generateCuts */
