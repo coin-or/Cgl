@@ -36,9 +36,7 @@ libCgl_la_LDFLAGS = $(LT_LDFLAGS)
 # We want to have all the sublibraries from the Cgl subprojects collected into
 # this library
 
-libCgl_la_LIBADD = $(CGL_SUBLIBS)
-
-libCgl_la_LIBADD += $(CGLLIB_LFLAGS)
+libCgl_la_LIBADD = $(CGL_SUBLIBS) $(CGLLIB_LFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS)

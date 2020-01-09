@@ -111,10 +111,10 @@ host_triplet = @host@
 @COIN_HAS_OSICLP_TRUE@am__append_1 = \
 @COIN_HAS_OSICLP_TRUE@	CglLandP.cpp  CglLandP.hpp \
 @COIN_HAS_OSICLP_TRUE@	CglLandPTabRow.cpp \
-@COIN_HAS_OSICLP_TRUE@        CglLandPMessages.h CglLandPMessages.cpp \
-@COIN_HAS_OSICLP_TRUE@        CglLandPSimplex.cpp CglLandPSimplex.hpp \
-@COIN_HAS_OSICLP_TRUE@        CglLandPValidator.cpp CglLandPValidator.hpp \
-@COIN_HAS_OSICLP_TRUE@        CglLandPTest.cpp
+@COIN_HAS_OSICLP_TRUE@	CglLandPMessages.h CglLandPMessages.cpp \
+@COIN_HAS_OSICLP_TRUE@	CglLandPSimplex.cpp CglLandPSimplex.hpp \
+@COIN_HAS_OSICLP_TRUE@	CglLandPValidator.cpp CglLandPValidator.hpp \
+@COIN_HAS_OSICLP_TRUE@	CglLandPTest.cpp
 
 subdir = src/CglLandP
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4

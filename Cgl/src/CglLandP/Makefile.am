@@ -22,14 +22,15 @@ noinst_LTLIBRARIES = libCglLandP.la
 libCglLandP_la_SOURCES = \
 	CglLandPTabRow.hpp \
 	CglLandPUtils.cpp  CglLandPUtils.hpp
+
 if COIN_HAS_OSICLP
 libCglLandP_la_SOURCES += \
 	CglLandP.cpp  CglLandP.hpp \
 	CglLandPTabRow.cpp \
-        CglLandPMessages.h CglLandPMessages.cpp \
-        CglLandPSimplex.cpp CglLandPSimplex.hpp \
-        CglLandPValidator.cpp CglLandPValidator.hpp \
-        CglLandPTest.cpp
+	CglLandPMessages.h CglLandPMessages.cpp \
+	CglLandPSimplex.cpp CglLandPSimplex.hpp \
+	CglLandPValidator.cpp CglLandPValidator.hpp \
+	CglLandPTest.cpp
 endif
 
 # This is for libtool (on Windows)
@@ -46,6 +47,7 @@ AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS) -I$(srcdir)/../CglGomory
 # and that therefore should be installed in pkgincludedir.
 
 includecoindir = $(pkgincludedir)
+
 if COIN_HAS_OSICLP
 includecoin_HEADERS = CglLandP.hpp CglLandPValidator.hpp
 endif
