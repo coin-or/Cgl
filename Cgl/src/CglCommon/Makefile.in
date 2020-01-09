@@ -148,7 +148,6 @@ am__uninstall_files_from_dir = { \
 am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(includecoindir)"
 LTLIBRARIES = $(lib_LTLIBRARIES)
 am__DEPENDENCIES_1 =
-libCgl_la_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 am_libCgl_la_OBJECTS = CglCutGenerator.lo CglMessage.lo CglStored.lo \
 	CglParam.lo CglTreeInfo.lo
 libCgl_la_OBJECTS = $(am_libCgl_la_OBJECTS)
@@ -433,6 +432,7 @@ libCgl_la_LDFLAGS = $(LT_LDFLAGS)
 # We want to have all the sublibraries from the Cgl subprojects collected into
 # this library
 libCgl_la_LIBADD = $(CGL_SUBLIBS) $(CGLLIB_LFLAGS)
+libCgl_la_DEPENDENCIES = $(CGL_SUBLIBS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS)

@@ -37,6 +37,7 @@ libCgl_la_LDFLAGS = $(LT_LDFLAGS)
 # this library
 
 libCgl_la_LIBADD = $(CGL_SUBLIBS) $(CGLLIB_LFLAGS)
+libCgl_la_DEPENDENCIES = $(CGL_SUBLIBS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS)
