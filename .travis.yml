@@ -46,4 +46,4 @@ script:
   - make
   - make test
   - make install
-  #- pushd examples && make DRIVER=driver && ./driver && popd
+  - pushd examples && make DRIVER=cgl1 && ./cgl1 && popd
