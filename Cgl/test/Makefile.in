@@ -365,8 +365,7 @@ unitTest_LDADD = ../src/CglCommon/libCgl.la $(CGLLIB_LIBS) \
 	$(CGLUNITTEST_LFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
-AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS) $(CGLUNITTEST_CFLAGS) \
-	-I$(srcdir)/../src/CglSimpleRounding \
+AM_CPPFLAGS = -DCGL_BUILD -I$(srcdir)/../src/CglSimpleRounding \
 	-I$(srcdir)/../src/CglKnapsackCover \
 	-I$(srcdir)/../src/CglOddHole -I$(srcdir)/../src/CglProbing \
 	-I$(srcdir)/../src/CglGomory -I$(srcdir)/../src/CglLandP \
@@ -376,8 +375,9 @@ AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS) $(CGLUNITTEST_CFLAGS) \
 	-I$(srcdir)/../src/CglRedSplit -I$(srcdir)/../src/CglRedSplit2 \
 	-I$(srcdir)/../src/CglTwomir -I$(srcdir)/../src/CglClique \
 	-I$(srcdir)/../src/CglFlowCover -I$(srcdir)/../src/CglZeroHalf \
-	$(am__append_1) -DTESTDIR=\"`$(CYGPATH_W) \
-	$(srcdir)/CglTestData | sed -e 's/\\\\/\\\\\\\\/g'`\"
+	$(CGLLIB_CFLAGS) $(CGLUNITTEST_CFLAGS) $(am__append_1) \
+	-DTESTDIR=\"`$(CYGPATH_W) $(srcdir)/CglTestData | sed -e \
+	's/\\\\/\\\\\\\\/g'`\"
 
 ########################################################################
 #                          Cleaning stuff                              #

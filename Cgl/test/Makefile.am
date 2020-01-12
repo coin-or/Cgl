@@ -23,7 +23,7 @@ unitTest_SOURCES = unitTest.cpp
 unitTest_LDADD = ../src/CglCommon/libCgl.la $(CGLLIB_LIBS)
 
 # Here list all include flags, relative to this "srcdir" directory.
-AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS) $(CGLUNITTEST_CFLAGS)
+AM_CPPFLAGS = -DCGL_BUILD
 AM_CPPFLAGS += -I$(srcdir)/../src/CglSimpleRounding
 AM_CPPFLAGS += -I$(srcdir)/../src/CglKnapsackCover
 AM_CPPFLAGS += -I$(srcdir)/../src/CglOddHole
@@ -39,6 +39,7 @@ AM_CPPFLAGS += -I$(srcdir)/../src/CglTwomir
 AM_CPPFLAGS += -I$(srcdir)/../src/CglClique
 AM_CPPFLAGS += -I$(srcdir)/../src/CglFlowCover
 AM_CPPFLAGS += -I$(srcdir)/../src/CglZeroHalf
+AM_CPPFLAGS += $(CGLLIB_CFLAGS) $(CGLUNITTEST_CFLAGS)
 
 if COIN_HAS_SAMPLE
 AM_CPPFLAGS += -DSAMPLEDIR=\"`$(CYGPATH_W) @SAMPLE_DATA@ | sed -e 's/\\\\/\\\\\\\\/g'`\"
