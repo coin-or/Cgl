@@ -104,7 +104,7 @@ public:
     };
     /** Class storing parameters.
         \remark I take all parameters from Ionut's code */
-    class Parameters : public CglParam
+    class CGLLIB_EXPORT Parameters : public CglParam
     {
     public:
         /** Default constructor (with default values)*/
