@@ -22,8 +22,8 @@
   } disaggregationAction;
 
 /** Probing Cut Generator Class */
-class CglProbing : public CglCutGenerator {
-   friend void CglProbingUnitTest(const OsiSolverInterface * siP,
+class CGLLIB_EXPORT CglProbing : public CglCutGenerator {
+   friend CGLLIB_EXPORT void CglProbingUnitTest(const OsiSolverInterface * siP,
 				  const std::string mpdDir );
  
 public:
@@ -484,10 +484,12 @@ inline void setAffectedToUBInDisaggregation(disaggregationAction & dis,bool affe
     have to be compiled into the library. And that's a gain, because the
     library should be compiled with optimization on, but this method should be
     compiled with debugging. */
+CGLLIB_EXPORT
 void CglProbingUnitTest(const OsiSolverInterface * siP,
 			const std::string mpdDir );
+
 /// This just uses implication info   
-class CglImplication : public CglCutGenerator {
+class CGLLIB_EXPORT CglImplication : public CglCutGenerator {
  
 public:
 

@@ -9,6 +9,8 @@
 #include <cstdlib>
 #include <cmath>
 
+#include "CglConfig.h"
+
 #define CGL_NEW_SHORT
 #ifndef CGL_NEW_SHORT
 typedef  /* arc */
@@ -204,7 +206,7 @@ int n_it_zero; /* number of consecutive iterations (starting from the
  This class is to make Cgl01cut thread safe etc
 */
 
-class Cgl012Cut {
+class CGLLIB_EXPORT Cgl012Cut {
  
 public:
 

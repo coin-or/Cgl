@@ -3,7 +3,7 @@
 
 #include "CglCutGenerator.hpp"
 
-class CglBKClique : public CglCutGenerator {
+class CGLLIB_EXPORT CglBKClique : public CglCutGenerator {
 public:
 
     static size_t sepCuts;

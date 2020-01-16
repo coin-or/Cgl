@@ -29,7 +29,7 @@
 //=============================================================================
 
 // Class to store variable upper bounds (VUB)
-class CglMixIntRoundVUB
+class CGLLIB_EXPORT CglMixIntRoundVUB
 {
   // Variable upper bounds have the form x_j <= a y_j, where x_j is
   // a continuous variable and y_j is an integer variable
@@ -83,9 +83,9 @@ typedef CglMixIntRoundVUB CglMixIntRoundVLB;
 //    Operations Research, 49(3), May-June 2001.
 //    Also published as CORE Dicusion Paper 9839, June 1998.
 
-class CglMixedIntegerRounding : public CglCutGenerator {
+class CGLLIB_EXPORT CglMixedIntegerRounding : public CglCutGenerator {
 
-  friend void CglMixedIntegerRoundingUnitTest(const OsiSolverInterface * siP,
+  friend CGLLIB_EXPORT void CglMixedIntegerRoundingUnitTest(const OsiSolverInterface * siP,
 					      const std::string mpdDir);
 
 
@@ -423,6 +423,7 @@ private:
 // have to be compiled into the library. And that's a gain, because the
 // library should be compiled with optimization on, but this method should be
 // compiled with debugging.
+CGLLIB_EXPORT
 void CglMixedIntegerRoundingUnitTest(const OsiSolverInterface * siP,
 				     const std::string mpdDir);
   

@@ -46,9 +46,9 @@ public:
 class CglLandPSimplex;
 }
 
-class CglLandP : public CglCutGenerator
+class CGLLIB_EXPORT CglLandP : public CglCutGenerator
 {
-    friend void CglLandPUnitTest(OsiSolverInterface *si, const std::string & mpsDir);
+    friend CGLLIB_EXPORT void CglLandPUnitTest(OsiSolverInterface *si, const std::string & mpsDir);
 
     friend class LAP::CglLandPSimplex;
     friend class CftCglp;
@@ -104,7 +104,7 @@ public:
     };
     /** Class storing parameters.
         \remark I take all parameters from Ionut's code */
-    class Parameters : public CglParam
+    class CGLLIB_EXPORT Parameters : public CglParam
     {
     public:
         /** Default constructor (with default values)*/
@@ -300,6 +300,7 @@ private:
     /** Store some extra cut which could be cheaply generated but do not cut current incumbent.*/
     OsiCuts extraCuts_;
 };
+CGLLIB_EXPORT
 void CglLandPUnitTest(OsiSolverInterface *si, const std::string & mpsDir);
 
 #endif

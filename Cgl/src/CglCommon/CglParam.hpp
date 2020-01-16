@@ -19,7 +19,7 @@
     may have a derived class to add parameters. Each generator might
     also set different default values for the parameters in CglParam.  */
 
-class CglParam {
+class CGLLIB_EXPORT CglParam {
 
 public:
   /**@name Public Set/get methods */

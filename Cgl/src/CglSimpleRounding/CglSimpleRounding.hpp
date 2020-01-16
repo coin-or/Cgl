@@ -26,8 +26,8 @@
  (Reference: Nemhauser and Wolsey, Integer and Combinatorial Optimization, 1988, pg 211.)
 */
 
-class CglSimpleRounding : public CglCutGenerator {
-   friend void CglSimpleRoundingUnitTest(const OsiSolverInterface * siP,
+class CGLLIB_EXPORT CglSimpleRounding : public CglCutGenerator {
+   friend CGLLIB_EXPORT void CglSimpleRoundingUnitTest(const OsiSolverInterface * siP,
 					 const std::string mpdDir );
  
 public:
@@ -168,6 +168,7 @@ CglSimpleRounding::gcdv(int n, const int* const vi) const
     have to be compiled into the library. And that's a gain, because the
     library should be compiled with optimization on, but this method should be
     compiled with debugging. */
+CGLLIB_EXPORT
 void CglSimpleRoundingUnitTest(const OsiSolverInterface * siP,
 			       const std::string mpdDir );
   

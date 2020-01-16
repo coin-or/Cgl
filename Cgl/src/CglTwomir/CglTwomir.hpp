@@ -88,9 +88,9 @@ typedef struct
 
 class CoinWarmStartBasis;
 /** Twostep MIR Cut Generator Class */
-class CglTwomir : public CglCutGenerator {
+class CGLLIB_EXPORT CglTwomir : public CglCutGenerator {
 
-  friend void CglTwomirUnitTest(const OsiSolverInterface * siP,
+  friend CGLLIB_EXPORT void CglTwomirUnitTest(const OsiSolverInterface * siP,
 					  const std::string mpdDir );
 
 
@@ -553,6 +553,7 @@ int DGG_cutsOffPoint(double *x, DGG_constraint_t *cut);
     have to be compiled into the library. And that's a gain, because the
     library should be compiled with optimization on, but this method should be
     compiled with debugging. */
+CGLLIB_EXPORT
 void CglTwomirUnitTest(const OsiSolverInterface * siP,
 		       const std::string mpdDir);
 

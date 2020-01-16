@@ -3,7 +3,8 @@
 .ci/appveyor.pre -text
 .coin-or/projDesc.xml -text
 /.travis.yml -text
-/AUTHORS -text
+Cgl/Dependencies -text
+Cgl/INSTALL -text
 Cgl/LICENSE -text
 Cgl/MSVisualStudio/v10/Cgl.sln -text
 Cgl/MSVisualStudio/v10/CglUnitTest/CglUnitTest.vcxproj -text
@@ -61,8 +62,8 @@ Cgl/MSVisualStudio/v9alt/libCglResidualCapacity.vcproj -text
 Cgl/MSVisualStudio/v9alt/libCglSimpleRounding.vcproj -text
 Cgl/MSVisualStudio/v9alt/libCglTwomir.vcproj -text
 Cgl/README -text
-Cgl/cgl-uninstalled.pc.in -text
 Cgl/cgl.pc.in -text
+Cgl/compile -text
 Cgl/config.guess -text
 Cgl/config.sub -text
 Cgl/configure -text
@@ -91,15 +92,4 @@ Cgl/src/CglOddHoleWC/oddhs.h -text
 Cgl/src/CglOddHoleWC/spaths.cpp -text
 Cgl/src/CglOddHoleWC/spaths.h -text
 Cgl/src/CglPreProcess/format-source.sh -text
-/Dependencies -text
-/LICENSE -text
-/README -text
 /appveyor.yml -text
-/config.guess -text
-/config.sub -text
-/configure -text
-/configure.ac -text
-/depcomp -text
-doxydoc/doxygen.conf.in -text
-/install-sh -text
-/missing -text

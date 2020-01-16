@@ -13,7 +13,7 @@
 class CoinWarmStartBasis;
 class CglTreeProbingInfo;
 /** Stored Cut Generator Class */
-class CglStored : public CglCutGenerator {
+class CGLLIB_EXPORT CglStored : public CglCutGenerator {
 
 public:
   /**@name Generate Cuts */

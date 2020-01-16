@@ -11,8 +11,8 @@
 
 class CoinWarmStartBasis;
 /** Gomory Cut Generator Class */
-class CglGomory : public CglCutGenerator {
-   friend void CglGomoryUnitTest(const OsiSolverInterface * siP,
+class CGLLIB_EXPORT CglGomory : public CglCutGenerator {
+   friend CGLLIB_EXPORT void CglGomoryUnitTest(const OsiSolverInterface * siP,
 				  const std::string mpdDir );
  
 public:
@@ -198,6 +198,7 @@ private:
     have to be compiled into the library. And that's a gain, because the
     library should be compiled with optimization on, but this method should be
     compiled with debugging. */
+CGLLIB_EXPORT
 void CglGomoryUnitTest(const OsiSolverInterface * siP,
 			const std::string mpdDir );
   

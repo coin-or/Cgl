@@ -8,6 +8,8 @@
 
 AUTOMAKE_OPTIONS = foreign
 
+include $(top_srcdir)/BuildTools/Makemain.inc
+
 ########################################################################
 #                          unitTest for Cgl                            #
 ########################################################################
@@ -17,45 +19,35 @@ noinst_PROGRAMS = unitTest
 unitTest_SOURCES = unitTest.cpp
 
 # List libraries we need to link in
-unitTest_LDADD = ../src/libCgl.la $(CGLLIB_LIBS)
 
-unitTest_DEPENDENCIES = ../src/libCgl.la $(CGLLIB_DEPENDENCIES)
+unitTest_LDADD = ../src/CglCommon/libCgl.la $(CGLLIB_LIBS)
 
-# Here list all include flags, relative to this "srcdir" directory.  This
-# "cygpath" stuff is necessary to compile with native compilers on Windows
-AM_CPPFLAGS = \
-	-I`$(CYGPATH_W) $(srcdir)/../src` \
-	-I`$(CYGPATH_W) $(srcdir)/../src/CglFlowCover` \
-	-I`$(CYGPATH_W) $(srcdir)/../src/CglGomory` \
-	-I`$(CYGPATH_W) $(srcdir)/../src/CglKnapsackCover` \
-    -I`$(CYGPATH_W) $(srcdir)/../src/CglLandP` \
-	-I`$(CYGPATH_W) $(srcdir)/../src/CglOddHole` \
-	-I`$(CYGPATH_W) $(srcdir)/../src/CglProbing` \
-	-I`$(CYGPATH_W) $(srcdir)/../src/CglMixedIntegerRounding` \
-	-I`$(CYGPATH_W) $(srcdir)/../src/CglMixedIntegerRounding2` \
-	-I`$(CYGPATH_W) $(srcdir)/../src/CglResidualCapacity` \
-	-I`$(CYGPATH_W) $(srcdir)/../src/CglRedSplit` \
-	-I`$(CYGPATH_W) $(srcdir)/../src/CglRedSplit2` \
-	-I`$(CYGPATH_W) $(srcdir)/../src/CglTwomir` \
-	-I`$(CYGPATH_W) $(srcdir)/../src/CglClique` \
-	-I`$(CYGPATH_W) $(srcdir)/../src/CglSimpleRounding` \
-	-I`$(CYGPATH_W) $(srcdir)/../src/CglZeroHalf` \
-	$(CGLLIB_CFLAGS)
+# Here list all include flags, relative to this "srcdir" directory.
+AM_CPPFLAGS = -DCGL_BUILD
+AM_CPPFLAGS += -I$(srcdir)/../src/CglSimpleRounding
+AM_CPPFLAGS += -I$(srcdir)/../src/CglKnapsackCover
+AM_CPPFLAGS += -I$(srcdir)/../src/CglOddHole
+AM_CPPFLAGS += -I$(srcdir)/../src/CglProbing
+AM_CPPFLAGS += -I$(srcdir)/../src/CglGomory
+AM_CPPFLAGS += -I$(srcdir)/../src/CglLandP
+AM_CPPFLAGS += -I$(srcdir)/../src/CglMixedIntegerRounding
+AM_CPPFLAGS += -I$(srcdir)/../src/CglMixedIntegerRounding2
+AM_CPPFLAGS += -I$(srcdir)/../src/CglResidualCapacity
+AM_CPPFLAGS += -I$(srcdir)/../src/CglRedSplit
+AM_CPPFLAGS += -I$(srcdir)/../src/CglRedSplit2
+AM_CPPFLAGS += -I$(srcdir)/../src/CglTwomir
+AM_CPPFLAGS += -I$(srcdir)/../src/CglClique
+AM_CPPFLAGS += -I$(srcdir)/../src/CglFlowCover
+AM_CPPFLAGS += -I$(srcdir)/../src/CglZeroHalf
+AM_CPPFLAGS += $(CGLLIB_CFLAGS) $(CGLUNITTEST_CFLAGS)
+
 if COIN_HAS_SAMPLE
 AM_CPPFLAGS += -DSAMPLEDIR=\"`$(CYGPATH_W) @SAMPLE_DATA@ | sed -e 's/\\\\/\\\\\\\\/g'`\"
 endif
 
-# This line is necessary to allow VPATH compilation
-DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I$(top_builddir)/src
+AM_CPPFLAGS += -DTESTDIR=\"`$(CYGPATH_W) $(srcdir)/CglTestData | sed -e 's/\\\\/\\\\\\\\/g'`\" 
 
-# Depending of what solvers are available, we add the corresponding files,
-# libraries and include dirs
-# For solvers not available, the variables should just resolve to an empty string,
-# so it's no harm to list them all
-
-AM_CPPFLAGS           += $(OSICLP_CFLAGS)       $(OSICPX_CFLAGS)       $(OSIDYLP_CFLAGS)       $(OSIGLPK_CFLAGS)       $(OSIMSK_CFLAGS)       $(OSIVOL_CFLAGS)       $(OSIXPR_CFLAGS)
-unitTest_LDADD        += $(OSICLP_LIBS)         $(OSICPX_LIBS)         $(OSIDYLP_LIBS)         $(OSIGLPK_LIBS)         $(OSIMSK_LIBS)         $(OSIVOL_LIBS)         $(OSIXPR_LIBS)
-unitTest_DEPENDENCIES += $(OSICLP_DEPENDENCIES) $(OSICPX_DEPENDENCIES) $(OSIDYLP_DEPENDENCIES) $(OSIGLPK_DEPENDENCIES) $(OSIMSK_DEPENDENCIES) $(OSIVOL_DEPENDENCIES) $(OSIXPR_DEPENDENCIES)
+unitTest_LDADD += $(CGLUNITTEST_LFLAGS)
 
 test: unitTest$(EXEEXT)
 	./unitTest$(EXEEXT)

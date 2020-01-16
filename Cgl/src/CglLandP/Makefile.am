@@ -8,6 +8,8 @@
 
 AUTOMAKE_OPTIONS = foreign
 
+include $(top_srcdir)/BuildTools/Makemain.inc
+
 ########################################################################
 #                           libCglLandP                                #
 ########################################################################
@@ -20,39 +22,32 @@ noinst_LTLIBRARIES = libCglLandP.la
 libCglLandP_la_SOURCES = \
 	CglLandPTabRow.hpp \
 	CglLandPUtils.cpp  CglLandPUtils.hpp
+
 if COIN_HAS_OSICLP
 libCglLandP_la_SOURCES += \
 	CglLandP.cpp  CglLandP.hpp \
 	CglLandPTabRow.cpp \
-        CglLandPMessages.h CglLandPMessages.cpp \
-        CglLandPSimplex.cpp CglLandPSimplex.hpp \
-        CglLandPValidator.cpp CglLandPValidator.hpp \
-        CglLandPTest.cpp
+	CglLandPMessages.h CglLandPMessages.cpp \
+	CglLandPSimplex.cpp CglLandPSimplex.hpp \
+	CglLandPValidator.cpp CglLandPValidator.hpp \
+	CglLandPTest.cpp
 endif
 
 # This is for libtool (on Windows)
 libCglLandP_la_LDFLAGS = $(LT_LDFLAGS)
 
-# Here list all include flags, relative to this "srcdir" directory.  This
-# "cygpath" stuff is necessary to compile with native compilers on Windows.
-AM_CPPFLAGS = \
-	-I`$(CYGPATH_W) $(srcdir)/..` \
-        -I`$(CYGPATH_W) $(srcdir)/../CglGomory` \
-        $(COINUTILS_CFLAGS) $(OSI_CFLAGS)
-if COIN_HAS_OSICLP
-AM_CPPFLAGS += $(OSICLP_CFLAGS)
-endif
-
-# This line is necessary to allow VPATH compilation
-DEFAULT_INCLUDES = -I. -I`$(CYGPATH_W) $(srcdir)` -I..
+# Here list all include flags, relative to this "srcdir" directory.
+AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS) -I$(srcdir)/../CglGomory
 
 ########################################################################
 #                Headers that need to be installed                     #
 ########################################################################
 
 # Here list all the header files that are required by a user of the library,
-# and that therefore should be installed in 'include/coin'
-includecoindir = $(includedir)/coin
+# and that therefore should be installed in pkgincludedir.
+
+includecoindir = $(pkgincludedir)
+
 if COIN_HAS_OSICLP
 includecoin_HEADERS = CglLandP.hpp CglLandPValidator.hpp
 endif

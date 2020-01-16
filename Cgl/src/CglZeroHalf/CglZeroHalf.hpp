@@ -23,8 +23,8 @@ G. Andreello, A. Caprara, M. Fischetti,
  
 */
 
-class CglZeroHalf : public CglCutGenerator {
-   friend void CglZeroHalfUnitTest(const OsiSolverInterface * siP,
+class CGLLIB_EXPORT CglZeroHalf : public CglCutGenerator {
+   friend CGLLIB_EXPORT void CglZeroHalfUnitTest(const OsiSolverInterface * siP,
 					 const std::string mpdDir );
  
 public:
@@ -116,6 +116,7 @@ private:
   //@}
 };
 /// A simple Dijkstra shortest path - make better later
+CGLLIB_EXPORT
 #ifndef CGL_NEW_SHORT
 void cglShortestPath(cgl_graph * graph, int source, int maximumLength);
 #else
@@ -127,6 +128,7 @@ void cglShortestPath(auxiliary_graph * graph, int source, int maximumLength);
     have to be compiled into the library. And that's a gain, because the
     library should be compiled with optimization on, but this method should be
     compiled with debugging. */
+CGLLIB_EXPORT
 void CglZeroHalfUnitTest(const OsiSolverInterface * siP,
 			       const std::string mpdDir );
   

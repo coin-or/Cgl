@@ -17,7 +17,7 @@
 
     At present it is very primitive compared to proper CSP implementations
  */
-class CglAllDifferent : public CglCutGenerator {
+class CGLLIB_EXPORT CglAllDifferent : public CglCutGenerator {
  
 public:
     

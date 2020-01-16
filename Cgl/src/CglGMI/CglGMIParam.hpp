@@ -49,7 +49,7 @@
   */
   //@}
 
-class CglGMIParam : public CglParam {
+class CGLLIB_EXPORT CglGMIParam : public CglParam {
 
 public:
 

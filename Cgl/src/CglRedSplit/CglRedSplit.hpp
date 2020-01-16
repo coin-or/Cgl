@@ -23,9 +23,9 @@
     "Reduce-and-Split Cuts: Improving the Performance of Mixed Integer 
     Gomory Cuts", Management Science 51 (2005). */
 
-class CglRedSplit : public CglCutGenerator {
+class CGLLIB_EXPORT CglRedSplit : public CglCutGenerator {
 
-  friend void CglRedSplitUnitTest(const OsiSolverInterface * siP,
+  friend CGLLIB_EXPORT void CglRedSplitUnitTest(const OsiSolverInterface * siP,
 				  const std::string mpdDir);
 public:
   /**@name generateCuts */
@@ -441,6 +441,7 @@ private:
     have to be compiled into the library. And that's a gain, because the
     library should be compiled with optimization on, but this method should be
     compiled with debugging. */
+CGLLIB_EXPORT
 void CglRedSplitUnitTest(const OsiSolverInterface * siP,
 			 const std::string mpdDir );
 

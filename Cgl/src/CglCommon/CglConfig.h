@@ -28,6 +28,20 @@
 #ifdef HAVE_CONFIG_H
 #ifdef CGL_BUILD
 #include "config.h"
+
+/* overwrite CGLLIB_EXPORT from config.h when building Cgl
+ * we want it to be __declspec(dllexport) when building a DLL on Windows
+ * we want it to be __attribute__((__visibility__("default"))) when building with GCC,
+ *   so user can compile with -fvisibility=hidden
+ */
+#ifdef DLL_EXPORT
+#undef CGLLIB_EXPORT
+#define CGLLIB_EXPORT __declspec(dllexport)
+#elif defined(__GNUC__) && __GNUC__ >= 4
+#undef CGLLIB_EXPORT
+#define CGLLIB_EXPORT __attribute__((__visibility__("default")))
+#endif
+
 #else
 #include "config_cgl.h"
 #endif
