@@ -10,8 +10,7 @@
 #                       Names and other basic things                        #
 #############################################################################
 
-AC_INIT([Cgl],[trunk],[cgl@list.coin-or.org],[coin-or-cgl],
-	[https://projects.coin-or.org/Cgl])
+AC_INIT([Cgl],[trunk],[https://github.com/coin-or/Cgl/issues/new],[coin-or-cgl],[https://github.com/coin-or/Cgl])
 
 AC_COPYRIGHT([
 Copyright 2006 International Business Machines and others.
