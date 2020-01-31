@@ -4,7 +4,6 @@
 .coin-or/projDesc.xml -text
 /.travis.yml -text
 /Dependencies -text
-/INSTALL -text
 /LICENSE -text
 MSVisualStudio/v10/Cgl.sln -text
 MSVisualStudio/v10/CglUnitTest/CglUnitTest.vcxproj -text
@@ -61,7 +60,6 @@ MSVisualStudio/v9alt/libCglRedSplit.vcproj -text
 MSVisualStudio/v9alt/libCglResidualCapacity.vcproj -text
 MSVisualStudio/v9alt/libCglSimpleRounding.vcproj -text
 MSVisualStudio/v9alt/libCglTwomir.vcproj -text
-/README -text
 /appveyor.yml -text
 /cgl.pc.in -text
 /compile -text
