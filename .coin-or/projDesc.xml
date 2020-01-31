@@ -36,20 +36,20 @@
     </developmentStatus>
     <testedPlatforms>
       <platform>
-        <operatingSystem>Microsoft Windows / CYGWIN / MinGW / Msys</operatingSystem>
-        <compiler>gcc, cl</compiler>
+        <operatingSystem>GNU/Linux</operatingSystem>
+        <compiler>gcc</compiler>
+      </platform>
+      <platform>
+        <operatingSystem>Mac OS X</operatingSystem>
+        <compiler>gcc, clang</compiler>
+      </platform>
+      <platform>
+        <operatingSystem>Microsoft Windows with MSys2</operatingSystem>
+        <compiler>gcc, cl, icl</compiler>
       </platform>
       <platform>
         <operatingSystem>Microsoft Windows</operatingSystem>
         <compiler>Visual Studio, cl</compiler>
-      </platform>
-      <platform>
-        <operatingSystem>SuSE Linux</operatingSystem>
-        <compiler>gcc</compiler>
-      </platform>
-      <platform>
-        <operatingSystem>Fedora Linux</operatingSystem>
-        <compiler>gcc</compiler>
       </platform>
     </testedPlatforms>
     <projectCategories>
@@ -57,9 +57,12 @@
     </projectCategories>
     <subProjectCategory name="Combinatorial cuts">
       <subProject>CglAllDifferent</subProject>
+      <subProject>CglBKClique</subProject>
       <subProject>CglClique</subProject>
+      <subProject>CglCliqueMerging</subProject>
       <subProject>CglKnapsackCover</subProject>
       <subProject>CglOddHole</subProject>
+      <subProject>CglOddHoleWC</subProject>
       <subProject>CglZeroHalf</subProject>
     </subProjectCategory>
     <subProjectCategory name="Flow cover cuts">
@@ -90,7 +93,7 @@
   </projectBasics>
   <leftMenuLinks>
     <documentation>https://github.com/coin-or/Cgl/wiki</documentation>
-    <sourceCodeDownload>http://www.coin-or.org/download/source/Cgl</sourceCodeDownload>
+    <sourceCodeDownload>https://github.com/coin-or/Cgl</sourceCodeDownload>
     <binaryDownload></binaryDownload>
     <mailingList>http://list.coin-or.org/mailman/listinfo/cgl</mailingList>
   </leftMenuLinks>
