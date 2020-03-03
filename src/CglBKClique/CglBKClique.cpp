@@ -31,7 +31,6 @@ extMethod_(4), minFrac_(0.001), minViol_(0.02), pivotingStrategy_(3)
     coefs_ = NULL;
     inducedVert_ = NULL;
     currClq_ = NULL;
-    cgraph_ = NULL;
     maxCallsBK_ = 0;
     completeBK_ = false;
 }
@@ -58,7 +57,6 @@ CglBKClique::CglBKClique(const CglBKClique& rhs) {
     if (this->currClq_) {
         free(this->currClq_);
     }
-    this->cgraph_ = rhs.cgraph_;
     this->cap_ = rhs.cap_;
     this->vertexWeight_ = (double*)xmalloc(sizeof(double) * this->cap_ * 2);
     this->rc_ = (double*)xmalloc(sizeof(double) * this->cap_ * 2);
@@ -119,7 +117,6 @@ CglCutGenerator * CglBKClique::clone() const {
     aClq->currClq_ = (size_t*)xmalloc(sizeof(size_t) * this->cap_ * 2);
     std::copy(this->currClq_, this->currClq_ + (this->cap_ * 2), aClq->currClq_);
 
-    aClq->cgraph_ = this->cgraph_;
     aClq->pivotingStrategy_ = this->pivotingStrategy_;
     aClq->minFrac_ = this->minFrac_;
     aClq->minViol_ = this->minViol_;
@@ -134,11 +131,12 @@ CglCutGenerator * CglBKClique::clone() const {
 
 void CglBKClique::generateCuts(const OsiSolverInterface &si, OsiCuts &cs, const CglTreeInfo info) {
     double startSep = CoinCpuTime();
+    const CoinConflictGraph *cgraph = si.getCGraph();
 
 #ifdef DEBUGCG
-    if(si.getNumCols() != cgraph_->size() / 2) {
+    if(si.getNumCols() != cgraph->size() / 2) {
         fprintf(stderr, "Invalid conflict graph! Number of columns %d ... in graph %lu\n",
-                si.getNumCols(), cgraph_->size() / 2);
+                si.getNumCols(), cgraph->size() / 2);
         abort();
     }
 #endif
@@ -197,11 +195,12 @@ CoinCliqueList* CglBKClique::separateCliques(const OsiSolverInterface &si) {
     const size_t numCols = si.getNumCols();
     const double *x = si.getColSolution();
     CoinCliqueList *initialCliques = new CoinCliqueList(4096, 32768);
+    const CoinConflictGraph *cgraph = si.getCGraph();
     size_t n = 0;
 
     //generating the subgraph induced by the fractional variables and variables at one
     for (size_t i = 0; i < numCols; i++) {//variables
-        const size_t degree = cgraph_->degree(i);
+        const size_t degree = cgraph->degree(i);
         if (degree < 2) {
             //disconsidering variables that have no conflicts or just conflicts involving their complements
             continue;
@@ -215,7 +214,7 @@ CoinCliqueList* CglBKClique::separateCliques(const OsiSolverInterface &si) {
         }
     }
     for (size_t i = numCols; i < numCols * 2; i++) {//complements
-        const size_t degree = cgraph_->degree(i);
+        const size_t degree = cgraph->degree(i);
         const double xc = 1.0 - x[i - numCols];
         if (degree < 2) {
             //disconsidering variables that have no conflicts or just conflicts involving their complements
@@ -230,7 +229,7 @@ CoinCliqueList* CglBKClique::separateCliques(const OsiSolverInterface &si) {
         }
     }
 
-    CoinConflictGraph *ppcg = new CoinStaticConflictGraph(cgraph_, n, inducedVert_);
+    CoinConflictGraph *ppcg = new CoinStaticConflictGraph(cgraph, n, inducedVert_);
 #ifdef DEBUGCG
     assert(ppcg->size() == n);
 #endif
@@ -269,6 +268,7 @@ CoinCliqueList* CglBKClique::extendCliques(const OsiSolverInterface &si, const C
     CoinCliqueList *extCliques = new CoinCliqueList(4096, 32768);
     const double *rCost = si.getReducedCost();
     const size_t numCols = si.getNumCols();
+    const CoinConflictGraph *cgraph = si.getCGraph();
 
     //setting reduced costs
     for (size_t i = 0; i < numCols; i++) {
@@ -276,7 +276,7 @@ CoinCliqueList* CglBKClique::extendCliques(const OsiSolverInterface &si, const C
         rc_[i + numCols] = -rc_[i];
     }
 
-    CoinCliqueExtender clqe(cgraph_, extMethod_, rc_, 100.0);
+    CoinCliqueExtender clqe(cgraph, extMethod_, rc_, 100.0);
 
     for (size_t i = 0; i < initialCliques->nCliques(); i++) {
         const size_t *clqEl = initialCliques->cliqueElements(i);

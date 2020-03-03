@@ -41,7 +41,6 @@ CglOddWheel::CglOddWheel(const CglOddWheel& rhs) {
         free(this->rc_);
     }
 
-    this->cgraph_ = rhs.cgraph_;
     this->cap_ = rhs.cap_;
     this->idxs_ = (int*)xmalloc(sizeof(int) * this->cap_);
     this->idxMap_ = (int*)xmalloc(sizeof(int) * this->cap_);
@@ -71,7 +70,6 @@ CglOddWheel::~CglOddWheel() {
 CglCutGenerator * CglOddWheel::clone() const {
     CglOddWheel *oddHWC = new CglOddWheel();
 
-    oddHWC->cgraph_ = this->cgraph_;
     oddHWC->cap_ = this->cap_;
     oddHWC->idxs_ = (int*)xmalloc(sizeof(int) * this->cap_);
     std::copy(this->idxs_, this->idxs_ + this->cap_, oddHWC->idxs_);
@@ -91,9 +89,10 @@ CglCutGenerator * CglOddWheel::clone() const {
 void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, const CglTreeInfo info ) {
     double startSep = CoinCpuTime();
     const size_t numCols = si.getNumCols();
+    const CoinConflictGraph *cgraph = si.getCGraph();
 
-	if(numCols != cgraph_->size() / 2) {
-        fprintf(stderr, "Invalid conflict graph! Number of columns %ld ... in graph %ld\n", numCols, cgraph_->size() / 2);
+	if(numCols != cgraph->size() / 2) {
+        fprintf(stderr, "Invalid conflict graph! Number of columns %ld ... in graph %ld\n", numCols, cgraph->size() / 2);
         exit(EXIT_FAILURE);
     }
 
@@ -108,7 +107,7 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
         rc_[i + numCols] = -rc_[i];
     }
 
-    CoinOddWheelSeparator oddH(cgraph_, x_, rc_, extMethod_);
+    CoinOddWheelSeparator oddH(cgraph, x_, rc_, extMethod_);
     CoinCutPool cutPool(x_, numCols);
 
     oddH.searchOddWheels();

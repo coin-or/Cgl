@@ -19,15 +19,11 @@ public:
     virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs, const CglTreeInfo info = CglTreeInfo() );
     virtual ~CglOddWheel();
 
-    void setCGraph(const CoinConflictGraph *cgraph) { cgraph_ = cgraph; }
-
     void setExtendingMethod(size_t extMethod);
     size_t getExtendingMethod() const { return extMethod_; }
 
 private:
     void checkMemory(const size_t newNumCols);
-
-    const CoinConflictGraph *cgraph_;
 
     size_t cap_;
     int *idxs_, *idxMap_;

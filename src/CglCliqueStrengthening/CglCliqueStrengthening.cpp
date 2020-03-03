@@ -280,9 +280,17 @@ void checkDominance(const size_t *extClqEl, size_t extClqSize, CliqueRows *cliqu
     }
 }
 
-void CglCliqueStrengthening::strengthenCliques(OsiSolverInterface &model, const CoinConflictGraph *cgraph, size_t extMethod) {
+void CglCliqueStrengthening::strengthenCliques(OsiSolverInterface &model, size_t extMethod) {
     const int numCols = model.getNumCols();
     const int numRows = model.getNumRows();
+    const CoinConflictGraph *cgraph = model.getCGraph();
+
+    if(model.getNumCols() != cgraph->size() / 2) {
+        fprintf(stderr, "Invalid conflict graph! Number of columns %d ... in graph %lu\n",
+                model.getNumCols(), cgraph->size() / 2);
+        abort();
+    }
+    
     CliqueRows cliques(numRows, model.getNumElements());
 
     nExtended_ = nDominated_ = 0;

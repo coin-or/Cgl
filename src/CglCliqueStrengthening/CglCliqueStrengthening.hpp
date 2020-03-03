@@ -14,7 +14,7 @@ public:
     ~CglCliqueStrengthening();
     void gutsOfDestructor();
 
-    void strengthenCliques(OsiSolverInterface &model, const CoinConflictGraph *cgraph, size_t extMethod = 4);
+    void strengthenCliques(OsiSolverInterface &model, size_t extMethod = 4);
     int constraintsExtended() const { return nExtended_; }
     int constraintsDominated() const { return nDominated_; }
 

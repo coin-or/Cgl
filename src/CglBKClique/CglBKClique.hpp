@@ -27,8 +27,6 @@ public:
     void setMinViol(const double minViol);
     void setPivotingStrategy(const size_t pivotingStrategy);
 
-    void setCGraph(const CoinConflictGraph *cgraph) { cgraph_ = cgraph; }
-
     static size_t sepCuts_;
     static double sepTime_;
 
@@ -37,8 +35,6 @@ private:
     CoinCliqueList* separateCliques(const OsiSolverInterface &si);
     CoinCliqueList* extendCliques(const OsiSolverInterface &si, const CoinCliqueList *initialCliques);
     void insertCuts(const OsiSolverInterface &si, const CglTreeInfo &info, const CoinCliqueList *cliques, OsiCuts &cs);
-
-    const CoinConflictGraph *cgraph_;
 
     size_t cap_;
     double *rc_;
