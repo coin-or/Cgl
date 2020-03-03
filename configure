@@ -17017,7 +17017,7 @@ fi
 # --with-prim is always present. If the client specified dataonly, its value
 # is assigned to prim_data.
 
-  withval=$with_coinutils
+  withval="$with_coinutils"
   if test -n "$withval" ; then
     case "$withval" in
       no )
@@ -17031,7 +17031,7 @@ fi
         ;;
       * )
         coin_has_coinutils=yes
-        coinutils_lflags=$withval
+        coinutils_lflags="$withval"
         ;;
     esac
   fi
@@ -17041,7 +17041,7 @@ fi
 # options for libs and cflags.
 
   if test "$coin_has_coinutils" != skipping ; then
-       withval=$with_coinutils_lflags
+       withval="$with_coinutils_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -17049,12 +17049,12 @@ fi
              ;;
            * )
              coin_has_coinutils=yes
-             coinutils_lflags=$withval
+             coinutils_lflags="$withval"
              ;;
          esac
        fi
 
-       withval=$with_coinutils_cflags
+       withval="$with_coinutils_cflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -17147,20 +17147,20 @@ $as_echo "$as_me: WARNING: Unexpected status \"$coin_has_coinutils\" in COIN_FIN
 
 # Define BUILDTOOLS_DEBUG to enable debugging output
 
-    if test "$BUILDTOOLS_DEBUG" = 1 ; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for coinutils: \"$coin_has_coinutils\"" >&5
+  if test "$BUILDTOOLS_DEBUG" = 1 ; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for coinutils: \"$coin_has_coinutils\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for coinutils: \"$coin_has_coinutils\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'coinutils'" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'coinutils'" >&5
 $as_echo "$as_me: Collected values for package 'coinutils'" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: coinutils_lflags is \"$coinutils_lflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: coinutils_lflags is \"$coinutils_lflags\"" >&5
 $as_echo "$as_me: coinutils_lflags is \"$coinutils_lflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: coinutils_cflags is \"$coinutils_cflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: coinutils_cflags is \"$coinutils_cflags\"" >&5
 $as_echo "$as_me: coinutils_cflags is \"$coinutils_cflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: coinutils_data is \"$coinutils_data\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: coinutils_data is \"$coinutils_data\"" >&5
 $as_echo "$as_me: coinutils_data is \"$coinutils_data\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: coinutils_pcfiles is \"$coinutils_pcfiles\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: coinutils_pcfiles is \"$coinutils_pcfiles\"" >&5
 $as_echo "$as_me: coinutils_pcfiles is \"$coinutils_pcfiles\"" >&6;}
-    fi
+  fi
 
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_coinutils" >&5
@@ -17279,7 +17279,7 @@ fi
 # --with-prim is always present. If the client specified dataonly, its value
 # is assigned to prim_data.
 
-  withval=$with_osi
+  withval="$with_osi"
   if test -n "$withval" ; then
     case "$withval" in
       no )
@@ -17293,7 +17293,7 @@ fi
         ;;
       * )
         coin_has_osi=yes
-        osi_lflags=$withval
+        osi_lflags="$withval"
         ;;
     esac
   fi
@@ -17303,7 +17303,7 @@ fi
 # options for libs and cflags.
 
   if test "$coin_has_osi" != skipping ; then
-       withval=$with_osi_lflags
+       withval="$with_osi_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -17311,12 +17311,12 @@ fi
              ;;
            * )
              coin_has_osi=yes
-             osi_lflags=$withval
+             osi_lflags="$withval"
              ;;
          esac
        fi
 
-       withval=$with_osi_cflags
+       withval="$with_osi_cflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -17409,20 +17409,20 @@ $as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osi\" in COIN_FIND_PRIM
 
 # Define BUILDTOOLS_DEBUG to enable debugging output
 
-    if test "$BUILDTOOLS_DEBUG" = 1 ; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osi: \"$coin_has_osi\"" >&5
+  if test "$BUILDTOOLS_DEBUG" = 1 ; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osi: \"$coin_has_osi\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osi: \"$coin_has_osi\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osi'" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osi'" >&5
 $as_echo "$as_me: Collected values for package 'osi'" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osi_lflags is \"$osi_lflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osi_lflags is \"$osi_lflags\"" >&5
 $as_echo "$as_me: osi_lflags is \"$osi_lflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osi_cflags is \"$osi_cflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osi_cflags is \"$osi_cflags\"" >&5
 $as_echo "$as_me: osi_cflags is \"$osi_cflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osi_data is \"$osi_data\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osi_data is \"$osi_data\"" >&5
 $as_echo "$as_me: osi_data is \"$osi_data\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osi_pcfiles is \"$osi_pcfiles\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osi_pcfiles is \"$osi_pcfiles\"" >&5
 $as_echo "$as_me: osi_pcfiles is \"$osi_pcfiles\"" >&6;}
-    fi
+  fi
 
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osi" >&5
@@ -17546,7 +17546,7 @@ fi
 # --with-prim is always present. If the client specified dataonly, its value
 # is assigned to prim_data.
 
-  withval=$with_osiclp
+  withval="$with_osiclp"
   if test -n "$withval" ; then
     case "$withval" in
       no )
@@ -17560,7 +17560,7 @@ fi
         ;;
       * )
         coin_has_osiclp=yes
-        osiclp_lflags=$withval
+        osiclp_lflags="$withval"
         ;;
     esac
   fi
@@ -17570,7 +17570,7 @@ fi
 # options for libs and cflags.
 
   if test "$coin_has_osiclp" != skipping ; then
-       withval=$with_osiclp_lflags
+       withval="$with_osiclp_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -17578,12 +17578,12 @@ fi
              ;;
            * )
              coin_has_osiclp=yes
-             osiclp_lflags=$withval
+             osiclp_lflags="$withval"
              ;;
          esac
        fi
 
-       withval=$with_osiclp_cflags
+       withval="$with_osiclp_cflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -17672,20 +17672,20 @@ $as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osiclp\" in COIN_FIND_P
 
 # Define BUILDTOOLS_DEBUG to enable debugging output
 
-    if test "$BUILDTOOLS_DEBUG" = 1 ; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osiclp: \"$coin_has_osiclp\"" >&5
+  if test "$BUILDTOOLS_DEBUG" = 1 ; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osiclp: \"$coin_has_osiclp\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osiclp: \"$coin_has_osiclp\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osiclp'" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osiclp'" >&5
 $as_echo "$as_me: Collected values for package 'osiclp'" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osiclp_lflags is \"$osiclp_lflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osiclp_lflags is \"$osiclp_lflags\"" >&5
 $as_echo "$as_me: osiclp_lflags is \"$osiclp_lflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osiclp_cflags is \"$osiclp_cflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osiclp_cflags is \"$osiclp_cflags\"" >&5
 $as_echo "$as_me: osiclp_cflags is \"$osiclp_cflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osiclp_data is \"$osiclp_data\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osiclp_data is \"$osiclp_data\"" >&5
 $as_echo "$as_me: osiclp_data is \"$osiclp_data\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osiclp_pcfiles is \"$osiclp_pcfiles\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osiclp_pcfiles is \"$osiclp_pcfiles\"" >&5
 $as_echo "$as_me: osiclp_pcfiles is \"$osiclp_pcfiles\"" >&6;}
-    fi
+  fi
 
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osiclp" >&5
@@ -17870,7 +17870,7 @@ fi
 # --with-prim is always present. If the client specified dataonly, its value
 # is assigned to prim_data.
 
-  withval=$with_osicpx
+  withval="$with_osicpx"
   if test -n "$withval" ; then
     case "$withval" in
       no )
@@ -17884,7 +17884,7 @@ fi
         ;;
       * )
         coin_has_osicpx=yes
-        osicpx_lflags=$withval
+        osicpx_lflags="$withval"
         ;;
     esac
   fi
@@ -17894,7 +17894,7 @@ fi
 # options for libs and cflags.
 
   if test "$coin_has_osicpx" != skipping ; then
-       withval=$with_osicpx_lflags
+       withval="$with_osicpx_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -17902,12 +17902,12 @@ fi
              ;;
            * )
              coin_has_osicpx=yes
-             osicpx_lflags=$withval
+             osicpx_lflags="$withval"
              ;;
          esac
        fi
 
-       withval=$with_osicpx_cflags
+       withval="$with_osicpx_cflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -17996,20 +17996,20 @@ $as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osicpx\" in COIN_FIND_P
 
 # Define BUILDTOOLS_DEBUG to enable debugging output
 
-    if test "$BUILDTOOLS_DEBUG" = 1 ; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osicpx: \"$coin_has_osicpx\"" >&5
+  if test "$BUILDTOOLS_DEBUG" = 1 ; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osicpx: \"$coin_has_osicpx\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osicpx: \"$coin_has_osicpx\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osicpx'" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osicpx'" >&5
 $as_echo "$as_me: Collected values for package 'osicpx'" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osicpx_lflags is \"$osicpx_lflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osicpx_lflags is \"$osicpx_lflags\"" >&5
 $as_echo "$as_me: osicpx_lflags is \"$osicpx_lflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osicpx_cflags is \"$osicpx_cflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osicpx_cflags is \"$osicpx_cflags\"" >&5
 $as_echo "$as_me: osicpx_cflags is \"$osicpx_cflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osicpx_data is \"$osicpx_data\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osicpx_data is \"$osicpx_data\"" >&5
 $as_echo "$as_me: osicpx_data is \"$osicpx_data\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osicpx_pcfiles is \"$osicpx_pcfiles\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osicpx_pcfiles is \"$osicpx_pcfiles\"" >&5
 $as_echo "$as_me: osicpx_pcfiles is \"$osicpx_pcfiles\"" >&6;}
-    fi
+  fi
 
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osicpx" >&5
@@ -18124,7 +18124,7 @@ fi
 # --with-prim is always present. If the client specified dataonly, its value
 # is assigned to prim_data.
 
-  withval=$with_osiglpk
+  withval="$with_osiglpk"
   if test -n "$withval" ; then
     case "$withval" in
       no )
@@ -18138,7 +18138,7 @@ fi
         ;;
       * )
         coin_has_osiglpk=yes
-        osiglpk_lflags=$withval
+        osiglpk_lflags="$withval"
         ;;
     esac
   fi
@@ -18148,7 +18148,7 @@ fi
 # options for libs and cflags.
 
   if test "$coin_has_osiglpk" != skipping ; then
-       withval=$with_osiglpk_lflags
+       withval="$with_osiglpk_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -18156,12 +18156,12 @@ fi
              ;;
            * )
              coin_has_osiglpk=yes
-             osiglpk_lflags=$withval
+             osiglpk_lflags="$withval"
              ;;
          esac
        fi
 
-       withval=$with_osiglpk_cflags
+       withval="$with_osiglpk_cflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -18250,20 +18250,20 @@ $as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osiglpk\" in COIN_FIND_
 
 # Define BUILDTOOLS_DEBUG to enable debugging output
 
-    if test "$BUILDTOOLS_DEBUG" = 1 ; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osiglpk: \"$coin_has_osiglpk\"" >&5
+  if test "$BUILDTOOLS_DEBUG" = 1 ; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osiglpk: \"$coin_has_osiglpk\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osiglpk: \"$coin_has_osiglpk\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osiglpk'" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osiglpk'" >&5
 $as_echo "$as_me: Collected values for package 'osiglpk'" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osiglpk_lflags is \"$osiglpk_lflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osiglpk_lflags is \"$osiglpk_lflags\"" >&5
 $as_echo "$as_me: osiglpk_lflags is \"$osiglpk_lflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osiglpk_cflags is \"$osiglpk_cflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osiglpk_cflags is \"$osiglpk_cflags\"" >&5
 $as_echo "$as_me: osiglpk_cflags is \"$osiglpk_cflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osiglpk_data is \"$osiglpk_data\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osiglpk_data is \"$osiglpk_data\"" >&5
 $as_echo "$as_me: osiglpk_data is \"$osiglpk_data\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osiglpk_pcfiles is \"$osiglpk_pcfiles\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osiglpk_pcfiles is \"$osiglpk_pcfiles\"" >&5
 $as_echo "$as_me: osiglpk_pcfiles is \"$osiglpk_pcfiles\"" >&6;}
-    fi
+  fi
 
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osiglpk" >&5
@@ -18378,7 +18378,7 @@ fi
 # --with-prim is always present. If the client specified dataonly, its value
 # is assigned to prim_data.
 
-  withval=$with_osigrb
+  withval="$with_osigrb"
   if test -n "$withval" ; then
     case "$withval" in
       no )
@@ -18392,7 +18392,7 @@ fi
         ;;
       * )
         coin_has_osigrb=yes
-        osigrb_lflags=$withval
+        osigrb_lflags="$withval"
         ;;
     esac
   fi
@@ -18402,7 +18402,7 @@ fi
 # options for libs and cflags.
 
   if test "$coin_has_osigrb" != skipping ; then
-       withval=$with_osigrb_lflags
+       withval="$with_osigrb_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -18410,12 +18410,12 @@ fi
              ;;
            * )
              coin_has_osigrb=yes
-             osigrb_lflags=$withval
+             osigrb_lflags="$withval"
              ;;
          esac
        fi
 
-       withval=$with_osigrb_cflags
+       withval="$with_osigrb_cflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -18504,20 +18504,20 @@ $as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osigrb\" in COIN_FIND_P
 
 # Define BUILDTOOLS_DEBUG to enable debugging output
 
-    if test "$BUILDTOOLS_DEBUG" = 1 ; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osigrb: \"$coin_has_osigrb\"" >&5
+  if test "$BUILDTOOLS_DEBUG" = 1 ; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osigrb: \"$coin_has_osigrb\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osigrb: \"$coin_has_osigrb\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osigrb'" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osigrb'" >&5
 $as_echo "$as_me: Collected values for package 'osigrb'" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osigrb_lflags is \"$osigrb_lflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osigrb_lflags is \"$osigrb_lflags\"" >&5
 $as_echo "$as_me: osigrb_lflags is \"$osigrb_lflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osigrb_cflags is \"$osigrb_cflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osigrb_cflags is \"$osigrb_cflags\"" >&5
 $as_echo "$as_me: osigrb_cflags is \"$osigrb_cflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osigrb_data is \"$osigrb_data\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osigrb_data is \"$osigrb_data\"" >&5
 $as_echo "$as_me: osigrb_data is \"$osigrb_data\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osigrb_pcfiles is \"$osigrb_pcfiles\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osigrb_pcfiles is \"$osigrb_pcfiles\"" >&5
 $as_echo "$as_me: osigrb_pcfiles is \"$osigrb_pcfiles\"" >&6;}
-    fi
+  fi
 
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osigrb" >&5
@@ -18632,7 +18632,7 @@ fi
 # --with-prim is always present. If the client specified dataonly, its value
 # is assigned to prim_data.
 
-  withval=$with_osimsk
+  withval="$with_osimsk"
   if test -n "$withval" ; then
     case "$withval" in
       no )
@@ -18646,7 +18646,7 @@ fi
         ;;
       * )
         coin_has_osimsk=yes
-        osimsk_lflags=$withval
+        osimsk_lflags="$withval"
         ;;
     esac
   fi
@@ -18656,7 +18656,7 @@ fi
 # options for libs and cflags.
 
   if test "$coin_has_osimsk" != skipping ; then
-       withval=$with_osimsk_lflags
+       withval="$with_osimsk_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -18664,12 +18664,12 @@ fi
              ;;
            * )
              coin_has_osimsk=yes
-             osimsk_lflags=$withval
+             osimsk_lflags="$withval"
              ;;
          esac
        fi
 
-       withval=$with_osimsk_cflags
+       withval="$with_osimsk_cflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -18758,20 +18758,20 @@ $as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osimsk\" in COIN_FIND_P
 
 # Define BUILDTOOLS_DEBUG to enable debugging output
 
-    if test "$BUILDTOOLS_DEBUG" = 1 ; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osimsk: \"$coin_has_osimsk\"" >&5
+  if test "$BUILDTOOLS_DEBUG" = 1 ; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osimsk: \"$coin_has_osimsk\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osimsk: \"$coin_has_osimsk\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osimsk'" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osimsk'" >&5
 $as_echo "$as_me: Collected values for package 'osimsk'" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osimsk_lflags is \"$osimsk_lflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osimsk_lflags is \"$osimsk_lflags\"" >&5
 $as_echo "$as_me: osimsk_lflags is \"$osimsk_lflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osimsk_cflags is \"$osimsk_cflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osimsk_cflags is \"$osimsk_cflags\"" >&5
 $as_echo "$as_me: osimsk_cflags is \"$osimsk_cflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osimsk_data is \"$osimsk_data\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osimsk_data is \"$osimsk_data\"" >&5
 $as_echo "$as_me: osimsk_data is \"$osimsk_data\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osimsk_pcfiles is \"$osimsk_pcfiles\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osimsk_pcfiles is \"$osimsk_pcfiles\"" >&5
 $as_echo "$as_me: osimsk_pcfiles is \"$osimsk_pcfiles\"" >&6;}
-    fi
+  fi
 
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osimsk" >&5
@@ -18886,7 +18886,7 @@ fi
 # --with-prim is always present. If the client specified dataonly, its value
 # is assigned to prim_data.
 
-  withval=$with_osixpr
+  withval="$with_osixpr"
   if test -n "$withval" ; then
     case "$withval" in
       no )
@@ -18900,7 +18900,7 @@ fi
         ;;
       * )
         coin_has_osixpr=yes
-        osixpr_lflags=$withval
+        osixpr_lflags="$withval"
         ;;
     esac
   fi
@@ -18910,7 +18910,7 @@ fi
 # options for libs and cflags.
 
   if test "$coin_has_osixpr" != skipping ; then
-       withval=$with_osixpr_lflags
+       withval="$with_osixpr_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -18918,12 +18918,12 @@ fi
              ;;
            * )
              coin_has_osixpr=yes
-             osixpr_lflags=$withval
+             osixpr_lflags="$withval"
              ;;
          esac
        fi
 
-       withval=$with_osixpr_cflags
+       withval="$with_osixpr_cflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -19012,20 +19012,20 @@ $as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osixpr\" in COIN_FIND_P
 
 # Define BUILDTOOLS_DEBUG to enable debugging output
 
-    if test "$BUILDTOOLS_DEBUG" = 1 ; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osixpr: \"$coin_has_osixpr\"" >&5
+  if test "$BUILDTOOLS_DEBUG" = 1 ; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osixpr: \"$coin_has_osixpr\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osixpr: \"$coin_has_osixpr\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osixpr'" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osixpr'" >&5
 $as_echo "$as_me: Collected values for package 'osixpr'" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osixpr_lflags is \"$osixpr_lflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osixpr_lflags is \"$osixpr_lflags\"" >&5
 $as_echo "$as_me: osixpr_lflags is \"$osixpr_lflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osixpr_cflags is \"$osixpr_cflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osixpr_cflags is \"$osixpr_cflags\"" >&5
 $as_echo "$as_me: osixpr_cflags is \"$osixpr_cflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osixpr_data is \"$osixpr_data\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osixpr_data is \"$osixpr_data\"" >&5
 $as_echo "$as_me: osixpr_data is \"$osixpr_data\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osixpr_pcfiles is \"$osixpr_pcfiles\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osixpr_pcfiles is \"$osixpr_pcfiles\"" >&5
 $as_echo "$as_me: osixpr_pcfiles is \"$osixpr_pcfiles\"" >&6;}
-    fi
+  fi
 
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osixpr" >&5
@@ -19140,7 +19140,7 @@ fi
 # --with-prim is always present. If the client specified dataonly, its value
 # is assigned to prim_data.
 
-  withval=$with_osivol
+  withval="$with_osivol"
   if test -n "$withval" ; then
     case "$withval" in
       no )
@@ -19154,7 +19154,7 @@ fi
         ;;
       * )
         coin_has_osivol=yes
-        osivol_lflags=$withval
+        osivol_lflags="$withval"
         ;;
     esac
   fi
@@ -19164,7 +19164,7 @@ fi
 # options for libs and cflags.
 
   if test "$coin_has_osivol" != skipping ; then
-       withval=$with_osivol_lflags
+       withval="$with_osivol_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -19172,12 +19172,12 @@ fi
              ;;
            * )
              coin_has_osivol=yes
-             osivol_lflags=$withval
+             osivol_lflags="$withval"
              ;;
          esac
        fi
 
-       withval=$with_osivol_cflags
+       withval="$with_osivol_cflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -19266,20 +19266,20 @@ $as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osivol\" in COIN_FIND_P
 
 # Define BUILDTOOLS_DEBUG to enable debugging output
 
-    if test "$BUILDTOOLS_DEBUG" = 1 ; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osivol: \"$coin_has_osivol\"" >&5
+  if test "$BUILDTOOLS_DEBUG" = 1 ; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osivol: \"$coin_has_osivol\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osivol: \"$coin_has_osivol\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osivol'" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osivol'" >&5
 $as_echo "$as_me: Collected values for package 'osivol'" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osivol_lflags is \"$osivol_lflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osivol_lflags is \"$osivol_lflags\"" >&5
 $as_echo "$as_me: osivol_lflags is \"$osivol_lflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osivol_cflags is \"$osivol_cflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osivol_cflags is \"$osivol_cflags\"" >&5
 $as_echo "$as_me: osivol_cflags is \"$osivol_cflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osivol_data is \"$osivol_data\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osivol_data is \"$osivol_data\"" >&5
 $as_echo "$as_me: osivol_data is \"$osivol_data\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osivol_pcfiles is \"$osivol_pcfiles\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osivol_pcfiles is \"$osivol_pcfiles\"" >&5
 $as_echo "$as_me: osivol_pcfiles is \"$osivol_pcfiles\"" >&6;}
-    fi
+  fi
 
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osivol" >&5
@@ -19394,7 +19394,7 @@ fi
 # --with-prim is always present. If the client specified dataonly, its value
 # is assigned to prim_data.
 
-  withval=$with_osidylp
+  withval="$with_osidylp"
   if test -n "$withval" ; then
     case "$withval" in
       no )
@@ -19408,7 +19408,7 @@ fi
         ;;
       * )
         coin_has_osidylp=yes
-        osidylp_lflags=$withval
+        osidylp_lflags="$withval"
         ;;
     esac
   fi
@@ -19418,7 +19418,7 @@ fi
 # options for libs and cflags.
 
   if test "$coin_has_osidylp" != skipping ; then
-       withval=$with_osidylp_lflags
+       withval="$with_osidylp_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -19426,12 +19426,12 @@ fi
              ;;
            * )
              coin_has_osidylp=yes
-             osidylp_lflags=$withval
+             osidylp_lflags="$withval"
              ;;
          esac
        fi
 
-       withval=$with_osidylp_cflags
+       withval="$with_osidylp_cflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -19520,20 +19520,20 @@ $as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osidylp\" in COIN_FIND_
 
 # Define BUILDTOOLS_DEBUG to enable debugging output
 
-    if test "$BUILDTOOLS_DEBUG" = 1 ; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osidylp: \"$coin_has_osidylp\"" >&5
+  if test "$BUILDTOOLS_DEBUG" = 1 ; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osidylp: \"$coin_has_osidylp\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osidylp: \"$coin_has_osidylp\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osidylp'" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osidylp'" >&5
 $as_echo "$as_me: Collected values for package 'osidylp'" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osidylp_lflags is \"$osidylp_lflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osidylp_lflags is \"$osidylp_lflags\"" >&5
 $as_echo "$as_me: osidylp_lflags is \"$osidylp_lflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osidylp_cflags is \"$osidylp_cflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osidylp_cflags is \"$osidylp_cflags\"" >&5
 $as_echo "$as_me: osidylp_cflags is \"$osidylp_cflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osidylp_data is \"$osidylp_data\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osidylp_data is \"$osidylp_data\"" >&5
 $as_echo "$as_me: osidylp_data is \"$osidylp_data\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osidylp_pcfiles is \"$osidylp_pcfiles\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osidylp_pcfiles is \"$osidylp_pcfiles\"" >&5
 $as_echo "$as_me: osidylp_pcfiles is \"$osidylp_pcfiles\"" >&6;}
-    fi
+  fi
 
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osidylp" >&5
@@ -19648,7 +19648,7 @@ fi
 # --with-prim is always present. If the client specified dataonly, its value
 # is assigned to prim_data.
 
-  withval=$with_osispx
+  withval="$with_osispx"
   if test -n "$withval" ; then
     case "$withval" in
       no )
@@ -19662,7 +19662,7 @@ fi
         ;;
       * )
         coin_has_osispx=yes
-        osispx_lflags=$withval
+        osispx_lflags="$withval"
         ;;
     esac
   fi
@@ -19672,7 +19672,7 @@ fi
 # options for libs and cflags.
 
   if test "$coin_has_osispx" != skipping ; then
-       withval=$with_osispx_lflags
+       withval="$with_osispx_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -19680,12 +19680,12 @@ fi
              ;;
            * )
              coin_has_osispx=yes
-             osispx_lflags=$withval
+             osispx_lflags="$withval"
              ;;
          esac
        fi
 
-       withval=$with_osispx_cflags
+       withval="$with_osispx_cflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -19774,20 +19774,20 @@ $as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osispx\" in COIN_FIND_P
 
 # Define BUILDTOOLS_DEBUG to enable debugging output
 
-    if test "$BUILDTOOLS_DEBUG" = 1 ; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osispx: \"$coin_has_osispx\"" >&5
+  if test "$BUILDTOOLS_DEBUG" = 1 ; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osispx: \"$coin_has_osispx\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osispx: \"$coin_has_osispx\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osispx'" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'osispx'" >&5
 $as_echo "$as_me: Collected values for package 'osispx'" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osispx_lflags is \"$osispx_lflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osispx_lflags is \"$osispx_lflags\"" >&5
 $as_echo "$as_me: osispx_lflags is \"$osispx_lflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osispx_cflags is \"$osispx_cflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osispx_cflags is \"$osispx_cflags\"" >&5
 $as_echo "$as_me: osispx_cflags is \"$osispx_cflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osispx_data is \"$osispx_data\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osispx_data is \"$osispx_data\"" >&5
 $as_echo "$as_me: osispx_data is \"$osispx_data\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: osispx_pcfiles is \"$osispx_pcfiles\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: osispx_pcfiles is \"$osispx_pcfiles\"" >&5
 $as_echo "$as_me: osispx_pcfiles is \"$osispx_pcfiles\"" >&6;}
-    fi
+  fi
 
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osispx" >&5
@@ -19948,7 +19948,7 @@ fi
 # --with-prim is always present. If the client specified dataonly, its value
 # is assigned to prim_data.
 
-  withval=$with_sample
+  withval="$with_sample"
   if test -n "$withval" ; then
     case "$withval" in
       no )
@@ -19962,7 +19962,7 @@ fi
         ;;
       * )
         coin_has_sample=yes
-        sample_data=$withval
+        sample_data="$withval"
         ;;
     esac
   fi
@@ -19977,7 +19977,7 @@ fi
 # Specifying --with-prim=no overrides the individual option for data.
 
   if test "$coin_has_sample" != skipping ; then
-       withval=$with_sample_data
+       withval="$with_sample_data"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
@@ -20061,20 +20061,20 @@ $as_echo "$as_me: WARNING: Unexpected status \"$coin_has_sample\" in COIN_FIND_P
 
 # Define BUILDTOOLS_DEBUG to enable debugging output
 
-    if test "$BUILDTOOLS_DEBUG" = 1 ; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for sample: \"$coin_has_sample\"" >&5
+  if test "$BUILDTOOLS_DEBUG" = 1 ; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for sample: \"$coin_has_sample\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for sample: \"$coin_has_sample\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'sample'" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: Collected values for package 'sample'" >&5
 $as_echo "$as_me: Collected values for package 'sample'" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: sample_lflags is \"$sample_lflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: sample_lflags is \"$sample_lflags\"" >&5
 $as_echo "$as_me: sample_lflags is \"$sample_lflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: sample_cflags is \"$sample_cflags\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: sample_cflags is \"$sample_cflags\"" >&5
 $as_echo "$as_me: sample_cflags is \"$sample_cflags\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: sample_data is \"$sample_data\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: sample_data is \"$sample_data\"" >&5
 $as_echo "$as_me: sample_data is \"$sample_data\"" >&6;}
-      { $as_echo "$as_me:${as_lineno-$LINENO}: sample_pcfiles is \"$sample_pcfiles\"" >&5
+    { $as_echo "$as_me:${as_lineno-$LINENO}: sample_pcfiles is \"$sample_pcfiles\"" >&5
 $as_echo "$as_me: sample_pcfiles is \"$sample_pcfiles\"" >&6;}
-    fi
+  fi
 
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_sample" >&5
@@ -20312,7 +20312,7 @@ done
 # Here list all the files that configure should create (except for the
 # configuration header file)
 
-ac_config_files="$ac_config_files Makefile examples/Makefile src/CglCommon/Makefile src/CglAllDifferent/Makefile src/CglBKClique/Makefile src/CglClique/Makefile src/CglCliqueMerging/Makefile src/CglDuplicateRow/Makefile src/CglFlowCover/Makefile src/CglGMI/Makefile src/CglGomory/Makefile src/CglKnapsackCover/Makefile src/CglLandP/Makefile src/CglLiftAndProject/Makefile src/CglMixedIntegerRounding/Makefile src/CglMixedIntegerRounding2/Makefile src/CglOddHole/Makefile src/CglOddHoleWC/Makefile src/CglPreProcess/Makefile src/CglProbing/Makefile src/CglRedSplit/Makefile src/CglRedSplit2/Makefile src/CglResidualCapacity/Makefile src/CglSimpleRounding/Makefile src/CglTwomir/Makefile src/CglZeroHalf/Makefile test/Makefile cgl.pc"
+ac_config_files="$ac_config_files Makefile examples/Makefile src/CglCommon/Makefile src/CglAllDifferent/Makefile src/CglBKClique/Makefile src/CglClique/Makefile src/CglCliqueStrengthening/Makefile src/CglDuplicateRow/Makefile src/CglFlowCover/Makefile src/CglGMI/Makefile src/CglGomory/Makefile src/CglKnapsackCover/Makefile src/CglLandP/Makefile src/CglLiftAndProject/Makefile src/CglMixedIntegerRounding/Makefile src/CglMixedIntegerRounding2/Makefile src/CglOddHole/Makefile src/CglOddWheel/Makefile src/CglPreProcess/Makefile src/CglProbing/Makefile src/CglRedSplit/Makefile src/CglRedSplit2/Makefile src/CglResidualCapacity/Makefile src/CglSimpleRounding/Makefile src/CglTwomir/Makefile src/CglZeroHalf/Makefile test/Makefile cgl.pc"
 
 ac_config_files="$ac_config_files doxydoc/doxygen.conf"
 
@@ -21520,7 +21520,7 @@ do
     "src/CglAllDifferent/Makefile") CONFIG_FILES="$CONFIG_FILES src/CglAllDifferent/Makefile" ;;
     "src/CglBKClique/Makefile") CONFIG_FILES="$CONFIG_FILES src/CglBKClique/Makefile" ;;
     "src/CglClique/Makefile") CONFIG_FILES="$CONFIG_FILES src/CglClique/Makefile" ;;
-    "src/CglCliqueMerging/Makefile") CONFIG_FILES="$CONFIG_FILES src/CglCliqueMerging/Makefile" ;;
+    "src/CglCliqueStrengthening/Makefile") CONFIG_FILES="$CONFIG_FILES src/CglCliqueStrengthening/Makefile" ;;
     "src/CglDuplicateRow/Makefile") CONFIG_FILES="$CONFIG_FILES src/CglDuplicateRow/Makefile" ;;
     "src/CglFlowCover/Makefile") CONFIG_FILES="$CONFIG_FILES src/CglFlowCover/Makefile" ;;
     "src/CglGMI/Makefile") CONFIG_FILES="$CONFIG_FILES src/CglGMI/Makefile" ;;
@@ -21531,7 +21531,7 @@ do
     "src/CglMixedIntegerRounding/Makefile") CONFIG_FILES="$CONFIG_FILES src/CglMixedIntegerRounding/Makefile" ;;
     "src/CglMixedIntegerRounding2/Makefile") CONFIG_FILES="$CONFIG_FILES src/CglMixedIntegerRounding2/Makefile" ;;
     "src/CglOddHole/Makefile") CONFIG_FILES="$CONFIG_FILES src/CglOddHole/Makefile" ;;
-    "src/CglOddHoleWC/Makefile") CONFIG_FILES="$CONFIG_FILES src/CglOddHoleWC/Makefile" ;;
+    "src/CglOddWheel/Makefile") CONFIG_FILES="$CONFIG_FILES src/CglOddWheel/Makefile" ;;
     "src/CglPreProcess/Makefile") CONFIG_FILES="$CONFIG_FILES src/CglPreProcess/Makefile" ;;
     "src/CglProbing/Makefile") CONFIG_FILES="$CONFIG_FILES src/CglProbing/Makefile" ;;
     "src/CglRedSplit/Makefile") CONFIG_FILES="$CONFIG_FILES src/CglRedSplit/Makefile" ;;
