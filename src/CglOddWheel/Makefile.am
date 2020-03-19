@@ -3,19 +3,19 @@ AUTOMAKE_OPTIONS = foreign
 include $(top_srcdir)/BuildTools/Makemain.inc
 
 ########################################################################
-#                           libCglCliqueMerging                     #
+#                           libCglOddWheel                            #
 ########################################################################
 
 # Name of the library compiled in this directory.  We don't want it to be
 # installed since it will be collected into the libCgl library
-noinst_LTLIBRARIES = libCglCliqueMerging.la
+noinst_LTLIBRARIES = libCglOddWheel.la
 
 # List all source files for this library, including headers
-libCglCliqueMerging_la_SOURCES = \
-	CglCliqueMerging.cpp CglCliqueMerging.hpp
+libCglOddWheel_la_SOURCES = \
+	CglOddWheel.cpp CglOddWheel.hpp
 
 # This is for libtool (on Windows)
-libCglCliqueMerging_la_LDFLAGS = $(LT_LDFLAGS)
+libCglOddWheel_la_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS)
@@ -28,5 +28,4 @@ AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS)
 # and that therefore should be installed in pkgincludedir.
 
 includecoindir = $(pkgincludedir)
-includecoin_HEADERS = CglCliqueMerging.hpp
-
+includecoin_HEADERS = CglOddWheel.hpp

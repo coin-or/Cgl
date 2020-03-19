@@ -102,7 +102,7 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-subdir = src/CglCliqueMerging
+subdir = src/CglOddWheel
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -114,16 +114,16 @@ CONFIG_HEADER = $(top_builddir)/src/CglCommon/config.h \
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 LTLIBRARIES = $(noinst_LTLIBRARIES)
-libCglCliqueMerging_la_LIBADD =
-am_libCglCliqueMerging_la_OBJECTS = CglCliqueMerging.lo
-libCglCliqueMerging_la_OBJECTS = $(am_libCglCliqueMerging_la_OBJECTS)
+libCglOddWheel_la_LIBADD =
+am_libCglOddWheel_la_OBJECTS = CglOddWheel.lo
+libCglOddWheel_la_OBJECTS = $(am_libCglOddWheel_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-libCglCliqueMerging_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
+libCglOddWheel_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
-	$(AM_CXXFLAGS) $(CXXFLAGS) $(libCglCliqueMerging_la_LDFLAGS) \
+	$(AM_CXXFLAGS) $(CXXFLAGS) $(libCglOddWheel_la_LDFLAGS) \
 	$(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -140,7 +140,7 @@ am__v_at_1 =
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)/src/CglCommon
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__maybe_remake_depfiles = depfiles
-am__depfiles_remade = ./$(DEPDIR)/CglCliqueMerging.Plo
+am__depfiles_remade = ./$(DEPDIR)/CglOddWheel.Plo
 am__mv = mv -f
 CXXCOMPILE = $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
@@ -178,7 +178,7 @@ AM_V_CCLD = $(am__v_CCLD_@AM_V@)
 am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
-SOURCES = $(libCglCliqueMerging_la_SOURCES)
+SOURCES = $(libCglOddWheel_la_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -404,20 +404,20 @@ COIN_HAS_LATEX = @COIN_HAS_LATEX_TRUE@TRUE
 DOXYTAG_EDIT = sed -e 's|@baredocdir_nosub@|$(datarootdir)/doc|g'
 
 ########################################################################
-#                           libCglCliqueMerging                     #
+#                           libCglOddWheel                            #
 ########################################################################
 
 # Name of the library compiled in this directory.  We don't want it to be
 # installed since it will be collected into the libCgl library
-noinst_LTLIBRARIES = libCglCliqueMerging.la
+noinst_LTLIBRARIES = libCglOddWheel.la
 
 # List all source files for this library, including headers
-libCglCliqueMerging_la_SOURCES = \
-	CglCliqueMerging.cpp CglCliqueMerging.hpp
+libCglOddWheel_la_SOURCES = \
+	CglOddWheel.cpp CglOddWheel.hpp
 
 
 # This is for libtool (on Windows)
-libCglCliqueMerging_la_LDFLAGS = $(LT_LDFLAGS)
+libCglOddWheel_la_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS)
@@ -429,7 +429,7 @@ AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS)
 # Here list all the header files that are required by a user of the library,
 # and that therefore should be installed in pkgincludedir.
 includecoindir = $(pkgincludedir)
-includecoin_HEADERS = CglCliqueMerging.hpp
+includecoin_HEADERS = CglOddWheel.hpp
 all: all-am
 
 .SUFFIXES:
@@ -443,9 +443,9 @@ $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(top_srcdir
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign src/CglCliqueMerging/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign src/CglOddWheel/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign src/CglCliqueMerging/Makefile
+	  $(AUTOMAKE) --foreign src/CglOddWheel/Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
 	  *config.status*) \
@@ -476,8 +476,8 @@ clean-noinstLTLIBRARIES:
 	  rm -f $${locs}; \
 	}
 
-libCglCliqueMerging.la: $(libCglCliqueMerging_la_OBJECTS) $(libCglCliqueMerging_la_DEPENDENCIES) $(EXTRA_libCglCliqueMerging_la_DEPENDENCIES) 
-	$(AM_V_CXXLD)$(libCglCliqueMerging_la_LINK)  $(libCglCliqueMerging_la_OBJECTS) $(libCglCliqueMerging_la_LIBADD) $(LIBS)
+libCglOddWheel.la: $(libCglOddWheel_la_OBJECTS) $(libCglOddWheel_la_DEPENDENCIES) $(EXTRA_libCglOddWheel_la_DEPENDENCIES) 
+	$(AM_V_CXXLD)$(libCglOddWheel_la_LINK)  $(libCglOddWheel_la_OBJECTS) $(libCglOddWheel_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -485,7 +485,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglCliqueMerging.Plo@am__quote@ # am--include-marker
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/CglOddWheel.Plo@am__quote@ # am--include-marker
 
 $(am__depfiles_remade):
 	@$(MKDIR_P) $(@D)
@@ -635,7 +635,7 @@ clean-am: clean-generic clean-libtool clean-noinstLTLIBRARIES \
 	mostlyclean-am
 
 distclean: distclean-am
-		-rm -f ./$(DEPDIR)/CglCliqueMerging.Plo
+		-rm -f ./$(DEPDIR)/CglOddWheel.Plo
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
@@ -681,7 +681,7 @@ install-ps-am:
 installcheck-am:
 
 maintainer-clean: maintainer-clean-am
-		-rm -f ./$(DEPDIR)/CglCliqueMerging.Plo
+		-rm -f ./$(DEPDIR)/CglOddWheel.Plo
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic
 

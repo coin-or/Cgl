@@ -153,7 +153,7 @@ AC_CONFIG_FILES([Makefile
                  src/CglAllDifferent/Makefile
                  src/CglBKClique/Makefile
                  src/CglClique/Makefile
-                 src/CglCliqueMerging/Makefile
+                 src/CglCliqueStrengthening/Makefile
                  src/CglDuplicateRow/Makefile
                  src/CglFlowCover/Makefile
                  src/CglGMI/Makefile
@@ -164,7 +164,7 @@ AC_CONFIG_FILES([Makefile
                  src/CglMixedIntegerRounding/Makefile
                  src/CglMixedIntegerRounding2/Makefile
                  src/CglOddHole/Makefile
-                 src/CglOddHoleWC/Makefile
+                 src/CglOddWheel/Makefile
                  src/CglPreProcess/Makefile
                  src/CglProbing/Makefile
                  src/CglRedSplit/Makefile
