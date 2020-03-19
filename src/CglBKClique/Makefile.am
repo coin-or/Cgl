@@ -1,7 +1,6 @@
-
-AUTOMAKE_OPTIONS = foreign
-
-include $(top_srcdir)/BuildTools/Makemain.inc
+# Copyright (C) 2020 COIN-OR
+# All Rights Reserved.
+# This file is distributed under the Eclipse Public License.
 
 ########################################################################
 #                           libCglBKClique                     #
@@ -12,8 +11,7 @@ include $(top_srcdir)/BuildTools/Makemain.inc
 noinst_LTLIBRARIES = libCglBKClique.la
 
 # List all source files for this library, including headers
-libCglBKClique_la_SOURCES = \
-	CglBKClique.cpp CglBKClique.hpp
+libCglBKClique_la_SOURCES = CglBKClique.cpp CglBKClique.hpp
 
 # This is for libtool (on Windows)
 libCglBKClique_la_LDFLAGS = $(LT_LDFLAGS)
@@ -30,4 +28,3 @@ AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS)
 
 includecoindir = $(pkgincludedir)
 includecoin_HEADERS = CglBKClique.hpp
-

@@ -1,6 +1,6 @@
-AUTOMAKE_OPTIONS = foreign
-
-include $(top_srcdir)/BuildTools/Makemain.inc
+# Copyright (C) 2020 COIN-OR
+# All Rights Reserved.
+# This file is distributed under the Eclipse Public License.
 
 ########################################################################
 #                           libCglOddWheel                            #
@@ -11,8 +11,7 @@ include $(top_srcdir)/BuildTools/Makemain.inc
 noinst_LTLIBRARIES = libCglOddWheel.la
 
 # List all source files for this library, including headers
-libCglOddWheel_la_SOURCES = \
-	CglOddWheel.cpp CglOddWheel.hpp
+libCglOddWheel_la_SOURCES = CglOddWheel.cpp CglOddWheel.hpp
 
 # This is for libtool (on Windows)
 libCglOddWheel_la_LDFLAGS = $(LT_LDFLAGS)

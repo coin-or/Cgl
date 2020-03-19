@@ -6,10 +6,6 @@
 
 # Author:  Andreas Waechter           IBM    2006-04-13
 
-AUTOMAKE_OPTIONS = foreign
-
-include $(top_srcdir)/BuildTools/Makemain.inc
-
 ########################################################################
 #                       libCglKnapsackCover                            #
 ########################################################################
@@ -26,7 +22,7 @@ libCglKnapsackCover_la_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS)
-	
+
 ########################################################################
 #                Headers that need to be installed                     #
 ########################################################################

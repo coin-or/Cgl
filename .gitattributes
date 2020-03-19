@@ -61,6 +61,7 @@ MSVisualStudio/v9alt/libCglResidualCapacity.vcproj -text
 MSVisualStudio/v9alt/libCglSimpleRounding.vcproj -text
 MSVisualStudio/v9alt/libCglTwomir.vcproj -text
 /appveyor.yml -text
+/ar-lib -text
 /cgl.pc.in -text
 /compile -text
 /config.guess -text

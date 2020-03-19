@@ -6,10 +6,6 @@
 
 # Author:  Andreas Waechter           IBM    2006-04-13
 
-AUTOMAKE_OPTIONS = foreign
-
-include $(top_srcdir)/BuildTools/Makemain.inc
-
 ########################################################################
 #                           libCglLandP                                #
 ########################################################################
@@ -19,9 +15,7 @@ include $(top_srcdir)/BuildTools/Makemain.inc
 noinst_LTLIBRARIES = libCglLandP.la
 
 # List all source files for this library, including headers
-libCglLandP_la_SOURCES = \
-	CglLandPTabRow.hpp \
-	CglLandPUtils.cpp  CglLandPUtils.hpp
+libCglLandP_la_SOURCES = CglLandPTabRow.hpp CglLandPUtils.cpp  CglLandPUtils.hpp
 
 if COIN_HAS_OSICLP
 libCglLandP_la_SOURCES += \

@@ -1,6 +1,6 @@
-AUTOMAKE_OPTIONS = foreign
-
-include $(top_srcdir)/BuildTools/Makemain.inc
+# Copyright (C) 2020 COIN-OR
+# All Rights Reserved.
+# This file is distributed under the Eclipse Public License.
 
 ########################################################################
 #                           libCglCliqueStrengthening                     #
@@ -11,8 +11,7 @@ include $(top_srcdir)/BuildTools/Makemain.inc
 noinst_LTLIBRARIES = libCglCliqueStrengthening.la
 
 # List all source files for this library, including headers
-libCglCliqueStrengthening_la_SOURCES = \
-	CglCliqueStrengthening.cpp CglCliqueStrengthening.hpp
+libCglCliqueStrengthening_la_SOURCES = CglCliqueStrengthening.cpp CglCliqueStrengthening.hpp
 
 # This is for libtool (on Windows)
 libCglCliqueStrengthening_la_LDFLAGS = $(LT_LDFLAGS)
@@ -29,4 +28,3 @@ AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS)
 
 includecoindir = $(pkgincludedir)
 includecoin_HEADERS = CglCliqueStrengthening.hpp
-
