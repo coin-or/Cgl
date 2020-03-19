@@ -124,42 +124,38 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
         }
 
         int realSize = 0;
-        size_t dup = 0;
-
+        bool duplicated = false;
         std::fill(idxMap_, idxMap_ + numCols, -1);
 
         for(size_t k = 0; k < oddSize; k++) {
             if(oddEl[k] < numCols) {
-#ifdef DEBUGCG
-                assert(oddEl[k] < std::numeric_limits<int>::max());
-#endif
                 if(idxMap_[oddEl[k]] == -1) {
                     idxMap_[oddEl[k]] = realSize;
                     idxs_[realSize] = oddEl[k];
                     coefs_[realSize] = 1.0;
                     realSize++;
-                }
-                else {
-                    coefs_[idxMap_[oddEl[k]]] += 1.0;
-                    dup++;
+                } else {
+                    duplicated = true;
+                    break;
                 }
             }
             else {
-#ifdef DEBUGCG
-                assert(oddEl[k] - numCols < std::numeric_limits<int>::max());
-#endif
                 if(idxMap_[oddEl[k]-numCols] == -1) {
                     idxMap_[oddEl[k]-numCols] = realSize;
                     idxs_[realSize] = ((int)(oddEl[k] - numCols));
                     coefs_[realSize] = -1.0;
+                    rhs -= 1.0;
                     realSize++;
                 }
                 else {
-                    coefs_[idxMap_[oddEl[k]-numCols]] -= 1.0;
-                    dup++;
+                    duplicated = true;
+                    break;
                 }
-                rhs = rhs - 1.0;
             }
+        }
+
+        if (duplicated) {
+            continue;
         }
 
         const size_t centerSize = oddH.wheelCenterSize(j);
@@ -168,46 +164,32 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
             const double oldRhs = rhs;
             for (size_t k = 0; k < centerSize; k++) {
                 if (centerIdx[k] < numCols) {
-#ifdef DEBUGCG
-                    assert(centerIdx[k] < std::numeric_limits<int>::max());
-#endif
                     if (idxMap_[centerIdx[k]] == -1) {
                         idxMap_[centerIdx[k]] = realSize;
                         idxs_[realSize] = centerIdx[k];
                         coefs_[realSize] = oldRhs;
                         realSize++;
                     } else {
-                        coefs_[idxMap_[centerIdx[k]]] += oldRhs;
-                        dup++;
+                        duplicated = true;
+                        break;
                     }
                 } else {
-#ifdef DEBUGCG
-                    assert(centerIdx[k] - numCols < std::numeric_limits<int>::max());
-#endif
                     if (idxMap_[centerIdx[k] - numCols] == -1) {
                         idxMap_[centerIdx[k] - numCols] = realSize;
                         idxs_[realSize] = ((int) (centerIdx[k] - numCols));
                         coefs_[realSize] = -1.0 * oldRhs;
+                        rhs = rhs - oldRhs;
                         realSize++;
                     } else {
-                        coefs_[idxMap_[centerIdx[k] - numCols]] -= oldRhs;
-                        dup++;
+                        duplicated = true;
+                        break;
                     }
-                    rhs = rhs - oldRhs;
                 }
             }
-        }
 
-        if(dup) {
-            int last = 0;
-            for(int k = 0; k < realSize; k++) {
-                if(fabs(coefs_[k]) >= ODDHWC_EPS) {
-                    idxs_[last] = idxs_[k];
-                    coefs_[last] = coefs_[k];
-                    last++;
-                }
+            if (duplicated) {
+                continue;
             }
-            realSize = last;
         }
 
         cutPool.add(idxs_, coefs_, realSize, rhs);

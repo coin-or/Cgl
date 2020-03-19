@@ -307,7 +307,7 @@ void CglBKClique::insertCuts(const OsiSolverInterface &si, const CglTreeInfo &in
         const size_t *el = cliques->cliqueElements(i);
         double rhs = 1.0;
         int cutSize = 0;
-        size_t dup = 0;
+        size_t duplicated = 0;
 
         std::fill(idxMap_, idxMap_ + numCols, -1);
 
@@ -320,7 +320,8 @@ void CglBKClique::insertCuts(const OsiSolverInterface &si, const CglTreeInfo &in
                     cutSize++;
                 } else {
                     coefs_[idxMap_[el[j]]] += 1.0;
-                    dup++;
+                    assert(coefs_[idxMap_[el[j]]] == 0.0);
+                    duplicated++;
                 }
             } else {
                 rhs -= 1.0;
@@ -331,23 +332,25 @@ void CglBKClique::insertCuts(const OsiSolverInterface &si, const CglTreeInfo &in
                     cutSize++;
                 } else {
                     coefs_[idxMap_[el[j]-numCols]] -= 1.0;
-                    dup++;
+                    assert(coefs_[idxMap_[el[j]-numCols]] == 0.0);
+                    duplicated++;
                 }
             }
         }
 
-#ifdef DEBUGCG
-        assert(dup == 0 || dup == 1);
-#endif
-
-        if(dup) {
+        assert(duplicated == 0 || duplicated == 1);
+        if(duplicated == 1) {
             int last = 0;
-
+            rhs = 0.0;
             for(int k = 0; k < cutSize; k++) {
-                if(fabs(coefs_[k]) >= BKCLQ_EPS) {
+            	assert(coefs_[k] == -1.0 || coefs_[k] == 0.0 || coefs_[k] == 1.0);
+                if(coefs_[k] == -1.0 || coefs_[k] == 1.0) {
                     idxs_[last] = idxs_[k];
                     coefs_[last] = coefs_[k];
                     last++;
+                    if (coefs_[k] == -1.0) {
+                    	rhs -= 1.0;
+                    }
                 }
             }
             cutSize = last;

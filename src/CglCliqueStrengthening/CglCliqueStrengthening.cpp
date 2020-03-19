@@ -384,6 +384,10 @@ void CglCliqueStrengthening::strengthenCliques(OsiSolverInterface &model, size_t
         }
     }
 
+#ifdef DEBUGCG
+    assert(clqNames.size() == nCliques);
+#endif
+
     free(rc);
     free(colClqs[0]);
     free(colClqs);
@@ -413,6 +417,7 @@ void CglCliqueStrengthening::strengthenCliques(OsiSolverInterface &model, size_t
     /* adding stronger cliques */
     const size_t nCliques = newCliques.nCliques();
     int *nrIdx = (int*)xmalloc(sizeof(int) * newCliques.totalElements());
+    int *idxMap = (int*)xmalloc(sizeof(int) * numCols);//controls duplicated indexes (var and complement)
     double *nrCoef = (double*)xmalloc(sizeof(double) * newCliques.totalElements());
     int *nrStart = (int*)xmalloc(sizeof(int) * (nCliques + 1)); nrStart[0] = 0;
     double *nrLB = (double*)xmalloc(sizeof(double) * nCliques);
@@ -422,28 +427,62 @@ void CglCliqueStrengthening::strengthenCliques(OsiSolverInterface &model, size_t
         const size_t extClqSize = newCliques.cliqueSize(ic);
         const size_t *extClqEl = newCliques.cliqueElements(ic);
         double rhs = 1.0;
+        size_t duplicated = 0;
+
+        std::fill(idxMap, idxMap + numCols, -1);
 
         for (size_t i = 0; i < extClqSize; i++) {
-            if (extClqEl[i] >= numCols) {
-                nrIdx[numVars] = ((int)extClqEl[i] - numCols);
-                nrCoef[numVars] = -1.0;
-                rhs -= 1.0;
+            if (extClqEl[i] < numCols) {
+                if(idxMap[extClqEl[i]] == -1) {
+                    idxMap[extClqEl[i]] = numVars;
+                    nrIdx[numVars] = (int)extClqEl[i];
+                	nrCoef[numVars] = 1.0;
+                    numVars++;
+                } else {
+                    nrCoef[idxMap[extClqEl[i]]] += 1.0;
+                    assert(nrCoef[idxMap[extClqEl[i]]] == 0.0);
+                    duplicated++;
+                }
             } else {
-                nrIdx[numVars] = (int)extClqEl[i];
-                nrCoef[numVars] = 1.0;
+            	rhs -= 1.0;
+            	if(idxMap[extClqEl[i]-numCols] == -1) {
+            		idxMap[extClqEl[i]-numCols] = numVars;
+            		nrIdx[numVars] = ((int)extClqEl[i] - numCols);
+                	nrCoef[numVars] = -1.0;
+                	numVars++;
+                } else {
+                	nrCoef[idxMap[extClqEl[i]-numCols]] -= 1.0;
+                	assert(nrCoef[idxMap[extClqEl[i]-numCols]] == 0.0);
+                    duplicated++;
+                }
             }
-            numVars++;
+        }
+
+        assert(duplicated == 0 || duplicated == 1);
+        if(duplicated == 1) {
+            int last = nrStart[ic];
+            rhs = 0.0;
+            for(int k = nrStart[ic]; k < numVars; k++) {
+    			assert(nrCoef[k] == -1.0 || nrCoef[k] == 0.0 || nrCoef[k] == 1.0);
+                if(nrCoef[k] == -1.0 || nrCoef[k] == 1.0) {
+                    nrIdx[last] = nrIdx[k];
+                    nrCoef[last] = nrCoef[k];
+                    last++;
+                    if (nrCoef[k] == -1.0) {
+                		rhs -= 1.0;
+                	}
+                }
+            }
+            numVars = last;
+
+            sprintf(name, "%s_dup", clqNames[ic].c_str());
+            clqNames[ic] = name;
         }
 
         nrLB[ic] = -DBL_MAX;
         nrUB[ic] = rhs;
         nrStart[ic + 1] = numVars;
     }
-
-#ifdef DEBUGCG
-    assert(numVars == newCliques.totalElements());
-    assert(clqNames.size() == nCliques);
-#endif
 
     const int lastOrigIdx = model.getNumRows();
     model.addRows(nCliques, nrStart, nrIdx, nrCoef, nrLB, nrUB);
@@ -456,8 +495,9 @@ void CglCliqueStrengthening::strengthenCliques(OsiSolverInterface &model, size_t
     free(nrLB);
     free(nrUB);
     free(nrStart);
+    free(idxMap);
 
-    //handler_->message(CGL_PROCESS_CLQSTR, messages_) << nExtended_ << nDominated_ << CoinMessageEol;
+    handler_->message(CGL_PROCESS_CLQSTR, messages_) << nExtended_ << nDominated_ << CoinMessageEol;
 }
 
 static void *xmalloc( const size_t size ) {
