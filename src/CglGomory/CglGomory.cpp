@@ -851,8 +851,8 @@ CglGomory::generateCuts(
 	    limit = CoinMax(1000,numberRows/4);
 	}
       } else {
-	limit=numberColumns;
-	numberTimesStalled_++;
+	//limit=numberColumns;
+	//numberTimesStalled_++;
       } 
     }
   } else {
