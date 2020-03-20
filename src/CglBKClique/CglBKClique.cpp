@@ -95,6 +95,10 @@ CglCutGenerator * CglBKClique::clone() const {
 }
 
 void CglBKClique::generateCuts(const OsiSolverInterface &si, OsiCuts &cs, const CglTreeInfo info) {
+	if (si.getNumCols() == 0 || si.getNumRows() == 0) {
+        return;
+    }
+    
     double startSep = CoinCpuTime();
     const CoinConflictGraph *cgraph = si.getCGraph();
 

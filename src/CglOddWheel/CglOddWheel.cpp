@@ -66,6 +66,10 @@ CglCutGenerator * CglOddWheel::clone() const {
 }
 
 void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, const CglTreeInfo info ) {
+    if (si.getNumCols() == 0 || si.getNumRows() == 0) {
+        return;
+    }
+
     double startSep = CoinCpuTime();
     const size_t numCols = si.getNumCols();
     const CoinConflictGraph *cgraph = si.getCGraph();

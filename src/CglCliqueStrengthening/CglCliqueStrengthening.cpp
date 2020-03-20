@@ -283,6 +283,11 @@ void checkDominance(const size_t *extClqEl, size_t extClqSize, CliqueRows *cliqu
 void CglCliqueStrengthening::strengthenCliques(OsiSolverInterface &model, size_t extMethod) {
     const int numCols = model.getNumCols();
     const int numRows = model.getNumRows();
+
+    if (numCols == 0 || numRows == 0) {
+    	return;
+    }
+
     const CoinConflictGraph *cgraph = model.getCGraph();
 
     if(model.getNumCols() != cgraph->size() / 2) {
