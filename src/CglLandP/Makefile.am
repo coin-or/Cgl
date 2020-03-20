@@ -38,10 +38,9 @@ AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS) -I$(srcdir)/../CglGomory
 ########################################################################
 
 # Here list all the header files that are required by a user of the library,
-# and that therefore should be installed in pkgincludedir.
+# and that therefore should be installed in $(includedir)/coin-or.
 
-includecoindir = $(pkgincludedir)
-
+includecoindir = $(includedir)/coin-or
 if COIN_HAS_OSICLP
 includecoin_HEADERS = CglLandP.hpp CglLandPValidator.hpp
 endif
