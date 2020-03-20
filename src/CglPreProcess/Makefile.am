@@ -21,7 +21,7 @@ libCglPreProcess_la_SOURCES = CglPreProcess.cpp CglPreProcess.hpp
 libCglPreProcess_la_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
-AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS) \
+AM_CPPFLAGS = $(CGLLIB_CFLAGS) \
 	-I$(srcdir)/../CglProbing \
 	-I$(srcdir)/../CglDuplicateRow \
 	-I$(srcdir)/../CglClique

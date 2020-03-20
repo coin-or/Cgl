@@ -31,7 +31,7 @@ endif
 libCglLandP_la_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
-AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS) -I$(srcdir)/../CglGomory
+AM_CPPFLAGS = $(CGLLIB_CFLAGS) -I$(srcdir)/../CglGomory
 
 ########################################################################
 #                Headers that need to be installed                     #

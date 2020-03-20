@@ -21,7 +21,7 @@ libCglKnapsackCover_la_SOURCES = CglKnapsackCover.cpp CglKnapsackCover.hpp CglKn
 libCglKnapsackCover_la_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
-AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS)
+AM_CPPFLAGS = $(CGLLIB_CFLAGS)
 
 ########################################################################
 #                Headers that need to be installed                     #

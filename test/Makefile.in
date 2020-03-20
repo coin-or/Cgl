@@ -116,7 +116,7 @@ am_unitTest_OBJECTS = unitTest.$(OBJEXT)
 unitTest_OBJECTS = $(am_unitTest_OBJECTS)
 am__DEPENDENCIES_1 =
 unitTest_DEPENDENCIES = ../src/CglCommon/libCgl.la \
-	$(am__DEPENDENCIES_1)
+	$(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
@@ -332,11 +332,12 @@ top_srcdir = @top_srcdir@
 unitTest_SOURCES = unitTest.cpp
 
 # List libraries we need to link in
-unitTest_LDADD = ../src/CglCommon/libCgl.la $(CGLLIB_LIBS) \
+unitTest_LDADD = ../src/CglCommon/libCgl.la $(CGLUNITTEST_LFLAGS) \
 	$(CGLUNITTEST_LFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
-AM_CPPFLAGS = -DCGL_BUILD -I$(srcdir)/../src/CglSimpleRounding \
+AM_CPPFLAGS = -I$(srcdir)/../src/CglCommon \
+	-I$(srcdir)/../src/CglSimpleRounding \
 	-I$(srcdir)/../src/CglKnapsackCover \
 	-I$(srcdir)/../src/CglOddHole -I$(srcdir)/../src/CglProbing \
 	-I$(srcdir)/../src/CglGomory -I$(srcdir)/../src/CglLandP \
@@ -346,7 +347,7 @@ AM_CPPFLAGS = -DCGL_BUILD -I$(srcdir)/../src/CglSimpleRounding \
 	-I$(srcdir)/../src/CglRedSplit -I$(srcdir)/../src/CglRedSplit2 \
 	-I$(srcdir)/../src/CglTwomir -I$(srcdir)/../src/CglClique \
 	-I$(srcdir)/../src/CglFlowCover -I$(srcdir)/../src/CglZeroHalf \
-	$(CGLLIB_CFLAGS) $(CGLUNITTEST_CFLAGS) $(am__append_1) \
+	$(CGLUNITTEST_CFLAGS) $(am__append_1) \
 	-DTESTDIR=\"`$(CYGPATH_W) $(srcdir)/CglTestData | sed -e \
 	's/\\\\/\\\\\\\\/g'`\"
 all: all-am

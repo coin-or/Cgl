@@ -87,12 +87,12 @@ cd $curr_dir
 #                            COIN-OR components                             #
 #############################################################################
 
-AC_COIN_CHK_PKG(CoinUtils,[CglLib])
+AC_COIN_CHK_PKG(CoinUtils,[CglLib CglUnitTest])
 if test $coin_has_coinutils != yes ; then
   AC_MSG_ERROR([Required package CoinUtils not available.])
 fi
 
-AC_COIN_CHK_PKG(Osi,[CglLib])
+AC_COIN_CHK_PKG(Osi,[CglLib CglUnitTest])
 if test $coin_has_osi != yes ; then
   AC_MSG_ERROR([Required package Osi not available.])
 fi

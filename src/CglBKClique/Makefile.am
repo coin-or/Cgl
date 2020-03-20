@@ -17,7 +17,7 @@ libCglBKClique_la_SOURCES = CglBKClique.cpp CglBKClique.hpp
 libCglBKClique_la_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
-AM_CPPFLAGS = -DCGL_BUILD $(CGLLIB_CFLAGS)
+AM_CPPFLAGS = $(CGLLIB_CFLAGS)
 
 ########################################################################
 #                Headers that need to be installed                     #

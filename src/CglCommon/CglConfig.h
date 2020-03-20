@@ -26,7 +26,7 @@
 #define __CGLCONFIG_H__
 
 #ifdef HAVE_CONFIG_H
-#ifdef CGL_BUILD
+#ifdef CGLLIB_BUILD
 #include "config.h"
 
 /* overwrite CGLLIB_EXPORT from config.h when building Cgl
@@ -48,7 +48,7 @@
 
 #else /* HAVE_CONFIG_H */
 
-#ifdef CGL_BUILD
+#ifdef CGLLIB_BUILD
 #include "config_default.h"
 #else
 #include "config_cgl_default.h"
