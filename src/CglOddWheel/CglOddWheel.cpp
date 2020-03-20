@@ -25,28 +25,22 @@ CglOddWheel::CglOddWheel(size_t extMethod) : cap_(0), extMethod_(extMethod) {
 }
 
 CglOddWheel::CglOddWheel(const CglOddWheel& rhs) {
-    if (this->idxs_) {
-        free(this->idxs_);
-    }
-    if (this->idxMap_) {
-        free(this->idxMap_);
-    }
-    if (this->coefs_) {
-        free(this->coefs_);
-    }
-    if (this->x_) {
-        free(this->x_);
-    }
-    if (this->rc_) {
-        free(this->rc_);
-    }
-
     this->cap_ = rhs.cap_;
-    this->idxs_ = (int*)xmalloc(sizeof(int) * this->cap_);
-    this->idxMap_ = (int*)xmalloc(sizeof(int) * this->cap_);
-    this->coefs_ = (double*)xmalloc(sizeof(double) * this->cap_);
-    this->x_ = (double*)xmalloc(sizeof(double) * this->cap_ * 2);
-    this->rc_ = (double*)xmalloc(sizeof(double) * this->cap_ * 2);
+    this->extMethod_ = rhs.extMethod_;
+
+    if (this->cap_ > 0) {
+        this->idxs_ = (int*)xmalloc(sizeof(int) * this->cap_);
+        this->idxMap_ = (int*)xmalloc(sizeof(int) * this->cap_);
+        this->coefs_ = (double*)xmalloc(sizeof(double) * this->cap_);
+        this->x_ = (double*)xmalloc(sizeof(double) * this->cap_ * 2);
+        this->rc_ = (double*)xmalloc(sizeof(double) * this->cap_ * 2);
+    } else {
+        this->idxs_ = NULL;
+        this->idxMap_ = NULL;
+        this->coefs_ = NULL;
+        this->x_ = NULL;
+        this->rc_ = NULL;
+    }
 }
 
 CglOddWheel::~CglOddWheel() {
@@ -68,22 +62,7 @@ CglOddWheel::~CglOddWheel() {
 }
 
 CglCutGenerator * CglOddWheel::clone() const {
-    CglOddWheel *oddHWC = new CglOddWheel();
-
-    oddHWC->cap_ = this->cap_;
-    oddHWC->idxs_ = (int*)xmalloc(sizeof(int) * this->cap_);
-    std::copy(this->idxs_, this->idxs_ + this->cap_, oddHWC->idxs_);
-    oddHWC->idxMap_ = (int*)xmalloc(sizeof(int) * this->cap_);
-    std::copy(this->idxMap_, this->idxMap_ + this->cap_, oddHWC->idxMap_);
-    oddHWC->coefs_ = (double*)xmalloc(sizeof(double) * this->cap_);
-    std::copy(this->coefs_, this->coefs_ + this->cap_, oddHWC->coefs_);
-
-    oddHWC->x_ = (double*)xmalloc(sizeof(double) * this->cap_ * 2);
-    std::copy(this->x_, this->x_ + (this->cap_ * 2), oddHWC->x_);
-    oddHWC->rc_ = (double*)xmalloc(sizeof(double) * this->cap_);
-    std::copy(this->rc_, this->rc_ + (this->cap_ * 2), oddHWC->rc_);
-
-    return static_cast<CglCutGenerator*>(oddHWC);
+    return new CglOddWheel(*this);
 }
 
 void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, const CglTreeInfo info ) {

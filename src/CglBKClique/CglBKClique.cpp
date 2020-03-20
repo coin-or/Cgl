@@ -31,47 +31,39 @@ extMethod_(4), minFrac_(0.001), minViol_(0.02), pivotingStrategy_(3)
     coefs_ = NULL;
     inducedVert_ = NULL;
     currClq_ = NULL;
-    maxCallsBK_ = 0;
+    callsBK_ = 0;
     completeBK_ = false;
 }
 
-CglBKClique::CglBKClique(const CglBKClique& rhs) {
-    if (this->vertexWeight_) {
-        free(this->vertexWeight_);
-    }
-    if (this->rc_) {
-        free(this->rc_);
-    }
-    if (this->idxs_) {
-        free(this->idxs_);
-    }
-    if (this->idxMap_) {
-        free(this->idxMap_);
-    }
-    if (this->coefs_) {
-        free(this->coefs_);
-    }
-    if (this->inducedVert_) {
-        free(this->inducedVert_);
-    }
-    if (this->currClq_) {
-        free(this->currClq_);
-    }
+CglBKClique::CglBKClique(const CglBKClique& rhs) : CglCutGenerator(rhs) {
     this->cap_ = rhs.cap_;
-    this->vertexWeight_ = (double*)xmalloc(sizeof(double) * this->cap_ * 2);
-    this->rc_ = (double*)xmalloc(sizeof(double) * this->cap_ * 2);
-    this->idxs_ = (int*)xmalloc(sizeof(int) * this->cap_);
-    this->idxMap_ = (int*)xmalloc(sizeof(int) * this->cap_);
-    this->coefs_ = (double*)xmalloc(sizeof(double) * this->cap_);
-    this->inducedVert_ = (size_t*)xmalloc(sizeof(size_t) * this->cap_ * 2);
-    this->currClq_ = (size_t*)xmalloc(sizeof(size_t) * this->cap_ * 2);
 
-    this->pivotingStrategy_ = rhs.pivotingStrategy_;
-    this->minFrac_ = rhs.minFrac_;
-    this->minViol_ = rhs.minViol_;
-    this->minWeight_ = rhs.minWeight_;
+    if (this->cap_ > 0) {
+        this->vertexWeight_ = (double*)xmalloc(sizeof(double) * this->cap_ * 2);
+        this->rc_ = (double*)xmalloc(sizeof(double) * this->cap_ * 2);
+        this->idxs_ = (int*)xmalloc(sizeof(int) * this->cap_);
+        this->idxMap_ = (int*)xmalloc(sizeof(int) * this->cap_);
+        this->coefs_ = (double*)xmalloc(sizeof(double) * this->cap_);
+        this->inducedVert_ = (size_t*)xmalloc(sizeof(size_t) * this->cap_ * 2);
+        this->currClq_ = (size_t*)xmalloc(sizeof(size_t) * this->cap_ * 2);
+    } else {
+        this->vertexWeight_ = NULL;
+        this->rc_ = NULL;
+        this->idxs_ = NULL;
+        this->idxMap_ = NULL;
+        this->coefs_ = NULL;
+        this->inducedVert_ = NULL;
+        this->currClq_ = NULL;
+    }
+
     this->maxCallsBK_ = rhs.maxCallsBK_;
     this->extMethod_ = rhs.extMethod_;
+    this->minFrac_ = rhs.minFrac_;
+    this->minViol_ = rhs.minViol_;
+    this->pivotingStrategy_ = rhs.pivotingStrategy_;
+    this->minWeight_ = rhs.minWeight_;
+    this->callsBK_ = rhs.callsBK_;
+    this->completeBK_ = rhs.completeBK_;
 }
 
 CglBKClique::~CglBKClique() {
@@ -99,34 +91,7 @@ CglBKClique::~CglBKClique() {
 }
 
 CglCutGenerator * CglBKClique::clone() const {
-    CglBKClique *aClq = new CglBKClique();
-
-    aClq->cap_ = this->cap_;
-    aClq->vertexWeight_ = (double*)xmalloc(sizeof(double) * this->cap_ * 2);
-    std::copy(this->vertexWeight_, this->vertexWeight_ + (this->cap_ * 2), aClq->vertexWeight_);
-    aClq->rc_ = (double*)xmalloc(sizeof(double) * this->cap_ * 2);
-    std::copy(this->rc_, this->rc_ + (this->cap_ * 2), aClq->rc_);
-    aClq->idxs_ = (int*)xmalloc(sizeof(int) * this->cap_);
-    std::copy(this->idxs_, this->idxs_ + this->cap_, aClq->idxs_);
-    aClq->idxMap_ = (int*)xmalloc(sizeof(int) * this->cap_);
-    std::copy(this->idxMap_, this->idxMap_ + this->cap_, aClq->idxMap_);
-    aClq->coefs_ = (double*)xmalloc(sizeof(double) * this->cap_);
-    std::copy(this->coefs_, this->coefs_ + this->cap_, aClq->coefs_);
-    aClq->inducedVert_ = (size_t*)xmalloc(sizeof(size_t) * this->cap_ * 2);
-    std::copy(this->inducedVert_, this->inducedVert_ + (this->cap_ * 2), aClq->inducedVert_);
-    aClq->currClq_ = (size_t*)xmalloc(sizeof(size_t) * this->cap_ * 2);
-    std::copy(this->currClq_, this->currClq_ + (this->cap_ * 2), aClq->currClq_);
-
-    aClq->pivotingStrategy_ = this->pivotingStrategy_;
-    aClq->minFrac_ = this->minFrac_;
-    aClq->minViol_ = this->minViol_;
-    aClq->minWeight_ = this->minWeight_;
-    aClq->maxCallsBK_ = this->maxCallsBK_;
-    aClq->extMethod_ = this->extMethod_;
-    aClq->maxCallsBK_ = this->maxCallsBK_;
-    aClq->completeBK_ = this->completeBK_;
-
-    return static_cast<CglCutGenerator*>(aClq);
+    return new CglBKClique(*this);
 }
 
 void CglBKClique::generateCuts(const OsiSolverInterface &si, OsiCuts &cs, const CglTreeInfo info) {
@@ -227,6 +192,10 @@ CoinCliqueList* CglBKClique::separateCliques(const OsiSolverInterface &si) {
             vertexWeight_[n] = xc * BKCLQ_MULTIPLIER;
             n++;
         }
+    }
+
+    if (n == 0) {
+        return initialCliques;
     }
 
     CoinConflictGraph *ppcg = new CoinStaticConflictGraph(cgraph, n, inducedVert_);
