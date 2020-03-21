@@ -17952,7 +17952,7 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
-      # add -DXYZ_BUILD to CFLAGS
+      # add -DXYZ_BUILD to XYZ_CFLAGS
       CGLLIB_CFLAGS="${CGLLIB_CFLAGS} -DCGLLIB_BUILD"
 
 # Define BUILDTOOLS_DEBUG to enable debugging output
@@ -20049,7 +20049,7 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
-      # add -DXYZ_BUILD to CFLAGS
+      # add -DXYZ_BUILD to XYZ_CFLAGS
       CGLUNITTEST_CFLAGS="${CGLUNITTEST_CFLAGS} -DCGLUNITTEST_BUILD"
 
 # Define BUILDTOOLS_DEBUG to enable debugging output

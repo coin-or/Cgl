@@ -42,7 +42,7 @@ endif
 
 AM_CPPFLAGS += -DTESTDIR=\"`$(CYGPATH_W) $(srcdir)/CglTestData | sed -e 's/\\\\/\\\\\\\\/g'`\" 
 
-unitTest_LDADD += $(CGLUNITTEST_LFLAGS)
+AM_LDFLAGS = $(LT_LDFLAGS)
 
 test: unitTest$(EXEEXT)
 	./unitTest$(EXEEXT)
