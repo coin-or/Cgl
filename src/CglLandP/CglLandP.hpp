@@ -131,6 +131,8 @@ public:
         int degeneratePivotLimit;
         /** Maximum number of extra rows to generate per round.*/
         int extraCutsLimit;
+	/// Maximum size of "indices"
+	int maximumCandidates;
         ///@}
         /// @name double parameters
         ///@{

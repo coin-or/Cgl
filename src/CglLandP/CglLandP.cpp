@@ -50,6 +50,7 @@ CglLandP::Parameters::Parameters():
         failedPivotLimit(1),
         degeneratePivotLimit(0),
         extraCutsLimit(5),
+	maximumCandidates(1000000),
         pivotTol(1e-4),
         away(5e-4),
         timeLimit(COIN_DBL_MAX),
@@ -78,6 +79,7 @@ CglLandP::Parameters::Parameters(const Parameters &other):
         failedPivotLimit(other.failedPivotLimit),
         degeneratePivotLimit(other.degeneratePivotLimit),
         extraCutsLimit(other.extraCutsLimit),
+	maximumCandidates(other.maximumCandidates),
         pivotTol(other.pivotTol),
         away(other.away),
         timeLimit(other.timeLimit),
@@ -107,6 +109,7 @@ CglLandP::Parameters & CglLandP::Parameters::operator=(const Parameters &other)
         failedPivotLimit = other.failedPivotLimit;
         degeneratePivotLimit = other.failedPivotLimit;
         extraCutsLimit = other.extraCutsLimit;
+	maximumCandidates = other.maximumCandidates;
         pivotTol = other.pivotTol;
         away = other.away;
         timeLimit = other.timeLimit;
@@ -147,7 +150,7 @@ CglLandP::CachedData::CachedData(int nBasics, int nNonBasics):
 }
 
 CglLandP::CachedData::CachedData(const CachedData &source):
-        basics_(NULL), nonBasics_(NULL), nBasics_(source.nBasics_),
+  basics_(NULL), nonBasics_(NULL), nBasics_(source.nBasics_),
         nNonBasics_(source.nNonBasics_), basis_(NULL),
         colsol_(NULL), slacks_(NULL), integers_(NULL), solver_(NULL)
 {
@@ -181,17 +184,17 @@ CglLandP::CachedData& CglLandP::CachedData::operator=(const CachedData &source)
     {
         nBasics_ = source.nBasics_;
         nNonBasics_ = source.nNonBasics_;
-        if (basics_ == NULL) delete [] basics_;
+        delete [] basics_;
         basics_ = NULL;
-        if (nonBasics_ == NULL) delete [] nonBasics_;
+        delete [] nonBasics_;
         nonBasics_ = NULL;
-        if (basis_ == NULL) delete [] basis_;
+        delete [] basis_;
         basis_ = NULL;
-        if (colsol_ == NULL) delete [] colsol_;
+        delete [] colsol_;
         colsol_ = NULL;
-        if (slacks_ == NULL) delete [] slacks_;
+        delete [] slacks_;
         slacks_ = NULL;
-        if (integers_ == NULL) delete [] integers_;
+        delete [] integers_;
         integers_ = NULL;
         if (nBasics_>0)
         {
@@ -272,6 +275,7 @@ CglLandP::CachedData::getData(const OsiSolverInterface &si)
         integers_ = new bool[n];
     }
 
+    
     const double * rowLower = si.getRowLower();
     const double * rowUpper = si.getRowUpper();
     //determine which slacks are integer
@@ -333,7 +337,7 @@ CglLandP::CachedData::getData(const OsiSolverInterface &si)
             slacks_[i] += rowUpper[i];
         }
     }
-    //Now get the fill the arrays;
+    //Now fill the arrays;
     nNonBasics = 0;
     nBasics = 0;
 
@@ -360,7 +364,7 @@ CglLandP::CachedData::getData(const OsiSolverInterface &si)
     {
         if (basis_->getStructStatus(i)== CoinWarmStartBasis::basic)
         {
-            nBasics++;
+	    nBasics++;
             //Basically do nothing
         }
         else
@@ -370,6 +374,7 @@ CglLandP::CachedData::getData(const OsiSolverInterface &si)
     }
 
     int numArtificial = basis_->getNumArtificial();
+    int numStruct = basis_->getNumStructural();
     for (int i = 0 ; i < numArtificial ; i++)
     {
         if (basis_->getArtifStatus(i)== CoinWarmStartBasis::basic)
@@ -379,7 +384,7 @@ CglLandP::CachedData::getData(const OsiSolverInterface &si)
         }
         else
         {
-            nonBasics_[nNonBasics++] = i + basis_->getNumStructural();
+            nonBasics_[nNonBasics++] = i + numStruct;
         }
     }
 }
@@ -574,6 +579,8 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 
     std::vector<int> indices;
     getSortedFractionalIndices(indices,cached_, params);
+    if (indices.size()>params.maximumCandidates)
+      indices.resize(params.maximumCandidates);
 
 #ifndef NDEBUG
     int numrows = si.getNumRows();
