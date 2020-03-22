@@ -18,9 +18,11 @@ Available cut generators are:
 
  * Combinatorial cuts:
    * [CglAllDifferent](https://github.com/coin-or/Cgl/wiki/CglAllDifferent)
+   * CglBKClique
    * [CglClique](https://github.com/coin-or/Cgl/wiki/CglClique)
    * [CglKnapsackCover](https://github.com/coin-or/Cgl/wiki/CglKnapsackCover)
    * [CglOddHole](https://github.com/coin-or/Cgl/wiki/CglOddHole)
+   * CglOddWheel
    * CglZeroHalf
 
  * Flow cover cuts:
@@ -43,6 +45,7 @@ Available cut generators are:
    * [CglResidualCapacity](https://github.com/coin-or/Cgl/wiki/CglResidualCapacity)
 
  * Strengthening:
+   * CglCliqueStrengthening
    * [CglDuplicateRow](https://github.com/coin-or/Cgl/wiki/CglDuplicateRow)
    * [CglPreprocess](https://github.com/coin-or/Cgl/wiki/CglPreprocess)
    * [CglProbing](https://github.com/coin-or/Cgl/wiki/CglProbing)
