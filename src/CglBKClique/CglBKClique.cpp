@@ -90,6 +90,10 @@ CglBKClique::~CglBKClique() {
     }
 }
 
+void CglBKClique::refreshSolver(OsiSolverInterface *solver) {
+	solver->checkCGraph();
+}
+
 CglCutGenerator * CglBKClique::clone() const {
     return new CglBKClique(*this);
 }
@@ -102,13 +106,11 @@ void CglBKClique::generateCuts(const OsiSolverInterface &si, OsiCuts &cs, const 
     double startSep = CoinCpuTime();
     const CoinConflictGraph *cgraph = si.getCGraph();
 
-#ifdef DEBUGCG
     if(si.getNumCols() != cgraph->size() / 2) {
         fprintf(stderr, "Invalid conflict graph! Number of columns %d ... in graph %lu\n",
                 si.getNumCols(), cgraph->size() / 2);
         abort();
     }
-#endif
 
     checkMemory(si.getNumCols());
 

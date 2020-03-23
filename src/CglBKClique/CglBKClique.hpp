@@ -13,6 +13,7 @@ public:
     virtual CglCutGenerator * clone() const;
     virtual void generateCuts(const OsiSolverInterface &si, OsiCuts &cs, const CglTreeInfo info = CglTreeInfo());
     virtual ~CglBKClique();
+    virtual void refreshSolver(OsiSolverInterface *solver);
 
     void setMaxCallsBK(size_t maxCallsBK);
     size_t getMaxCallsBK() const { return maxCallsBK_; }

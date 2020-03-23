@@ -18,6 +18,7 @@ public:
     virtual CglCutGenerator * clone() const;
     virtual void generateCuts( const OsiSolverInterface & si, OsiCuts & cs, const CglTreeInfo info = CglTreeInfo() );
     virtual ~CglOddWheel();
+    virtual void refreshSolver(OsiSolverInterface *solver);
 
     void setExtendingMethod(size_t extMethod);
     size_t getExtendingMethod() const { return extMethod_; }

@@ -61,6 +61,10 @@ CglOddWheel::~CglOddWheel() {
     }
 }
 
+void CglOddWheel::refreshSolver(OsiSolverInterface *solver) {
+    solver->checkCGraph();
+}
+
 CglCutGenerator * CglOddWheel::clone() const {
     return new CglOddWheel(*this);
 }

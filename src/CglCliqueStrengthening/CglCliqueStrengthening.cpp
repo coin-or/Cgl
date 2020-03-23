@@ -288,13 +288,9 @@ void CglCliqueStrengthening::strengthenCliques(OsiSolverInterface &model, size_t
     	return;
     }
 
-    const CoinConflictGraph *cgraph = model.getCGraph();
+    model.checkCGraph();
 
-    if(model.getNumCols() != cgraph->size() / 2) {
-        fprintf(stderr, "Invalid conflict graph! Number of columns %d ... in graph %lu\n",
-                model.getNumCols(), cgraph->size() / 2);
-        abort();
-    }
+    const CoinConflictGraph *cgraph = model.getCGraph();
     
     CliqueRows cliques(numRows, model.getNumElements());
 
