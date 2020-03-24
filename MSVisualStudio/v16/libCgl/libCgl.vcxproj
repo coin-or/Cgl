@@ -136,7 +136,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\src\CglAllDifferent\CglAllDifferent.cpp" />
     <ClCompile Include="..\..\..\src\CglBKClique\CglBKClique.cpp" />
-    <ClCompile Include="..\..\..\src\CglCliqueMerging\CglCliqueMerging.cpp" />
+    <ClCompile Include="..\..\..\src\CglCliqueStrengthening\CglCliqueStrengthening.cpp" />
     <ClCompile Include="..\..\..\src\CglClique\CglClique.cpp" />
     <ClCompile Include="..\..\..\src\CglClique\CglCliqueHelper.cpp" />
     <ClCompile Include="..\..\..\src\CglCommon\CglCutGenerator.cpp" />
@@ -156,11 +156,9 @@
     <ClCompile Include="..\..\..\src\CglCommon\CglMessage.cpp" />
     <ClCompile Include="..\..\..\src\CglMixedIntegerRounding\CglMixedIntegerRounding.cpp" />
     <ClCompile Include="..\..\..\src\CglMixedIntegerRounding2\CglMixedIntegerRounding2.cpp" />
-    <ClCompile Include="..\..\..\src\CglOddHoleWC\CglOddHoleWC.cpp" />
-    <ClCompile Include="..\..\..\src\CglOddHoleWC\oddhs.cpp" />
-    <ClCompile Include="..\..\..\src\CglOddHoleWC\spaths.cpp" />
     <ClCompile Include="..\..\..\src\CglOddHole\CglOddHole.cpp" />
     <ClCompile Include="..\..\..\src\CglCommon\CglParam.cpp" />
+    <ClCompile Include="..\..\..\src\CglOddWheel\CglOddWheel.cpp" />
     <ClCompile Include="..\..\..\src\CglPreProcess\CglPreProcess.cpp" />
     <ClCompile Include="..\..\..\src\CglProbing\CglProbing.cpp" />
     <ClCompile Include="..\..\..\src\CglRedSplit2\CglRedSplit2.cpp" />
@@ -177,6 +175,12 @@
     <ClCompile Include="..\..\..\src\CglZeroHalf\Cgl012cut.cpp" />
     <ClCompile Include="..\..\..\src\CglZeroHalf\CglZeroHalf.cpp" />
     <ClCompile Include="..\..\..\src\CglZeroHalf\CglZeroHalfTest.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\src\CglBKClique\CglBKClique.hpp" />
+    <ClInclude Include="..\..\..\src\CglCliqueStrengthening\CglCliqueStrengthening.hpp" />
+    <ClInclude Include="..\..\..\src\CglOddHole\CglOddHole.hpp" />
+    <ClInclude Include="..\..\..\src\CglOddWheel\CglOddWheel.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
