@@ -6,7 +6,7 @@
 
 class CoinConflictGraph;
 
-class CglOddWheel : public CglCutGenerator
+class CGLLIB_EXPORT CglOddWheel : public CglCutGenerator
 {
 public:
 

@@ -2,11 +2,12 @@
 #define CGLCLIQUESTRENGTHENING_HPP
 
 #include "CoinMessageHandler.hpp"
+#include "CglConfig.h"
 
 class OsiSolverInterface;
 class CoinConflictGraph;
 
-class CglCliqueStrengthening {
+class CGLLIB_EXPORT CglCliqueStrengthening {
 public:
     CglCliqueStrengthening();
     CglCliqueStrengthening(const CglCliqueStrengthening &rhs);

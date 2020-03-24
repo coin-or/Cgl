@@ -6,7 +6,7 @@
 class CoinCliqueList;
 class CoinConflictGraph;
 
-class CglBKClique : public CglCutGenerator {
+class CGLLIB_EXPORT CglBKClique : public CglCutGenerator {
 public:
     CglBKClique();
     CglBKClique(const CglBKClique& rhs);
