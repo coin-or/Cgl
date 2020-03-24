@@ -21,14 +21,14 @@
 
 
 /* Define to 1 if the CoinUtils package is used */
-#define COIN_HAS_COINUTILS 1
+#define CGL_HAS_COINUTILS 1
 
 /* Define to 1 if the Osi package is used */
-#define COIN_HAS_OSI 1
+#define CGL_HAS_OSI 1
 
 /* Define to 1 if the Osi package is used */
-#define COIN_HAS_CLP 1
+#define CGL_HAS_CLP 1
 
 /* Define to 1 if the Clp package is used */
-#define COIN_HAS_OSICLP 1
+#define CGL_HAS_OSICLP 1
 

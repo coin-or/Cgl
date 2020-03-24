@@ -15,7 +15,7 @@
 
 #include "CglConfig.h"
 
-#ifdef COIN_HAS_OSICLP
+#ifdef CGL_HAS_OSICLP
 #include "OsiClpSolverInterface.hpp"
 #endif
 
@@ -350,7 +350,7 @@ CglLandP::CachedData::getData(const OsiSolverInterface &si)
         ncSi->getBasics(basics_);
 	// Save enabled solver
 	solver_ = si.clone();
-#ifdef COIN_HAS_OSICLP
+#ifdef CGL_HAS_OSICLP
 	OsiClpSolverInterface * clpSi = dynamic_cast<OsiClpSolverInterface *>(solver_);
 	const OsiClpSolverInterface * clpSiRhs = dynamic_cast<const OsiClpSolverInterface *>(&si);
 	if (clpSi)

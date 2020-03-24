@@ -862,7 +862,7 @@ CglFakeClique::assignSolver(OsiSolverInterface * fakeSolver)
   if (probing_)
     probing_->refreshSolver(fakeSolver_);
 }
-#ifdef COIN_HAS_CLP
+#ifdef CGL_HAS_CLP
 #include "OsiClpSolverInterface.hpp"
 #endif
 // Generate cuts
@@ -880,7 +880,7 @@ CglFakeClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
     double cutoff;
     si.getDblParam(OsiDualObjectiveLimit,cutoff);
     fakeSolver_->setDblParam(OsiDualObjectiveLimit,COIN_DBL_MAX);
-#ifdef COIN_HAS_CLP
+#ifdef CGL_HAS_CLP
     OsiClpSolverInterface * clpSolver
       = dynamic_cast<OsiClpSolverInterface *> (fakeSolver_);
     if (clpSolver) {

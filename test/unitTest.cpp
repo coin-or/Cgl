@@ -15,22 +15,22 @@
 #include <iostream>
 #include <cstdlib>
 
-#ifdef COIN_HAS_OSICPX
+#ifdef CGL_HAS_OSICPX
 #include <OsiCpxSolverInterface.hpp>
 #endif
-#ifdef COIN_HAS_OSIXPR
+#ifdef CGL_HAS_OSIXPR
 #include <OsiXprSolverInterface.hpp>
 #endif
-#ifdef COIN_HAS_OSICLP
+#ifdef CGL_HAS_OSICLP
 #include <OsiClpSolverInterface.hpp>
 #endif
-#ifdef COIN_HAS_OSIDYLP
+#ifdef CGL_HAS_OSIDYLP
 #include <OsiDylpSolverInterface.hpp>
 #endif
-#ifdef COIN_HAS_OSIGLPK
+#ifdef CGL_HAS_OSIGLPK
 #include <OsiGlpkSolverInterface.hpp>
 #endif
-#ifdef COIN_HAS_OSIVOL
+#ifdef CGL_HAS_OSIVOL
 #include <OsiVolSolverInterface.hpp>
 #endif
 
@@ -99,22 +99,22 @@ int main (int argc, const char *argv[])
   }
 
   std::string solvers ;
-#ifdef COIN_HAS_OSICPX
+#ifdef CGL_HAS_OSICPX
   solvers += " Cplex" ;
 #endif
-#ifdef COIN_HAS_OSIXPR
+#ifdef CGL_HAS_OSIXPR
   solvers += " Xpress" ;
 #endif
-#ifdef COIN_HAS_OSICLP
+#ifdef CGL_HAS_OSICLP
   solvers += " Clp" ;
 #endif
-#ifdef COIN_HAS_OSIDYLP
+#ifdef CGL_HAS_OSIDYLP
   solvers += " DyLP" ;
 #endif
-#ifdef COIN_HAS_OSIGLPK
+#ifdef CGL_HAS_OSIGLPK
   solvers += " Glpk" ;
 #endif
-#ifdef COIN_HAS_OSIVOL
+#ifdef CGL_HAS_OSIVOL
   solvers += " Vol" ;
 #endif
 
@@ -124,7 +124,7 @@ int main (int argc, const char *argv[])
   std::cout << "Test directory: " << testDir << std::endl ;
   std::cout << "Solvers:" << solvers << std::endl ;
 
-#ifdef COIN_HAS_OSICPX
+#ifdef CGL_HAS_OSICPX
   {
     OsiCpxSolverInterface cpxSi;
     testingMessage( "Testing CglGomory with OsiCpxSolverInterface\n" );
@@ -189,7 +189,7 @@ int main (int argc, const char *argv[])
 
 #endif
 
-#ifdef COIN_HAS_OSIXPR
+#ifdef CGL_HAS_OSIXPR
   {
     OsiXprSolverInterface xprSi;
     testingMessage( "Testing CglGomory with OsiXprSolverInterface\n" );
@@ -254,7 +254,7 @@ int main (int argc, const char *argv[])
   }
 
 #endif
-#ifdef COIN_HAS_OSICLP
+#ifdef CGL_HAS_OSICLP
   {
     OsiClpSolverInterface clpSi;
     testingMessage( "Testing CglGomory with OsiClpSolverInterface\n" );
@@ -332,7 +332,7 @@ int main (int argc, const char *argv[])
   }
 
 #endif
-#ifdef COIN_HAS_OSIDYLP
+#ifdef CGL_HAS_OSIDYLP
   {
     OsiDylpSolverInterface dylpSi;
     testingMessage( "Testing CglGomory with OsiDylpSolverInterface\n" );
@@ -401,7 +401,7 @@ int main (int argc, const char *argv[])
   }
 
 #endif
-#ifdef COIN_HAS_OSIGLPK
+#ifdef CGL_HAS_OSIGLPK
   {
     OsiGlpkSolverInterface glpkSi;
     testingMessage( "Testing CglGomory with OsiGlpkSolverInterface\n" );
@@ -471,7 +471,7 @@ int main (int argc, const char *argv[])
 
 #endif
 
-#ifdef COIN_HAS_OSIVOL
+#ifdef CGL_HAS_OSIVOL
   if(0) // p0033: LP not solved to optimality: Finds 2142 versus 2520
   {
     OsiVolSolverInterface volSi;

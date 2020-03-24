@@ -28,8 +28,8 @@
 #endif
 #include "CoinRational.hpp"
 #endif
-#define COIN_HAS_CLP_GOMORY
-#ifdef COIN_HAS_CLP_GOMORY
+#define CGL_HAS_CLP_GOMORY
+#ifdef CGL_HAS_CLP_GOMORY
 #include "OsiClpSolverInterface.hpp"
 #endif
 #include "CoinFactorization.hpp"
@@ -92,7 +92,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     }
   }
   const OsiSolverInterface * useSolver=&si;
-#ifdef COIN_HAS_CLP_GOMORY
+#ifdef CGL_HAS_CLP_GOMORY
   double * objective = NULL;
   OsiClpSolverInterface * clpSolver = dynamic_cast<OsiClpSolverInterface *>(originalSolver_);
   int numberOriginalRows = -1;
@@ -283,7 +283,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 		 useSolver->getColLower(), useSolver->getColUpper(), 
 		 useSolver->getRowLower(), useSolver->getRowUpper(),
 		 intVar,warm,info);
-#ifdef COIN_HAS_CLP_GOMORY
+#ifdef CGL_HAS_CLP_GOMORY
   if (objective) {
     ClpSimplex * simplex = clpSolver->getModelPtr();
     memcpy(simplex->objective(),objective,numberColumns*sizeof(double));

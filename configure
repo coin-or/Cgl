@@ -3271,8 +3271,6 @@ _ACEOF
 
 
 
-
-
 # A useful makefile conditional that is always false
 
    if false; then
@@ -17363,7 +17361,7 @@ fi
 
   if test $coin_has_coinutils = yes ; then
 
-$as_echo "#define COIN_HAS_COINUTILS 1" >>confdefs.h
+$as_echo "#define CGL_HAS_COINUTILS 1" >>confdefs.h
 
     if test -n "$coinutils_pcfiles" ; then CGLLIB_PCFILES="$coinutils_pcfiles $CGLLIB_PCFILES" ; fi
        CGLLIB_LFLAGS="$coinutils_lflags $CGLLIB_LFLAGS"
@@ -17631,7 +17629,7 @@ fi
 
   if test $coin_has_osi = yes ; then
 
-$as_echo "#define COIN_HAS_OSI 1" >>confdefs.h
+$as_echo "#define CGL_HAS_OSI 1" >>confdefs.h
 
     if test -n "$osi_pcfiles" ; then CGLLIB_PCFILES="$osi_pcfiles $CGLLIB_PCFILES" ; fi
        CGLLIB_LFLAGS="$osi_lflags $CGLLIB_LFLAGS"
@@ -17897,7 +17895,7 @@ fi
 
   if test $coin_has_osiclp = yes ; then
 
-$as_echo "#define COIN_HAS_OSICLP 1" >>confdefs.h
+$as_echo "#define CGL_HAS_OSICLP 1" >>confdefs.h
 
     if test -n "$osiclp_pcfiles" ; then CGLLIB_PCFILES="$osiclp_pcfiles $CGLLIB_PCFILES" ; fi
        CGLLIB_LFLAGS="$osiclp_lflags $CGLLIB_LFLAGS"
@@ -18224,7 +18222,7 @@ fi
 
   if test $coin_has_osicpx = yes ; then
 
-$as_echo "#define COIN_HAS_OSICPX 1" >>confdefs.h
+$as_echo "#define CGL_HAS_OSICPX 1" >>confdefs.h
 
     if test -n "$osicpx_pcfiles" ; then CGLUNITTEST_PCFILES="$osicpx_pcfiles $CGLUNITTEST_PCFILES" ; fi
        CGLUNITTEST_LFLAGS="$osicpx_lflags $CGLUNITTEST_LFLAGS"
@@ -18478,7 +18476,7 @@ fi
 
   if test $coin_has_osiglpk = yes ; then
 
-$as_echo "#define COIN_HAS_OSIGLPK 1" >>confdefs.h
+$as_echo "#define CGL_HAS_OSIGLPK 1" >>confdefs.h
 
     if test -n "$osiglpk_pcfiles" ; then CGLUNITTEST_PCFILES="$osiglpk_pcfiles $CGLUNITTEST_PCFILES" ; fi
        CGLUNITTEST_LFLAGS="$osiglpk_lflags $CGLUNITTEST_LFLAGS"
@@ -18732,7 +18730,7 @@ fi
 
   if test $coin_has_osigrb = yes ; then
 
-$as_echo "#define COIN_HAS_OSIGRB 1" >>confdefs.h
+$as_echo "#define CGL_HAS_OSIGRB 1" >>confdefs.h
 
     if test -n "$osigrb_pcfiles" ; then CGLUNITTEST_PCFILES="$osigrb_pcfiles $CGLUNITTEST_PCFILES" ; fi
        CGLUNITTEST_LFLAGS="$osigrb_lflags $CGLUNITTEST_LFLAGS"
@@ -18986,7 +18984,7 @@ fi
 
   if test $coin_has_osimsk = yes ; then
 
-$as_echo "#define COIN_HAS_OSIMSK 1" >>confdefs.h
+$as_echo "#define CGL_HAS_OSIMSK 1" >>confdefs.h
 
     if test -n "$osimsk_pcfiles" ; then CGLUNITTEST_PCFILES="$osimsk_pcfiles $CGLUNITTEST_PCFILES" ; fi
        CGLUNITTEST_LFLAGS="$osimsk_lflags $CGLUNITTEST_LFLAGS"
@@ -19240,7 +19238,7 @@ fi
 
   if test $coin_has_osixpr = yes ; then
 
-$as_echo "#define COIN_HAS_OSIXPR 1" >>confdefs.h
+$as_echo "#define CGL_HAS_OSIXPR 1" >>confdefs.h
 
     if test -n "$osixpr_pcfiles" ; then CGLUNITTEST_PCFILES="$osixpr_pcfiles $CGLUNITTEST_PCFILES" ; fi
        CGLUNITTEST_LFLAGS="$osixpr_lflags $CGLUNITTEST_LFLAGS"
@@ -19494,7 +19492,7 @@ fi
 
   if test $coin_has_osivol = yes ; then
 
-$as_echo "#define COIN_HAS_OSIVOL 1" >>confdefs.h
+$as_echo "#define CGL_HAS_OSIVOL 1" >>confdefs.h
 
     if test -n "$osivol_pcfiles" ; then CGLUNITTEST_PCFILES="$osivol_pcfiles $CGLUNITTEST_PCFILES" ; fi
        CGLUNITTEST_LFLAGS="$osivol_lflags $CGLUNITTEST_LFLAGS"
@@ -19748,7 +19746,7 @@ fi
 
   if test $coin_has_osidylp = yes ; then
 
-$as_echo "#define COIN_HAS_OSIDYLP 1" >>confdefs.h
+$as_echo "#define CGL_HAS_OSIDYLP 1" >>confdefs.h
 
     if test -n "$osidylp_pcfiles" ; then CGLUNITTEST_PCFILES="$osidylp_pcfiles $CGLUNITTEST_PCFILES" ; fi
        CGLUNITTEST_LFLAGS="$osidylp_lflags $CGLUNITTEST_LFLAGS"
@@ -20002,7 +20000,7 @@ fi
 
   if test $coin_has_osispx = yes ; then
 
-$as_echo "#define COIN_HAS_OSISPX 1" >>confdefs.h
+$as_echo "#define CGL_HAS_OSISPX 1" >>confdefs.h
 
     if test -n "$osispx_pcfiles" ; then CGLUNITTEST_PCFILES="$osispx_pcfiles $CGLUNITTEST_PCFILES" ; fi
        CGLUNITTEST_LFLAGS="$osispx_lflags $CGLUNITTEST_LFLAGS"
@@ -20292,7 +20290,7 @@ fi
 
   if test $coin_has_sample = yes ; then
 
-$as_echo "#define COIN_HAS_SAMPLE 1" >>confdefs.h
+$as_echo "#define CGL_HAS_SAMPLE 1" >>confdefs.h
 
 
 

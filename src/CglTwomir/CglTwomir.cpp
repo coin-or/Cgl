@@ -23,8 +23,8 @@
 #include "CoinWarmStartBasis.hpp"
 #include "CglTwomir.hpp"
 class CoinWarmStartBasis;
-#define COIN_HAS_CLP_TWOMIR
-#ifdef COIN_HAS_CLP_TWOMIR
+#define CGL_HAS_CLP_TWOMIR
+#ifdef CGL_HAS_CLP_TWOMIR
 #include "OsiClpSolverInterface.hpp"
 #endif
 #undef DGG_DEBUG_DGG
@@ -94,7 +94,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   const double * colUpper = si.getColUpper();
   const double * colLower = si.getColLower();
   const OsiSolverInterface * useSolver;
-#ifdef COIN_HAS_CLP_TWOMIR
+#ifdef CGL_HAS_CLP_TWOMIR
   double * objective = NULL;
   OsiClpSolverInterface * clpSolver = dynamic_cast<OsiClpSolverInterface *>(originalSolver_);
   int numberOriginalRows;
@@ -117,7 +117,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 #endif
       return;
     }
-#ifdef COIN_HAS_CLP_TWOMIR
+#ifdef CGL_HAS_CLP_TWOMIR
   } else {
     useSolver = originalSolver_;
     assert (twomirType_);
@@ -431,7 +431,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	cs.rowCutPtr(i)->setGloballyValid();
     }
   }
-#ifdef COIN_HAS_CLP_TWOMIR
+#ifdef CGL_HAS_CLP_TWOMIR
   if (objective) {
     int numberRowCutsAfter = cs.sizeRowCuts();
     ClpSimplex * simplex = clpSolver->getModelPtr();
