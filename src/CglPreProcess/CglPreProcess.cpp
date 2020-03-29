@@ -7778,7 +7778,7 @@ static int hashCut(const OsiRowCut &x, int size)
     assert(sizeof(value) == 2 * sizeof(hashValue));
     union {
       double d;
-      int i[2];
+      unsigned int i[2];
     } xx;
     xx.d = value;
     hashValue = (xx.i[0] + xx.i[1]);
