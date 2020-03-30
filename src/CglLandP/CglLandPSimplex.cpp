@@ -628,6 +628,7 @@ CglLandPSimplex::optimize
     double timeLimit = CoinMin(params.timeLimit, params.singleCutTimeLimit);
     timeLimit += CoinCpuTime();
     // double timeBegin = CoinCpuTime();
+    int maximumCutLength = params.maximumCutLength;
     /** Copy the cached information */
     nrows_ = nrows_orig_;
     ncols_ = ncols_orig_;
@@ -675,6 +676,9 @@ CglLandPSimplex::optimize
         row_k_.num = row;
 
     pullTableauRow(row_k_);
+    // give up if too many elements
+    if (row_k_.getNumElements()>maximumCutLength)
+      return false;
     row_k_.rhs = row_k_.rhs - floor(row_k_.rhs);
 
     if (params.modularize)
@@ -910,6 +914,9 @@ CglLandPSimplex::optimize
         std::string limit="failed pivots";
         handler_->message(HitLimit, messages_)<<limit<<numPivots<<CoinMessageEol<<CoinMessageEol;
     }
+    // give up if too many elements
+    if (row_k_.getNumElements()>maximumCutLength)
+      return false;
     //Create the cut
 
     //pullTableauRow(row_k_);
@@ -2729,7 +2736,7 @@ CglLandPSimplex::createMIG( TabRow &row, OsiRowCut &cut) const
         assert(fabs(cutRhs)<1e100);
         for (int j = 0; j < ncols_ ; j++)
         {
-            if (fabs(row[nonBasics_[j]])>0.)
+            if (fabs(row[nonBasics_[j]]))
             {
                 {
                     if (nonBasics_[j]<ncols_orig_)
@@ -2759,16 +2766,24 @@ CglLandPSimplex::createMIG( TabRow &row, OsiRowCut &cut) const
                     {
                         int iRow = nonBasics_[j] - ncols_;
                         double value = strengthenedIntersectionCutCoef(nonBasics_[j], row[nonBasics_[j]], row.rhs);
+			//if (rowLower[iRow]<rowUpper[iRow]) 
+			  //printf("row %d status %d lower %g sol %g upper %g\n",
+			  //	 iRow,basis_->getArtifStatus(iRow),
+			  //	 rowLower[iRow],si_->getRowActivity()[iRow],
+			  //	 rowUpper[iRow]);
                         if (rowUpper[iRow] < infty)
                         {
+			  if (basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atUpperBound)
+                            cutRhs -= value*rowLower[iRow];
+			  else
                             cutRhs -= value*rowUpper[iRow];
                         }
                         else
                         {
                             value = -value;
                             cutRhs -= value*rowLower[iRow];
-                            assert(basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atUpperBound ||
-                                   (rowUpper[iRow] < infty));
+                            //assert(basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atUpperBound ||
+			    //     (rowUpper[iRow] < infty));
                         }
                         vec[original_index_[nonBasics_[j]]] = value;
                         assert(fabs(cutRhs)<1e100);

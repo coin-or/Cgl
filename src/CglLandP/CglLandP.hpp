@@ -133,6 +133,8 @@ public:
         int extraCutsLimit;
 	/// Maximum size of "indices"
 	int maximumCandidates;
+	/// Maximum size of cut
+	int maximumCutLength;
         ///@}
         /// @name double parameters
         ///@{

@@ -10,6 +10,7 @@
 //---------------------------------------------------------------------------
 #include "CglLandP.hpp"
 #include "CglLandPSimplex.hpp"
+#include "OsiRowCutDebugger.hpp"
 
 #define INT_INFEAS(value) fabs(value - floor(value+0.5))
 
@@ -51,6 +52,7 @@ CglLandP::Parameters::Parameters():
         degeneratePivotLimit(0),
         extraCutsLimit(5),
 	maximumCandidates(1000000),
+	maximumCutLength(10000),
         pivotTol(1e-4),
         away(5e-4),
         timeLimit(COIN_DBL_MAX),
@@ -80,6 +82,7 @@ CglLandP::Parameters::Parameters(const Parameters &other):
         degeneratePivotLimit(other.degeneratePivotLimit),
         extraCutsLimit(other.extraCutsLimit),
 	maximumCandidates(other.maximumCandidates),
+	maximumCutLength(other.maximumCutLength),
         pivotTol(other.pivotTol),
         away(other.away),
         timeLimit(other.timeLimit),
@@ -110,6 +113,7 @@ CglLandP::Parameters & CglLandP::Parameters::operator=(const Parameters &other)
         degeneratePivotLimit = other.failedPivotLimit;
         extraCutsLimit = other.extraCutsLimit;
 	maximumCandidates = other.maximumCandidates;
+	maximumCutLength = other.maximumCutLength;
         pivotTol = other.pivotTol;
         away = other.away;
         timeLimit = other.timeLimit;
@@ -668,6 +672,14 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
             {
                 cut.setGloballyValid(true);
             }
+	    const OsiRowCutDebugger *debugger = si.getRowCutDebugger();
+	    if (debugger) {
+	      if (debugger->invalidCut(cut)) {
+		printf("BAD cut\n");
+		exit(0);
+	      }
+	    }
+	    //CoinAssert (!debugger->invalidCut(*cut));
             cs.insertIfNotDuplicate(cut, eq);
             //cs.insertIfNotDuplicate(cut);
             {
