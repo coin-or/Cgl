@@ -1215,6 +1215,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       return modifiedModel_[0];
     } else {
       numberSolvers_ = 1;
+      return NULL;
     }
   }
   //startModel_=&model;
