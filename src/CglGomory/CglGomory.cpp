@@ -34,7 +34,7 @@
 #endif
 #include "CoinFactorization.hpp"
 #undef CLP_OSL
-#if COIN_BIG_INDEX==0
+#if COINUTILS_BIGINDEX_IS_INT
 #define CLP_OSL 1
 #if CLP_OSL!=1&&CLP_OSL!=3
 #undef CLP_OSL
