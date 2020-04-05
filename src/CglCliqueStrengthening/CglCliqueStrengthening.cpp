@@ -420,7 +420,7 @@ void CglCliqueStrengthening::strengthenCliques(OsiSolverInterface &model, size_t
     int *nrIdx = (int*)xmalloc(sizeof(int) * newCliques.totalElements());
     int *idxMap = (int*)xmalloc(sizeof(int) * numCols);//controls duplicated indexes (var and complement)
     double *nrCoef = (double*)xmalloc(sizeof(double) * newCliques.totalElements());
-    int *nrStart = (int*)xmalloc(sizeof(int) * (nCliques + 1)); nrStart[0] = 0;
+    CoinBigIndex *nrStart = (CoinBigIndex*)xmalloc(sizeof(CoinBigIndex) * (nCliques + 1)); nrStart[0] = 0;
     double *nrLB = (double*)xmalloc(sizeof(double) * nCliques);
     double *nrUB = (double*)xmalloc(sizeof(double) * nCliques);
     size_t numVars = 0;
@@ -461,9 +461,9 @@ void CglCliqueStrengthening::strengthenCliques(OsiSolverInterface &model, size_t
 
         assert(duplicated == 0 || duplicated == 1);
         if(duplicated == 1) {
-            int last = nrStart[ic];
+            CoinBigIndex last = nrStart[ic];
             rhs = 0.0;
-            for(int k = nrStart[ic]; k < numVars; k++) {
+            for(CoinBigIndex k = nrStart[ic]; k < numVars; k++) {
     			assert(nrCoef[k] == -1.0 || nrCoef[k] == 0.0 || nrCoef[k] == 1.0);
                 if(nrCoef[k] == -1.0 || nrCoef[k] == 1.0) {
                     nrIdx[last] = nrIdx[k];
