@@ -385,9 +385,6 @@ void CglCliqueStrengthening::strengthenCliques(OsiSolverInterface &model, size_t
         }
     }
 
-#ifdef DEBUGCG
-    assert(clqNames.size() == nCliques);
-#endif
 
     free(rc);
     free(colClqs[0]);
