@@ -8,8 +8,8 @@ Name: CGL
 Description: COIN-OR Cut Generation Library
 URL: https://github.com/coin-or/Clp
 Version: @PACKAGE_VERSION@
-Libs: -L${libdir} -lCgl
-Libs.private: @CGLLIB_LFLAGS_NOPC@
 Cflags: -I${includedir}
-Requires:
-Requires.private: @CGLLIB_PCFILES@
+@COIN_STATIC_BUILD_FALSE@Libs: -L${libdir} -lCgl
+@COIN_STATIC_BUILD_FALSE@Requires.private: @CGLLIB_PCFILES@
+@COIN_STATIC_BUILD_TRUE@Libs: -L${libdir} -lCgl @CGLLIB_LFLAGS_NOPC@
+@COIN_STATIC_BUILD_TRUE@Requires: @CGLLIB_PCFILES@
