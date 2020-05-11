@@ -1684,6 +1684,75 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   }
   bool feasible=true;
   if (!info->inTree&&!info->pass) {
+#if CBC_PREPROCESS_EXPERIMENT>1
+    int nRows = si.getNumRows();
+    double * columnLo = new double [2*nRows+2*nCols];
+    double * columnUp = columnLo + nCols;
+    double * rowLo = columnUp + nCols;
+    double * rowUp = rowLo + nRows;
+    // temp
+    memcpy(columnLo,si.getColLower(),nCols*sizeof(double));
+    memcpy(columnUp,si.getColUpper(),nCols*sizeof(double));
+    memcpy(rowLo,si.getRowLower(),nRows*sizeof(double));
+    memcpy(rowUp,si.getRowUpper(),nRows*sizeof(double));
+    // Get a row copy in standard format
+    CoinPackedMatrix rowCopy = *si.getMatrixByRow();
+    int columnsTightened;
+    int rowsTightened;
+    int elementsChanged;
+    si.tightPrimalBounds(rowLo,rowUp,columnLo,columnUp,
+    			 columnsTightened,rowsTightened,
+    			 elementsChanged,rowCopy);
+    int nChanged = 0;
+    CoinPackedVector lbs;
+    CoinPackedVector ubs;
+    for (int iColumn = 0;iColumn<nCols;iColumn++) {
+      if (columnLo[iColumn]>colLower[iColumn]) {
+	nChanged++;
+	colLower[iColumn] = columnLo[iColumn];
+	if (intVar[iColumn]) 
+	  lbs.insert(iColumn,columnLo[iColumn]);
+      }
+      if (columnUp[iColumn]<colUpper[iColumn]) {
+	nChanged++;
+	colUpper[iColumn] = columnUp[iColumn];
+	if (intVar[iColumn]) 
+	  ubs.insert(iColumn,columnUp[iColumn]);
+      }
+    }
+#ifdef LOTS_OF_PRINTING
+    printf("%d bounds changed, %d lower int, %d upper int\n",
+	   nChanged,lbs.getNumElements(),ubs.getNumElements());
+#endif
+    if (lbs.getNumElements()) {
+      OsiColCut cc;
+      cc.setLbs(lbs);
+      cs.insert(cc);
+    }
+    if (ubs.getNumElements()) {
+      OsiColCut cc;
+      cc.setUbs(ubs);
+      cs.insert(cc);
+    }
+    if (rowCopy_) {
+      //printf("Can't tighten row bounds\n");
+    } else {
+      nChanged=0;
+      for (int iRow = 0;iRow<nRows;iRow++) {
+	if (rowLo[iRow]>rowLower[iRow]) {
+	  nChanged++;
+	  rowLower[iRow] = rowLo[iRow];
+	}
+	if (rowUp[iRow]<rowUpper[iRow]) {
+	  nChanged++;
+	  rowUpper[iRow] = rowUp[iRow];
+	}
+      }
+#ifdef LOTS_OF_PRINTING
+      printf("%d row bounds changed\n",nChanged);
+#endif
+    }
+#endif
     // make more integer
     feasible = analyze(&si,intVar,colLower,colUpper);
   }

@@ -70,11 +70,9 @@ public:
   /** Tightens primal bounds to make dual and branch and cutfaster.  Unless
       fixed or integral, bounds are slightly looser than they could be.
       Returns non-zero if problem infeasible
-      Fudge for branch and bound - put bounds on columns of factor *
-      largest value (at continuous) - should improve stability
-      in branch and bound on infeasible branches (0.0 is off)
   */
-  int tightenPrimalBounds(OsiSolverInterface &model, double factor = 0.0);
+  int tightenPrimalBounds(OsiSolverInterface &model,
+			  bool tightenRowBounds=false);
   /** Fix some of problem - returning new problem.
       Uses reduced costs.
       Optional signed character array
