@@ -1,3 +1,21 @@
+/**
+ *
+ * This file is part of the COIN-OR CBC MIP Solver
+ *
+ * Class responsible for separating clique cuts.
+ * It uses the Bron-Kerbosch (BK) algorithm.
+ *
+ * @file CglBKClique.hpp
+ * @brief Clique cut separator
+ * @author Samuel Souza Brito and Haroldo Gambini Santos
+ * Contact: samuelbrito@ufop.edu.br and haroldo@ufop.edu.br
+ * @date 03/27/2020
+ *
+ * \copyright{Copyright 2020 Brito, S.S. and Santos, H.G.}
+ * \license{This This code is licensed under the terms of the Eclipse Public License (EPL).}
+ *
+ **/
+
 #include <cstdio>
 #include <cassert>
 #include <OsiCuts.hpp>
@@ -256,10 +274,10 @@ CoinCliqueList* CglBKClique::extendCliques(const OsiSolverInterface &si, const C
     for (size_t i = 0; i < initialCliques->nCliques(); i++) {
         const size_t *clqEl = initialCliques->cliqueElements(i);
         const size_t nClqEl = initialCliques->cliqueSize(i);
-        const size_t nNewClqs = clqe.extendClique(clqEl, nClqEl);
+        const bool extended = clqe.extendClique(clqEl, nClqEl);
 
         /* adds clique if it is not extended */
-        if (!nNewClqs) {
+        if (!extended) {
             extCliques->addClique(nClqEl, clqEl);
         }
     }

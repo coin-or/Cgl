@@ -1,3 +1,22 @@
+/**
+ *
+ * This file is part of the COIN-OR CBC MIP Solver
+ *
+ * Class for separating violated odd-cycles. It contains
+ * a lifting module that tries to transform the odd-cycles
+ * into odd-wheels.
+ *
+ * @file CglOddWheel.cpp
+ * @brief Odd-wheel cut separator
+ * @author Samuel Souza Brito and Haroldo Gambini Santos
+ * Contact: samuelbrito@ufop.edu.br and haroldo@ufop.edu.br
+ * @date 03/27/2020
+ *
+ * \copyright{Copyright 2020 Brito, S.S. and Santos, H.G.}
+ * \license{This This code is licensed under the terms of the Eclipse Public License (EPL).}
+ *
+ **/
+
 #include <cstdio>
 #include <cassert>
 

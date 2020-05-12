@@ -1,3 +1,22 @@
+/**
+ *
+ * This file is part of the COIN-OR CBC MIP Solver
+ *
+ * Class that implements a conflict-based preprocessing.
+ * It tries to extend set packing constraints considering
+ * the conflict graph and using a greedy strategy.
+ *
+ * @file CglCliqueStrengthening.cpp
+ * @brief Conflict-based preprocessing
+ * @author Samuel Souza Brito and Haroldo Gambini Santos
+ * Contact: samuelbrito@ufop.edu.br and haroldo@ufop.edu.br
+ * @date 03/27/2020
+ *
+ * \copyright{Copyright 2020 Brito, S.S. and Santos, H.G.}
+ * \license{This This code is licensed under the terms of the Eclipse Public License (EPL).}
+ *
+ **/
+
 #include <cfloat>
 #include <cassert>
 #include <algorithm>
