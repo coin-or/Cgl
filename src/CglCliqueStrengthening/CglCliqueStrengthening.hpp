@@ -59,7 +59,11 @@ public:
   void gutsOfDestructor();
 
   /**
-   * Try to extend the set packing constraints of a model.
+   * Tries to strengthen set packing constraints of a model.
+   * After strengthening (extending), dominated constraints
+   * are removed (clique merging).
+   *
+   *
    * Extension method: 0 = no extension;1 = random;
    * 2 = max degree; 3 = max modified degree;
    * 4 = reduced cost (inversely proportional);
