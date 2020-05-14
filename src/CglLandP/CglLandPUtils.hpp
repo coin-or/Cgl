@@ -4,7 +4,6 @@
 //           CNRS, Aix-Marseille Universites
 // Date:     02/23/08
 //
-// $Id$
 //
 // This code is licensed under the terms of the Eclipse Public License (EPL).
 //---------------------------------------------------------------------------

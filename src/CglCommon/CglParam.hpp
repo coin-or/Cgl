@@ -5,7 +5,6 @@
 //           email: fmargot@andrew.cmu.edu
 // Date:     11/24/06
 //
-// $Id$
 //
 // This code is licensed under the terms of the Eclipse Public License (EPL).
 //-----------------------------------------------------------------------------

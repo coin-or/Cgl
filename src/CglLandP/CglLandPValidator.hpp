@@ -4,7 +4,6 @@
 //           Carnegie Mellon University, Pittsburgh, PA 15213
 // Date:     11/22/05
 //
-// $Id$
 //
 // This code is licensed under the terms of the Eclipse Public License (EPL).
 //---------------------------------------------------------------------------

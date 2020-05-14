@@ -1,4 +1,3 @@
-// $Id$
 //-----------------------------------------------------------------------------
 // name:     Cgl Lifed Simple Generalized Flow Cover Cut Generator
 // author:   Yan Xu                email: Yan.Xu@sas.com
