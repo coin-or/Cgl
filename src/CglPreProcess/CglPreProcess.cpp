@@ -2128,10 +2128,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   column = matrixByRow.getIndices();
   rowStart = matrixByRow.getVectorStarts();
   rowLength = matrixByRow.getVectorLengths();
-  char *marked = new char[numberColumns];
-  memset(marked, 0, numberColumns);
   numberRows = startModel_->getNumRows();
   numberColumns = startModel_->getNumCols();
+  char *marked = new char[numberColumns];
+  memset(marked, 0, numberColumns);
   // Column copy
 #ifdef CBC_PREPROCESS_EXPERIMENT
   //CoinPackedMatrix * matrixByColumn = const_cast<CoinPackedMatrix *>(startModel_->getMatrixByCol());
