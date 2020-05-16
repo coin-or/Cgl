@@ -23,8 +23,6 @@
 #include "CglCliqueStrengthening.hpp"
 #include "CoinStaticConflictGraph.hpp"
 #include "CoinCliqueExtender.hpp"
-#include "CoinCliqueSet.hpp"
-#include "OsiSolverInterface.hpp"
 #include "CglMessage.hpp"
 
 #define CLQ_STR_EPS 1e-6
@@ -33,506 +31,590 @@
 static void *xmalloc( const size_t size );
 static void *xcalloc( const size_t elements, const size_t size );
 
-enum CliqueStatus {
-    NotDominated = 1,
-    Dominated = 2
-};
-
-class CliqueRows {
-public:
-    explicit CliqueRows(size_t linesToReserve, size_t nzsToReserve) {
-        nRows_ = 0;
-        starts_ = (size_t*)xmalloc(sizeof(size_t) * (linesToReserve + 1));
-        starts_[0] = 0;
-        rowIdx_ = (size_t*)xmalloc(sizeof(size_t) * linesToReserve);
-        rowStatus_ = (CliqueStatus*)xmalloc(sizeof(CliqueStatus) * linesToReserve);
-        elements_ = (size_t*)xmalloc(sizeof(size_t) * nzsToReserve);
-    }
-
-    ~CliqueRows() {
-        free(starts_);
-        free(elements_);
-        free(rowIdx_);
-        free(rowStatus_);
-    }
-
-    void addRow(size_t nz, const size_t els[], size_t rowIdx, CliqueStatus status) {
-        std::copy(els, els + nz, elements_ + starts_[nRows_]);
-        rowIdx_[nRows_] = rowIdx;
-        rowStatus_[nRows_] = status;
-        nRows_++;
-        starts_[nRows_] = starts_[nRows_ - 1] + nz;
-    }
-
-    const size_t* row(size_t idxRow) const {
-#ifdef DEBUGCG
-        assert(idxRow < nRows_);
-#endif
-        return elements_ + starts_[idxRow];
-    }
-
-    size_t origIdxRow(size_t idxRow) const {
-#ifdef DEBUGCG
-        assert(idxRow < nRows_);
-#endif
-        return rowIdx_[idxRow];
-    }
-
-    size_t nz(size_t idxRow) const {
-#ifdef DEBUGCG
-        assert(idxRow < nRows_);
-#endif
-        return starts_[idxRow + 1] - starts_[idxRow];
-    }
-
-    CliqueStatus status(size_t idxRow) const {
-#ifdef DEBUGCG
-        assert(idxRow < nRows_);
-#endif
-        return rowStatus_[idxRow];
-    }
-
-    void setStatus(size_t idxRow, CliqueStatus status) const {
-#ifdef DEBUGCG
-        assert(idxRow < nRows_);
-#endif
-        rowStatus_[idxRow] = status;
-    }
-
-    size_t rows() const {
-        return nRows_;
-    }
-
-private:
-    size_t *starts_, *elements_, *rowIdx_;
-    size_t nRows_;
-    CliqueStatus *rowStatus_;
-};
-
-CglCliqueStrengthening::CglCliqueStrengthening() : nExtended_(0), nDominated_(0), handler_(NULL),
-defaultHandler_(true) {
-    handler_ = new CoinMessageHandler();
-    handler_->setLogLevel(2);
-    messages_ = CglMessage();
+CliqueRows::CliqueRows(size_t linesToReserve, size_t nzsToReserve) {
+  nRows_ = 0;
+  starts_ = (size_t*)xmalloc(sizeof(size_t) * (linesToReserve + 1));
+  starts_[0] = 0;
+  rowIdx_ = (size_t*)xmalloc(sizeof(size_t) * linesToReserve);
+  rowStatus_ = (CliqueRowStatus*)xmalloc(sizeof(CliqueRowStatus) * linesToReserve);
+  elements_ = (size_t*)xmalloc(sizeof(size_t) * nzsToReserve);
 }
 
-CglCliqueStrengthening::CglCliqueStrengthening(const CglCliqueStrengthening &rhs) :
-nExtended_(rhs.nExtended_), nDominated_(rhs.nDominated_),
-defaultHandler_(rhs.defaultHandler_) {
-
-    if (defaultHandler_) {
-        handler_ = new CoinMessageHandler();
-        handler_->setLogLevel(rhs.handler_->logLevel());
-    } else {
-        handler_ = rhs.handler_;
-    }
-    messages_ = rhs.messages_;
+CliqueRows::~CliqueRows() {
+    free(starts_);
+    free(elements_);
+    free(rowIdx_);
+    free(rowStatus_);
 }
 
-CglCliqueStrengthening &CglCliqueStrengthening::operator=(const CglCliqueStrengthening &rhs) {
-    if (this != &rhs) {
-        gutsOfDestructor();
-        nExtended_ = rhs.nExtended_;
-        nDominated_ = rhs.nDominated_;
-        defaultHandler_ = rhs.defaultHandler_;
-        if (defaultHandler_) {
-            handler_ = new CoinMessageHandler();
-            handler_->setLogLevel(rhs.handler_->logLevel());
-        } else {
-            handler_ = rhs.handler_;
-        }
-        messages_ = rhs.messages_;
-    }
+void CliqueRows::addRow(size_t nz, const size_t els[], size_t rowIdx, CliqueRowStatus status) {
+  std::copy(els, els + nz, elements_ + starts_[nRows_]);
+  rowIdx_[nRows_] = rowIdx;
+  rowStatus_[nRows_] = status;
+  nRows_++;
+  starts_[nRows_] = starts_[nRows_ - 1] + nz;
+}
 
-    return *this;
+const size_t* CliqueRows::row(size_t idxRow) const {
+#ifdef DEBUGCG
+  assert(idxRow < nRows_);
+#endif
+  return elements_ + starts_[idxRow];
+}
+
+size_t CliqueRows::origIdxRow(size_t idxRow) const {
+#ifdef DEBUGCG
+  assert(idxRow < nRows_);
+#endif
+  return rowIdx_[idxRow];
+}
+
+size_t CliqueRows::nz(size_t idxRow) const {
+#ifdef DEBUGCG
+  assert(idxRow < nRows_);
+#endif
+  return starts_[idxRow + 1] - starts_[idxRow];
+}
+
+CliqueRowStatus CliqueRows::status(size_t idxRow) const {
+#ifdef DEBUGCG
+  assert(idxRow < nRows_);
+#endif
+  return rowStatus_[idxRow];
+}
+
+void CliqueRows::setStatus(size_t idxRow, CliqueRowStatus status) const {
+#ifdef DEBUGCG
+  assert(idxRow < nRows_);
+#endif
+  rowStatus_[idxRow] = status;
+}
+
+size_t CliqueRows::rows() const {
+  return nRows_;
+}
+
+CglCliqueStrengthening::CglCliqueStrengthening(OsiSolverInterface *model) :
+nExtended_(0), nDominated_(0), handler_(NULL), defaultHandler_(true) {
+  handler_ = new CoinMessageHandler();
+  handler_->setLogLevel(2);
+  messages_ = CglMessage();
+  model_ = model;
+  model_->checkCGraph();
+  cgraph_ = model_->getCGraph();
+  cliqueRows_ = NULL;
+  posInClqRows_ = NULL;
+  nColClqs_ = NULL;
+  colClqs_ = NULL;
+
+  if (model_->getNumElements() > 0) {
+    cliqueRows_ = new CliqueRows(model_->getNumRows(), model_->getNumElements());
+    posInClqRows_ = (size_t*)xmalloc(sizeof(size_t) * model_->getNumRows());
+
+    detectCliqueRows();
+    fillCliquesByColumn();
+  }
 }
 
 CglCliqueStrengthening::~CglCliqueStrengthening() {
-    gutsOfDestructor();
+  if (defaultHandler_) {
+    delete handler_;
+    handler_ = NULL;
+  }
+
+  if (cliqueRows_) {
+    delete cliqueRows_;
+    free(nColClqs_);
+    free(colClqs_[0]);
+    free(colClqs_);
+    free(posInClqRows_);
+  }
 }
 
-void CglCliqueStrengthening::gutsOfDestructor() {
-    if (defaultHandler_) {
-        delete handler_;
-        handler_ = NULL;
+void CglCliqueStrengthening::detectCliqueRows() {
+  const int numRows = model_->getNumRows();
+  const int numCols = model_->getNumCols();
+  const CoinPackedMatrix *cpmRow = model_->getMatrixByRow();
+  const CoinBigIndex *starts = cpmRow->getVectorStarts();
+  const double *Arhs = model_->getRightHandSide();
+  const char *Asense = model_->getRowSense();
+  const double *colLB = model_->getColLower();
+  const double *colUB = model_->getColUpper();
+  const char *colType = model_->getColType();
+  const int *lengths = cpmRow->getVectorLengths();
+  size_t *tmpRow = (size_t*)xmalloc(sizeof(size_t) * numCols);
+
+  for (size_t i = 0; i < numRows; i++) {
+    const size_t nz = lengths[i];
+    const char sense = Asense[i];
+
+    posInClqRows_[i] = numRows; //just initializing
+
+    if (nz <= 1 || nz > MAX_SIZE_CLIQUE_TO_BE_EXTENDED) {
+      continue;
     }
+
+    if (sense != 'L' && sense != 'G') {
+      continue;
+    }
+
+    const int *idxs = cpmRow->getIndices() + starts[i];
+    const double *coefs = cpmRow->getElements() + starts[i];
+    const double mult = (sense == 'G') ? -1.0 : 1.0;
+    double rhs = mult * Arhs[i];
+
+    bool testRow = true;
+    double minCoef1 = std::numeric_limits< double >::max();
+    double minCoef2 = std::numeric_limits< double >::max();
+    for (size_t j = 0; j < nz; j++) {
+      tmpRow[j] = idxs[j];
+
+      double coefCol = coefs[j] * mult;
+      const bool isBinary = (colType[tmpRow[j]] != 0) && (colLB[tmpRow[j]] == 1.0 || colLB[tmpRow[j]] == 0.0)
+                            && (colUB[tmpRow[j]] == 0.0 || colUB[tmpRow[j]] == 1.0);
+
+      if (!isBinary) {
+        testRow = false;
+        break;
+      }
+
+      if (coefCol <=- CLQ_STR_EPS) {
+        tmpRow[j] += numCols;
+        coefCol = -coefCol;
+        rhs = rhs + coefCol;
+      }
+
+      if (coefCol + CLQ_STR_EPS <= minCoef1) {
+        minCoef2 = minCoef1;
+        minCoef1 = coefCol;
+      } else if (coefCol + CLQ_STR_EPS <= minCoef2) {
+        minCoef2 = coefCol;
+      }
+    }
+
+    if (!testRow) {
+      continue;
+    }
+
+    if (minCoef1 + minCoef2 >= rhs + CLQ_STR_EPS) {
+      posInClqRows_[i] = cliqueRows_->rows();
+      cliqueRows_->addRow(nz, tmpRow, i, NotDominated);
+    }
+  }
+
+  free(tmpRow);
+}
+
+void CglCliqueStrengthening::fillCliquesByColumn() {
+  size_t nElements = 0;
+  const int numCols = model_->getNumCols();
+  nColClqs_ = (size_t *) xcalloc(numCols * 2, sizeof(size_t));
+
+  for (size_t i = 0; i < cliqueRows_->rows(); i++) {
+    const size_t *clqEl = cliqueRows_->row(i);
+    const size_t clqSize = cliqueRows_->nz(i);
+#ifdef DEBUGCG
+    assert(clqSize >= 2);
+#endif
+
+    for (size_t j = 0; j < clqSize; j++) {
+      nColClqs_[clqEl[j]]++;
+      nElements++;
+    }
+  }
+  
+  colClqs_ = (size_t **) xmalloc(sizeof(size_t *) * numCols * 2);
+  colClqs_[0] = (size_t *) xmalloc(sizeof(size_t) * nElements);
+  
+  for (size_t i = 1; i < numCols * 2; i++) {
+    colClqs_[i] = colClqs_[i - 1] + nColClqs_[i - 1];
+    nColClqs_[i - 1] = 0;
+  }
+
+  nColClqs_[(2 * numCols) - 1] = 0;
+  
+  for (size_t i = 0; i < cliqueRows_->rows(); i++) {
+    const size_t *clqEl = cliqueRows_->row(i);
+
+    for (size_t j = 0; j < cliqueRows_->nz(i); j++) {
+      const size_t col = clqEl[j];
+      colClqs_[col][nColClqs_[col]++] = i;
+    }
+  }
+}
+
+void CglCliqueStrengthening::strengthenCliques(size_t extMethod) {
+  nExtended_ = nDominated_ = 0;
+
+  if (model_->getNumCols() == 0 || model_->getNumRows() == 0 || cliqueRows_->rows() == 0) {
+    handler_->message(CGL_PROCESS_CLQSTR, messages_) << nExtended_ << nDominated_ << CoinMessageEol;
+    return;
+  }
+
+  CoinCliqueSet *newCliques = new CoinCliqueSet(4096, 32768);
+  cliqueExtension(extMethod, newCliques);
+
+  if (newCliques->nCliques() > 0) {
+    // removing dominated cliques
+    removeDominatedRows();
+
+    // adding stronger cliques
+    addStrongerCliques(newCliques);
+  }
+
+  handler_->message(CGL_PROCESS_CLQSTR, messages_) << nExtended_ << nDominated_ << CoinMessageEol;
+  delete newCliques;
+}
+
+void CglCliqueStrengthening::strengthenCliques(size_t n, const size_t rows[], size_t extMethod) {
+  nExtended_ = nDominated_ = 0;
+
+  if (model_->getNumCols() == 0 || model_->getNumRows() == 0 || cliqueRows_->rows() == 0) {
+    handler_->message(CGL_PROCESS_CLQSTR, messages_) << nExtended_ << nDominated_ << CoinMessageEol;
+    return;
+  }
+
+  CoinCliqueSet *newCliques = new CoinCliqueSet(4096, 32768);
+  cliqueExtension(extMethod, newCliques, n, rows);
+
+  if (newCliques->nCliques() > 0) {
+    // removing dominated cliques
+    removeDominatedRows();
+
+    // adding stronger cliques
+    addStrongerCliques(newCliques);
+  }
+
+  handler_->message(CGL_PROCESS_CLQSTR, messages_) << nExtended_ << nDominated_ << CoinMessageEol;
+  delete newCliques;
+}
+
+void CglCliqueStrengthening::cliqueExtension(size_t extMethod, CoinCliqueSet *newCliques) {
+  const int numCols = model_->getNumCols();
+  bool *ivRow = (bool*)xcalloc(model_->getNumRows(), sizeof(bool));
+  bool *ivCol = (bool*)xcalloc(numCols * 2, sizeof(bool));
+  char name[256];
+
+  // filling reduced costs
+  double *rc = getReducedCost();
+
+  // if reduced costs are not available, change the
+  // extension method
+  if (rc == NULL && (extMethod == 4 || extMethod == 5)) {
+    handler_->message(CGL_WARNING_CLQSTR, messages_) << CoinMessageEol;
+    extMethod = 2;
+  }
+
+  CoinCliqueExtender clqe(cgraph_, extMethod, rc);
+  clqe.setMaxCandidates(512);
+
+  for (size_t i = 0; i < cliqueRows_->rows(); i++) {
+    const size_t clqOrigRowIdx = cliqueRows_->origIdxRow(i);
+    const size_t *clqIdx = cliqueRows_->row(i);
+    const size_t clqSize = cliqueRows_->nz(i);
+
+#ifdef DEBUGCG
+    CoinCliqueList::validateClique(cgraph_, clqIdx, clqSize);
+#endif
+
+    if (cliqueRows_->status(i) == Dominated) {
+        continue;
+    }
+
+    bool extended = clqe.extendClique(clqIdx, clqSize);
+
+    if (extended) {
+      cliqueRows_->setStatus(i, Dominated);
+      nExtended_++;
+      
+      const size_t lastClq = clqe.nCliques() - 1;
+      const bool inserted = newCliques->insertIfNotDuplicate(clqe.getCliqueSize(lastClq), clqe.getClique(lastClq));
+
+      if (inserted) {
+        checkDominance(clqe.getClique(lastClq), clqe.getCliqueSize(lastClq), ivRow, ivCol);
+        sprintf(name, "%s_ext", model_->getRowName(clqOrigRowIdx).c_str());
+        rowClqNames_.push_back(name);
+      }
+    }
+  }
+
+  // freeing memory
+  if (rc) {
+    free(rc);
+  }
+  free(ivRow);
+  free(ivCol);
+}
+
+void CglCliqueStrengthening::cliqueExtension(size_t extMethod, CoinCliqueSet *newCliques, size_t n, const size_t rows[]) {
+  const int numCols = model_->getNumCols();
+  bool *ivRow = (bool*)xcalloc(model_->getNumRows(), sizeof(bool));
+  bool *ivCol = (bool*)xcalloc(numCols * 2, sizeof(bool));
+  char name[256];
+
+  // filling reduced costs
+  double *rc = getReducedCost();
+
+  // if reduced costs are not available, change the
+  // extension method
+  if (rc == NULL) {
+    handler_->message(CGL_WARNING_CLQSTR, messages_) << CoinMessageEol;
+    extMethod = 2;
+  }
+
+  CoinCliqueExtender clqe(cgraph_, extMethod, rc);
+  clqe.setMaxCandidates(512);
+
+  for (size_t i = 0; i < n; i++) {
+    const size_t rowIdx = posInClqRows_[rows[i]];
+    const size_t clqOrigRowIdx = cliqueRows_->origIdxRow(rowIdx);
+    const size_t *clqIdx = cliqueRows_->row(rowIdx);
+    const size_t clqSize = cliqueRows_->nz(rowIdx);
+
+#ifdef DEBUGCG
+    CoinCliqueList::validateClique(cgraph_, clqIdx, clqSize);
+#endif
+
+    if (cliqueRows_->status(rowIdx) == Dominated) {
+        continue;
+    }
+
+    bool extended = clqe.extendClique(clqIdx, clqSize);
+
+    if (extended) {
+      cliqueRows_->setStatus(rowIdx, Dominated);
+      nExtended_++;
+      
+      const size_t lastClq = clqe.nCliques() - 1;
+      const bool inserted = newCliques->insertIfNotDuplicate(clqe.getCliqueSize(lastClq), clqe.getClique(lastClq));
+
+      if (inserted) {
+        checkDominance(clqe.getClique(lastClq), clqe.getCliqueSize(lastClq), ivRow, ivCol);
+        sprintf(name, "%s_ext", model_->getRowName(clqOrigRowIdx).c_str());
+        rowClqNames_.push_back(name);
+      }
+    }
+  }
+
+  // freeing memory
+  if (rc) {
+    free(rc);
+  }
+  free(ivRow);
+  free(ivCol);
+}
+
+double* CglCliqueStrengthening::getReducedCost() {
+  double *rc = NULL;
+
+  if (model_->isProvenOptimal()) {
+    const int numCols = model_->getNumCols();
+    const double *redCost = model_->getReducedCost();
+    rc = (double*)xmalloc(sizeof(double) * numCols * 2);
+
+      for (size_t i = 0; i < numCols; i++) {
+        rc[i] = redCost[i];
+        rc[i + numCols] = -rc[i];
+      }
+  }
+  
+  return rc;
+}
+
+void CglCliqueStrengthening::checkDominance(const size_t *extClqEl, size_t extClqSize, bool *ivRow, bool *ivCol) {
+#ifdef DEBUGCG
+  for (size_t i = 0; i < cliqueRows_->rows(); i++) {
+    assert(!ivRow[i]);
+  }
+  for (size_t i = 0; i < model_->getNumCols() * 2; i++) {
+    assert(!ivCol[i]);
+  }
+#endif
+
+  for (size_t i = 0; i < extClqSize; i++) {
+    ivCol[extClqEl[i]] = true;
+  }
+
+  for (size_t i = 0; i < extClqSize; i++) {
+    size_t col = extClqEl[i];
+
+    // checking cliques where column col appear
+    for (size_t j = 0; j < nColClqs_[col]; j++) {
+      const size_t clqRowIdx = colClqs_[col][j];
+
+      // skipping already dominated or already tested rows
+      if (cliqueRows_->status(clqRowIdx) == Dominated || ivRow[clqRowIdx]) {
+        continue;
+      }
+
+      ivRow[clqRowIdx] = true;
+
+      const size_t *clqEl = cliqueRows_->row(clqRowIdx);
+      const size_t clqNZ = cliqueRows_->nz(clqRowIdx);
+      bool dominates = true;
+
+      for (size_t k = 0; k < clqNZ; k++) {
+        if (!ivCol[clqEl[k]]) {
+          dominates = false;
+          break;
+        }
+      }
+
+      if (dominates) {
+        cliqueRows_->setStatus(clqRowIdx, Dominated);
+      }
+    }
+  }
+
+  //clearing ivCol
+  for (size_t i = 0; i < extClqSize; i++) {
+    ivCol[extClqEl[i]] = false;
+  }
+
+  //clearing ivRow
+  for (size_t i = 0; i < cliqueRows_->rows(); i++) {
+    ivRow[i] = false;
+  }
+}
+
+void CglCliqueStrengthening::removeDominatedRows() {
+  int *toRemove = (int*)xmalloc(sizeof(int) * model_->getNumRows());
+
+  nDominated_ = 0;
+
+  for (size_t i = 0; i < cliqueRows_->rows(); i++) {
+    if (cliqueRows_->status(i) == Dominated) {
+      toRemove[nDominated_++] = (int)cliqueRows_->origIdxRow(i);
+    }
+  }
+
+  if (nDominated_ > 0) {
+    model_->deleteRows(nDominated_, toRemove);
+  }
+
+  free(toRemove);
+}
+
+void CglCliqueStrengthening::addStrongerCliques(const CoinCliqueSet *newCliques) {
+  char name[256];
+  const int numCols = model_->getNumCols();
+  const size_t nCliques = newCliques->nCliques();
+  size_t numVars = 0;
+
+  int *nrIdx = (int*)xmalloc(sizeof(int) * newCliques->totalElements());
+  int *idxMap = (int*)xmalloc(sizeof(int) * numCols);//controls duplicated indexes (var and complement)
+  double *nrCoef = (double*)xmalloc(sizeof(double) * newCliques->totalElements());
+  CoinBigIndex *nrStart = (CoinBigIndex*)xmalloc(sizeof(CoinBigIndex) * (nCliques + 1)); nrStart[0] = 0;
+  double *nrLB = (double*)xmalloc(sizeof(double) * nCliques);
+  double *nrUB = (double*)xmalloc(sizeof(double) * nCliques);
+
+  for (size_t ic = 0; ic < nCliques; ic++) {
+    const size_t extClqSize = newCliques->cliqueSize(ic);
+    const size_t *extClqEl = newCliques->cliqueElements(ic);
+    double rhs = 1.0;
+    size_t duplicated = 0;
+
+    std::fill(idxMap, idxMap + numCols, -1);
+
+    for (size_t i = 0; i < extClqSize; i++) {
+      if (extClqEl[i] < numCols) {
+        if(idxMap[extClqEl[i]] == -1) {
+          idxMap[extClqEl[i]] = numVars;
+          nrIdx[numVars] = (int)extClqEl[i];
+          nrCoef[numVars] = 1.0;
+          numVars++;
+        } else {
+          nrCoef[idxMap[extClqEl[i]]] += 1.0;
+          assert(nrCoef[idxMap[extClqEl[i]]] == 0.0);
+          duplicated++;
+        }
+      } else {
+        rhs -= 1.0;
+        if(idxMap[extClqEl[i]-numCols] == -1) {
+          idxMap[extClqEl[i]-numCols] = numVars;
+          nrIdx[numVars] = ((int)extClqEl[i] - numCols);
+          nrCoef[numVars] = -1.0;
+          numVars++;
+        } else {
+          nrCoef[idxMap[extClqEl[i]-numCols]] -= 1.0;
+          assert(nrCoef[idxMap[extClqEl[i]-numCols]] == 0.0);
+          duplicated++;
+        }
+      }
+    }
+
+    assert(duplicated == 0 || duplicated == 1);
+    if(duplicated == 1) {
+      CoinBigIndex last = nrStart[ic];
+      rhs = 0.0;
+      for(CoinBigIndex k = nrStart[ic]; k < numVars; k++) {
+        assert(nrCoef[k] == -1.0 || nrCoef[k] == 0.0 || nrCoef[k] == 1.0);
+        if(nrCoef[k] == -1.0 || nrCoef[k] == 1.0) {
+          nrIdx[last] = nrIdx[k];
+          nrCoef[last] = nrCoef[k];
+          last++;
+          if (nrCoef[k] == -1.0) {
+            rhs -= 1.0;
+          }
+        }
+      }
+      numVars = last;
+
+      sprintf(name, "%s_dup", rowClqNames_[ic].c_str());
+      rowClqNames_[ic] = name;
+    }
+
+    nrLB[ic] = -DBL_MAX;
+    nrUB[ic] = rhs;
+    nrStart[ic + 1] = numVars;
+  }
+
+  // adding rows
+  const int lastOrigIdx = model_->getNumRows();
+  model_->addRows(nCliques, nrStart, nrIdx, nrCoef, nrLB, nrUB);
+
+  // setting names
+  for (int i = 0; i < (int)nCliques; i++) {
+    model_->setRowName(lastOrigIdx + i, rowClqNames_[i]);
+  }
+
+  free(nrIdx);
+  free(nrCoef);
+  free(nrLB);
+  free(nrUB);
+  free(nrStart);
+  free(idxMap);
+}
+
+static void *xmalloc( const size_t size ) {
+  void *result = malloc( size );
+  if (!result) {
+    fprintf(stderr, "No more memory available. Trying to allocate %zu bytes.", size);
+    abort();
+  }
+
+  return result;
+}
+
+static void *xcalloc( const size_t elements, const size_t size ) {
+  void *result = calloc( elements, size );
+  if (!result) {
+    fprintf(stderr, "No more memory available. Trying to callocate %zu bytes.", size * elements);
+    abort();
+  }
+
+  return result;
 }
 
 // Pass in Message handler (not deleted at end)
 void CglCliqueStrengthening::passInMessageHandler(CoinMessageHandler *handler) {
-    if (defaultHandler_)
-        delete handler_;
-    defaultHandler_ = false;
-    handler_ = handler;
+  if (defaultHandler_)
+    delete handler_;
+  defaultHandler_ = false;
+  handler_ = handler;
 }
 
 // Set language
 void CglCliqueStrengthening::newLanguage(CoinMessages::Language language) {
-    messages_ = CglMessage(language);
-}
-
-void detectCliques(const OsiSolverInterface &mip, CliqueRows *cliques) {
-    const int numRows = mip.getNumRows();
-    const int numCols = mip.getNumCols();
-    const CoinPackedMatrix *cpmRow = mip.getMatrixByRow();
-    const CoinBigIndex *starts = cpmRow->getVectorStarts();
-    const double *Arhs = mip.getRightHandSide();
-    const char *Asense = mip.getRowSense();
-    const double *colLB = mip.getColLower();
-    const double *colUB = mip.getColUpper();
-    const char *colType = mip.getColType();
-    const int *lengths = cpmRow->getVectorLengths();
-    size_t *tmpRow = (size_t*)xmalloc(sizeof(size_t) * numCols);
-
-    for (size_t i = 0; i < numRows; i++) {
-        const size_t nz = lengths[i];
-        const char sense = Asense[i];
-
-        if (nz <= 1 || nz > MAX_SIZE_CLIQUE_TO_BE_EXTENDED) {
-            continue;
-        }
-
-        if (sense != 'L' && sense != 'G') {
-            continue;
-        }
-
-        const int *idxs = cpmRow->getIndices() + starts[i];
-        const double *coefs = cpmRow->getElements() + starts[i];
-        const double mult = (sense == 'G') ? -1.0 : 1.0;
-        double rhs = mult * Arhs[i];
-
-        bool testRow = true;
-        double minCoef1 = std::numeric_limits< double >::max();
-        double minCoef2 = std::numeric_limits< double >::max();
-        for (size_t j = 0; j < nz; j++) {
-            tmpRow[j] = idxs[j];
-
-            double coefCol = coefs[j] * mult;
-            const bool isBinary = (colType[tmpRow[j]] != 0) && (colLB[tmpRow[j]] == 1.0 || colLB[tmpRow[j]] == 0.0)
-                                  && (colUB[tmpRow[j]] == 0.0 || colUB[tmpRow[j]] == 1.0);
-
-            if (!isBinary) {
-                testRow = false;
-                break;
-            }
-
-            if (coefCol <=- CLQ_STR_EPS) {
-                tmpRow[j] += numCols;
-                coefCol = -coefCol;
-                rhs = rhs + coefCol;
-            }
-
-            if (coefCol + CLQ_STR_EPS <= minCoef1) {
-                minCoef2 = minCoef1;
-                minCoef1 = coefCol;
-            } else if (coefCol + CLQ_STR_EPS <= minCoef2) {
-                minCoef2 = coefCol;
-            }
-        }
-
-        if (!testRow) {
-            continue;
-        }
-
-        if (minCoef1 + minCoef2 >= rhs + CLQ_STR_EPS) {
-            cliques->addRow(nz, tmpRow, i, NotDominated);
-        }
-    }
-
-    free(tmpRow);
-}
-
-void checkDominance(const size_t *extClqEl, size_t extClqSize, CliqueRows *cliques, const size_t **colClqs,
-        const size_t *nColClqs, bool *ivRow, bool *ivCol, size_t numCols) {
-#ifdef DEBUGCG
-    for (size_t i = 0; i < cliques->rows(); i++) {
-        assert(!ivRow[i]);
-    }
-    for (size_t i = 0; i < numCols * 2; i++) {
-        assert(!ivCol[i]);
-    }
-#endif
-
-    for (size_t i = 0; i < extClqSize; i++) {
-        ivCol[extClqEl[i]] = true;
-    }
-
-    for (size_t i = 0; i < extClqSize; i++) {
-        size_t col = extClqEl[i];
-
-        // checking cliques where column col appear
-        for (size_t j = 0; j < nColClqs[col]; j++) {
-            const size_t clqRowIdx = colClqs[col][j];
-
-            // skipping already dominated or already tested rows
-            if (cliques->status(clqRowIdx) == Dominated || ivRow[clqRowIdx]) {
-                continue;
-            }
-
-            ivRow[clqRowIdx] = true;
-
-            const size_t *clqEl = cliques->row(clqRowIdx);
-            const size_t clqNZ = cliques->nz(clqRowIdx);
-            bool dominates = true;
-
-            for (size_t k = 0; k < clqNZ; k++) {
-                if (!ivCol[clqEl[k]]) {
-                    dominates = false;
-                    break;
-                }
-            }
-
-            if (dominates) {
-                cliques->setStatus(clqRowIdx, Dominated);
-            }
-        }
-    }
-
-    //clearing ivCol
-    for (size_t i = 0; i < extClqSize; i++) {
-        ivCol[extClqEl[i]] = false;
-    }
-
-    //clearing ivRow
-    for (size_t i = 0; i < cliques->rows(); i++) {
-        ivRow[i] = false;
-    }
-}
-
-void CglCliqueStrengthening::strengthenCliques(OsiSolverInterface &model, size_t extMethod) {
-    const int numCols = model.getNumCols();
-    const int numRows = model.getNumRows();
-
-    if (numCols == 0 || numRows == 0) {
-    	return;
-    }
-
-    model.checkCGraph();
-
-    const CoinConflictGraph *cgraph = model.getCGraph();
-    
-    CliqueRows cliques(numRows, model.getNumElements());
-
-    nExtended_ = nDominated_ = 0;
-    detectCliques(model, &cliques);
-
-    if (cliques.rows() == 0) { //no cliques
-        return;
-    }
-
-    //filling cliques per column
-    size_t *nColClqs = (size_t *) xcalloc(numCols * 2, sizeof(size_t));
-    size_t nElements = 0;
-    for (size_t i = 0; i < cliques.rows(); i++) {
-        const size_t *clqEl = cliques.row(i);
-        const size_t clqSize = cliques.nz(i);
-#ifdef DEBUGCG
-        assert(clqSize >= 2);
-#endif
-        for (size_t j = 0; j < clqSize; j++) {
-            nColClqs[clqEl[j]]++;
-            nElements++;
-        }
-    }
-    size_t **colClqs = (size_t **) xmalloc(sizeof(size_t *) * numCols * 2);
-    colClqs[0] = (size_t *) xmalloc(sizeof(size_t) * nElements);
-    for (size_t i = 1; i < numCols * 2; i++) {
-        colClqs[i] = colClqs[i - 1] + nColClqs[i - 1];
-        nColClqs[i - 1] = 0;
-    }
-    nColClqs[(2 * numCols) - 1] = 0;
-    for (size_t i = 0; i < cliques.rows(); i++) {
-        const size_t *clqEl = cliques.row(i);
-        for (size_t j = 0; j < cliques.nz(i); j++) {
-            const size_t col = clqEl[j];
-            colClqs[col][nColClqs[col]++] = i;
-        }
-    }
-
-    //filling reduced cost
-    const double *redCost = model.getReducedCost();
-    double *rc = (double*)xmalloc(sizeof(double) * numCols * 2);
-    for (size_t i = 0; i < numCols; i++) {
-        rc[i] = redCost[i];
-        rc[i + numCols] = -rc[i];
-    }
-
-    const double *Arhs = model.getRightHandSide();
-    const char *Asense = model.getRowSense();
-    CoinCliqueSet newCliques(4096, 32768);
-    OsiSolverInterface::OsiNameVec clqNames;
-    bool *ivRow = (bool*)xcalloc(numRows, sizeof(bool));
-    bool *ivCol = (bool*)xcalloc(numCols * 2, sizeof(bool));
-    size_t last = 0;
-    char name[256];
-
-    CoinCliqueExtender clqe(cgraph, extMethod, rc);
-    clqe.setMaxCandidates(512);
-
-    for (size_t i = 0; i < cliques.rows(); i++) {
-        const size_t clqOrigRowIdx = cliques.origIdxRow(i);
-        const size_t *clqIdx = cliques.row(i);
-        const size_t clqSize = cliques.nz(i);
-
-#ifdef DEBUGCG
-        CoinCliqueList::validateClique(cgraph, clqIdx, clqSize);
-        assert(clqe.nCliques() >= last);
-#endif
-
-        if (cliques.status(i) == Dominated) {
-            continue;
-        }
-
-        clqe.extendClique(clqIdx, clqSize);
-        const size_t numClqs = clqe.nCliques() - last;
-
-        if (numClqs > 0) {
-            cliques.setStatus(i, Dominated);
-            nExtended_++;
-
-#ifdef DEBUGCG
-            assert(numClqs == 1);
-#endif
-            const bool inserted = newCliques.insertIfNotDuplicate(clqe.getCliqueSize(last), clqe.getClique(last));
-            if (inserted) {
-                checkDominance(clqe.getClique(last), clqe.getCliqueSize(last), &cliques,
-                        (const size_t**)colClqs, (const size_t*)nColClqs, ivRow, ivCol, numCols);
-                sprintf(name, "%s_ext", model.getRowName(clqOrigRowIdx).c_str());
-                clqNames.push_back(name);
-            }
-            last = clqe.nCliques();
-        }
-    }
-
-
-    free(rc);
-    free(colClqs[0]);
-    free(colClqs);
-    free(nColClqs);
-    free(ivRow);
-    free(ivCol);
-
-    if (newCliques.nCliques() == 0) {
-        return;
-    }
-
-    /* removing dominated cliques */
-    int *toRemove = (int*)xmalloc(sizeof(int) * numRows);
-    int nToRemove = 0;
-    for (size_t i = 0; i < cliques.rows(); i++) {
-        if (cliques.status(i) == Dominated) {
-            const size_t origRowIDx = cliques.origIdxRow(i);
-            nDominated_++;
-            toRemove[nToRemove++] = origRowIDx;
-        }
-    }
-    if (nToRemove > 0) {
-        model.deleteRows(nToRemove, toRemove);
-    }
-    free(toRemove);
-
-    /* adding stronger cliques */
-    const size_t nCliques = newCliques.nCliques();
-    int *nrIdx = (int*)xmalloc(sizeof(int) * newCliques.totalElements());
-    int *idxMap = (int*)xmalloc(sizeof(int) * numCols);//controls duplicated indexes (var and complement)
-    double *nrCoef = (double*)xmalloc(sizeof(double) * newCliques.totalElements());
-    CoinBigIndex *nrStart = (CoinBigIndex*)xmalloc(sizeof(CoinBigIndex) * (nCliques + 1)); nrStart[0] = 0;
-    double *nrLB = (double*)xmalloc(sizeof(double) * nCliques);
-    double *nrUB = (double*)xmalloc(sizeof(double) * nCliques);
-    size_t numVars = 0;
-    for (size_t ic = 0; ic < nCliques; ic++) {
-        const size_t extClqSize = newCliques.cliqueSize(ic);
-        const size_t *extClqEl = newCliques.cliqueElements(ic);
-        double rhs = 1.0;
-        size_t duplicated = 0;
-
-        std::fill(idxMap, idxMap + numCols, -1);
-
-        for (size_t i = 0; i < extClqSize; i++) {
-            if (extClqEl[i] < numCols) {
-                if(idxMap[extClqEl[i]] == -1) {
-                    idxMap[extClqEl[i]] = numVars;
-                    nrIdx[numVars] = (int)extClqEl[i];
-                	nrCoef[numVars] = 1.0;
-                    numVars++;
-                } else {
-                    nrCoef[idxMap[extClqEl[i]]] += 1.0;
-                    assert(nrCoef[idxMap[extClqEl[i]]] == 0.0);
-                    duplicated++;
-                }
-            } else {
-            	rhs -= 1.0;
-            	if(idxMap[extClqEl[i]-numCols] == -1) {
-            		idxMap[extClqEl[i]-numCols] = numVars;
-            		nrIdx[numVars] = ((int)extClqEl[i] - numCols);
-                	nrCoef[numVars] = -1.0;
-                	numVars++;
-                } else {
-                	nrCoef[idxMap[extClqEl[i]-numCols]] -= 1.0;
-                	assert(nrCoef[idxMap[extClqEl[i]-numCols]] == 0.0);
-                    duplicated++;
-                }
-            }
-        }
-
-        assert(duplicated == 0 || duplicated == 1);
-        if(duplicated == 1) {
-            CoinBigIndex last = nrStart[ic];
-            rhs = 0.0;
-            for(CoinBigIndex k = nrStart[ic]; k < numVars; k++) {
-    			assert(nrCoef[k] == -1.0 || nrCoef[k] == 0.0 || nrCoef[k] == 1.0);
-                if(nrCoef[k] == -1.0 || nrCoef[k] == 1.0) {
-                    nrIdx[last] = nrIdx[k];
-                    nrCoef[last] = nrCoef[k];
-                    last++;
-                    if (nrCoef[k] == -1.0) {
-                		rhs -= 1.0;
-                	}
-                }
-            }
-            numVars = last;
-
-            sprintf(name, "%s_dup", clqNames[ic].c_str());
-            clqNames[ic] = name;
-        }
-
-        nrLB[ic] = -DBL_MAX;
-        nrUB[ic] = rhs;
-        nrStart[ic + 1] = numVars;
-    }
-
-    const int lastOrigIdx = model.getNumRows();
-    model.addRows(nCliques, nrStart, nrIdx, nrCoef, nrLB, nrUB);
-    for (int i = 0; i < (int)nCliques; i++) {
-        model.setRowName(lastOrigIdx + i, clqNames[i]);
-    }
-
-    free(nrIdx);
-    free(nrCoef);
-    free(nrLB);
-    free(nrUB);
-    free(nrStart);
-    free(idxMap);
-
-    handler_->message(CGL_PROCESS_CLQSTR, messages_) << nExtended_ << nDominated_ << CoinMessageEol;
-}
-
-static void *xmalloc( const size_t size ) {
-    void *result = malloc( size );
-    if (!result) {
-        fprintf(stderr, "No more memory available. Trying to allocate %zu bytes.", size);
-        abort();
-    }
-
-    return result;
-}
-
-static void *xcalloc( const size_t elements, const size_t size ) {
-    void *result = calloc( elements, size );
-    if (!result) {
-        fprintf(stderr, "No more memory available. Trying to callocate %zu bytes.", size * elements);
-        abort();
-    }
-
-    return result;
+  messages_ = CglMessage(language);
 }

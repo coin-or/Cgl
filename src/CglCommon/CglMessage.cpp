@@ -29,6 +29,7 @@ static Cgl_message us_english[] = {
   { CGL_POST_INFEASIBLE, 13, 1, "Postprocessed model is infeasible - possible tolerance issue - try without preprocessing" },
   { CGL_POST_CHANGED, 14, 1, "Postprocessing changed objective from %g to %g - possible tolerance issue - try without preprocessing" },
   { CGL_PROCESS_CLQSTR, 15, 1,"Clique Strengthening extended %ld cliques, %ld were dominated" },
+  { CGL_WARNING_CLQSTR, 16, 1, "Warning: reduced costs not available in clique strengthening - changing the extension method to 'max degree'" },
   { CGL_GENERAL, 1000, 1, "%s" },
   { CGL_DUMMY_END, 999999, 0, "" }
 };
