@@ -1191,7 +1191,8 @@ static bool scaleRowIntegral(double* rowElem, int rowNz)
   for (int i = 0; i < rowNz; ++i) {
     double value = rowElem[i]*scale;
     rowElem[i] = floor(value+0.5);
-    assert (fabs(rowElem[i]-value)<1.0e-9);
+    if (fabs(rowElem[i]-value)>1.0e-10) 
+      return false;
   }
   return true;
 } /* scaleRowIntegral */
@@ -1232,6 +1233,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     std::cout << "  Optimal solution is:" << std::endl;
     debugger->printOptimalSolution(model);
   }
+#else
+  const OsiRowCutDebugger *debugger = NULL;
 #endif
   originalModel_ = &model;
   if (tuning >= 1000000) {
@@ -2203,7 +2206,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   double offset;
   int numberMoved = 0;
   startModel_->getDblParam(OsiObjOffset, offset);
-#ifdef CBC_PREPROCESS_EXPERIMENT
+#if CBC_PREPROCESS_EXPERIMENT > 1
   for (int iColumn=0;iColumn<numberColumns;iColumn++) {
     if (columnLength[iColumn]==1 && obj[iColumn]) {
       double testObj = fabs(obj[iColumn])*goodRatio;
@@ -2264,7 +2267,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	    int jColumn = column[j];
 	    if (iColumn != jColumn) {
 	      double value = elementByRow[j];
-	      obj[jColumn] -= subtract*value;;
+	      obj[jColumn] -= subtract*value;
 	    } else {
 	      obj[iColumn] = 0.0;
 	    }
@@ -2273,10 +2276,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       }
     }
   }
+  if (nCosted||nCostedI) {
+    startModel_->setDblParam(OsiObjOffset, offset);
+    startModel_->setObjective(obj);
 #ifdef PRINT_STUFF
-  if (nCosted||nCostedI) 
     printf("%d integer costed slacks and %d continuous\n",nCostedI,nCosted);
-  {
     int nn=0;
     int nz=0;
     for (int i=0;i<numberColumns;i++) {
@@ -2288,8 +2292,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       }
     }
     printf("%d single with cost %d zero cost\n",nn,nz);
-  }
 #endif
+  }
 #endif
   // This is not a vital loop so be careful
 #ifndef SKIP_MOVE_COSTS_TO_INTEGERS
@@ -2307,6 +2311,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     int numberContinuous = 0;
     for (CoinBigIndex j = rowStart[iRow]; j < rowStart[iRow] + rowLength[iRow]; j++) {
       int iColumn = column[j];
+      assert (iColumn<numberColumns);
 #ifdef CBC_PREPROCESS_EXPERIMENT
       if (marked[iColumn]) {
 	nPlus = -numberColumns;
@@ -8868,8 +8873,3 @@ double CglPreProcess::getCurrentCPUTime() const
   else
     return CoinGetTimeOfDay();
 }
-
-// # vim: ts=2 sw=2 et
-
-/* vi: softtabstop=2 shiftwidth=2 expandtab tabstop=2
-*/
