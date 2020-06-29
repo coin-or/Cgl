@@ -17,7 +17,7 @@
 # Copyright (C) 2006 International Business Machines and others.
 # All Rights Reserved.
 # This file is distributed under the Eclipse Public License.
-
+#
 # Author:  Andreas Waechter           IBM    2006-04-13
 
 ########################################################################
@@ -120,10 +120,6 @@ AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-libCglResidualCapacity_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
-	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
-	$(AM_CXXFLAGS) $(CXXFLAGS) \
-	$(libCglResidualCapacity_la_LDFLAGS) $(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -388,8 +384,8 @@ noinst_LTLIBRARIES = libCglResidualCapacity.la
 # List all source files for this library, including headers
 libCglResidualCapacity_la_SOURCES = CglResidualCapacity.cpp CglResidualCapacity.hpp CglResidualCapacityTest.cpp
 
-# This is for libtool (on Windows)
-libCglResidualCapacity_la_LDFLAGS = $(LT_LDFLAGS)
+# This is for libtool
+AM_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = $(CGLLIB_CFLAGS)
@@ -448,7 +444,7 @@ clean-noinstLTLIBRARIES:
 	}
 
 libCglResidualCapacity.la: $(libCglResidualCapacity_la_OBJECTS) $(libCglResidualCapacity_la_DEPENDENCIES) $(EXTRA_libCglResidualCapacity_la_DEPENDENCIES) 
-	$(AM_V_CXXLD)$(libCglResidualCapacity_la_LINK)  $(libCglResidualCapacity_la_OBJECTS) $(libCglResidualCapacity_la_LIBADD) $(LIBS)
+	$(AM_V_CXXLD)$(CXXLINK)  $(libCglResidualCapacity_la_OBJECTS) $(libCglResidualCapacity_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)

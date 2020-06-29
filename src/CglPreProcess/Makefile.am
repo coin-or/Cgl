@@ -1,8 +1,7 @@
 # Copyright (C) 2006 International Business Machines and others.
 # All Rights Reserved.
 # This file is distributed under the Eclipse Public License.
-
-
+#
 # Author:  Andreas Waechter           IBM    2006-04-13
 
 ########################################################################
@@ -16,8 +15,8 @@ noinst_LTLIBRARIES = libCglPreProcess.la
 # List all source files for this library, including headers
 libCglPreProcess_la_SOURCES = CglPreProcess.cpp CglPreProcess.hpp
 
-# This is for libtool (on Windows)
-libCglPreProcess_la_LDFLAGS = $(LT_LDFLAGS)
+# This is for libtool
+AM_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = $(CGLLIB_CFLAGS) \
@@ -31,6 +30,5 @@ AM_CPPFLAGS = $(CGLLIB_CFLAGS) \
 
 # Here list all the header files that are required by a user of the library,
 # and that therefore should be installed in $(includedir)/coin-or.
-
 includecoindir = $(includedir)/coin-or
 includecoin_HEADERS = CglPreProcess.hpp

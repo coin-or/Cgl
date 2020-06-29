@@ -116,10 +116,6 @@ AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-libCglBKClique_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
-	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
-	$(AM_CXXFLAGS) $(CXXFLAGS) $(libCglBKClique_la_LDFLAGS) \
-	$(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -383,8 +379,8 @@ noinst_LTLIBRARIES = libCglBKClique.la
 # List all source files for this library, including headers
 libCglBKClique_la_SOURCES = CglBKClique.cpp CglBKClique.hpp
 
-# This is for libtool (on Windows)
-libCglBKClique_la_LDFLAGS = $(LT_LDFLAGS)
+# This is for libtool
+AM_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = $(CGLLIB_CFLAGS)
@@ -443,7 +439,7 @@ clean-noinstLTLIBRARIES:
 	}
 
 libCglBKClique.la: $(libCglBKClique_la_OBJECTS) $(libCglBKClique_la_DEPENDENCIES) $(EXTRA_libCglBKClique_la_DEPENDENCIES) 
-	$(AM_V_CXXLD)$(libCglBKClique_la_LINK)  $(libCglBKClique_la_OBJECTS) $(libCglBKClique_la_LIBADD) $(LIBS)
+	$(AM_V_CXXLD)$(CXXLINK)  $(libCglBKClique_la_OBJECTS) $(libCglBKClique_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)

@@ -17,7 +17,7 @@
 # Copyright (C) 2006 International Business Machines and others.
 # All Rights Reserved.
 # This file is distributed under the Eclipse Public License.
-
+#
 # Author:  Andreas Waechter           IBM    2006-04-13
 
 ########################################################################
@@ -120,10 +120,6 @@ AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-libCglSimpleRounding_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
-	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
-	$(AM_CXXFLAGS) $(CXXFLAGS) $(libCglSimpleRounding_la_LDFLAGS) \
-	$(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -388,8 +384,8 @@ noinst_LTLIBRARIES = libCglSimpleRounding.la
 # List all source files for this library, including headers
 libCglSimpleRounding_la_SOURCES = CglSimpleRounding.cpp CglSimpleRounding.hpp CglSimpleRoundingTest.cpp
 
-# This is for libtool (on Windows)
-libCglSimpleRounding_la_LDFLAGS = $(LT_LDFLAGS)
+# This is for libtool
+AM_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = $(CGLLIB_CFLAGS)
@@ -448,7 +444,7 @@ clean-noinstLTLIBRARIES:
 	}
 
 libCglSimpleRounding.la: $(libCglSimpleRounding_la_OBJECTS) $(libCglSimpleRounding_la_DEPENDENCIES) $(EXTRA_libCglSimpleRounding_la_DEPENDENCIES) 
-	$(AM_V_CXXLD)$(libCglSimpleRounding_la_LINK)  $(libCglSimpleRounding_la_OBJECTS) $(libCglSimpleRounding_la_LIBADD) $(LIBS)
+	$(AM_V_CXXLD)$(CXXLINK)  $(libCglSimpleRounding_la_OBJECTS) $(libCglSimpleRounding_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)

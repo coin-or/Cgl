@@ -17,7 +17,7 @@
 # Copyright (C) 2006 International Business Machines and others.
 # All Rights Reserved.
 # This file is distributed under the Eclipse Public License.
-
+#
 # Author:  Andreas Waechter           IBM    2006-04-13
 
 ########################################################################
@@ -119,10 +119,6 @@ AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-libCglZeroHalf_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
-	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
-	$(AM_CXXFLAGS) $(CXXFLAGS) $(libCglZeroHalf_la_LDFLAGS) \
-	$(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -392,7 +388,7 @@ libCglZeroHalf_la_SOURCES = \
 
 
 # This is for libtool
-libCglZeroHalf_la_LDFLAGS = $(LT_LDFLAGS)
+AM_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = $(CGLLIB_CFLAGS)
@@ -451,7 +447,7 @@ clean-noinstLTLIBRARIES:
 	}
 
 libCglZeroHalf.la: $(libCglZeroHalf_la_OBJECTS) $(libCglZeroHalf_la_DEPENDENCIES) $(EXTRA_libCglZeroHalf_la_DEPENDENCIES) 
-	$(AM_V_CXXLD)$(libCglZeroHalf_la_LINK)  $(libCglZeroHalf_la_OBJECTS) $(libCglZeroHalf_la_LIBADD) $(LIBS)
+	$(AM_V_CXXLD)$(CXXLINK)  $(libCglZeroHalf_la_OBJECTS) $(libCglZeroHalf_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)

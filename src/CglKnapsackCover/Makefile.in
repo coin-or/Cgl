@@ -17,7 +17,7 @@
 # Copyright (C) 2006 International Business Machines and others.
 # All Rights Reserved.
 # This file is distributed under the Eclipse Public License.
-
+#
 # Author:  Andreas Waechter           IBM    2006-04-13
 
 ########################################################################
@@ -119,10 +119,6 @@ AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-libCglKnapsackCover_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
-	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
-	$(AM_CXXFLAGS) $(CXXFLAGS) $(libCglKnapsackCover_la_LDFLAGS) \
-	$(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -387,8 +383,8 @@ noinst_LTLIBRARIES = libCglKnapsackCover.la
 # List all source files for this library, including headers
 libCglKnapsackCover_la_SOURCES = CglKnapsackCover.cpp CglKnapsackCover.hpp CglKnapsackCoverTest.cpp
 
-# This is for libtool (on Windows)
-libCglKnapsackCover_la_LDFLAGS = $(LT_LDFLAGS)
+# This is for libtool
+AM_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = $(CGLLIB_CFLAGS)
@@ -447,7 +443,7 @@ clean-noinstLTLIBRARIES:
 	}
 
 libCglKnapsackCover.la: $(libCglKnapsackCover_la_OBJECTS) $(libCglKnapsackCover_la_DEPENDENCIES) $(EXTRA_libCglKnapsackCover_la_DEPENDENCIES) 
-	$(AM_V_CXXLD)$(libCglKnapsackCover_la_LINK)  $(libCglKnapsackCover_la_OBJECTS) $(libCglKnapsackCover_la_LIBADD) $(LIBS)
+	$(AM_V_CXXLD)$(CXXLINK)  $(libCglKnapsackCover_la_OBJECTS) $(libCglKnapsackCover_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)

@@ -17,15 +17,12 @@
 # Copyright (C) 2006 International Business Machines and others.
 # All Rights Reserved.
 # This file is distributed under the Eclipse Public License.
-
+#
 # Author:  Andreas Waechter           IBM    2006-04-13
 
 ########################################################################
 #                               libCgl                                 #
 ########################################################################
-
-# Name of the library compiled in this directory.  We want it to be installed
-# in the $libdir directory
 
 
 VPATH = @srcdir@
@@ -149,9 +146,6 @@ AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-libCgl_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX $(AM_LIBTOOLFLAGS) \
-	$(LIBTOOLFLAGS) --mode=link $(CXXLD) $(AM_CXXFLAGS) \
-	$(CXXFLAGS) $(libCgl_la_LDFLAGS) $(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -382,6 +376,9 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
+
+# Name of the library compiled in this directory.  We want it to be installed
+# in the $libdir directory
 lib_LTLIBRARIES = libCgl.la
 
 # List all source files for this library, including headers
@@ -394,13 +391,13 @@ libCgl_la_SOURCES = \
 	CglTreeInfo.cpp CglTreeInfo.hpp
 
 
-# This is for libtool (on Windows)
-libCgl_la_LDFLAGS = $(LT_LDFLAGS)
-
 # We want to have all the sublibraries from the Cgl subprojects collected into
 # this library
 libCgl_la_LIBADD = $(CGL_SUBLIBS) $(CGLLIB_LFLAGS)
 libCgl_la_DEPENDENCIES = $(CGL_SUBLIBS)
+
+# This is for libtool
+AM_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = $(CGLLIB_CFLAGS)
@@ -513,7 +510,7 @@ clean-libLTLIBRARIES:
 	}
 
 libCgl.la: $(libCgl_la_OBJECTS) $(libCgl_la_DEPENDENCIES) $(EXTRA_libCgl_la_DEPENDENCIES) 
-	$(AM_V_CXXLD)$(libCgl_la_LINK) -rpath $(libdir) $(libCgl_la_OBJECTS) $(libCgl_la_LIBADD) $(LIBS)
+	$(AM_V_CXXLD)$(CXXLINK) -rpath $(libdir) $(libCgl_la_OBJECTS) $(libCgl_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)

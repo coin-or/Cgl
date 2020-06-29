@@ -13,8 +13,8 @@ noinst_LTLIBRARIES = libCglCliqueStrengthening.la
 # List all source files for this library, including headers
 libCglCliqueStrengthening_la_SOURCES = CglCliqueStrengthening.cpp CglCliqueStrengthening.hpp
 
-# This is for libtool (on Windows)
-libCglCliqueStrengthening_la_LDFLAGS = $(LT_LDFLAGS)
+# This is for libtool
+AM_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = $(CGLLIB_CFLAGS)
@@ -25,6 +25,5 @@ AM_CPPFLAGS = $(CGLLIB_CFLAGS)
 
 # Here list all the header files that are required by a user of the library,
 # and that therefore should be installed in $(includedir)/coin-or.
-
 includecoindir = $(includedir)/coin-or
 includecoin_HEADERS = CglCliqueStrengthening.hpp

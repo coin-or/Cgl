@@ -1,8 +1,7 @@
 # Copyright (C) 2006 International Business Machines and others.
 # All Rights Reserved.
 # This file is distributed under the Eclipse Public License.
-
-
+#
 # Author:  Andreas Waechter           IBM    2006-04-13
 
 ########################################################################
@@ -14,7 +13,7 @@
 noinst_LTLIBRARIES = libCglLandP.la
 
 # List all source files for this library, including headers
-libCglLandP_la_SOURCES = CglLandPTabRow.hpp CglLandPUtils.cpp  CglLandPUtils.hpp
+libCglLandP_la_SOURCES = CglLandPTabRow.hpp CglLandPUtils.cpp CglLandPUtils.hpp
 
 if COIN_HAS_OSICLP
 libCglLandP_la_SOURCES += \
@@ -26,8 +25,8 @@ libCglLandP_la_SOURCES += \
 	CglLandPTest.cpp
 endif
 
-# This is for libtool (on Windows)
-libCglLandP_la_LDFLAGS = $(LT_LDFLAGS)
+# This is for libtool
+AM_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = $(CGLLIB_CFLAGS) -I$(srcdir)/../CglGomory
@@ -38,7 +37,6 @@ AM_CPPFLAGS = $(CGLLIB_CFLAGS) -I$(srcdir)/../CglGomory
 
 # Here list all the header files that are required by a user of the library,
 # and that therefore should be installed in $(includedir)/coin-or.
-
 includecoindir = $(includedir)/coin-or
 if COIN_HAS_OSICLP
 includecoin_HEADERS = CglLandP.hpp CglLandPValidator.hpp

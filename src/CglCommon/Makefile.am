@@ -1,8 +1,7 @@
 # Copyright (C) 2006 International Business Machines and others.
 # All Rights Reserved.
 # This file is distributed under the Eclipse Public License.
-
-
+#
 # Author:  Andreas Waechter           IBM    2006-04-13
 
 ########################################################################
@@ -11,11 +10,9 @@
 
 # Name of the library compiled in this directory.  We want it to be installed
 # in the $libdir directory
-
 lib_LTLIBRARIES = libCgl.la
 
 # List all source files for this library, including headers
-
 libCgl_la_SOURCES = \
 	CglConfig.h \
 	CglCutGenerator.cpp CglCutGenerator.hpp\
@@ -24,15 +21,13 @@ libCgl_la_SOURCES = \
 	CglParam.cpp CglParam.hpp \
 	CglTreeInfo.cpp CglTreeInfo.hpp
 
-# This is for libtool (on Windows)
-
-libCgl_la_LDFLAGS = $(LT_LDFLAGS)
-
 # We want to have all the sublibraries from the Cgl subprojects collected into
 # this library
-
 libCgl_la_LIBADD = $(CGL_SUBLIBS) $(CGLLIB_LFLAGS)
 libCgl_la_DEPENDENCIES = $(CGL_SUBLIBS)
+
+# This is for libtool
+AM_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = $(CGLLIB_CFLAGS)
@@ -43,7 +38,6 @@ AM_CPPFLAGS = $(CGLLIB_CFLAGS)
 
 # Here list all the header files that are required by a user of the library,
 # and that therefore should be installed in $(includedir)/coin-or.
-
 includecoindir = $(includedir)/coin-or
 includecoin_HEADERS = \
 	CglCutGenerator.hpp \

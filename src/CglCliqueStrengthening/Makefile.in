@@ -117,10 +117,6 @@ AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-libCglCliqueStrengthening_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CXX \
-	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CXXLD) \
-	$(AM_CXXFLAGS) $(CXXFLAGS) \
-	$(libCglCliqueStrengthening_la_LDFLAGS) $(LDFLAGS) -o $@
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -384,8 +380,8 @@ noinst_LTLIBRARIES = libCglCliqueStrengthening.la
 # List all source files for this library, including headers
 libCglCliqueStrengthening_la_SOURCES = CglCliqueStrengthening.cpp CglCliqueStrengthening.hpp
 
-# This is for libtool (on Windows)
-libCglCliqueStrengthening_la_LDFLAGS = $(LT_LDFLAGS)
+# This is for libtool
+AM_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = $(CGLLIB_CFLAGS)
@@ -444,7 +440,7 @@ clean-noinstLTLIBRARIES:
 	}
 
 libCglCliqueStrengthening.la: $(libCglCliqueStrengthening_la_OBJECTS) $(libCglCliqueStrengthening_la_DEPENDENCIES) $(EXTRA_libCglCliqueStrengthening_la_DEPENDENCIES) 
-	$(AM_V_CXXLD)$(libCglCliqueStrengthening_la_LINK)  $(libCglCliqueStrengthening_la_OBJECTS) $(libCglCliqueStrengthening_la_LIBADD) $(LIBS)
+	$(AM_V_CXXLD)$(CXXLINK)  $(libCglCliqueStrengthening_la_OBJECTS) $(libCglCliqueStrengthening_la_LIBADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)

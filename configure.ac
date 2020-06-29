@@ -1,15 +1,14 @@
 # Copyright (C) 2006 International Business Machines.
 # All Rights Reserved.
 # This file is distributed under the Eclipse Public License.
-
-
+#
 # Author:  Andreas Waechter            IBM    2006-04-13
 
 #############################################################################
 #                       Names and other basic things                        #
 #############################################################################
 
-AC_INIT([Cgl],[trunk],[https://github.com/coin-or/Cgl/issues/new],[coin-or-cgl],[https://github.com/coin-or/Cgl])
+AC_INIT([Cgl],[devel],[https://github.com/coin-or/Cgl/issues/new],[coin-or-cgl],[https://github.com/coin-or/Cgl])
 
 AC_COPYRIGHT([
 Copyright 2006 International Business Machines and others.
@@ -19,11 +18,9 @@ under the Eclipse Public License.])
 
 # List one file in the package so that the configure script can test whether
 # the package is actually there.
-
 AC_CONFIG_SRCDIR(src/CglCommon/CglMessage.hpp)
 
 # Do some initialization work (version numbers, change prefix default, ...)
-
 AC_COIN_INITIALIZE
 
 #############################################################################
@@ -31,15 +28,12 @@ AC_COIN_INITIALIZE
 #############################################################################
 
 # Get the name of the C++ compiler and appropriate compiler options.
-
 AC_COIN_PROG_CXX
 
 # This is a C++ package, set the language accordingly.
-
 AC_LANG_PUSH(C++)
 
 # Initialize libtool.
-
 AC_COIN_PROG_LIBTOOL
 
 # set RPATH_FLAGS to the compiler link flags required to hardcode location
@@ -52,7 +46,6 @@ AC_COIN_RPATH_FLAGS([$expanded_libdir])
 #############################################################################
 
 # Check for cmath/math.h, cfloat/float.h, cieeefp/ieeefp.h
-
 AC_COIN_CHECK_MATH_HDRS
 
 #############################################################################
@@ -97,7 +90,6 @@ if test $coin_has_osi != yes ; then
 fi
 
 # Clp can be used by CglLandP, and also by the unitTest.
-
 AC_COIN_CHK_PKG(OsiClp,[CglLib CglUnitTest],[osi-clp])
 
 # Finalize libs and cflags for building CglLib components, then add one
@@ -177,10 +169,7 @@ AC_CONFIG_FILES([Makefile
 AC_CONFIG_FILES([doxydoc/doxygen.conf])
 
 # Here put the location and name of the configuration header file
-
 AC_CONFIG_HEADER([src/CglCommon/config.h src/CglCommon/config_cgl.h])
 
 # Finally, we let configure write all the output...
-
 AC_COIN_FINALIZE
-

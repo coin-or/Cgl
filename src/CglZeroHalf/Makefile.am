@@ -1,8 +1,7 @@
 # Copyright (C) 2006 International Business Machines and others.
 # All Rights Reserved.
 # This file is distributed under the Eclipse Public License.
-
-
+#
 # Author:  Andreas Waechter           IBM    2006-04-13
 
 ########################################################################
@@ -20,7 +19,7 @@ libCglZeroHalf_la_SOURCES = \
 	CglZeroHalfTest.cpp
 
 # This is for libtool
-libCglZeroHalf_la_LDFLAGS = $(LT_LDFLAGS)
+AM_LDFLAGS = $(LT_LDFLAGS)
 
 # Here list all include flags, relative to this "srcdir" directory.
 AM_CPPFLAGS = $(CGLLIB_CFLAGS)
@@ -31,6 +30,5 @@ AM_CPPFLAGS = $(CGLLIB_CFLAGS)
 
 # Here list all the header files that are required by a user of the library,
 # and that therefore should be installed in $(includedir)/coin-or.
-
 includecoindir = $(includedir)/coin-or
 includecoin_HEADERS = CglZeroHalf.hpp Cgl012cut.hpp
