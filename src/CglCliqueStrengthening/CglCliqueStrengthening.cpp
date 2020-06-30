@@ -301,7 +301,6 @@ void CglCliqueStrengthening::cliqueExtension(size_t extMethod, CoinCliqueSet *ne
   // if reduced costs are not available, change the
   // extension method
   if (rc == NULL && (extMethod == 4 || extMethod == 5)) {
-    handler_->message(CGL_WARNING_CLQSTR, messages_) << CoinMessageEol;
     extMethod = 2;
   }
 
