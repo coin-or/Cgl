@@ -270,7 +270,8 @@ void CglCliqueStrengthening::strengthenCliques(size_t n, const size_t rows[], si
   nExtended_ = nDominated_ = 0;
 
   if (model_->getNumCols() == 0 || model_->getNumRows() == 0 || cliqueRows_->rows() == 0) {
-    handler_->message(CGL_PROCESS_CLQSTR, messages_) << nExtended_ << nDominated_ << CoinMessageEol;
+    if (handler_->logLevel())
+        handler_->message(CGL_PROCESS_CLQSTR, messages_) << nExtended_ << nDominated_ << CoinMessageEol;
     return;
   }
 
@@ -285,7 +286,8 @@ void CglCliqueStrengthening::strengthenCliques(size_t n, const size_t rows[], si
     addStrongerCliques(newCliques);
   }
 
-  handler_->message(CGL_PROCESS_CLQSTR, messages_) << nExtended_ << nDominated_ << CoinMessageEol;
+  if (handler_->logLevel())
+    handler_->message(CGL_PROCESS_CLQSTR, messages_) << nExtended_ << nDominated_ << CoinMessageEol;
   delete newCliques;
 }
 
