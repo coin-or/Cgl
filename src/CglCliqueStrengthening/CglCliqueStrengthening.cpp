@@ -94,14 +94,17 @@ size_t CliqueRows::rows() const {
   return nRows_;
 }
 
-CglCliqueStrengthening::CglCliqueStrengthening(OsiSolverInterface *model) :
+CglCliqueStrengthening::CglCliqueStrengthening(OsiSolverInterface *model, CoinMessageHandler *dhandler) :
 nExtended_(0), nDominated_(0), handler_(NULL), defaultHandler_(true) {
-  handler_ = new CoinMessageHandler();
-  if (model->messageHandler())
-      handler_->setLogLevel(model->messageHandler()->logLevel());
+
+  if (dhandler)
+    this->passInMessageHandler(dhandler);
+  else
+    handler_ = new CoinMessageHandler();
+
   messages_ = CglMessage();
   model_ = model;
-  model_->checkCGraph();
+  model_->checkCGraph(dhandler);
   cgraph_ = model_->getCGraph();
   cliqueRows_ = NULL;
   posInClqRows_ = NULL;

@@ -120,7 +120,7 @@ public:
   /**
    * Default constructor
    **/
-  CglCliqueStrengthening(OsiSolverInterface *model);
+  CglCliqueStrengthening(OsiSolverInterface *model, CoinMessageHandler *dhandler = NULL);
 
   /**
    * Destructor
