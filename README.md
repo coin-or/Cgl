@@ -14,7 +14,7 @@ The Cgl website is https://github.com/coin-or/Cgl.
 
 The project managers of Cgl are Robin Lougee (@rlougee) and Francois Margot.
 
-Available cut generators are:
+Available cut generators are: 
 
  * Combinatorial cuts:
    * [CglAllDifferent](https://github.com/coin-or/Cgl/wiki/CglAllDifferent)
