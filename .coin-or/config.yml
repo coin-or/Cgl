@@ -1,0 +1,69 @@
+Description:
+  Slug: Cgl
+  ShortName: Cgl
+  LongName:
+  ShortDescription: A library of cutting-plane generators.
+  LongDescription: |2
+    "The COIN-OR Cut Generation Library (Cgl) is an open collection
+    of cutting plane implementations (\"cut generators\") for use in
+    teaching, research, and applications. Cgl can be used with other
+    COIN-OR packages that make use of cuts, such as the mixed-integer
+    linear programming solver Cbc. Each cut generator has its own
+    maintainer who leads the development of its functionality, testing,
+    and documentation. See below for a listing of available generators.
+    All the generators are combined in one library when Cgl is compiled."
+  Manager: Robin Lougee (rlougee at us.ibm.com)
+  Homepage: https://github.com/coin-or/Cgl
+  License: Eclipse Public License 2.0
+  LicenseURL: http://www.opensource.org/licenses/eclipse-2.0
+  Zenodo: 173502902
+  Appveyor:
+    Status: bk1edpd41aws90cp
+    Slug: cgl-e24vn
+  Bintray:
+    Package: Cbc
+  Language:
+    - C++
+  Categories: 
+    - Optimization deterministic linear discrete
+
+Dependencies:
+  - Description: Sample data files
+    URL: https://github.com/coin-or-tools/Data-Sample
+    Version: 1.2
+    Required: Required
+  - Description: COIN-OR Utilities
+    URL: https://github.com/coin-or/CoinUtils
+    Version: 2.11
+    Required: Required
+  - Description: Open Solver Interface
+    URL: https://github.com/coin-or/Osi
+    Version: 0.108
+    Required: Required
+  - Description: Open Solver Interface
+    URL: https://github.com/coin-or/Clp
+    Version: 1.17
+    Required: Required
+
+DevelopmentStatus: 
+  activityStatus: Active
+  maturityLevel: 5
+  testedPlatforms: 
+  - operatingSystem: Linux
+    compiler: gcc
+  - operatingSystem: Mac OS X
+    compiler:
+    - gcc
+    - clang
+  - operatingSystem: Microsoft Windows
+    compiler: cl
+  - operatingSystem: Microsoft Windows with MSys2
+    compiler:
+    - gcc
+    - cl
+    - icl
+  - operatingSystem: Microsoft Windows Subsystem for Linux
+    compiler:
+    - gcc
+    - cl
+    - icl
