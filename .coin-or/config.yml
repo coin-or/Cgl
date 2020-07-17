@@ -15,7 +15,7 @@ Description:
   Manager: Robin Lougee (rlougee at us.ibm.com)
   Homepage: https://github.com/coin-or/Cgl
   License: Eclipse Public License 2.0
-  LicenseURL: http://www.opensource.org/licenses/eclipse-2.0
+  LicenseURL: http://www.opensource.org/licenses/EPL-2.0
   Zenodo: 173502902
   Appveyor:
     Status: bk1edpd41aws90cp
