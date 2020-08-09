@@ -34,15 +34,15 @@ Dependencies:
     Required: Required
   - Description: COIN-OR Utilities
     URL: https://github.com/coin-or/CoinUtils
-    Version: master
+    Version: refactor
     Required: Required
   - Description: Open Solver Interface
     URL: https://github.com/coin-or/Osi
-    Version: master
+    Version: refactor
     Required: Required
   - Description: Open Solver Interface
     URL: https://github.com/coin-or/Clp
-    Version: master
+    Version: refactor
     Required: Required
 
 DevelopmentStatus: 
