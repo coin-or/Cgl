@@ -353,6 +353,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	printf("TwoMir cut had %d zero coefficients!\n",nZero);
 #endif
       } else {
+#define CBC_CHECK_CUT
 #ifdef CBC_CHECK_CUT
 	double rhs = cut->rhs;
 	int * cutIndex = cut->index;
@@ -366,6 +367,14 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	bool goodCut=true;
 	for (i=0;i<number2;i++) {
 	  double value=fabs(packed[i]);
+#if 1
+	  // add more stringent test (i.e. if close to integer tolerance)
+	  if (value<1.0e-5) { 
+	    // throw away
+	    goodCut=false;
+	    break;
+	  }
+#endif
 	  if (value<5.0e-7) { // was 1.0e-9
 	    int iColumn = cutIndex[i];
 	    if (colUpper[iColumn]-colLower[iColumn]<100.0) {
