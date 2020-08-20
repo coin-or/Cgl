@@ -1126,7 +1126,7 @@ static void writeDebugMps(const OsiSolverInterface *solver,
 #else
 #define writeDebugMps(x, y, z)
 #endif
-#define USE_CGL_RATIONAL 1
+//#define USE_CGL_RATIONAL 1 - user has to declare
 #if USE_CGL_RATIONAL>0
 #include "CoinRational.hpp"
 static long computeGcd(long a, long b) {
@@ -1341,6 +1341,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       if (upper<1.0e20) 
 	temp[n++] = multiplier*upper;
       memcpy(tempSave,temp,n*sizeof(double));
+#if USE_CGL_RATIONAL>0
       if (scaleRowIntegral(temp, n)) {
 	// double check
 	double largestError = 0.0;
@@ -1359,6 +1360,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	  multiplier = mult;
 	}
       }
+#endif
       element[iRow] = multiplier;
       if (multiplier!=1.0) {
 	nChanged++;
