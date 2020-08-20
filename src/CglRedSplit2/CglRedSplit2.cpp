@@ -1749,9 +1749,9 @@ int CglRedSplit2::generateCuts(OsiCuts* cs, int maxNumCuts, int* lambda)
       break;
 
     default: 
-      printf("### ERROR: CglRedSlpit::generateCuts(): rstat[%d]: %d\n",
-	     i, rstat[i]);
-      exit(1);
+      //printf("### ERROR: CglRedSlpit::generateCuts(): rstat[%d]: %d\n",
+      // i, rstat[i]);
+      //exit(1);
       break;
     }
     assert (fabs(effective_rhs[i])<1.0e100);

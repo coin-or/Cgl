@@ -4854,11 +4854,25 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
     int numberColumns = originalModel_->getNumCols();
     const double *columnLower = originalModel_->getColLower();
     const double *columnUpper = originalModel_->getColUpper();
+    //double *solution = CoinCopyOfArray(originalModel_->getColSolution(),
+    //numberColumns);
     int iColumn;
     for (iColumn = 0; iColumn < numberColumns; iColumn++) {
-      if (columnLower[iColumn] == columnUpper[iColumn])
+      //solution[iColumn] = CoinMin(solution[iColumn],columnUpper[iColumn]);
+      //solution[iColumn] = CoinMax(solution[iColumn],columnLower[iColumn]);
+      if (columnLower[iColumn] == columnUpper[iColumn]) 
         numberFixed++;
     }
+    //originalModel_->setColSolution(solution);
+    //delete [] solution;
+    {
+      // only way I can tell Clp to really redo scaling!!!!!!
+      bool saveTakeHint;
+      OsiHintStrength saveStrength;
+      originalModel_->getHintParam(OsiDoScale,saveTakeHint, saveStrength);
+      originalModel_->setHintParam(OsiDoScale, false, OsiHintTry);
+      originalModel_->setHintParam(OsiDoScale, saveTakeHint, saveStrength);
+    }      
     //printf("XX %d columns, %d fixed\n",numberColumns,numberFixed);
     //double time1 = CoinCpuTime();
     //originalModel_->initialSolve();
@@ -4870,7 +4884,7 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
     }
   }
   //double time1 = CoinCpuTime();
-  originalModel_->initialSolve();
+  originalModel_->resolve();
   numberIterationsPost_ += originalModel_->getIterationCount();
   //printf("Time without basis %g seconds, %d iterations\n",CoinCpuTime()-time1,originalModel_->getIterationCount());
   double objectiveValue = originalModel_->getObjValue();

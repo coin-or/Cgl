@@ -1320,9 +1320,9 @@ void CglRedSplit::generateCuts(OsiCuts &cs)
       break;
 
     default: 
-      printf("### ERROR: CglRedSlpit::generateCuts(): rstat[%d]: %d\n",
-	     i, rstat[i]);
-      exit(1);
+      //printf("### ERROR: CglRedSlpit::generateCuts(): rstat[%d]: %d\n",
+      // i, rstat[i]);
+      //exit(1);
       break;
     }
   }
