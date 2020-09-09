@@ -125,7 +125,6 @@
       <AdditionalIncludeDirectories>..\..\..\..\BuildTools\headers;..\..\..\..\CoinUtils\src\;..\..\..\src\CglCommon;..\..\..\src\CglDuplicateRow;..\..\..\src\CglMixedIntegerRounding;..\..\..\src\CglMixedIntegerRounding2;..\..\..\src\CglFlowCover;..\..\..\src\CglClique;..\..\..\src\CglOddHole;..\..\..\src\CglKnapsackCover;..\..\..\src\CglGomory;..\..\..\src\CglPreProcess;..\..\..\src\CglRedSplit;..\..\..\src\CglResidualCapacity;..\..\..\src\CglProbing;..\..\..\src;..\..\..\..\Osi\src\Osi;..\..\..\..\Clp\src\OsiClp;..\..\..\..\Clp\src</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NDEBUG;_NDEBUG;WIN32;_LIB;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
