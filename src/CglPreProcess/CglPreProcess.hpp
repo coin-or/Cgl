@@ -436,6 +436,7 @@ private:
       64 - very heavy probing
       128 - appData_ has SC data
       256 - clumsy postprocessing
+      512 - try for dominated columns
   */
   int options_;
   /** Row types (may be NULL) 
