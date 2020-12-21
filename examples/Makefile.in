@@ -74,9 +74,8 @@ CXXLINKFLAGS = @RPATH_FLAGS@
 INCL += $(ADDINCFLAGS)
 
 # Linker flags
-# the --static is only necessary when linking against static libs, but we don't know in this template whether that's the case
-@COIN_HAS_PKGCONFIG_TRUE@LIBS = `PKG_CONFIG_PATH=@COIN_PKG_CONFIG_PATH@ @PKG_CONFIG@ --libs cgl --static`
-@COIN_HAS_PKGCONFIG_FALSE@LIBS = -L@libdir@ -lCgl -lOsiClp
+@COIN_HAS_PKGCONFIG_TRUE@LIBS = `PKG_CONFIG_PATH=@COIN_PKG_CONFIG_PATH@ @PKG_CONFIG@ --libs cgl osi-clp clp osi coinutils`
+@COIN_HAS_PKGCONFIG_FALSE@LIBS = -L@libdir@ -lCgl -lOsiClp -lClp -lOsi -lCoinUtils
 LIBS += $(ADDLIBS)
 
 # The following is necessary under cygwin, if native compilers are used
