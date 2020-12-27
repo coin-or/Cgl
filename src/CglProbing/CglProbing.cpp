@@ -3051,6 +3051,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
     int newMax=CoinMin(2*maxStack,50);
     maxStack=CoinMax(newMax,maxStack);
   }
+  maxStack = CoinMin(maxStack,90000);
   double relaxedTolerance=2.0*primalTolerance_;
 #define ONE_ARRAY
 #ifdef ONE_ARRAY
@@ -5317,16 +5318,16 @@ int CglProbing::probe( const OsiSolverInterface & si,
               /* point back to stack */
               for (istackC=nstackC-1;istackC>=0;istackC--) {
                 int icol=stackC[istackC];
-                markC[icol]=istackC+1000;
+                markC[icol]=istackC+100000;
               }
               OsiColCut cc;
               int nTot=0,nFix=0,nInt=0;
               bool ifCut=false;
               for (istackC=1;istackC<nstackC0;istackC++) {
                 int icol=stackC0[istackC];
-                int istackC1=markC[icol]-1000;
+                int istackC1=markC[icol]-100000;
                 if (istackC1>=0) {
-		  markC[icol] -= 1000;
+		  markC[icol] -= 100000;
                   if (CoinMin(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
                     saveL[istackC1]=CoinMin(lo0[istackC],colLower[icol]);
                     if (intVar[icol]/*||!info->inTree*/) {
@@ -5348,9 +5349,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
               }
               for (istackC=1;istackC<nstackC0;istackC++) {
                 int icol=stackC0[istackC];
-                int istackC1=markC[icol]-1000;
+                int istackC1=markC[icol]-100000;
                 if (istackC1>=0) {
-		  markC[icol] -= 1000;
+		  markC[icol] -= 100000;
                   if (CoinMax(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
                     saveU[istackC1]=CoinMax(up0[istackC],colUpper[icol]);
                     if (intVar[icol]/*||!info->inTree*/) {
@@ -7189,7 +7190,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		/* point back to stack */
 		for (istackC=nstackC-1;istackC>=0;istackC--) {
 		  int icol=stackC[istackC];
-		  markC[icol]=istackC+1000;
+		  markC[icol]=istackC+100000;
 		}
 		if (mode_) {
 		  OsiColCut cc;
@@ -7197,9 +7198,9 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		  bool ifCut=false;
 		  for (istackC=0;istackC<nstackC0;istackC++) {
 		    int icol=stackC0[istackC];
-		    int istackC1=markC[icol]-1000;
+		    int istackC1=markC[icol]-100000;
 		    if (istackC1>=0) {
-		      markC[icol] -= 1000;
+		      markC[icol] -= 100000;
 		      if (CoinMin(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
 			saveL[istackC1]=CoinMin(lo0[istackC],colLower[icol]);
 			if (intVar[icol]) {
@@ -7221,9 +7222,9 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		  }
 		  for (istackC=0;istackC<nstackC0;istackC++) {
 		    int icol=stackC0[istackC];
-		    int istackC1=markC[icol]-1000;
+		    int istackC1=markC[icol]-100000;
 		    if (istackC1>=0) {
-		      markC[icol] -= 1000;
+		      markC[icol] -= 100000;
 		      if (CoinMax(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
 			saveU[istackC1]=CoinMax(up0[istackC],colUpper[icol]);
 			if (intVar[icol]) {
@@ -8605,7 +8606,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
               /* point back to stack */
               for (istackC=nstackC-1;istackC>=0;istackC--) {
                 int icol=stackC[istackC];
-                markC[icol]=istackC+1000;
+                markC[icol]=istackC+100000;
               }
               if (mode_) {
                 OsiColCut cc;
@@ -8613,9 +8614,9 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                 bool ifCut=false;
                 for (istackC=0;istackC<nstackC0;istackC++) {
                   int icol=stackC0[istackC];
-                  int istackC1=markC[icol]-1000;
+                  int istackC1=markC[icol]-100000;
                   if (istackC1>=0) {
-		    markC[icol] -= 1000;
+		    markC[icol] -= 100000;
                     if (CoinMin(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
                       saveL[istackC1]=CoinMin(lo0[istackC],colLower[icol]);
                       if (intVar[icol]) {
@@ -8637,9 +8638,9 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                 }
                 for (istackC=0;istackC<nstackC0;istackC++) {
                   int icol=stackC0[istackC];
-                  int istackC1=markC[icol]-1000;
+                  int istackC1=markC[icol]-100000;
                   if (istackC1>=0) {
-		  markC[icol] -= 1000;
+		  markC[icol] -= 100000;
 		  if (CoinMax(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
                       saveU[istackC1]=CoinMax(up0[istackC],colUpper[icol]);
                       if (intVar[icol]) {
