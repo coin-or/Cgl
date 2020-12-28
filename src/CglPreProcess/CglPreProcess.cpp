@@ -6609,7 +6609,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
             probingCut->setMaxProbeRoot(CoinMax(saveMaxProbe, 1000));
             probingCut->setMaxElementsRoot(CoinMax(saveMaxElements, 2000));
 	    int maxLook = CoinMin(numberColumns, numberRows)/2;
-	    maxLook = CoinMin(maxLook,1000);
+	    maxLook = CoinMin(maxLook,2000);
             probingCut->setMaxLookRoot(CoinMax(saveMaxLook, maxLook));
             options_ &= ~16;
           } else if (iPass || (options_ & 64) == 0) {
