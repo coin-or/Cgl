@@ -5,7 +5,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/coin-or/Cgl?sort=semver)](https://github.com/coin-or/Cgl/releases)
 
 _This file is auto-generated from [config.yml](.coin-or/config.yml) using the 
-[generate_readme](.coin-or/generate_readme).
+[generate_readme](.coin-or/generate_readme) script.
 To make changes, please edit [config.yml](.coin-or/config.yml) or the generation script._
 
 The COIN-OR Cut Generation Library (`Cgl`) is a collection of cut generators that can be 
@@ -84,11 +84,19 @@ The Cgl website is https://github.com/coin-or/Cgl.
 
 ## CURRENT BUILD STATUS
 
-[![Build Status](https://travis-ci.org/coin-or/Cgl.svg?branch=master)](https://travis-ci.org/coin-or/Cgl)
+[![Build Status](https://travis-ci.com/coin-or/Cgl.svg?branch=master)](https://travis-ci.com/coin-or/Cgl)
 
-[![Build status](https://ci.appveyor.com/api/projects/status/bk1edpd41aws90cp/branch/master?svg=true)](https://ci.appveyor.com/project/tkralphs/cgl-e24vn/branch/master)
+[![Build status](https://ci.appveyor.com/api/projects/status/bk1edpd41aws90cp/branch/master?svg=true)](https://ci.appveyor.com/project/coin-or/Cgl/branch/master)
 
 ## DOWNLOAD
+
+### Docker image
+
+There is a Docker image that provides Cgl, as well as other projects
+in the [COIN-OR Optimization
+Suite](https://github.com/coin-or/COIN-OR-OptimizationSuite)[here](https://hub.docker.com/repository/docker/coinor/coin-or-optimization-suite)
+
+### Binaries
 
 Binaries for most platforms are available as part of [Cbc](https://bintray.com/coin-or/download/Cbc). 
 
