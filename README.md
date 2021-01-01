@@ -1,11 +1,11 @@
-# Cgl
+# Cgl refactor
 
 [![A COIN-OR Project](https://coin-or.github.io/coin-or-badge.png)](https://www.coin-or.org)
 
 [![Latest Release](https://img.shields.io/github/v/release/coin-or/Cgl?sort=semver)](https://github.com/coin-or/Cgl/releases)
 
 _This file is auto-generated from [config.yml](.coin-or/config.yml) using the 
-[generate_readme](.coin-or/generate_readme).
+[generate_readme](.coin-or/generate_readme) script.
 To make changes, please edit [config.yml](.coin-or/config.yml) or the generation script._
 
 The COIN-OR Cut Generation Library (`Cgl`) is a collection of cut generators that can be 
@@ -84,11 +84,19 @@ The Cgl website is https://github.com/coin-or/Cgl.
 
 ## CURRENT BUILD STATUS
 
-[![Build Status](https://travis-ci.org/coin-or/Cgl.svg?branch=master)](https://travis-ci.org/coin-or/Cgl)
+[![Build Status](https://travis-ci.com/coin-or/Cgl.svg?branch=refactor)](https://travis-ci.com/coin-or/Cgl)
 
-[![Build status](https://ci.appveyor.com/api/projects/status/bk1edpd41aws90cp/branch/master?svg=true)](https://ci.appveyor.com/project/tkralphs/cgl-e24vn/branch/master)
+[![Build status](https://ci.appveyor.com/api/projects/status/bk1edpd41aws90cp/branch/refactor?svg=true)](https://ci.appveyor.com/project/coin-or/Cgl/branch/refactor)
 
 ## DOWNLOAD
+
+### Docker image
+
+There is a Docker image that provides Cgl, as well as other projects
+in the [COIN-OR Optimization
+Suite](https://github.com/coin-or/COIN-OR-OptimizationSuite)[here](https://hub.docker.com/repository/docker/coinor/coin-or-optimization-suite)
+
+### Binaries
 
 Binaries for most platforms are available as part of [Cbc](https://bintray.com/coin-or/download/Cbc). 
 
@@ -122,7 +130,7 @@ To build CoinUtils from source, obtain the `coinbrew` script, do
 ```
 wget https://raw.githubusercontent.com/coin-or/coinbrew/master/coinbrew
 chmod u+x coinbrew
-./coinbrew fetch Cgl@master
+./coinbrew fetch Cgl@refactor
 ./coinbrew build Cgl
 ```
 For more detailed instructions on coinbrew, see https://coin-or.github.io/coinbrew.
@@ -148,7 +156,7 @@ If you have `Doxygen` available, you can build a HTML documentation by typing
 `make doxygen-docs` 
 
 in the build directory. If Cgl was built via `coinbrew`, then the build
-directory will be `./build/Cgl/master` by default. The doxygen documentation main file
+directory will be `./build/Cgl/refactor` by default. The doxygen documentation main file
 is found at `<build-dir>/doxydoc/html/index.html`.
 
 If you don't have `doxygen` installed locally, you can use also find the
@@ -158,7 +166,7 @@ documentation [here](http://coin-or.github.io/Cgl/Doxygen).
 ## Project Links
 
  * [COIN-OR Initiative](http://www.coin-or.org/)
- * [Mailing list](http://list.coin-or.org/mailman/listinfo/cgl)
+ * [Mailing list](https://github.com/coin-or/Cgl/discussions)
  * [Report a bug](https://github.com/coin-or/Cgl/issues/new)
  * [Doxygen-generated html documentation](http://coin-or.github.io/Cgl/Doxygen)
 
