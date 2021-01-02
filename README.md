@@ -166,7 +166,7 @@ documentation [here](http://coin-or.github.io/Cgl/Doxygen).
 ## Project Links
 
  * [COIN-OR Initiative](http://www.coin-or.org/)
- * [Mailing list](http://list.coin-or.org/mailman/listinfo/cgl)
+ * [Discussion formum](https://github.com/coin-or/Cgl/discussions)
  * [Report a bug](https://github.com/coin-or/Cgl/issues/new)
  * [Doxygen-generated html documentation](http://coin-or.github.io/Cgl/Doxygen)
 
