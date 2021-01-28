@@ -1713,9 +1713,11 @@ int CglRedSplit2::generateCuts(OsiCuts* cs, int maxNumCuts, int* lambda)
       break;
 
     default: // free variable ? Don't know how to handle 
+#ifndef NDEBUG
       printf("### ERROR: CglRedSplit2::generateCuts(): cstat[%d]: %d\n",
 	     i, cstat[i]);
-      exit(1);
+#endif
+      //exit(1);
       break;
     } 
   }
@@ -1748,10 +1750,12 @@ int CglRedSplit2::generateCuts(OsiCuts* cs, int maxNumCuts, int* lambda)
       card_contNonBasicVar++;
       break;
 
-    default: 
-      printf("### ERROR: CglRedSlpit::generateCuts(): rstat[%d]: %d\n",
+    default:
+#ifndef NDEBUG
+      printf("### ERROR: CglRedSplit::generateCuts(): rstat[%d]: %d\n",
 	     i, rstat[i]);
-      exit(1);
+#endif
+      //exit(1);
       break;
     }
     assert (fabs(effective_rhs[i])<1.0e100);
@@ -2632,10 +2636,12 @@ int CglRedSplit2::tiltLandPcut(const OsiSolverInterface* si,
       card_contNonBasicVar++;
       break;
 
-    default: 
-      printf("### ERROR: CglRedSlpit::generateCuts(): rstat[%d]: %d\n",
+    default:
+#ifndef NDEBUG
+      printf("### ERROR: CglRedSplit::generateCuts(): rstat[%d]: %d\n",
 	     i, rstat[i]);
-      exit(1);
+#endif
+      //exit(1);
       break;
     }
     assert (fabs(effective_rhs[i])<1.0e100);
