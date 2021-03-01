@@ -1376,7 +1376,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     int nScaled = 0;
     for (int iRow=0;iRow<numberRows;iRow++) {
       int n = 0;
-      // make majority positive
+      // make majority positive (unless upper rhs +1)
       CoinBigIndex start = rowStart[iRow];
       CoinBigIndex end = start+rowLength[iRow];
       double multiplier = 1.0;
@@ -1384,49 +1384,51 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	if (elementByRow[j]<0)
 	  n++;
       }
-      if (2*n>end-start)
+      if (2*n>end-start && rowUpper[iRow] != 1.0)
 	multiplier = -1.0;
       int nInRow = end-start;
       n = nInRow;
-      bool allInt = true;
+      double smallest = COIN_DBL_MAX;
       if (multiplier == 1.0) {
 	for (int i=0;i<n;i++) {
 	  double value = elementByRow[i+start];
-	  if (value!=floor(value))
-	    allInt = false;
+	  if (fabs(value) < smallest)
+	    smallest = fabs(value);
 	  temp[i] = value;
 	}
       } else {
 	for (int i=0;i<n;i++) {
 	  double value = elementByRow[i+start];
-	  if (value!=floor(value))
-	    allInt = false;
+	  if (fabs(value) < smallest)
+	    smallest = fabs(value);
 	  temp[i] = -value;
 	}
       }
       double lower = rowLower[iRow];
       double upper = rowUpper[iRow];
-      if (lower>-1.0e20) 
-	temp[n++] = multiplier*lower;
-      if (upper<1.0e20) 
-	temp[n++] = multiplier*upper;
-      memcpy(tempSave,temp,n*sizeof(double));
-      if (!allInt && scaleRowIntegral(temp, n)) {
-	// double check
-	double largestError = 0.0;
-	double mult = temp[0]/elementByRow[start];
-	if (fabs(mult-floor(mult+0.1))<1.0e-12)
-	  mult = floor(mult+0.1);
-	for (int i=0;i<n;i++) {
-	  double value = mult*tempSave[i];
-	  if (value) {
-	    double vint = floor(value+0.01);
-	    largestError = CoinMax(largestError,fabs(value-vint));
-	    assert (fabs(vint)>0.9);
+      if (smallest != 1.0) {
+	if (lower>-1.0e20) 
+	  temp[n++] = multiplier*lower;
+	if (upper<1.0e20) 
+	  temp[n++] = multiplier*upper;
+	memcpy(tempSave,temp,n*sizeof(double));
+	if (scaleRowIntegral(temp, n)) {
+	  // double check
+	  double largestError = 0.0;
+	  double mult = temp[0]/elementByRow[start];
+	  if (fabs(mult-floor(mult+0.1))<1.0e-12)
+	    mult = floor(mult+0.1);
+	  for (int i=0;i<n;i++) {
+	    double value = mult*tempSave[i];
+	    if (value) {
+	      double vint = floor(value+0.01);
+	      largestError = CoinMax(largestError,fabs(value-vint));
+	      assert (fabs(vint)>0.9);
+	    }
 	  }
-	}
-	if (largestError<1.0e-9) {
-	  multiplier = mult;
+	  if (largestError<1.0e-9) {
+	    multiplier = mult;
+	  }
 	}
       }
       element[iRow] = multiplier;
