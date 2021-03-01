@@ -16962,12 +16962,16 @@ $as_echo "no" >&6; }
    fi
   fi
 
-  # Check if PKG_CONFIG supports the short-errors flag.
   if test -n "$PKG_CONFIG" &&
      $PKG_CONFIG --atleast-pkgconfig-version 0.20 ; then
     pkg_short_errors=" --short-errors "
   else
     pkg_short_errors=""
+  fi
+
+  pkg_static=
+  if test -n "$PKG_CONFIG" ; then
+    case "$LDFLAGS" in "-static" | "* -static*" ) pkg_static=--static ;; esac
   fi
 
    if test -n "$PKG_CONFIG"; then
@@ -16992,6 +16996,10 @@ $as_echo "$as_me: $PKG_CONFIG path is \"$COIN_PKG_CONFIG_PATH\"" >&6;}
 
 
 
+
+
+
+
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for package CoinUtils" >&5
 $as_echo_n "checking for package CoinUtils... " >&6; }
 
@@ -17003,15 +17011,17 @@ $as_echo_n "checking for package CoinUtils... " >&6; }
 
 
 
-  # Check to see if the user has set an override to skip this primary.
+
+
   coin_has_coinutils=noInfo
   if test x"$COIN_SKIP_PROJECTS" != x ; then
-    for pkg in $COIN_SKIP_PROJECTS ; do
-      if test "$pkg" = "$coinutils" ; then
+    for pkg in `echo $COIN_SKIP_PROJECTS | tr '[:upper:]' '[:lower:]'` ; do
+      if test "$pkg" = "coinutils" ; then
         coin_has_coinutils=skipping
       fi
     done
   fi
+
 
   if test "$coin_has_coinutils" != skipping ; then
 
@@ -17043,46 +17053,64 @@ fi
 
 
 
-  dflt_action=yes
 
-  # Initialize variables for the primary package.
-  coin_has_coinutils=noInfo
+
+
+
+
+  coin_has_coinutils=requested
+
   coinutils_lflags=
   coinutils_cflags=
   coinutils_data=
-  coinutils_pcfiles=
+  coinutils_pcfiles="coinutils"
 
-  # --with-prim is always present.
+
   withval="$with_coinutils"
   if test -n "$withval" ; then
     case "$withval" in
       no )
         coin_has_coinutils=skipping
+        coinutils_failmode='command line'
         ;;
       yes )
         coin_has_coinutils=requested
+        coinutils_failmode=''
         ;;
       build )
-        coin_has_coinutils=build
+        coin_has_coinutils=requested
+        coinutils_build=yes
+        coinutils_failmode=''
         ;;
       * )
-        coin_has_coinutils=yes
-                coinutils_lflags="$withval"
+        coin_has_coinutils=requested
+        coinutils_failmode=''
+        coinutils_lflags="$withval"
+        coinutils_pcfiles=''
         ;;
     esac
+  else
+    if test -n "$with_coinutils_lflags" ||
+       test -n "$with_coinutils_cflags" ||
+       test -n "$with_coinutils_data" ; then
+      coin_has_coinutils=requested
+      coinutils_failmode=''
+      coinutils_pcfiles=''
+    fi
   fi
 
-  # Specifying --with-prim=no overrides the individual options for lflags and cflags.
-     if test "$coin_has_coinutils" != skipping ; then
+
+  if test "$coin_has_coinutils" != skipping ; then
        withval="$with_coinutils_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify linker flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify link flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_coinutils=yes
              coinutils_lflags="$withval"
+             coinutils_pcfiles=''
              ;;
          esac
        fi
@@ -17091,11 +17119,12 @@ fi
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify compiler flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify compile flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_coinutils=yes
              coinutils_cflags="$withval"
+             coinutils_pcfiles=''
              ;;
          esac
        fi
@@ -17103,43 +17132,12 @@ fi
 
 
 
-  # At this point, coin_has_prim can be one of
-  # - noInfo (no user options specified),
-  # - skipping (user said no),
-  # - requested,
-  # - build (user said yes or build and gave no further guidance),
-  # - or yes (user specified one or more --with-prim options).
-  # If we're already at yes or skipping, we're done looking.
 
-  # If there are no user options (noInfo) and the default is no, we're skipping.
-  # Otherwise, the default must be yes or build; consider the package requested.
-  # A default action we don't recognise defaults to yes.
-  if test "$coin_has_coinutils" = noInfo ; then
-    case $dflt_action in
-      no )
-        coin_has_coinutils=skipping
-        ;;
-      build )
-        coin_has_coinutils=build
-        ;;
-      * )
-        coin_has_coinutils=requested
-        ;;
-    esac
-  fi
 
-  # Now coin_has_prim can be one of skipping, yes, requested, or build.
-  # For requested or build, try pkgconf, if it's available.
-  # If it's not available, well, hope that the user knows their system
-  # and prim can be used with no additional flags.
-  case $coin_has_coinutils in
-    requested | build )
-      if test -n "$PKG_CONFIG" -a "" != skip ; then
-        if test $coin_has_coinutils = build ; then
-             pcfile=coincoinutils
-           else
-             pcfile=coinutils
-           fi
+  if test $coin_has_coinutils = requested ; then
+    if test -n "$PKG_CONFIG" ; then
+      if test x"$coinutils_build" = xyes ; then
+        pcfile="coin$coinutils_pcfiles"
 
 
 
@@ -17147,8 +17145,6 @@ fi
     if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
       COINUTILS_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
       coin_has_coinutils=yes
-           coinutils_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
-           coinutils_pcfiles="$pcfile"
     else
       COINUTILS_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
       coin_has_coinutils=no
@@ -17157,25 +17153,37 @@ fi
     as_fn_error $? "\"Cannot check for existence of module coinutils without pkgconf\"" "$LINENO" 5
   fi
 
-      else
-        coin_has_coinutils=no
       fi
-      ;;
-    skipping | yes )
-      ;;
-    * )
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Unexpected status \"$coin_has_coinutils\" in COIN_FIND_PRIM_PKG" >&5
-$as_echo "$as_me: WARNING: Unexpected status \"$coin_has_coinutils\" in COIN_FIND_PRIM_PKG" >&2;}
-      ;;
-  esac
+      if ! test $coin_has_coinutils = yes ; then
+        pcfile="$coinutils_pcfiles"
 
-  # The final value of coin_has_prim will be yes, no, or skipping.
-  # No means we looked (with pkgconfig) and didn't find anything.
-  # Skipping means the user said `don't use.'
-  # Yes means we have something, from the user or from pkgconfig.
-  # Note that we haven't run a useability test!
 
-  # Define BUILDTOOLS_DEBUG to enable debugging output
+
+  if test -n "$PKG_CONFIG" ; then
+    if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
+      COINUTILS_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
+      coin_has_coinutils=yes
+    else
+      COINUTILS_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
+      coin_has_coinutils=no
+    fi
+  else
+    as_fn_error $? "\"Cannot check for existence of module coinutils without pkgconf\"" "$LINENO" 5
+  fi
+
+      fi
+      if test $coin_has_coinutils = yes ; then
+        coinutils_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
+        coinutils_pcfiles="$pcfile"
+      fi
+    else
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for coinutils via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-coinutils-lflags and --with-coinutils-cflags." >&5
+$as_echo "$as_me: WARNING: Check for coinutils via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-coinutils-lflags and --with-coinutils-cflags." >&2;}
+      coin_has_coinutils=no
+    fi
+  fi
+
+
   if test "$BUILDTOOLS_DEBUG" = 1 ; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for coinutils: \"$coin_has_coinutils\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for coinutils: \"$coin_has_coinutils\"" >&6;}
@@ -17194,20 +17202,16 @@ $as_echo "$as_me: coinutils_pcfiles is \"$coinutils_pcfiles\"" >&6;}
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_coinutils" >&5
 $as_echo "$coin_has_coinutils" >&6; }
-
-      if test "$PKG_CONFIG$coin_has_coinutils" = no ; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for CoinUtils via pkg-config was skipped as no pkg-config available. If CoinUtils was meant to be found, then consider installing pkg-config or provide appropriate --with-coinutils-lflags, --with-coinutils-cflags, etc." >&5
-$as_echo "$as_me: WARNING: Check for CoinUtils via pkg-config was skipped as no pkg-config available. If CoinUtils was meant to be found, then consider installing pkg-config or provide appropriate --with-coinutils-lflags, --with-coinutils-cflags, etc." >&2;}
-      fi
   else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_coinutils due to COIN_SKIP_PROJECTS" >&5
-$as_echo "$coin_has_coinutils due to COIN_SKIP_PROJECTS" >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_coinutils (COIN_SKIP_PROJECTS)" >&5
+$as_echo "$coin_has_coinutils (COIN_SKIP_PROJECTS)" >&6; }
   fi
 
-  # Possibilities are `yes', 'no', or `skipping'. Normalise to `yes' or `no'.
+
   if test "$coin_has_coinutils" != yes ; then
     coin_has_coinutils=no
   fi
+
 
    if test $coin_has_coinutils = yes; then
   COIN_HAS_COINUTILS_TRUE=
@@ -17218,16 +17222,15 @@ else
 fi
 
 
-  # If we have located the package, define preprocessor symbol PKG_HAS_PRIM and
-  # augment the necessary variables for the client packages.
+
   if test $coin_has_coinutils = yes ; then
 
 $as_echo "#define CGL_HAS_COINUTILS 1" >>confdefs.h
 
-    if test -n "$coinutils_pcfiles" ; then CGLLIB_PCFILES="$coinutils_pcfiles $CGLLIB_PCFILES" ; fi
+    CGLLIB_PCFILES="$coinutils_pcfiles $CGLLIB_PCFILES"
        CGLLIB_LFLAGS="$coinutils_lflags $CGLLIB_LFLAGS"
        CGLLIB_CFLAGS="$coinutils_cflags $CGLLIB_CFLAGS"
-      if test -n "$coinutils_pcfiles" ; then CGLUNITTEST_PCFILES="$coinutils_pcfiles $CGLUNITTEST_PCFILES" ; fi
+      CGLUNITTEST_PCFILES="$coinutils_pcfiles $CGLUNITTEST_PCFILES"
        CGLUNITTEST_LFLAGS="$coinutils_lflags $CGLUNITTEST_LFLAGS"
        CGLUNITTEST_CFLAGS="$coinutils_cflags $CGLUNITTEST_CFLAGS"
 
@@ -17238,6 +17241,10 @@ $as_echo "#define CGL_HAS_COINUTILS 1" >>confdefs.h
 if test $coin_has_coinutils != yes ; then
   as_fn_error $? "Required package CoinUtils not available." "$LINENO" 5
 fi
+
+
+
+
 
 
 
@@ -17253,15 +17260,17 @@ $as_echo_n "checking for package Osi... " >&6; }
 
 
 
-  # Check to see if the user has set an override to skip this primary.
+
+
   coin_has_osi=noInfo
   if test x"$COIN_SKIP_PROJECTS" != x ; then
-    for pkg in $COIN_SKIP_PROJECTS ; do
-      if test "$pkg" = "$osi" ; then
+    for pkg in `echo $COIN_SKIP_PROJECTS | tr '[:upper:]' '[:lower:]'` ; do
+      if test "$pkg" = "osi" ; then
         coin_has_osi=skipping
       fi
     done
   fi
+
 
   if test "$coin_has_osi" != skipping ; then
 
@@ -17293,46 +17302,64 @@ fi
 
 
 
-  dflt_action=yes
 
-  # Initialize variables for the primary package.
-  coin_has_osi=noInfo
+
+
+
+
+  coin_has_osi=requested
+
   osi_lflags=
   osi_cflags=
   osi_data=
-  osi_pcfiles=
+  osi_pcfiles="osi"
 
-  # --with-prim is always present.
+
   withval="$with_osi"
   if test -n "$withval" ; then
     case "$withval" in
       no )
         coin_has_osi=skipping
+        osi_failmode='command line'
         ;;
       yes )
         coin_has_osi=requested
+        osi_failmode=''
         ;;
       build )
-        coin_has_osi=build
+        coin_has_osi=requested
+        osi_build=yes
+        osi_failmode=''
         ;;
       * )
-        coin_has_osi=yes
-                osi_lflags="$withval"
+        coin_has_osi=requested
+        osi_failmode=''
+        osi_lflags="$withval"
+        osi_pcfiles=''
         ;;
     esac
+  else
+    if test -n "$with_osi_lflags" ||
+       test -n "$with_osi_cflags" ||
+       test -n "$with_osi_data" ; then
+      coin_has_osi=requested
+      osi_failmode=''
+      osi_pcfiles=''
+    fi
   fi
 
-  # Specifying --with-prim=no overrides the individual options for lflags and cflags.
-     if test "$coin_has_osi" != skipping ; then
+
+  if test "$coin_has_osi" != skipping ; then
        withval="$with_osi_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify linker flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify link flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osi=yes
              osi_lflags="$withval"
+             osi_pcfiles=''
              ;;
          esac
        fi
@@ -17341,11 +17368,12 @@ fi
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify compiler flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify compile flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osi=yes
              osi_cflags="$withval"
+             osi_pcfiles=''
              ;;
          esac
        fi
@@ -17353,43 +17381,12 @@ fi
 
 
 
-  # At this point, coin_has_prim can be one of
-  # - noInfo (no user options specified),
-  # - skipping (user said no),
-  # - requested,
-  # - build (user said yes or build and gave no further guidance),
-  # - or yes (user specified one or more --with-prim options).
-  # If we're already at yes or skipping, we're done looking.
 
-  # If there are no user options (noInfo) and the default is no, we're skipping.
-  # Otherwise, the default must be yes or build; consider the package requested.
-  # A default action we don't recognise defaults to yes.
-  if test "$coin_has_osi" = noInfo ; then
-    case $dflt_action in
-      no )
-        coin_has_osi=skipping
-        ;;
-      build )
-        coin_has_osi=build
-        ;;
-      * )
-        coin_has_osi=requested
-        ;;
-    esac
-  fi
 
-  # Now coin_has_prim can be one of skipping, yes, requested, or build.
-  # For requested or build, try pkgconf, if it's available.
-  # If it's not available, well, hope that the user knows their system
-  # and prim can be used with no additional flags.
-  case $coin_has_osi in
-    requested | build )
-      if test -n "$PKG_CONFIG" -a "" != skip ; then
-        if test $coin_has_osi = build ; then
-             pcfile=coinosi
-           else
-             pcfile=osi
-           fi
+  if test $coin_has_osi = requested ; then
+    if test -n "$PKG_CONFIG" ; then
+      if test x"$osi_build" = xyes ; then
+        pcfile="coin$osi_pcfiles"
 
 
 
@@ -17397,8 +17394,6 @@ fi
     if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
       OSI_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
       coin_has_osi=yes
-           osi_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
-           osi_pcfiles="$pcfile"
     else
       OSI_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
       coin_has_osi=no
@@ -17407,25 +17402,37 @@ fi
     as_fn_error $? "\"Cannot check for existence of module osi without pkgconf\"" "$LINENO" 5
   fi
 
-      else
-        coin_has_osi=no
       fi
-      ;;
-    skipping | yes )
-      ;;
-    * )
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Unexpected status \"$coin_has_osi\" in COIN_FIND_PRIM_PKG" >&5
-$as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osi\" in COIN_FIND_PRIM_PKG" >&2;}
-      ;;
-  esac
+      if ! test $coin_has_osi = yes ; then
+        pcfile="$osi_pcfiles"
 
-  # The final value of coin_has_prim will be yes, no, or skipping.
-  # No means we looked (with pkgconfig) and didn't find anything.
-  # Skipping means the user said `don't use.'
-  # Yes means we have something, from the user or from pkgconfig.
-  # Note that we haven't run a useability test!
 
-  # Define BUILDTOOLS_DEBUG to enable debugging output
+
+  if test -n "$PKG_CONFIG" ; then
+    if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
+      OSI_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
+      coin_has_osi=yes
+    else
+      OSI_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
+      coin_has_osi=no
+    fi
+  else
+    as_fn_error $? "\"Cannot check for existence of module osi without pkgconf\"" "$LINENO" 5
+  fi
+
+      fi
+      if test $coin_has_osi = yes ; then
+        osi_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
+        osi_pcfiles="$pcfile"
+      fi
+    else
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for osi via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osi-lflags and --with-osi-cflags." >&5
+$as_echo "$as_me: WARNING: Check for osi via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osi-lflags and --with-osi-cflags." >&2;}
+      coin_has_osi=no
+    fi
+  fi
+
+
   if test "$BUILDTOOLS_DEBUG" = 1 ; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osi: \"$coin_has_osi\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osi: \"$coin_has_osi\"" >&6;}
@@ -17444,20 +17451,16 @@ $as_echo "$as_me: osi_pcfiles is \"$osi_pcfiles\"" >&6;}
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osi" >&5
 $as_echo "$coin_has_osi" >&6; }
-
-      if test "$PKG_CONFIG$coin_has_osi" = no ; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for Osi via pkg-config was skipped as no pkg-config available. If Osi was meant to be found, then consider installing pkg-config or provide appropriate --with-osi-lflags, --with-osi-cflags, etc." >&5
-$as_echo "$as_me: WARNING: Check for Osi via pkg-config was skipped as no pkg-config available. If Osi was meant to be found, then consider installing pkg-config or provide appropriate --with-osi-lflags, --with-osi-cflags, etc." >&2;}
-      fi
   else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osi due to COIN_SKIP_PROJECTS" >&5
-$as_echo "$coin_has_osi due to COIN_SKIP_PROJECTS" >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osi (COIN_SKIP_PROJECTS)" >&5
+$as_echo "$coin_has_osi (COIN_SKIP_PROJECTS)" >&6; }
   fi
 
-  # Possibilities are `yes', 'no', or `skipping'. Normalise to `yes' or `no'.
+
   if test "$coin_has_osi" != yes ; then
     coin_has_osi=no
   fi
+
 
    if test $coin_has_osi = yes; then
   COIN_HAS_OSI_TRUE=
@@ -17468,16 +17471,15 @@ else
 fi
 
 
-  # If we have located the package, define preprocessor symbol PKG_HAS_PRIM and
-  # augment the necessary variables for the client packages.
+
   if test $coin_has_osi = yes ; then
 
 $as_echo "#define CGL_HAS_OSI 1" >>confdefs.h
 
-    if test -n "$osi_pcfiles" ; then CGLLIB_PCFILES="$osi_pcfiles $CGLLIB_PCFILES" ; fi
+    CGLLIB_PCFILES="$osi_pcfiles $CGLLIB_PCFILES"
        CGLLIB_LFLAGS="$osi_lflags $CGLLIB_LFLAGS"
        CGLLIB_CFLAGS="$osi_cflags $CGLLIB_CFLAGS"
-      if test -n "$osi_pcfiles" ; then CGLUNITTEST_PCFILES="$osi_pcfiles $CGLUNITTEST_PCFILES" ; fi
+      CGLUNITTEST_PCFILES="$osi_pcfiles $CGLUNITTEST_PCFILES"
        CGLUNITTEST_LFLAGS="$osi_lflags $CGLUNITTEST_LFLAGS"
        CGLUNITTEST_CFLAGS="$osi_cflags $CGLUNITTEST_CFLAGS"
 
@@ -17493,6 +17495,10 @@ fi
 
 
 
+
+
+
+
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for package OsiClp" >&5
 $as_echo_n "checking for package OsiClp... " >&6; }
 
@@ -17504,15 +17510,17 @@ $as_echo_n "checking for package OsiClp... " >&6; }
 
 
 
-  # Check to see if the user has set an override to skip this primary.
+
+
   coin_has_osiclp=noInfo
   if test x"$COIN_SKIP_PROJECTS" != x ; then
-    for pkg in $COIN_SKIP_PROJECTS ; do
-      if test "$pkg" = "$osiclp" ; then
+    for pkg in `echo $COIN_SKIP_PROJECTS | tr '[:upper:]' '[:lower:]'` ; do
+      if test "$pkg" = "osiclp" ; then
         coin_has_osiclp=skipping
       fi
     done
   fi
+
 
   if test "$coin_has_osiclp" != skipping ; then
 
@@ -17544,46 +17552,64 @@ fi
 
 
 
-  dflt_action=yes
 
-  # Initialize variables for the primary package.
-  coin_has_osiclp=noInfo
+
+
+
+
+  coin_has_osiclp=requested
+
   osiclp_lflags=
   osiclp_cflags=
   osiclp_data=
-  osiclp_pcfiles=
+  osiclp_pcfiles="osi-clp"
 
-  # --with-prim is always present.
+
   withval="$with_osiclp"
   if test -n "$withval" ; then
     case "$withval" in
       no )
         coin_has_osiclp=skipping
+        osiclp_failmode='command line'
         ;;
       yes )
         coin_has_osiclp=requested
+        osiclp_failmode=''
         ;;
       build )
-        coin_has_osiclp=build
+        coin_has_osiclp=requested
+        osiclp_build=yes
+        osiclp_failmode=''
         ;;
       * )
-        coin_has_osiclp=yes
-                osiclp_lflags="$withval"
+        coin_has_osiclp=requested
+        osiclp_failmode=''
+        osiclp_lflags="$withval"
+        osiclp_pcfiles=''
         ;;
     esac
+  else
+    if test -n "$with_osiclp_lflags" ||
+       test -n "$with_osiclp_cflags" ||
+       test -n "$with_osiclp_data" ; then
+      coin_has_osiclp=requested
+      osiclp_failmode=''
+      osiclp_pcfiles=''
+    fi
   fi
 
-  # Specifying --with-prim=no overrides the individual options for lflags and cflags.
-     if test "$coin_has_osiclp" != skipping ; then
+
+  if test "$coin_has_osiclp" != skipping ; then
        withval="$with_osiclp_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify linker flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify link flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osiclp=yes
              osiclp_lflags="$withval"
+             osiclp_pcfiles=''
              ;;
          esac
        fi
@@ -17592,11 +17618,12 @@ fi
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify compiler flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify compile flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osiclp=yes
              osiclp_cflags="$withval"
+             osiclp_pcfiles=''
              ;;
          esac
        fi
@@ -17604,39 +17631,12 @@ fi
 
 
 
-  # At this point, coin_has_prim can be one of
-  # - noInfo (no user options specified),
-  # - skipping (user said no),
-  # - requested,
-  # - build (user said yes or build and gave no further guidance),
-  # - or yes (user specified one or more --with-prim options).
-  # If we're already at yes or skipping, we're done looking.
 
-  # If there are no user options (noInfo) and the default is no, we're skipping.
-  # Otherwise, the default must be yes or build; consider the package requested.
-  # A default action we don't recognise defaults to yes.
-  if test "$coin_has_osiclp" = noInfo ; then
-    case $dflt_action in
-      no )
-        coin_has_osiclp=skipping
-        ;;
-      build )
-        coin_has_osiclp=build
-        ;;
-      * )
-        coin_has_osiclp=requested
-        ;;
-    esac
-  fi
 
-  # Now coin_has_prim can be one of skipping, yes, requested, or build.
-  # For requested or build, try pkgconf, if it's available.
-  # If it's not available, well, hope that the user knows their system
-  # and prim can be used with no additional flags.
-  case $coin_has_osiclp in
-    requested | build )
-      if test -n "$PKG_CONFIG" -a "osi-clp" != skip ; then
-        pcfile="osi-clp"
+  if test $coin_has_osiclp = requested ; then
+    if test -n "$PKG_CONFIG" ; then
+      if test x"$osiclp_build" = xyes ; then
+        pcfile="coin$osiclp_pcfiles"
 
 
 
@@ -17644,8 +17644,6 @@ fi
     if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
       OSICLP_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
       coin_has_osiclp=yes
-           osiclp_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
-           osiclp_pcfiles="$pcfile"
     else
       OSICLP_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
       coin_has_osiclp=no
@@ -17654,25 +17652,37 @@ fi
     as_fn_error $? "\"Cannot check for existence of module osiclp without pkgconf\"" "$LINENO" 5
   fi
 
-      else
-        coin_has_osiclp=no
       fi
-      ;;
-    skipping | yes )
-      ;;
-    * )
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Unexpected status \"$coin_has_osiclp\" in COIN_FIND_PRIM_PKG" >&5
-$as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osiclp\" in COIN_FIND_PRIM_PKG" >&2;}
-      ;;
-  esac
+      if ! test $coin_has_osiclp = yes ; then
+        pcfile="$osiclp_pcfiles"
 
-  # The final value of coin_has_prim will be yes, no, or skipping.
-  # No means we looked (with pkgconfig) and didn't find anything.
-  # Skipping means the user said `don't use.'
-  # Yes means we have something, from the user or from pkgconfig.
-  # Note that we haven't run a useability test!
 
-  # Define BUILDTOOLS_DEBUG to enable debugging output
+
+  if test -n "$PKG_CONFIG" ; then
+    if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
+      OSICLP_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
+      coin_has_osiclp=yes
+    else
+      OSICLP_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
+      coin_has_osiclp=no
+    fi
+  else
+    as_fn_error $? "\"Cannot check for existence of module osiclp without pkgconf\"" "$LINENO" 5
+  fi
+
+      fi
+      if test $coin_has_osiclp = yes ; then
+        osiclp_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
+        osiclp_pcfiles="$pcfile"
+      fi
+    else
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for osiclp via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osiclp-lflags and --with-osiclp-cflags." >&5
+$as_echo "$as_me: WARNING: Check for osiclp via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osiclp-lflags and --with-osiclp-cflags." >&2;}
+      coin_has_osiclp=no
+    fi
+  fi
+
+
   if test "$BUILDTOOLS_DEBUG" = 1 ; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osiclp: \"$coin_has_osiclp\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osiclp: \"$coin_has_osiclp\"" >&6;}
@@ -17691,20 +17701,16 @@ $as_echo "$as_me: osiclp_pcfiles is \"$osiclp_pcfiles\"" >&6;}
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osiclp" >&5
 $as_echo "$coin_has_osiclp" >&6; }
-
-      if test "$PKG_CONFIG$coin_has_osiclp" = no ; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for OsiClp via pkg-config was skipped as no pkg-config available. If OsiClp was meant to be found, then consider installing pkg-config or provide appropriate --with-osiclp-lflags, --with-osiclp-cflags, etc." >&5
-$as_echo "$as_me: WARNING: Check for OsiClp via pkg-config was skipped as no pkg-config available. If OsiClp was meant to be found, then consider installing pkg-config or provide appropriate --with-osiclp-lflags, --with-osiclp-cflags, etc." >&2;}
-      fi
   else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osiclp due to COIN_SKIP_PROJECTS" >&5
-$as_echo "$coin_has_osiclp due to COIN_SKIP_PROJECTS" >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osiclp (COIN_SKIP_PROJECTS)" >&5
+$as_echo "$coin_has_osiclp (COIN_SKIP_PROJECTS)" >&6; }
   fi
 
-  # Possibilities are `yes', 'no', or `skipping'. Normalise to `yes' or `no'.
+
   if test "$coin_has_osiclp" != yes ; then
     coin_has_osiclp=no
   fi
+
 
    if test $coin_has_osiclp = yes; then
   COIN_HAS_OSICLP_TRUE=
@@ -17715,16 +17721,15 @@ else
 fi
 
 
-  # If we have located the package, define preprocessor symbol PKG_HAS_PRIM and
-  # augment the necessary variables for the client packages.
+
   if test $coin_has_osiclp = yes ; then
 
 $as_echo "#define CGL_HAS_OSICLP 1" >>confdefs.h
 
-    if test -n "$osiclp_pcfiles" ; then CGLLIB_PCFILES="$osiclp_pcfiles $CGLLIB_PCFILES" ; fi
+    CGLLIB_PCFILES="$osiclp_pcfiles $CGLLIB_PCFILES"
        CGLLIB_LFLAGS="$osiclp_lflags $CGLLIB_LFLAGS"
        CGLLIB_CFLAGS="$osiclp_cflags $CGLLIB_CFLAGS"
-      if test -n "$osiclp_pcfiles" ; then CGLUNITTEST_PCFILES="$osiclp_pcfiles $CGLUNITTEST_PCFILES" ; fi
+      CGLUNITTEST_PCFILES="$osiclp_pcfiles $CGLUNITTEST_PCFILES"
        CGLUNITTEST_LFLAGS="$osiclp_lflags $CGLUNITTEST_LFLAGS"
        CGLUNITTEST_CFLAGS="$osiclp_cflags $CGLUNITTEST_CFLAGS"
 
@@ -17749,7 +17754,7 @@ $as_echo "$as_me: FINALIZE_FLAGS for CglLib:" >&6;}
 
       if test -n "${CGLLIB_PCFILES}" ; then
         temp_CFLAGS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --cflags ${CGLLIB_PCFILES}`
-        temp_LFLAGS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --libs ${CGLLIB_PCFILES}`
+        temp_LFLAGS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --libs $pkg_static ${CGLLIB_PCFILES}`
         CGLLIB_CFLAGS="$temp_CFLAGS ${CGLLIB_CFLAGS}"
         CGLLIB_LFLAGS="$temp_LFLAGS ${CGLLIB_LFLAGS}"
       fi
@@ -17804,6 +17809,10 @@ CGLLIB_CFLAGS="-I\$(top_srcdir)/src/CglCommon $CGLLIB_CFLAGS"
 
 
 
+
+
+
+
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for package OsiCpx" >&5
 $as_echo_n "checking for package OsiCpx... " >&6; }
 
@@ -17812,15 +17821,17 @@ $as_echo_n "checking for package OsiCpx... " >&6; }
 
 
 
-  # Check to see if the user has set an override to skip this primary.
+
+
   coin_has_osicpx=noInfo
   if test x"$COIN_SKIP_PROJECTS" != x ; then
-    for pkg in $COIN_SKIP_PROJECTS ; do
-      if test "$pkg" = "$osicpx" ; then
+    for pkg in `echo $COIN_SKIP_PROJECTS | tr '[:upper:]' '[:lower:]'` ; do
+      if test "$pkg" = "osicpx" ; then
         coin_has_osicpx=skipping
       fi
     done
   fi
+
 
   if test "$coin_has_osicpx" != skipping ; then
 
@@ -17852,46 +17863,64 @@ fi
 
 
 
-  dflt_action=yes
 
-  # Initialize variables for the primary package.
-  coin_has_osicpx=noInfo
+
+
+
+
+  coin_has_osicpx=requested
+
   osicpx_lflags=
   osicpx_cflags=
   osicpx_data=
-  osicpx_pcfiles=
+  osicpx_pcfiles="osi-cplex"
 
-  # --with-prim is always present.
+
   withval="$with_osicpx"
   if test -n "$withval" ; then
     case "$withval" in
       no )
         coin_has_osicpx=skipping
+        osicpx_failmode='command line'
         ;;
       yes )
         coin_has_osicpx=requested
+        osicpx_failmode=''
         ;;
       build )
-        coin_has_osicpx=build
+        coin_has_osicpx=requested
+        osicpx_build=yes
+        osicpx_failmode=''
         ;;
       * )
-        coin_has_osicpx=yes
-                osicpx_lflags="$withval"
+        coin_has_osicpx=requested
+        osicpx_failmode=''
+        osicpx_lflags="$withval"
+        osicpx_pcfiles=''
         ;;
     esac
+  else
+    if test -n "$with_osicpx_lflags" ||
+       test -n "$with_osicpx_cflags" ||
+       test -n "$with_osicpx_data" ; then
+      coin_has_osicpx=requested
+      osicpx_failmode=''
+      osicpx_pcfiles=''
+    fi
   fi
 
-  # Specifying --with-prim=no overrides the individual options for lflags and cflags.
-     if test "$coin_has_osicpx" != skipping ; then
+
+  if test "$coin_has_osicpx" != skipping ; then
        withval="$with_osicpx_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify linker flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify link flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osicpx=yes
              osicpx_lflags="$withval"
+             osicpx_pcfiles=''
              ;;
          esac
        fi
@@ -17900,11 +17929,12 @@ fi
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify compiler flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify compile flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osicpx=yes
              osicpx_cflags="$withval"
+             osicpx_pcfiles=''
              ;;
          esac
        fi
@@ -17912,39 +17942,12 @@ fi
 
 
 
-  # At this point, coin_has_prim can be one of
-  # - noInfo (no user options specified),
-  # - skipping (user said no),
-  # - requested,
-  # - build (user said yes or build and gave no further guidance),
-  # - or yes (user specified one or more --with-prim options).
-  # If we're already at yes or skipping, we're done looking.
 
-  # If there are no user options (noInfo) and the default is no, we're skipping.
-  # Otherwise, the default must be yes or build; consider the package requested.
-  # A default action we don't recognise defaults to yes.
-  if test "$coin_has_osicpx" = noInfo ; then
-    case $dflt_action in
-      no )
-        coin_has_osicpx=skipping
-        ;;
-      build )
-        coin_has_osicpx=build
-        ;;
-      * )
-        coin_has_osicpx=requested
-        ;;
-    esac
-  fi
 
-  # Now coin_has_prim can be one of skipping, yes, requested, or build.
-  # For requested or build, try pkgconf, if it's available.
-  # If it's not available, well, hope that the user knows their system
-  # and prim can be used with no additional flags.
-  case $coin_has_osicpx in
-    requested | build )
-      if test -n "$PKG_CONFIG" -a "osi-cplex" != skip ; then
-        pcfile="osi-cplex"
+  if test $coin_has_osicpx = requested ; then
+    if test -n "$PKG_CONFIG" ; then
+      if test x"$osicpx_build" = xyes ; then
+        pcfile="coin$osicpx_pcfiles"
 
 
 
@@ -17952,8 +17955,6 @@ fi
     if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
       OSICPX_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
       coin_has_osicpx=yes
-           osicpx_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
-           osicpx_pcfiles="$pcfile"
     else
       OSICPX_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
       coin_has_osicpx=no
@@ -17962,25 +17963,37 @@ fi
     as_fn_error $? "\"Cannot check for existence of module osicpx without pkgconf\"" "$LINENO" 5
   fi
 
-      else
-        coin_has_osicpx=no
       fi
-      ;;
-    skipping | yes )
-      ;;
-    * )
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Unexpected status \"$coin_has_osicpx\" in COIN_FIND_PRIM_PKG" >&5
-$as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osicpx\" in COIN_FIND_PRIM_PKG" >&2;}
-      ;;
-  esac
+      if ! test $coin_has_osicpx = yes ; then
+        pcfile="$osicpx_pcfiles"
 
-  # The final value of coin_has_prim will be yes, no, or skipping.
-  # No means we looked (with pkgconfig) and didn't find anything.
-  # Skipping means the user said `don't use.'
-  # Yes means we have something, from the user or from pkgconfig.
-  # Note that we haven't run a useability test!
 
-  # Define BUILDTOOLS_DEBUG to enable debugging output
+
+  if test -n "$PKG_CONFIG" ; then
+    if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
+      OSICPX_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
+      coin_has_osicpx=yes
+    else
+      OSICPX_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
+      coin_has_osicpx=no
+    fi
+  else
+    as_fn_error $? "\"Cannot check for existence of module osicpx without pkgconf\"" "$LINENO" 5
+  fi
+
+      fi
+      if test $coin_has_osicpx = yes ; then
+        osicpx_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
+        osicpx_pcfiles="$pcfile"
+      fi
+    else
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for osicpx via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osicpx-lflags and --with-osicpx-cflags." >&5
+$as_echo "$as_me: WARNING: Check for osicpx via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osicpx-lflags and --with-osicpx-cflags." >&2;}
+      coin_has_osicpx=no
+    fi
+  fi
+
+
   if test "$BUILDTOOLS_DEBUG" = 1 ; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osicpx: \"$coin_has_osicpx\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osicpx: \"$coin_has_osicpx\"" >&6;}
@@ -17999,20 +18012,16 @@ $as_echo "$as_me: osicpx_pcfiles is \"$osicpx_pcfiles\"" >&6;}
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osicpx" >&5
 $as_echo "$coin_has_osicpx" >&6; }
-
-      if test "$PKG_CONFIG$coin_has_osicpx" = no ; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for OsiCpx via pkg-config was skipped as no pkg-config available. If OsiCpx was meant to be found, then consider installing pkg-config or provide appropriate --with-osicpx-lflags, --with-osicpx-cflags, etc." >&5
-$as_echo "$as_me: WARNING: Check for OsiCpx via pkg-config was skipped as no pkg-config available. If OsiCpx was meant to be found, then consider installing pkg-config or provide appropriate --with-osicpx-lflags, --with-osicpx-cflags, etc." >&2;}
-      fi
   else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osicpx due to COIN_SKIP_PROJECTS" >&5
-$as_echo "$coin_has_osicpx due to COIN_SKIP_PROJECTS" >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osicpx (COIN_SKIP_PROJECTS)" >&5
+$as_echo "$coin_has_osicpx (COIN_SKIP_PROJECTS)" >&6; }
   fi
 
-  # Possibilities are `yes', 'no', or `skipping'. Normalise to `yes' or `no'.
+
   if test "$coin_has_osicpx" != yes ; then
     coin_has_osicpx=no
   fi
+
 
    if test $coin_has_osicpx = yes; then
   COIN_HAS_OSICPX_TRUE=
@@ -18023,19 +18032,22 @@ else
 fi
 
 
-  # If we have located the package, define preprocessor symbol PKG_HAS_PRIM and
-  # augment the necessary variables for the client packages.
+
   if test $coin_has_osicpx = yes ; then
 
 $as_echo "#define CGL_HAS_OSICPX 1" >>confdefs.h
 
-    if test -n "$osicpx_pcfiles" ; then CGLUNITTEST_PCFILES="$osicpx_pcfiles $CGLUNITTEST_PCFILES" ; fi
+    CGLUNITTEST_PCFILES="$osicpx_pcfiles $CGLUNITTEST_PCFILES"
        CGLUNITTEST_LFLAGS="$osicpx_lflags $CGLUNITTEST_LFLAGS"
        CGLUNITTEST_CFLAGS="$osicpx_cflags $CGLUNITTEST_CFLAGS"
 
 
 
   fi
+
+
+
+
 
 
 
@@ -18048,15 +18060,17 @@ $as_echo_n "checking for package OsiGlpk... " >&6; }
 
 
 
-  # Check to see if the user has set an override to skip this primary.
+
+
   coin_has_osiglpk=noInfo
   if test x"$COIN_SKIP_PROJECTS" != x ; then
-    for pkg in $COIN_SKIP_PROJECTS ; do
-      if test "$pkg" = "$osiglpk" ; then
+    for pkg in `echo $COIN_SKIP_PROJECTS | tr '[:upper:]' '[:lower:]'` ; do
+      if test "$pkg" = "osiglpk" ; then
         coin_has_osiglpk=skipping
       fi
     done
   fi
+
 
   if test "$coin_has_osiglpk" != skipping ; then
 
@@ -18088,46 +18102,64 @@ fi
 
 
 
-  dflt_action=yes
 
-  # Initialize variables for the primary package.
-  coin_has_osiglpk=noInfo
+
+
+
+
+  coin_has_osiglpk=requested
+
   osiglpk_lflags=
   osiglpk_cflags=
   osiglpk_data=
-  osiglpk_pcfiles=
+  osiglpk_pcfiles="osi-glpk"
 
-  # --with-prim is always present.
+
   withval="$with_osiglpk"
   if test -n "$withval" ; then
     case "$withval" in
       no )
         coin_has_osiglpk=skipping
+        osiglpk_failmode='command line'
         ;;
       yes )
         coin_has_osiglpk=requested
+        osiglpk_failmode=''
         ;;
       build )
-        coin_has_osiglpk=build
+        coin_has_osiglpk=requested
+        osiglpk_build=yes
+        osiglpk_failmode=''
         ;;
       * )
-        coin_has_osiglpk=yes
-                osiglpk_lflags="$withval"
+        coin_has_osiglpk=requested
+        osiglpk_failmode=''
+        osiglpk_lflags="$withval"
+        osiglpk_pcfiles=''
         ;;
     esac
+  else
+    if test -n "$with_osiglpk_lflags" ||
+       test -n "$with_osiglpk_cflags" ||
+       test -n "$with_osiglpk_data" ; then
+      coin_has_osiglpk=requested
+      osiglpk_failmode=''
+      osiglpk_pcfiles=''
+    fi
   fi
 
-  # Specifying --with-prim=no overrides the individual options for lflags and cflags.
-     if test "$coin_has_osiglpk" != skipping ; then
+
+  if test "$coin_has_osiglpk" != skipping ; then
        withval="$with_osiglpk_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify linker flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify link flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osiglpk=yes
              osiglpk_lflags="$withval"
+             osiglpk_pcfiles=''
              ;;
          esac
        fi
@@ -18136,11 +18168,12 @@ fi
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify compiler flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify compile flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osiglpk=yes
              osiglpk_cflags="$withval"
+             osiglpk_pcfiles=''
              ;;
          esac
        fi
@@ -18148,39 +18181,12 @@ fi
 
 
 
-  # At this point, coin_has_prim can be one of
-  # - noInfo (no user options specified),
-  # - skipping (user said no),
-  # - requested,
-  # - build (user said yes or build and gave no further guidance),
-  # - or yes (user specified one or more --with-prim options).
-  # If we're already at yes or skipping, we're done looking.
 
-  # If there are no user options (noInfo) and the default is no, we're skipping.
-  # Otherwise, the default must be yes or build; consider the package requested.
-  # A default action we don't recognise defaults to yes.
-  if test "$coin_has_osiglpk" = noInfo ; then
-    case $dflt_action in
-      no )
-        coin_has_osiglpk=skipping
-        ;;
-      build )
-        coin_has_osiglpk=build
-        ;;
-      * )
-        coin_has_osiglpk=requested
-        ;;
-    esac
-  fi
 
-  # Now coin_has_prim can be one of skipping, yes, requested, or build.
-  # For requested or build, try pkgconf, if it's available.
-  # If it's not available, well, hope that the user knows their system
-  # and prim can be used with no additional flags.
-  case $coin_has_osiglpk in
-    requested | build )
-      if test -n "$PKG_CONFIG" -a "osi-glpk" != skip ; then
-        pcfile="osi-glpk"
+  if test $coin_has_osiglpk = requested ; then
+    if test -n "$PKG_CONFIG" ; then
+      if test x"$osiglpk_build" = xyes ; then
+        pcfile="coin$osiglpk_pcfiles"
 
 
 
@@ -18188,8 +18194,6 @@ fi
     if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
       OSIGLPK_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
       coin_has_osiglpk=yes
-           osiglpk_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
-           osiglpk_pcfiles="$pcfile"
     else
       OSIGLPK_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
       coin_has_osiglpk=no
@@ -18198,25 +18202,37 @@ fi
     as_fn_error $? "\"Cannot check for existence of module osiglpk without pkgconf\"" "$LINENO" 5
   fi
 
-      else
-        coin_has_osiglpk=no
       fi
-      ;;
-    skipping | yes )
-      ;;
-    * )
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Unexpected status \"$coin_has_osiglpk\" in COIN_FIND_PRIM_PKG" >&5
-$as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osiglpk\" in COIN_FIND_PRIM_PKG" >&2;}
-      ;;
-  esac
+      if ! test $coin_has_osiglpk = yes ; then
+        pcfile="$osiglpk_pcfiles"
 
-  # The final value of coin_has_prim will be yes, no, or skipping.
-  # No means we looked (with pkgconfig) and didn't find anything.
-  # Skipping means the user said `don't use.'
-  # Yes means we have something, from the user or from pkgconfig.
-  # Note that we haven't run a useability test!
 
-  # Define BUILDTOOLS_DEBUG to enable debugging output
+
+  if test -n "$PKG_CONFIG" ; then
+    if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
+      OSIGLPK_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
+      coin_has_osiglpk=yes
+    else
+      OSIGLPK_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
+      coin_has_osiglpk=no
+    fi
+  else
+    as_fn_error $? "\"Cannot check for existence of module osiglpk without pkgconf\"" "$LINENO" 5
+  fi
+
+      fi
+      if test $coin_has_osiglpk = yes ; then
+        osiglpk_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
+        osiglpk_pcfiles="$pcfile"
+      fi
+    else
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for osiglpk via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osiglpk-lflags and --with-osiglpk-cflags." >&5
+$as_echo "$as_me: WARNING: Check for osiglpk via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osiglpk-lflags and --with-osiglpk-cflags." >&2;}
+      coin_has_osiglpk=no
+    fi
+  fi
+
+
   if test "$BUILDTOOLS_DEBUG" = 1 ; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osiglpk: \"$coin_has_osiglpk\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osiglpk: \"$coin_has_osiglpk\"" >&6;}
@@ -18235,20 +18251,16 @@ $as_echo "$as_me: osiglpk_pcfiles is \"$osiglpk_pcfiles\"" >&6;}
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osiglpk" >&5
 $as_echo "$coin_has_osiglpk" >&6; }
-
-      if test "$PKG_CONFIG$coin_has_osiglpk" = no ; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for OsiGlpk via pkg-config was skipped as no pkg-config available. If OsiGlpk was meant to be found, then consider installing pkg-config or provide appropriate --with-osiglpk-lflags, --with-osiglpk-cflags, etc." >&5
-$as_echo "$as_me: WARNING: Check for OsiGlpk via pkg-config was skipped as no pkg-config available. If OsiGlpk was meant to be found, then consider installing pkg-config or provide appropriate --with-osiglpk-lflags, --with-osiglpk-cflags, etc." >&2;}
-      fi
   else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osiglpk due to COIN_SKIP_PROJECTS" >&5
-$as_echo "$coin_has_osiglpk due to COIN_SKIP_PROJECTS" >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osiglpk (COIN_SKIP_PROJECTS)" >&5
+$as_echo "$coin_has_osiglpk (COIN_SKIP_PROJECTS)" >&6; }
   fi
 
-  # Possibilities are `yes', 'no', or `skipping'. Normalise to `yes' or `no'.
+
   if test "$coin_has_osiglpk" != yes ; then
     coin_has_osiglpk=no
   fi
+
 
    if test $coin_has_osiglpk = yes; then
   COIN_HAS_OSIGLPK_TRUE=
@@ -18259,19 +18271,22 @@ else
 fi
 
 
-  # If we have located the package, define preprocessor symbol PKG_HAS_PRIM and
-  # augment the necessary variables for the client packages.
+
   if test $coin_has_osiglpk = yes ; then
 
 $as_echo "#define CGL_HAS_OSIGLPK 1" >>confdefs.h
 
-    if test -n "$osiglpk_pcfiles" ; then CGLUNITTEST_PCFILES="$osiglpk_pcfiles $CGLUNITTEST_PCFILES" ; fi
+    CGLUNITTEST_PCFILES="$osiglpk_pcfiles $CGLUNITTEST_PCFILES"
        CGLUNITTEST_LFLAGS="$osiglpk_lflags $CGLUNITTEST_LFLAGS"
        CGLUNITTEST_CFLAGS="$osiglpk_cflags $CGLUNITTEST_CFLAGS"
 
 
 
   fi
+
+
+
+
 
 
 
@@ -18284,15 +18299,17 @@ $as_echo_n "checking for package OsiGrb... " >&6; }
 
 
 
-  # Check to see if the user has set an override to skip this primary.
+
+
   coin_has_osigrb=noInfo
   if test x"$COIN_SKIP_PROJECTS" != x ; then
-    for pkg in $COIN_SKIP_PROJECTS ; do
-      if test "$pkg" = "$osigrb" ; then
+    for pkg in `echo $COIN_SKIP_PROJECTS | tr '[:upper:]' '[:lower:]'` ; do
+      if test "$pkg" = "osigrb" ; then
         coin_has_osigrb=skipping
       fi
     done
   fi
+
 
   if test "$coin_has_osigrb" != skipping ; then
 
@@ -18324,46 +18341,64 @@ fi
 
 
 
-  dflt_action=yes
 
-  # Initialize variables for the primary package.
-  coin_has_osigrb=noInfo
+
+
+
+
+  coin_has_osigrb=requested
+
   osigrb_lflags=
   osigrb_cflags=
   osigrb_data=
-  osigrb_pcfiles=
+  osigrb_pcfiles="osi-gurobi"
 
-  # --with-prim is always present.
+
   withval="$with_osigrb"
   if test -n "$withval" ; then
     case "$withval" in
       no )
         coin_has_osigrb=skipping
+        osigrb_failmode='command line'
         ;;
       yes )
         coin_has_osigrb=requested
+        osigrb_failmode=''
         ;;
       build )
-        coin_has_osigrb=build
+        coin_has_osigrb=requested
+        osigrb_build=yes
+        osigrb_failmode=''
         ;;
       * )
-        coin_has_osigrb=yes
-                osigrb_lflags="$withval"
+        coin_has_osigrb=requested
+        osigrb_failmode=''
+        osigrb_lflags="$withval"
+        osigrb_pcfiles=''
         ;;
     esac
+  else
+    if test -n "$with_osigrb_lflags" ||
+       test -n "$with_osigrb_cflags" ||
+       test -n "$with_osigrb_data" ; then
+      coin_has_osigrb=requested
+      osigrb_failmode=''
+      osigrb_pcfiles=''
+    fi
   fi
 
-  # Specifying --with-prim=no overrides the individual options for lflags and cflags.
-     if test "$coin_has_osigrb" != skipping ; then
+
+  if test "$coin_has_osigrb" != skipping ; then
        withval="$with_osigrb_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify linker flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify link flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osigrb=yes
              osigrb_lflags="$withval"
+             osigrb_pcfiles=''
              ;;
          esac
        fi
@@ -18372,11 +18407,12 @@ fi
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify compiler flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify compile flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osigrb=yes
              osigrb_cflags="$withval"
+             osigrb_pcfiles=''
              ;;
          esac
        fi
@@ -18384,39 +18420,12 @@ fi
 
 
 
-  # At this point, coin_has_prim can be one of
-  # - noInfo (no user options specified),
-  # - skipping (user said no),
-  # - requested,
-  # - build (user said yes or build and gave no further guidance),
-  # - or yes (user specified one or more --with-prim options).
-  # If we're already at yes or skipping, we're done looking.
 
-  # If there are no user options (noInfo) and the default is no, we're skipping.
-  # Otherwise, the default must be yes or build; consider the package requested.
-  # A default action we don't recognise defaults to yes.
-  if test "$coin_has_osigrb" = noInfo ; then
-    case $dflt_action in
-      no )
-        coin_has_osigrb=skipping
-        ;;
-      build )
-        coin_has_osigrb=build
-        ;;
-      * )
-        coin_has_osigrb=requested
-        ;;
-    esac
-  fi
 
-  # Now coin_has_prim can be one of skipping, yes, requested, or build.
-  # For requested or build, try pkgconf, if it's available.
-  # If it's not available, well, hope that the user knows their system
-  # and prim can be used with no additional flags.
-  case $coin_has_osigrb in
-    requested | build )
-      if test -n "$PKG_CONFIG" -a "osi-gurobi" != skip ; then
-        pcfile="osi-gurobi"
+  if test $coin_has_osigrb = requested ; then
+    if test -n "$PKG_CONFIG" ; then
+      if test x"$osigrb_build" = xyes ; then
+        pcfile="coin$osigrb_pcfiles"
 
 
 
@@ -18424,8 +18433,6 @@ fi
     if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
       OSIGRB_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
       coin_has_osigrb=yes
-           osigrb_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
-           osigrb_pcfiles="$pcfile"
     else
       OSIGRB_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
       coin_has_osigrb=no
@@ -18434,25 +18441,37 @@ fi
     as_fn_error $? "\"Cannot check for existence of module osigrb without pkgconf\"" "$LINENO" 5
   fi
 
-      else
-        coin_has_osigrb=no
       fi
-      ;;
-    skipping | yes )
-      ;;
-    * )
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Unexpected status \"$coin_has_osigrb\" in COIN_FIND_PRIM_PKG" >&5
-$as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osigrb\" in COIN_FIND_PRIM_PKG" >&2;}
-      ;;
-  esac
+      if ! test $coin_has_osigrb = yes ; then
+        pcfile="$osigrb_pcfiles"
 
-  # The final value of coin_has_prim will be yes, no, or skipping.
-  # No means we looked (with pkgconfig) and didn't find anything.
-  # Skipping means the user said `don't use.'
-  # Yes means we have something, from the user or from pkgconfig.
-  # Note that we haven't run a useability test!
 
-  # Define BUILDTOOLS_DEBUG to enable debugging output
+
+  if test -n "$PKG_CONFIG" ; then
+    if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
+      OSIGRB_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
+      coin_has_osigrb=yes
+    else
+      OSIGRB_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
+      coin_has_osigrb=no
+    fi
+  else
+    as_fn_error $? "\"Cannot check for existence of module osigrb without pkgconf\"" "$LINENO" 5
+  fi
+
+      fi
+      if test $coin_has_osigrb = yes ; then
+        osigrb_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
+        osigrb_pcfiles="$pcfile"
+      fi
+    else
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for osigrb via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osigrb-lflags and --with-osigrb-cflags." >&5
+$as_echo "$as_me: WARNING: Check for osigrb via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osigrb-lflags and --with-osigrb-cflags." >&2;}
+      coin_has_osigrb=no
+    fi
+  fi
+
+
   if test "$BUILDTOOLS_DEBUG" = 1 ; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osigrb: \"$coin_has_osigrb\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osigrb: \"$coin_has_osigrb\"" >&6;}
@@ -18471,20 +18490,16 @@ $as_echo "$as_me: osigrb_pcfiles is \"$osigrb_pcfiles\"" >&6;}
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osigrb" >&5
 $as_echo "$coin_has_osigrb" >&6; }
-
-      if test "$PKG_CONFIG$coin_has_osigrb" = no ; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for OsiGrb via pkg-config was skipped as no pkg-config available. If OsiGrb was meant to be found, then consider installing pkg-config or provide appropriate --with-osigrb-lflags, --with-osigrb-cflags, etc." >&5
-$as_echo "$as_me: WARNING: Check for OsiGrb via pkg-config was skipped as no pkg-config available. If OsiGrb was meant to be found, then consider installing pkg-config or provide appropriate --with-osigrb-lflags, --with-osigrb-cflags, etc." >&2;}
-      fi
   else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osigrb due to COIN_SKIP_PROJECTS" >&5
-$as_echo "$coin_has_osigrb due to COIN_SKIP_PROJECTS" >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osigrb (COIN_SKIP_PROJECTS)" >&5
+$as_echo "$coin_has_osigrb (COIN_SKIP_PROJECTS)" >&6; }
   fi
 
-  # Possibilities are `yes', 'no', or `skipping'. Normalise to `yes' or `no'.
+
   if test "$coin_has_osigrb" != yes ; then
     coin_has_osigrb=no
   fi
+
 
    if test $coin_has_osigrb = yes; then
   COIN_HAS_OSIGRB_TRUE=
@@ -18495,19 +18510,22 @@ else
 fi
 
 
-  # If we have located the package, define preprocessor symbol PKG_HAS_PRIM and
-  # augment the necessary variables for the client packages.
+
   if test $coin_has_osigrb = yes ; then
 
 $as_echo "#define CGL_HAS_OSIGRB 1" >>confdefs.h
 
-    if test -n "$osigrb_pcfiles" ; then CGLUNITTEST_PCFILES="$osigrb_pcfiles $CGLUNITTEST_PCFILES" ; fi
+    CGLUNITTEST_PCFILES="$osigrb_pcfiles $CGLUNITTEST_PCFILES"
        CGLUNITTEST_LFLAGS="$osigrb_lflags $CGLUNITTEST_LFLAGS"
        CGLUNITTEST_CFLAGS="$osigrb_cflags $CGLUNITTEST_CFLAGS"
 
 
 
   fi
+
+
+
+
 
 
 
@@ -18520,15 +18538,17 @@ $as_echo_n "checking for package OsiMsk... " >&6; }
 
 
 
-  # Check to see if the user has set an override to skip this primary.
+
+
   coin_has_osimsk=noInfo
   if test x"$COIN_SKIP_PROJECTS" != x ; then
-    for pkg in $COIN_SKIP_PROJECTS ; do
-      if test "$pkg" = "$osimsk" ; then
+    for pkg in `echo $COIN_SKIP_PROJECTS | tr '[:upper:]' '[:lower:]'` ; do
+      if test "$pkg" = "osimsk" ; then
         coin_has_osimsk=skipping
       fi
     done
   fi
+
 
   if test "$coin_has_osimsk" != skipping ; then
 
@@ -18560,46 +18580,64 @@ fi
 
 
 
-  dflt_action=yes
 
-  # Initialize variables for the primary package.
-  coin_has_osimsk=noInfo
+
+
+
+
+  coin_has_osimsk=requested
+
   osimsk_lflags=
   osimsk_cflags=
   osimsk_data=
-  osimsk_pcfiles=
+  osimsk_pcfiles="osi-mosek"
 
-  # --with-prim is always present.
+
   withval="$with_osimsk"
   if test -n "$withval" ; then
     case "$withval" in
       no )
         coin_has_osimsk=skipping
+        osimsk_failmode='command line'
         ;;
       yes )
         coin_has_osimsk=requested
+        osimsk_failmode=''
         ;;
       build )
-        coin_has_osimsk=build
+        coin_has_osimsk=requested
+        osimsk_build=yes
+        osimsk_failmode=''
         ;;
       * )
-        coin_has_osimsk=yes
-                osimsk_lflags="$withval"
+        coin_has_osimsk=requested
+        osimsk_failmode=''
+        osimsk_lflags="$withval"
+        osimsk_pcfiles=''
         ;;
     esac
+  else
+    if test -n "$with_osimsk_lflags" ||
+       test -n "$with_osimsk_cflags" ||
+       test -n "$with_osimsk_data" ; then
+      coin_has_osimsk=requested
+      osimsk_failmode=''
+      osimsk_pcfiles=''
+    fi
   fi
 
-  # Specifying --with-prim=no overrides the individual options for lflags and cflags.
-     if test "$coin_has_osimsk" != skipping ; then
+
+  if test "$coin_has_osimsk" != skipping ; then
        withval="$with_osimsk_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify linker flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify link flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osimsk=yes
              osimsk_lflags="$withval"
+             osimsk_pcfiles=''
              ;;
          esac
        fi
@@ -18608,11 +18646,12 @@ fi
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify compiler flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify compile flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osimsk=yes
              osimsk_cflags="$withval"
+             osimsk_pcfiles=''
              ;;
          esac
        fi
@@ -18620,39 +18659,12 @@ fi
 
 
 
-  # At this point, coin_has_prim can be one of
-  # - noInfo (no user options specified),
-  # - skipping (user said no),
-  # - requested,
-  # - build (user said yes or build and gave no further guidance),
-  # - or yes (user specified one or more --with-prim options).
-  # If we're already at yes or skipping, we're done looking.
 
-  # If there are no user options (noInfo) and the default is no, we're skipping.
-  # Otherwise, the default must be yes or build; consider the package requested.
-  # A default action we don't recognise defaults to yes.
-  if test "$coin_has_osimsk" = noInfo ; then
-    case $dflt_action in
-      no )
-        coin_has_osimsk=skipping
-        ;;
-      build )
-        coin_has_osimsk=build
-        ;;
-      * )
-        coin_has_osimsk=requested
-        ;;
-    esac
-  fi
 
-  # Now coin_has_prim can be one of skipping, yes, requested, or build.
-  # For requested or build, try pkgconf, if it's available.
-  # If it's not available, well, hope that the user knows their system
-  # and prim can be used with no additional flags.
-  case $coin_has_osimsk in
-    requested | build )
-      if test -n "$PKG_CONFIG" -a "osi-mosek" != skip ; then
-        pcfile="osi-mosek"
+  if test $coin_has_osimsk = requested ; then
+    if test -n "$PKG_CONFIG" ; then
+      if test x"$osimsk_build" = xyes ; then
+        pcfile="coin$osimsk_pcfiles"
 
 
 
@@ -18660,8 +18672,6 @@ fi
     if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
       OSIMSK_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
       coin_has_osimsk=yes
-           osimsk_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
-           osimsk_pcfiles="$pcfile"
     else
       OSIMSK_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
       coin_has_osimsk=no
@@ -18670,25 +18680,37 @@ fi
     as_fn_error $? "\"Cannot check for existence of module osimsk without pkgconf\"" "$LINENO" 5
   fi
 
-      else
-        coin_has_osimsk=no
       fi
-      ;;
-    skipping | yes )
-      ;;
-    * )
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Unexpected status \"$coin_has_osimsk\" in COIN_FIND_PRIM_PKG" >&5
-$as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osimsk\" in COIN_FIND_PRIM_PKG" >&2;}
-      ;;
-  esac
+      if ! test $coin_has_osimsk = yes ; then
+        pcfile="$osimsk_pcfiles"
 
-  # The final value of coin_has_prim will be yes, no, or skipping.
-  # No means we looked (with pkgconfig) and didn't find anything.
-  # Skipping means the user said `don't use.'
-  # Yes means we have something, from the user or from pkgconfig.
-  # Note that we haven't run a useability test!
 
-  # Define BUILDTOOLS_DEBUG to enable debugging output
+
+  if test -n "$PKG_CONFIG" ; then
+    if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
+      OSIMSK_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
+      coin_has_osimsk=yes
+    else
+      OSIMSK_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
+      coin_has_osimsk=no
+    fi
+  else
+    as_fn_error $? "\"Cannot check for existence of module osimsk without pkgconf\"" "$LINENO" 5
+  fi
+
+      fi
+      if test $coin_has_osimsk = yes ; then
+        osimsk_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
+        osimsk_pcfiles="$pcfile"
+      fi
+    else
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for osimsk via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osimsk-lflags and --with-osimsk-cflags." >&5
+$as_echo "$as_me: WARNING: Check for osimsk via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osimsk-lflags and --with-osimsk-cflags." >&2;}
+      coin_has_osimsk=no
+    fi
+  fi
+
+
   if test "$BUILDTOOLS_DEBUG" = 1 ; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osimsk: \"$coin_has_osimsk\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osimsk: \"$coin_has_osimsk\"" >&6;}
@@ -18707,20 +18729,16 @@ $as_echo "$as_me: osimsk_pcfiles is \"$osimsk_pcfiles\"" >&6;}
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osimsk" >&5
 $as_echo "$coin_has_osimsk" >&6; }
-
-      if test "$PKG_CONFIG$coin_has_osimsk" = no ; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for OsiMsk via pkg-config was skipped as no pkg-config available. If OsiMsk was meant to be found, then consider installing pkg-config or provide appropriate --with-osimsk-lflags, --with-osimsk-cflags, etc." >&5
-$as_echo "$as_me: WARNING: Check for OsiMsk via pkg-config was skipped as no pkg-config available. If OsiMsk was meant to be found, then consider installing pkg-config or provide appropriate --with-osimsk-lflags, --with-osimsk-cflags, etc." >&2;}
-      fi
   else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osimsk due to COIN_SKIP_PROJECTS" >&5
-$as_echo "$coin_has_osimsk due to COIN_SKIP_PROJECTS" >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osimsk (COIN_SKIP_PROJECTS)" >&5
+$as_echo "$coin_has_osimsk (COIN_SKIP_PROJECTS)" >&6; }
   fi
 
-  # Possibilities are `yes', 'no', or `skipping'. Normalise to `yes' or `no'.
+
   if test "$coin_has_osimsk" != yes ; then
     coin_has_osimsk=no
   fi
+
 
    if test $coin_has_osimsk = yes; then
   COIN_HAS_OSIMSK_TRUE=
@@ -18731,19 +18749,22 @@ else
 fi
 
 
-  # If we have located the package, define preprocessor symbol PKG_HAS_PRIM and
-  # augment the necessary variables for the client packages.
+
   if test $coin_has_osimsk = yes ; then
 
 $as_echo "#define CGL_HAS_OSIMSK 1" >>confdefs.h
 
-    if test -n "$osimsk_pcfiles" ; then CGLUNITTEST_PCFILES="$osimsk_pcfiles $CGLUNITTEST_PCFILES" ; fi
+    CGLUNITTEST_PCFILES="$osimsk_pcfiles $CGLUNITTEST_PCFILES"
        CGLUNITTEST_LFLAGS="$osimsk_lflags $CGLUNITTEST_LFLAGS"
        CGLUNITTEST_CFLAGS="$osimsk_cflags $CGLUNITTEST_CFLAGS"
 
 
 
   fi
+
+
+
+
 
 
 
@@ -18756,15 +18777,17 @@ $as_echo_n "checking for package OsiXpr... " >&6; }
 
 
 
-  # Check to see if the user has set an override to skip this primary.
+
+
   coin_has_osixpr=noInfo
   if test x"$COIN_SKIP_PROJECTS" != x ; then
-    for pkg in $COIN_SKIP_PROJECTS ; do
-      if test "$pkg" = "$osixpr" ; then
+    for pkg in `echo $COIN_SKIP_PROJECTS | tr '[:upper:]' '[:lower:]'` ; do
+      if test "$pkg" = "osixpr" ; then
         coin_has_osixpr=skipping
       fi
     done
   fi
+
 
   if test "$coin_has_osixpr" != skipping ; then
 
@@ -18796,46 +18819,64 @@ fi
 
 
 
-  dflt_action=yes
 
-  # Initialize variables for the primary package.
-  coin_has_osixpr=noInfo
+
+
+
+
+  coin_has_osixpr=requested
+
   osixpr_lflags=
   osixpr_cflags=
   osixpr_data=
-  osixpr_pcfiles=
+  osixpr_pcfiles="osi-xpress"
 
-  # --with-prim is always present.
+
   withval="$with_osixpr"
   if test -n "$withval" ; then
     case "$withval" in
       no )
         coin_has_osixpr=skipping
+        osixpr_failmode='command line'
         ;;
       yes )
         coin_has_osixpr=requested
+        osixpr_failmode=''
         ;;
       build )
-        coin_has_osixpr=build
+        coin_has_osixpr=requested
+        osixpr_build=yes
+        osixpr_failmode=''
         ;;
       * )
-        coin_has_osixpr=yes
-                osixpr_lflags="$withval"
+        coin_has_osixpr=requested
+        osixpr_failmode=''
+        osixpr_lflags="$withval"
+        osixpr_pcfiles=''
         ;;
     esac
+  else
+    if test -n "$with_osixpr_lflags" ||
+       test -n "$with_osixpr_cflags" ||
+       test -n "$with_osixpr_data" ; then
+      coin_has_osixpr=requested
+      osixpr_failmode=''
+      osixpr_pcfiles=''
+    fi
   fi
 
-  # Specifying --with-prim=no overrides the individual options for lflags and cflags.
-     if test "$coin_has_osixpr" != skipping ; then
+
+  if test "$coin_has_osixpr" != skipping ; then
        withval="$with_osixpr_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify linker flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify link flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osixpr=yes
              osixpr_lflags="$withval"
+             osixpr_pcfiles=''
              ;;
          esac
        fi
@@ -18844,11 +18885,12 @@ fi
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify compiler flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify compile flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osixpr=yes
              osixpr_cflags="$withval"
+             osixpr_pcfiles=''
              ;;
          esac
        fi
@@ -18856,39 +18898,12 @@ fi
 
 
 
-  # At this point, coin_has_prim can be one of
-  # - noInfo (no user options specified),
-  # - skipping (user said no),
-  # - requested,
-  # - build (user said yes or build and gave no further guidance),
-  # - or yes (user specified one or more --with-prim options).
-  # If we're already at yes or skipping, we're done looking.
 
-  # If there are no user options (noInfo) and the default is no, we're skipping.
-  # Otherwise, the default must be yes or build; consider the package requested.
-  # A default action we don't recognise defaults to yes.
-  if test "$coin_has_osixpr" = noInfo ; then
-    case $dflt_action in
-      no )
-        coin_has_osixpr=skipping
-        ;;
-      build )
-        coin_has_osixpr=build
-        ;;
-      * )
-        coin_has_osixpr=requested
-        ;;
-    esac
-  fi
 
-  # Now coin_has_prim can be one of skipping, yes, requested, or build.
-  # For requested or build, try pkgconf, if it's available.
-  # If it's not available, well, hope that the user knows their system
-  # and prim can be used with no additional flags.
-  case $coin_has_osixpr in
-    requested | build )
-      if test -n "$PKG_CONFIG" -a "osi-xpress" != skip ; then
-        pcfile="osi-xpress"
+  if test $coin_has_osixpr = requested ; then
+    if test -n "$PKG_CONFIG" ; then
+      if test x"$osixpr_build" = xyes ; then
+        pcfile="coin$osixpr_pcfiles"
 
 
 
@@ -18896,8 +18911,6 @@ fi
     if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
       OSIXPR_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
       coin_has_osixpr=yes
-           osixpr_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
-           osixpr_pcfiles="$pcfile"
     else
       OSIXPR_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
       coin_has_osixpr=no
@@ -18906,25 +18919,37 @@ fi
     as_fn_error $? "\"Cannot check for existence of module osixpr without pkgconf\"" "$LINENO" 5
   fi
 
-      else
-        coin_has_osixpr=no
       fi
-      ;;
-    skipping | yes )
-      ;;
-    * )
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Unexpected status \"$coin_has_osixpr\" in COIN_FIND_PRIM_PKG" >&5
-$as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osixpr\" in COIN_FIND_PRIM_PKG" >&2;}
-      ;;
-  esac
+      if ! test $coin_has_osixpr = yes ; then
+        pcfile="$osixpr_pcfiles"
 
-  # The final value of coin_has_prim will be yes, no, or skipping.
-  # No means we looked (with pkgconfig) and didn't find anything.
-  # Skipping means the user said `don't use.'
-  # Yes means we have something, from the user or from pkgconfig.
-  # Note that we haven't run a useability test!
 
-  # Define BUILDTOOLS_DEBUG to enable debugging output
+
+  if test -n "$PKG_CONFIG" ; then
+    if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
+      OSIXPR_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
+      coin_has_osixpr=yes
+    else
+      OSIXPR_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
+      coin_has_osixpr=no
+    fi
+  else
+    as_fn_error $? "\"Cannot check for existence of module osixpr without pkgconf\"" "$LINENO" 5
+  fi
+
+      fi
+      if test $coin_has_osixpr = yes ; then
+        osixpr_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
+        osixpr_pcfiles="$pcfile"
+      fi
+    else
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for osixpr via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osixpr-lflags and --with-osixpr-cflags." >&5
+$as_echo "$as_me: WARNING: Check for osixpr via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osixpr-lflags and --with-osixpr-cflags." >&2;}
+      coin_has_osixpr=no
+    fi
+  fi
+
+
   if test "$BUILDTOOLS_DEBUG" = 1 ; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osixpr: \"$coin_has_osixpr\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osixpr: \"$coin_has_osixpr\"" >&6;}
@@ -18943,20 +18968,16 @@ $as_echo "$as_me: osixpr_pcfiles is \"$osixpr_pcfiles\"" >&6;}
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osixpr" >&5
 $as_echo "$coin_has_osixpr" >&6; }
-
-      if test "$PKG_CONFIG$coin_has_osixpr" = no ; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for OsiXpr via pkg-config was skipped as no pkg-config available. If OsiXpr was meant to be found, then consider installing pkg-config or provide appropriate --with-osixpr-lflags, --with-osixpr-cflags, etc." >&5
-$as_echo "$as_me: WARNING: Check for OsiXpr via pkg-config was skipped as no pkg-config available. If OsiXpr was meant to be found, then consider installing pkg-config or provide appropriate --with-osixpr-lflags, --with-osixpr-cflags, etc." >&2;}
-      fi
   else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osixpr due to COIN_SKIP_PROJECTS" >&5
-$as_echo "$coin_has_osixpr due to COIN_SKIP_PROJECTS" >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osixpr (COIN_SKIP_PROJECTS)" >&5
+$as_echo "$coin_has_osixpr (COIN_SKIP_PROJECTS)" >&6; }
   fi
 
-  # Possibilities are `yes', 'no', or `skipping'. Normalise to `yes' or `no'.
+
   if test "$coin_has_osixpr" != yes ; then
     coin_has_osixpr=no
   fi
+
 
    if test $coin_has_osixpr = yes; then
   COIN_HAS_OSIXPR_TRUE=
@@ -18967,19 +18988,22 @@ else
 fi
 
 
-  # If we have located the package, define preprocessor symbol PKG_HAS_PRIM and
-  # augment the necessary variables for the client packages.
+
   if test $coin_has_osixpr = yes ; then
 
 $as_echo "#define CGL_HAS_OSIXPR 1" >>confdefs.h
 
-    if test -n "$osixpr_pcfiles" ; then CGLUNITTEST_PCFILES="$osixpr_pcfiles $CGLUNITTEST_PCFILES" ; fi
+    CGLUNITTEST_PCFILES="$osixpr_pcfiles $CGLUNITTEST_PCFILES"
        CGLUNITTEST_LFLAGS="$osixpr_lflags $CGLUNITTEST_LFLAGS"
        CGLUNITTEST_CFLAGS="$osixpr_cflags $CGLUNITTEST_CFLAGS"
 
 
 
   fi
+
+
+
+
 
 
 
@@ -18992,15 +19016,17 @@ $as_echo_n "checking for package OsiVol... " >&6; }
 
 
 
-  # Check to see if the user has set an override to skip this primary.
+
+
   coin_has_osivol=noInfo
   if test x"$COIN_SKIP_PROJECTS" != x ; then
-    for pkg in $COIN_SKIP_PROJECTS ; do
-      if test "$pkg" = "$osivol" ; then
+    for pkg in `echo $COIN_SKIP_PROJECTS | tr '[:upper:]' '[:lower:]'` ; do
+      if test "$pkg" = "osivol" ; then
         coin_has_osivol=skipping
       fi
     done
   fi
+
 
   if test "$coin_has_osivol" != skipping ; then
 
@@ -19032,46 +19058,64 @@ fi
 
 
 
-  dflt_action=yes
 
-  # Initialize variables for the primary package.
-  coin_has_osivol=noInfo
+
+
+
+
+  coin_has_osivol=requested
+
   osivol_lflags=
   osivol_cflags=
   osivol_data=
-  osivol_pcfiles=
+  osivol_pcfiles="osi-vol"
 
-  # --with-prim is always present.
+
   withval="$with_osivol"
   if test -n "$withval" ; then
     case "$withval" in
       no )
         coin_has_osivol=skipping
+        osivol_failmode='command line'
         ;;
       yes )
         coin_has_osivol=requested
+        osivol_failmode=''
         ;;
       build )
-        coin_has_osivol=build
+        coin_has_osivol=requested
+        osivol_build=yes
+        osivol_failmode=''
         ;;
       * )
-        coin_has_osivol=yes
-                osivol_lflags="$withval"
+        coin_has_osivol=requested
+        osivol_failmode=''
+        osivol_lflags="$withval"
+        osivol_pcfiles=''
         ;;
     esac
+  else
+    if test -n "$with_osivol_lflags" ||
+       test -n "$with_osivol_cflags" ||
+       test -n "$with_osivol_data" ; then
+      coin_has_osivol=requested
+      osivol_failmode=''
+      osivol_pcfiles=''
+    fi
   fi
 
-  # Specifying --with-prim=no overrides the individual options for lflags and cflags.
-     if test "$coin_has_osivol" != skipping ; then
+
+  if test "$coin_has_osivol" != skipping ; then
        withval="$with_osivol_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify linker flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify link flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osivol=yes
              osivol_lflags="$withval"
+             osivol_pcfiles=''
              ;;
          esac
        fi
@@ -19080,11 +19124,12 @@ fi
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify compiler flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify compile flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osivol=yes
              osivol_cflags="$withval"
+             osivol_pcfiles=''
              ;;
          esac
        fi
@@ -19092,39 +19137,12 @@ fi
 
 
 
-  # At this point, coin_has_prim can be one of
-  # - noInfo (no user options specified),
-  # - skipping (user said no),
-  # - requested,
-  # - build (user said yes or build and gave no further guidance),
-  # - or yes (user specified one or more --with-prim options).
-  # If we're already at yes or skipping, we're done looking.
 
-  # If there are no user options (noInfo) and the default is no, we're skipping.
-  # Otherwise, the default must be yes or build; consider the package requested.
-  # A default action we don't recognise defaults to yes.
-  if test "$coin_has_osivol" = noInfo ; then
-    case $dflt_action in
-      no )
-        coin_has_osivol=skipping
-        ;;
-      build )
-        coin_has_osivol=build
-        ;;
-      * )
-        coin_has_osivol=requested
-        ;;
-    esac
-  fi
 
-  # Now coin_has_prim can be one of skipping, yes, requested, or build.
-  # For requested or build, try pkgconf, if it's available.
-  # If it's not available, well, hope that the user knows their system
-  # and prim can be used with no additional flags.
-  case $coin_has_osivol in
-    requested | build )
-      if test -n "$PKG_CONFIG" -a "osi-vol" != skip ; then
-        pcfile="osi-vol"
+  if test $coin_has_osivol = requested ; then
+    if test -n "$PKG_CONFIG" ; then
+      if test x"$osivol_build" = xyes ; then
+        pcfile="coin$osivol_pcfiles"
 
 
 
@@ -19132,8 +19150,6 @@ fi
     if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
       OSIVOL_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
       coin_has_osivol=yes
-           osivol_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
-           osivol_pcfiles="$pcfile"
     else
       OSIVOL_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
       coin_has_osivol=no
@@ -19142,25 +19158,37 @@ fi
     as_fn_error $? "\"Cannot check for existence of module osivol without pkgconf\"" "$LINENO" 5
   fi
 
-      else
-        coin_has_osivol=no
       fi
-      ;;
-    skipping | yes )
-      ;;
-    * )
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Unexpected status \"$coin_has_osivol\" in COIN_FIND_PRIM_PKG" >&5
-$as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osivol\" in COIN_FIND_PRIM_PKG" >&2;}
-      ;;
-  esac
+      if ! test $coin_has_osivol = yes ; then
+        pcfile="$osivol_pcfiles"
 
-  # The final value of coin_has_prim will be yes, no, or skipping.
-  # No means we looked (with pkgconfig) and didn't find anything.
-  # Skipping means the user said `don't use.'
-  # Yes means we have something, from the user or from pkgconfig.
-  # Note that we haven't run a useability test!
 
-  # Define BUILDTOOLS_DEBUG to enable debugging output
+
+  if test -n "$PKG_CONFIG" ; then
+    if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
+      OSIVOL_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
+      coin_has_osivol=yes
+    else
+      OSIVOL_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
+      coin_has_osivol=no
+    fi
+  else
+    as_fn_error $? "\"Cannot check for existence of module osivol without pkgconf\"" "$LINENO" 5
+  fi
+
+      fi
+      if test $coin_has_osivol = yes ; then
+        osivol_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
+        osivol_pcfiles="$pcfile"
+      fi
+    else
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for osivol via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osivol-lflags and --with-osivol-cflags." >&5
+$as_echo "$as_me: WARNING: Check for osivol via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osivol-lflags and --with-osivol-cflags." >&2;}
+      coin_has_osivol=no
+    fi
+  fi
+
+
   if test "$BUILDTOOLS_DEBUG" = 1 ; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osivol: \"$coin_has_osivol\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osivol: \"$coin_has_osivol\"" >&6;}
@@ -19179,20 +19207,16 @@ $as_echo "$as_me: osivol_pcfiles is \"$osivol_pcfiles\"" >&6;}
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osivol" >&5
 $as_echo "$coin_has_osivol" >&6; }
-
-      if test "$PKG_CONFIG$coin_has_osivol" = no ; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for OsiVol via pkg-config was skipped as no pkg-config available. If OsiVol was meant to be found, then consider installing pkg-config or provide appropriate --with-osivol-lflags, --with-osivol-cflags, etc." >&5
-$as_echo "$as_me: WARNING: Check for OsiVol via pkg-config was skipped as no pkg-config available. If OsiVol was meant to be found, then consider installing pkg-config or provide appropriate --with-osivol-lflags, --with-osivol-cflags, etc." >&2;}
-      fi
   else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osivol due to COIN_SKIP_PROJECTS" >&5
-$as_echo "$coin_has_osivol due to COIN_SKIP_PROJECTS" >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osivol (COIN_SKIP_PROJECTS)" >&5
+$as_echo "$coin_has_osivol (COIN_SKIP_PROJECTS)" >&6; }
   fi
 
-  # Possibilities are `yes', 'no', or `skipping'. Normalise to `yes' or `no'.
+
   if test "$coin_has_osivol" != yes ; then
     coin_has_osivol=no
   fi
+
 
    if test $coin_has_osivol = yes; then
   COIN_HAS_OSIVOL_TRUE=
@@ -19203,19 +19227,22 @@ else
 fi
 
 
-  # If we have located the package, define preprocessor symbol PKG_HAS_PRIM and
-  # augment the necessary variables for the client packages.
+
   if test $coin_has_osivol = yes ; then
 
 $as_echo "#define CGL_HAS_OSIVOL 1" >>confdefs.h
 
-    if test -n "$osivol_pcfiles" ; then CGLUNITTEST_PCFILES="$osivol_pcfiles $CGLUNITTEST_PCFILES" ; fi
+    CGLUNITTEST_PCFILES="$osivol_pcfiles $CGLUNITTEST_PCFILES"
        CGLUNITTEST_LFLAGS="$osivol_lflags $CGLUNITTEST_LFLAGS"
        CGLUNITTEST_CFLAGS="$osivol_cflags $CGLUNITTEST_CFLAGS"
 
 
 
   fi
+
+
+
+
 
 
 
@@ -19228,15 +19255,17 @@ $as_echo_n "checking for package OsiDyLP... " >&6; }
 
 
 
-  # Check to see if the user has set an override to skip this primary.
+
+
   coin_has_osidylp=noInfo
   if test x"$COIN_SKIP_PROJECTS" != x ; then
-    for pkg in $COIN_SKIP_PROJECTS ; do
-      if test "$pkg" = "$osidylp" ; then
+    for pkg in `echo $COIN_SKIP_PROJECTS | tr '[:upper:]' '[:lower:]'` ; do
+      if test "$pkg" = "osidylp" ; then
         coin_has_osidylp=skipping
       fi
     done
   fi
+
 
   if test "$coin_has_osidylp" != skipping ; then
 
@@ -19268,46 +19297,64 @@ fi
 
 
 
-  dflt_action=yes
 
-  # Initialize variables for the primary package.
-  coin_has_osidylp=noInfo
+
+
+
+
+  coin_has_osidylp=requested
+
   osidylp_lflags=
   osidylp_cflags=
   osidylp_data=
-  osidylp_pcfiles=
+  osidylp_pcfiles="osi-dylp"
 
-  # --with-prim is always present.
+
   withval="$with_osidylp"
   if test -n "$withval" ; then
     case "$withval" in
       no )
         coin_has_osidylp=skipping
+        osidylp_failmode='command line'
         ;;
       yes )
         coin_has_osidylp=requested
+        osidylp_failmode=''
         ;;
       build )
-        coin_has_osidylp=build
+        coin_has_osidylp=requested
+        osidylp_build=yes
+        osidylp_failmode=''
         ;;
       * )
-        coin_has_osidylp=yes
-                osidylp_lflags="$withval"
+        coin_has_osidylp=requested
+        osidylp_failmode=''
+        osidylp_lflags="$withval"
+        osidylp_pcfiles=''
         ;;
     esac
+  else
+    if test -n "$with_osidylp_lflags" ||
+       test -n "$with_osidylp_cflags" ||
+       test -n "$with_osidylp_data" ; then
+      coin_has_osidylp=requested
+      osidylp_failmode=''
+      osidylp_pcfiles=''
+    fi
   fi
 
-  # Specifying --with-prim=no overrides the individual options for lflags and cflags.
-     if test "$coin_has_osidylp" != skipping ; then
+
+  if test "$coin_has_osidylp" != skipping ; then
        withval="$with_osidylp_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify linker flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify link flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osidylp=yes
              osidylp_lflags="$withval"
+             osidylp_pcfiles=''
              ;;
          esac
        fi
@@ -19316,11 +19363,12 @@ fi
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify compiler flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify compile flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osidylp=yes
              osidylp_cflags="$withval"
+             osidylp_pcfiles=''
              ;;
          esac
        fi
@@ -19328,39 +19376,12 @@ fi
 
 
 
-  # At this point, coin_has_prim can be one of
-  # - noInfo (no user options specified),
-  # - skipping (user said no),
-  # - requested,
-  # - build (user said yes or build and gave no further guidance),
-  # - or yes (user specified one or more --with-prim options).
-  # If we're already at yes or skipping, we're done looking.
 
-  # If there are no user options (noInfo) and the default is no, we're skipping.
-  # Otherwise, the default must be yes or build; consider the package requested.
-  # A default action we don't recognise defaults to yes.
-  if test "$coin_has_osidylp" = noInfo ; then
-    case $dflt_action in
-      no )
-        coin_has_osidylp=skipping
-        ;;
-      build )
-        coin_has_osidylp=build
-        ;;
-      * )
-        coin_has_osidylp=requested
-        ;;
-    esac
-  fi
 
-  # Now coin_has_prim can be one of skipping, yes, requested, or build.
-  # For requested or build, try pkgconf, if it's available.
-  # If it's not available, well, hope that the user knows their system
-  # and prim can be used with no additional flags.
-  case $coin_has_osidylp in
-    requested | build )
-      if test -n "$PKG_CONFIG" -a "osi-dylp" != skip ; then
-        pcfile="osi-dylp"
+  if test $coin_has_osidylp = requested ; then
+    if test -n "$PKG_CONFIG" ; then
+      if test x"$osidylp_build" = xyes ; then
+        pcfile="coin$osidylp_pcfiles"
 
 
 
@@ -19368,8 +19389,6 @@ fi
     if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
       OSIDYLP_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
       coin_has_osidylp=yes
-           osidylp_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
-           osidylp_pcfiles="$pcfile"
     else
       OSIDYLP_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
       coin_has_osidylp=no
@@ -19378,25 +19397,37 @@ fi
     as_fn_error $? "\"Cannot check for existence of module osidylp without pkgconf\"" "$LINENO" 5
   fi
 
-      else
-        coin_has_osidylp=no
       fi
-      ;;
-    skipping | yes )
-      ;;
-    * )
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Unexpected status \"$coin_has_osidylp\" in COIN_FIND_PRIM_PKG" >&5
-$as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osidylp\" in COIN_FIND_PRIM_PKG" >&2;}
-      ;;
-  esac
+      if ! test $coin_has_osidylp = yes ; then
+        pcfile="$osidylp_pcfiles"
 
-  # The final value of coin_has_prim will be yes, no, or skipping.
-  # No means we looked (with pkgconfig) and didn't find anything.
-  # Skipping means the user said `don't use.'
-  # Yes means we have something, from the user or from pkgconfig.
-  # Note that we haven't run a useability test!
 
-  # Define BUILDTOOLS_DEBUG to enable debugging output
+
+  if test -n "$PKG_CONFIG" ; then
+    if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
+      OSIDYLP_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
+      coin_has_osidylp=yes
+    else
+      OSIDYLP_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
+      coin_has_osidylp=no
+    fi
+  else
+    as_fn_error $? "\"Cannot check for existence of module osidylp without pkgconf\"" "$LINENO" 5
+  fi
+
+      fi
+      if test $coin_has_osidylp = yes ; then
+        osidylp_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
+        osidylp_pcfiles="$pcfile"
+      fi
+    else
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for osidylp via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osidylp-lflags and --with-osidylp-cflags." >&5
+$as_echo "$as_me: WARNING: Check for osidylp via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osidylp-lflags and --with-osidylp-cflags." >&2;}
+      coin_has_osidylp=no
+    fi
+  fi
+
+
   if test "$BUILDTOOLS_DEBUG" = 1 ; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osidylp: \"$coin_has_osidylp\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osidylp: \"$coin_has_osidylp\"" >&6;}
@@ -19415,20 +19446,16 @@ $as_echo "$as_me: osidylp_pcfiles is \"$osidylp_pcfiles\"" >&6;}
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osidylp" >&5
 $as_echo "$coin_has_osidylp" >&6; }
-
-      if test "$PKG_CONFIG$coin_has_osidylp" = no ; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for OsiDyLP via pkg-config was skipped as no pkg-config available. If OsiDyLP was meant to be found, then consider installing pkg-config or provide appropriate --with-osidylp-lflags, --with-osidylp-cflags, etc." >&5
-$as_echo "$as_me: WARNING: Check for OsiDyLP via pkg-config was skipped as no pkg-config available. If OsiDyLP was meant to be found, then consider installing pkg-config or provide appropriate --with-osidylp-lflags, --with-osidylp-cflags, etc." >&2;}
-      fi
   else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osidylp due to COIN_SKIP_PROJECTS" >&5
-$as_echo "$coin_has_osidylp due to COIN_SKIP_PROJECTS" >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osidylp (COIN_SKIP_PROJECTS)" >&5
+$as_echo "$coin_has_osidylp (COIN_SKIP_PROJECTS)" >&6; }
   fi
 
-  # Possibilities are `yes', 'no', or `skipping'. Normalise to `yes' or `no'.
+
   if test "$coin_has_osidylp" != yes ; then
     coin_has_osidylp=no
   fi
+
 
    if test $coin_has_osidylp = yes; then
   COIN_HAS_OSIDYLP_TRUE=
@@ -19439,19 +19466,22 @@ else
 fi
 
 
-  # If we have located the package, define preprocessor symbol PKG_HAS_PRIM and
-  # augment the necessary variables for the client packages.
+
   if test $coin_has_osidylp = yes ; then
 
 $as_echo "#define CGL_HAS_OSIDYLP 1" >>confdefs.h
 
-    if test -n "$osidylp_pcfiles" ; then CGLUNITTEST_PCFILES="$osidylp_pcfiles $CGLUNITTEST_PCFILES" ; fi
+    CGLUNITTEST_PCFILES="$osidylp_pcfiles $CGLUNITTEST_PCFILES"
        CGLUNITTEST_LFLAGS="$osidylp_lflags $CGLUNITTEST_LFLAGS"
        CGLUNITTEST_CFLAGS="$osidylp_cflags $CGLUNITTEST_CFLAGS"
 
 
 
   fi
+
+
+
+
 
 
 
@@ -19464,15 +19494,17 @@ $as_echo_n "checking for package OsiSpx... " >&6; }
 
 
 
-  # Check to see if the user has set an override to skip this primary.
+
+
   coin_has_osispx=noInfo
   if test x"$COIN_SKIP_PROJECTS" != x ; then
-    for pkg in $COIN_SKIP_PROJECTS ; do
-      if test "$pkg" = "$osispx" ; then
+    for pkg in `echo $COIN_SKIP_PROJECTS | tr '[:upper:]' '[:lower:]'` ; do
+      if test "$pkg" = "osispx" ; then
         coin_has_osispx=skipping
       fi
     done
   fi
+
 
   if test "$coin_has_osispx" != skipping ; then
 
@@ -19504,46 +19536,64 @@ fi
 
 
 
-  dflt_action=yes
 
-  # Initialize variables for the primary package.
-  coin_has_osispx=noInfo
+
+
+
+
+  coin_has_osispx=requested
+
   osispx_lflags=
   osispx_cflags=
   osispx_data=
-  osispx_pcfiles=
+  osispx_pcfiles="osi-soplex"
 
-  # --with-prim is always present.
+
   withval="$with_osispx"
   if test -n "$withval" ; then
     case "$withval" in
       no )
         coin_has_osispx=skipping
+        osispx_failmode='command line'
         ;;
       yes )
         coin_has_osispx=requested
+        osispx_failmode=''
         ;;
       build )
-        coin_has_osispx=build
+        coin_has_osispx=requested
+        osispx_build=yes
+        osispx_failmode=''
         ;;
       * )
-        coin_has_osispx=yes
-                osispx_lflags="$withval"
+        coin_has_osispx=requested
+        osispx_failmode=''
+        osispx_lflags="$withval"
+        osispx_pcfiles=''
         ;;
     esac
+  else
+    if test -n "$with_osispx_lflags" ||
+       test -n "$with_osispx_cflags" ||
+       test -n "$with_osispx_data" ; then
+      coin_has_osispx=requested
+      osispx_failmode=''
+      osispx_pcfiles=''
+    fi
   fi
 
-  # Specifying --with-prim=no overrides the individual options for lflags and cflags.
-     if test "$coin_has_osispx" != skipping ; then
+
+  if test "$coin_has_osispx" != skipping ; then
        withval="$with_osispx_lflags"
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify linker flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify link flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osispx=yes
              osispx_lflags="$withval"
+             osispx_pcfiles=''
              ;;
          esac
        fi
@@ -19552,11 +19602,12 @@ fi
        if test -n "$withval" ; then
          case "$withval" in
            build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please specify compiler flags appropriate for your environment." "$LINENO" 5
+             as_fn_error $? "\"$withval\" is not useful here; please specify compile flags appropriate for your environment." "$LINENO" 5
              ;;
            * )
              coin_has_osispx=yes
              osispx_cflags="$withval"
+             osispx_pcfiles=''
              ;;
          esac
        fi
@@ -19564,39 +19615,12 @@ fi
 
 
 
-  # At this point, coin_has_prim can be one of
-  # - noInfo (no user options specified),
-  # - skipping (user said no),
-  # - requested,
-  # - build (user said yes or build and gave no further guidance),
-  # - or yes (user specified one or more --with-prim options).
-  # If we're already at yes or skipping, we're done looking.
 
-  # If there are no user options (noInfo) and the default is no, we're skipping.
-  # Otherwise, the default must be yes or build; consider the package requested.
-  # A default action we don't recognise defaults to yes.
-  if test "$coin_has_osispx" = noInfo ; then
-    case $dflt_action in
-      no )
-        coin_has_osispx=skipping
-        ;;
-      build )
-        coin_has_osispx=build
-        ;;
-      * )
-        coin_has_osispx=requested
-        ;;
-    esac
-  fi
 
-  # Now coin_has_prim can be one of skipping, yes, requested, or build.
-  # For requested or build, try pkgconf, if it's available.
-  # If it's not available, well, hope that the user knows their system
-  # and prim can be used with no additional flags.
-  case $coin_has_osispx in
-    requested | build )
-      if test -n "$PKG_CONFIG" -a "osi-soplex" != skip ; then
-        pcfile="osi-soplex"
+  if test $coin_has_osispx = requested ; then
+    if test -n "$PKG_CONFIG" ; then
+      if test x"$osispx_build" = xyes ; then
+        pcfile="coin$osispx_pcfiles"
 
 
 
@@ -19604,8 +19628,6 @@ fi
     if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
       OSISPX_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
       coin_has_osispx=yes
-           osispx_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
-           osispx_pcfiles="$pcfile"
     else
       OSISPX_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
       coin_has_osispx=no
@@ -19614,25 +19636,37 @@ fi
     as_fn_error $? "\"Cannot check for existence of module osispx without pkgconf\"" "$LINENO" 5
   fi
 
-      else
-        coin_has_osispx=no
       fi
-      ;;
-    skipping | yes )
-      ;;
-    * )
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Unexpected status \"$coin_has_osispx\" in COIN_FIND_PRIM_PKG" >&5
-$as_echo "$as_me: WARNING: Unexpected status \"$coin_has_osispx\" in COIN_FIND_PRIM_PKG" >&2;}
-      ;;
-  esac
+      if ! test $coin_has_osispx = yes ; then
+        pcfile="$osispx_pcfiles"
 
-  # The final value of coin_has_prim will be yes, no, or skipping.
-  # No means we looked (with pkgconfig) and didn't find anything.
-  # Skipping means the user said `don't use.'
-  # Yes means we have something, from the user or from pkgconfig.
-  # Note that we haven't run a useability test!
 
-  # Define BUILDTOOLS_DEBUG to enable debugging output
+
+  if test -n "$PKG_CONFIG" ; then
+    if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
+      OSISPX_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
+      coin_has_osispx=yes
+    else
+      OSISPX_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
+      coin_has_osispx=no
+    fi
+  else
+    as_fn_error $? "\"Cannot check for existence of module osispx without pkgconf\"" "$LINENO" 5
+  fi
+
+      fi
+      if test $coin_has_osispx = yes ; then
+        osispx_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
+        osispx_pcfiles="$pcfile"
+      fi
+    else
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for osispx via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osispx-lflags and --with-osispx-cflags." >&5
+$as_echo "$as_me: WARNING: Check for osispx via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-osispx-lflags and --with-osispx-cflags." >&2;}
+      coin_has_osispx=no
+    fi
+  fi
+
+
   if test "$BUILDTOOLS_DEBUG" = 1 ; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for osispx: \"$coin_has_osispx\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for osispx: \"$coin_has_osispx\"" >&6;}
@@ -19651,20 +19685,16 @@ $as_echo "$as_me: osispx_pcfiles is \"$osispx_pcfiles\"" >&6;}
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osispx" >&5
 $as_echo "$coin_has_osispx" >&6; }
-
-      if test "$PKG_CONFIG$coin_has_osispx" = no ; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for OsiSpx via pkg-config was skipped as no pkg-config available. If OsiSpx was meant to be found, then consider installing pkg-config or provide appropriate --with-osispx-lflags, --with-osispx-cflags, etc." >&5
-$as_echo "$as_me: WARNING: Check for OsiSpx via pkg-config was skipped as no pkg-config available. If OsiSpx was meant to be found, then consider installing pkg-config or provide appropriate --with-osispx-lflags, --with-osispx-cflags, etc." >&2;}
-      fi
   else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osispx due to COIN_SKIP_PROJECTS" >&5
-$as_echo "$coin_has_osispx due to COIN_SKIP_PROJECTS" >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_osispx (COIN_SKIP_PROJECTS)" >&5
+$as_echo "$coin_has_osispx (COIN_SKIP_PROJECTS)" >&6; }
   fi
 
-  # Possibilities are `yes', 'no', or `skipping'. Normalise to `yes' or `no'.
+
   if test "$coin_has_osispx" != yes ; then
     coin_has_osispx=no
   fi
+
 
    if test $coin_has_osispx = yes; then
   COIN_HAS_OSISPX_TRUE=
@@ -19675,13 +19705,12 @@ else
 fi
 
 
-  # If we have located the package, define preprocessor symbol PKG_HAS_PRIM and
-  # augment the necessary variables for the client packages.
+
   if test $coin_has_osispx = yes ; then
 
 $as_echo "#define CGL_HAS_OSISPX 1" >>confdefs.h
 
-    if test -n "$osispx_pcfiles" ; then CGLUNITTEST_PCFILES="$osispx_pcfiles $CGLUNITTEST_PCFILES" ; fi
+    CGLUNITTEST_PCFILES="$osispx_pcfiles $CGLUNITTEST_PCFILES"
        CGLUNITTEST_LFLAGS="$osispx_lflags $CGLUNITTEST_LFLAGS"
        CGLUNITTEST_CFLAGS="$osispx_cflags $CGLUNITTEST_CFLAGS"
 
@@ -19701,7 +19730,7 @@ $as_echo "$as_me: FINALIZE_FLAGS for CglUnitTest:" >&6;}
 
       if test -n "${CGLUNITTEST_PCFILES}" ; then
         temp_CFLAGS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --cflags ${CGLUNITTEST_PCFILES}`
-        temp_LFLAGS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --libs ${CGLUNITTEST_PCFILES}`
+        temp_LFLAGS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --libs $pkg_static ${CGLUNITTEST_PCFILES}`
         CGLUNITTEST_CFLAGS="$temp_CFLAGS ${CGLUNITTEST_CFLAGS}"
         CGLUNITTEST_LFLAGS="$temp_LFLAGS ${CGLUNITTEST_LFLAGS}"
       fi
@@ -19748,20 +19777,26 @@ $as_echo "$as_me: CGLUNITTEST_CFLAGS: \"${CGLUNITTEST_CFLAGS}\"" >&6;}
 
 
 
+
+
+
+
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for package Sample" >&5
 $as_echo_n "checking for package Sample... " >&6; }
 
 
 
-  # Check to see if the user has set an override to skip this primary.
+
+
   coin_has_sample=noInfo
   if test x"$COIN_SKIP_PROJECTS" != x ; then
-    for pkg in $COIN_SKIP_PROJECTS ; do
-      if test "$pkg" = "$sample" ; then
+    for pkg in `echo $COIN_SKIP_PROJECTS | tr '[:upper:]' '[:lower:]'` ; do
+      if test "$pkg" = "sample" ; then
         coin_has_sample=skipping
       fi
     done
   fi
+
 
   if test "$coin_has_sample" != skipping ; then
 
@@ -19788,86 +19823,70 @@ fi
 
 
 
-  dflt_action=yes
 
-  # Initialize variables for the primary package.
-  coin_has_sample=noInfo
+
+
+
+
+  coin_has_sample=requested
+
   sample_lflags=
   sample_cflags=
   sample_data=
-  sample_pcfiles=
+  sample_pcfiles="coindatasample"
 
-  # --with-prim is always present.
+
   withval="$with_sample"
   if test -n "$withval" ; then
     case "$withval" in
       no )
         coin_has_sample=skipping
+        sample_failmode='command line'
         ;;
       yes )
         coin_has_sample=requested
+        sample_failmode=''
         ;;
       build )
-        coin_has_sample=build
-        ;;
-      * )
-        coin_has_sample=yes
-                sample_data="$withval"
-        ;;
-    esac
-  fi
-
-
-
-  # Specifying --with-prim=no overrides the individual option for data.
-     if test "$coin_has_sample" != skipping ; then
-       withval="$with_sample_data"
-       if test -n "$withval" ; then
-         case "$withval" in
-           build | no | yes )
-             as_fn_error $? "\"$withval\" is not valid here; please give a data directory specification appropriate for your environment." "$LINENO" 5
-             ;;
-           * )
-             coin_has_sample=yes
-             sample_data="$withval"
-             ;;
-         esac
-       fi
-     fi
-
-  # At this point, coin_has_prim can be one of
-  # - noInfo (no user options specified),
-  # - skipping (user said no),
-  # - requested,
-  # - build (user said yes or build and gave no further guidance),
-  # - or yes (user specified one or more --with-prim options).
-  # If we're already at yes or skipping, we're done looking.
-
-  # If there are no user options (noInfo) and the default is no, we're skipping.
-  # Otherwise, the default must be yes or build; consider the package requested.
-  # A default action we don't recognise defaults to yes.
-  if test "$coin_has_sample" = noInfo ; then
-    case $dflt_action in
-      no )
-        coin_has_sample=skipping
-        ;;
-      build )
-        coin_has_sample=build
+        coin_has_sample=requested
+        sample_build=yes
+        sample_failmode=''
         ;;
       * )
         coin_has_sample=requested
+        sample_failmode=''
+        sample_lflags="$withval"
+        sample_pcfiles=''
         ;;
     esac
+  else
+    if test -n "$with_sample_lflags" ||
+       test -n "$with_sample_cflags" ||
+       test -n "$with_sample_data" ; then
+      coin_has_sample=requested
+      sample_failmode=''
+      sample_pcfiles=''
+    fi
   fi
 
-  # Now coin_has_prim can be one of skipping, yes, requested, or build.
-  # For requested or build, try pkgconf, if it's available.
-  # If it's not available, well, hope that the user knows their system
-  # and prim can be used with no additional flags.
-  case $coin_has_sample in
-    requested | build )
-      if test -n "$PKG_CONFIG" -a "coindatasample" != skip ; then
-        pcfile="coindatasample"
+
+
+
+
+  if test "$coin_has_sample" != skipping ; then
+       withval="$with_sample_data"
+       if test -n "$withval" ; then
+         coin_has_sample=yes
+         sample_data="$withval"
+         sample_pcfiles=''
+       fi
+     fi
+
+
+  if test $coin_has_sample = requested ; then
+    if test -n "$PKG_CONFIG" ; then
+      if test x"$sample_build" = xyes ; then
+        pcfile="coin$sample_pcfiles"
 
 
 
@@ -19875,8 +19894,6 @@ fi
     if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
       SAMPLE_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
       coin_has_sample=yes
-           sample_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
-           sample_pcfiles="$pcfile"
     else
       SAMPLE_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
       coin_has_sample=no
@@ -19885,25 +19902,37 @@ fi
     as_fn_error $? "\"Cannot check for existence of module sample without pkgconf\"" "$LINENO" 5
   fi
 
-      else
-        coin_has_sample=no
       fi
-      ;;
-    skipping | yes )
-      ;;
-    * )
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Unexpected status \"$coin_has_sample\" in COIN_FIND_PRIM_PKG" >&5
-$as_echo "$as_me: WARNING: Unexpected status \"$coin_has_sample\" in COIN_FIND_PRIM_PKG" >&2;}
-      ;;
-  esac
+      if ! test $coin_has_sample = yes ; then
+        pcfile="$sample_pcfiles"
 
-  # The final value of coin_has_prim will be yes, no, or skipping.
-  # No means we looked (with pkgconfig) and didn't find anything.
-  # Skipping means the user said `don't use.'
-  # Yes means we have something, from the user or from pkgconfig.
-  # Note that we haven't run a useability test!
 
-  # Define BUILDTOOLS_DEBUG to enable debugging output
+
+  if test -n "$PKG_CONFIG" ; then
+    if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
+      SAMPLE_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
+      coin_has_sample=yes
+    else
+      SAMPLE_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
+      coin_has_sample=no
+    fi
+  else
+    as_fn_error $? "\"Cannot check for existence of module sample without pkgconf\"" "$LINENO" 5
+  fi
+
+      fi
+      if test $coin_has_sample = yes ; then
+        sample_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
+        sample_pcfiles="$pcfile"
+      fi
+    else
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for sample via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-sample-lflags and --with-sample-cflags." >&5
+$as_echo "$as_me: WARNING: Check for sample via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-sample-lflags and --with-sample-cflags." >&2;}
+      coin_has_sample=no
+    fi
+  fi
+
+
   if test "$BUILDTOOLS_DEBUG" = 1 ; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for sample: \"$coin_has_sample\"" >&5
 $as_echo "$as_me: FIND_PRIM_PKG result for sample: \"$coin_has_sample\"" >&6;}
@@ -19922,20 +19951,16 @@ $as_echo "$as_me: sample_pcfiles is \"$sample_pcfiles\"" >&6;}
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_sample" >&5
 $as_echo "$coin_has_sample" >&6; }
-
-      if test "$PKG_CONFIG$coin_has_sample" = no ; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Check for Sample via pkg-config was skipped as no pkg-config available. If Sample was meant to be found, then consider installing pkg-config or provide appropriate --with-sample-lflags, --with-sample-cflags, etc." >&5
-$as_echo "$as_me: WARNING: Check for Sample via pkg-config was skipped as no pkg-config available. If Sample was meant to be found, then consider installing pkg-config or provide appropriate --with-sample-lflags, --with-sample-cflags, etc." >&2;}
-      fi
   else
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_sample due to COIN_SKIP_PROJECTS" >&5
-$as_echo "$coin_has_sample due to COIN_SKIP_PROJECTS" >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $coin_has_sample (COIN_SKIP_PROJECTS)" >&5
+$as_echo "$coin_has_sample (COIN_SKIP_PROJECTS)" >&6; }
   fi
 
-  # Possibilities are `yes', 'no', or `skipping'. Normalise to `yes' or `no'.
+
   if test "$coin_has_sample" != yes ; then
     coin_has_sample=no
   fi
+
 
    if test $coin_has_sample = yes; then
   COIN_HAS_SAMPLE_TRUE=
@@ -19946,8 +19971,7 @@ else
 fi
 
 
-  # If we have located the package, define preprocessor symbol PKG_HAS_PRIM and
-  # augment the necessary variables for the client packages.
+
   if test $coin_has_sample = yes ; then
 
 $as_echo "#define CGL_HAS_SAMPLE 1" >>confdefs.h
