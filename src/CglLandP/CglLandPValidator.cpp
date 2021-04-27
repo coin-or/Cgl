@@ -65,7 +65,7 @@ Validator::cleanCut(OsiRowCut & aCut, const double * solCut, const OsiSolverInte
 
     /** Now relax get dynamic and remove tiny elements */
     int offset = 0;
-    rhs -= 1e-8;
+    rhs -= 1e-7;
     double smallest = 1e100;
     double biggest = 0;
     for (int i = 0 ; i < n ; i++)

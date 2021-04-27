@@ -533,7 +533,25 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 {
     if ((info.pass == 0) && !info.inTree)
     {
-        numrows_ = si.getNumRows();
+      numrows_ = si.getNumRows();
+      // but switch off if ranges
+      const double * rowLower = si.getRowLower();
+      const double * rowUpper = si.getRowUpper();
+      int numberRanges = 0;
+      for (int i=0;i<numrows_;i++) {
+	if (rowLower[i]<rowUpper[i]) {
+	  if (rowLower[i]> -1.0e50 && rowUpper[i] < 1.0e50) {
+	    numberRanges++;
+	  }
+	}
+      }
+      if (numberRanges) {
+	//printf("Ranges (%d) - switching off CglLandP\n",numberRanges);
+	params_.maximumCutLength = -1;
+	return;
+      }
+    } else if (params_.maximumCutLength < 0) {
+      return;
     }
 // scanExtraCuts(cs, si.getColSolution());
     Parameters params = params_;
