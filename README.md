@@ -94,7 +94,7 @@ The Cgl development site is https://github.com/coin-or/Cgl.
 
 There is a Docker image that provides Cgl, as well as other projects
 in the [COIN-OR Optimization
-Suite](https://github.com/coin-or/COIN-OR-OptimizationSuite)[here](https://hub.docker.com/repository/docker/coinor/coin-or-optimization-suite)
+Suite](https://github.com/coin-or/COIN-OR-OptimizationSuite) [here](https://hub.docker.com/repository/docker/coinor/coin-or-optimization-suite)
 
 ### Binaries
 
@@ -105,7 +105,7 @@ are archived as part of Cbc
 [here](https://www.coin-or.org/download/binary/Cbc).
 
  * *Linux*: On Debian/Ubuntu, Cgl is available in the package `coinor-cgl` and can be installed with apt. On Fedora, Cgl is available in the package `coin-or-Cgl`.
- * *Windows*: The easiest way to get Cgl on Windows is to download from *[Bintray](https://bintray.com/coin-or/download/Cbc)*.
+ * *Windows*: The easiest way to get Cgl on Windows is to download an archive as described above.
  * *Mac OS X*: The easiest way to get Cbc on Mac OS X is through [Homebrew](https://brew.sh).
    * `brew tap coin-or-tools/coinor`
    * `brew install coin-or-tools/coinor/cgl`
