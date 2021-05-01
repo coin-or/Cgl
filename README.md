@@ -76,7 +76,7 @@ Cgl is written in C++ and is released as open source under the [Eclipse Public L
 
 It is distributed under the auspices of the [COIN-OR Foundation](https://www.coin-or.org)
 
-The Cgl website is https://github.com/coin-or/Cgl.
+The Cgl development site is https://github.com/coin-or/Cgl.
 
 ## CITE
 
@@ -98,7 +98,11 @@ Suite](https://github.com/coin-or/COIN-OR-OptimizationSuite)[here](https://hub.d
 
 ### Binaries
 
-Binaries for most platforms are available as part of [Cbc](https://bintray.com/coin-or/download/Cbc). 
+For newer releases, binaries will be made available as assets attached to
+releases in Github
+[here](https://github.com/coin-or/Cgl/releases). Older binaries
+are archived as part of Cbc
+[here](https://www.coin-or.org/download/binary/Cbc).
 
  * *Linux*: On Debian/Ubuntu, Cgl is available in the package `coinor-cgl` and can be installed with apt. On Fedora, Cgl is available in the package `coin-or-Cgl`.
  * *Windows*: The easiest way to get Cgl on Windows is to download from *[Bintray](https://bintray.com/coin-or/download/Cbc)*.
@@ -109,7 +113,9 @@ Binaries for most platforms are available as part of [Cbc](https://bintray.com/c
 Due to license incompatibilities, pre-compiled binaries lack some functionality.
 If binaries are not available for your platform for the latest version and you would like to request them to be built and posted, feel free to let us know on the mailing list.
 
-*Source code* can be obtained either by
+### Source
+
+Source code can be obtained either by
 
  * Downloading a snapshot of the source code for the latest release version of Cgl from the
  [releases](https://github.com/coin-or/Cgl/releases) page.
