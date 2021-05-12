@@ -254,7 +254,6 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
     const double * rowLower = si.getRowLower();
     double infty = si.getInfinity();
     int i=ncols_orig_;
-    // See note JJF
     for (int iRow = 0; iRow < nrows_orig_ ; iRow++, i++)
     {
         if (rowUpper[iRow] < infty)
@@ -2771,12 +2770,10 @@ CglLandPSimplex::createMIG( TabRow &row, OsiRowCut &cut) const
 			  //	 iRow,basis_->getArtifStatus(iRow),
 			  //	 rowLower[iRow],si_->getRowActivity()[iRow],
 			  //	 rowUpper[iRow]);
-			// use code at 2630
-#if 0
                         if (rowUpper[iRow] < infty)
                         {
 			  if (basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atUpperBound)
-                            cutRhs += value*rowLower[iRow]; // think should be +
+                            cutRhs -= value*rowLower[iRow];
 			  else
                             cutRhs -= value*rowUpper[iRow];
                         }
@@ -2787,20 +2784,6 @@ CglLandPSimplex::createMIG( TabRow &row, OsiRowCut &cut) const
                             //assert(basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atUpperBound ||
 			    //     (rowUpper[iRow] < infty));
                         }
-#else
-			if (rowLower[iRow] > -infty)
-			  {
-			    value = -value;
-			    cutRhs -= value*rowLower[iRow];
-			    //assert(basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atUpperBound ||
-			    //     (fabs(rowLower[iRow] - rowUpper[iRow]) < 1e-08));
-			  }
-			else
-			  {
-			    cutRhs -= value*rowUpper[iRow];
-			    //assert(basis_->getArtifStatus(iRow)==CoinWarmStartBasis::atLowerBound);
-			  }
-#endif
                         vec[original_index_[nonBasics_[j]]] = value;
                         assert(fabs(cutRhs)<1e100);
                     }

@@ -72,7 +72,8 @@ public:
       Returns non-zero if problem infeasible
   */
   int tightenPrimalBounds(OsiSolverInterface &model,
-			  bool tightenRowBounds=false);
+			  bool tightenRowBounds=false,
+			  double * scBound=NULL);
   /** Fix some of problem - returning new problem.
       Uses reduced costs.
       Optional signed character array
@@ -212,6 +213,7 @@ public:
     return numberIterationsPost_;
   }
   /** Pass in row types
+      -2 do not touch row
       0 normal
       1 cut rows - will be dropped if remain in
       At end of preprocess cut rows will be dropped
@@ -238,8 +240,9 @@ public:
   {
     return &cuts_;
   }
-  /// Update prohibited and rowType
-  void update(const OsiPresolve *pinfo, const OsiSolverInterface *solver);
+  /// Update prohibited and rowType (and SC stuff)
+  void update(const OsiPresolve *pinfo,
+	      const OsiSolverInterface *solver,double * scBound);
   /// Get options
   inline int options() const
   {
@@ -419,7 +422,8 @@ private:
   int numberIterationsPre_;
   /// Number of iterations done in PostProcessing
   int numberIterationsPost_;
-  /// Columns which should not be presolved e.g. SOS
+  /** Columns which should not be presolved e.g. SOS
+    2 says really really leave alone e.g. sc or lot-sizing */
   char *prohibited_;
   /// Number of rows in original row types
   int numberRowType_;
@@ -430,6 +434,9 @@ private:
       8 - don't do cliques
       16 - some heavy probing options
       64 - very heavy probing
+      128 - appData_ has SC data
+      256 - clumsy postprocessing
+      512 - try for dominated columns
   */
   int options_;
   /** Row types (may be NULL) 
