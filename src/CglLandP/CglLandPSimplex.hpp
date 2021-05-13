@@ -298,7 +298,7 @@ private:
     TabRow original_row_k_;
     /** Row of leaving candidate*/
     TabRow row_i_;
-#ifndef NDBEUG
+#ifndef NDEBUG
     TabRow new_row_;
 #endif
     /**vector to sort the gammas*/

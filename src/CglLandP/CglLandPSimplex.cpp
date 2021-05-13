@@ -204,7 +204,9 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
         row_k_(this),
         original_row_k_(this),
         row_i_(this),
+#ifndef NDEBUG
         new_row_(this),
+#endif
         gammas_(false),
         rowFlags_(NULL),
         col_in_subspace(),
