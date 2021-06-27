@@ -5727,6 +5727,13 @@ CglPreProcess::modified(OsiSolverInterface *model,
             rowTypeAll[iRow] = 0;
           }
         }
+      } else {
+	// continuous - take out to be on safe side
+	for (CoinBigIndex j = columnStart[iColumn];
+	     j < columnStart[iColumn] + columnLength[iColumn]; j++) {
+	  int iRow = row[j];
+	  rowTypeAll[iRow] = 0;
+	}
       }
     }
 #if CBC_USEFUL_PRINTING > 0
@@ -5980,7 +5987,8 @@ CglPreProcess::modified(OsiSolverInterface *model,
                   newModel->setColLower(iColumn, 0.0);
                   nMarkRow = 0; // stop looking
                 }
-                if (colLower[0] > colUpper[0] || colLower[1] > colUpper[1] + 1.0e-6) {
+                if (colLower[0] > colUpper[0] + 1.0e-6
+		    || colLower[1] > colUpper[1] + 1.0e-6) {
 #if CBC_USEFUL_PRINTING > 0
                   printf("** infeasible\n");
 #endif
@@ -7534,7 +7542,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
               numberFixed++;
             } else {
               numberBounds++;
-              if (columnLower[iColumn] > columnUpper[iColumn])
+              if (columnLower[iColumn] > columnUpper[iColumn] + 1.0e-12)
                 feasible = false;
             }
           }
@@ -7558,7 +7566,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
               numberFixed++;
             } else {
               numberBounds++;
-              if (columnLower[iColumn] > columnUpper[iColumn])
+              if (columnLower[iColumn] > columnUpper[iColumn]+1.0e-12)
                 feasible = false;
             }
           }
