@@ -10,6 +10,20 @@
 #include "CoinHelperFunctions.hpp"
 #include "CglConfig.h"
 
+template<typename T>
+void append(T*& array, int oldLength, int newLength)
+{
+  assert(oldLength < newLength);
+
+  T* temp = new T[newLength];
+  if (array != NULL) {
+    memcpy(temp, array, oldLength * sizeof(T));
+    delete[] array;
+  }
+
+  array = temp;
+}
+
 class CglStored;
 /** Information about where the cut generator is invoked from. */
 
