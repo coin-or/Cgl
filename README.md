@@ -6,7 +6,8 @@
 
 _This file is auto-generated from [config.yml](.coin-or/config.yml) using the 
 [generate_readme](.coin-or/generate_readme) script.
-To make changes, please edit [config.yml](.coin-or/config.yml) or the generation script._
+To make changes, please edit [config.yml](.coin-or/config.yml) or the generation scripts
+[here](.coin-or/generate_readme) and [here](https://github.com/coin-or/coinbrew/blob/master/scripts/generate_readme)._
 
 The COIN-OR Cut Generation Library (`Cgl`) is a collection of cut generators that can be 
 used with other COIN-OR packages that make use of cuts, such as, among others, the linear solver 
@@ -84,9 +85,9 @@ The Cgl development site is https://github.com/coin-or/Cgl.
 
 ## CURRENT BUILD STATUS
 
-[![Build Status](https://travis-ci.com/coin-or/Cgl.svg?branch=stable/0.60)](https://travis-ci.com/coin-or/Cgl)
+[![Windows Builds](https://github.com/coin-or/Cgl/actions/workflows/windows-ci.yml/badge.svg?branch=stable/0.60)](https://github.com/coin-or/Cgl/actions/workflows/windows-ci.yml?query=branch%3Astable/0.60)
 
-[![Build status](https://ci.appveyor.com/api/projects/status/bk1edpd41aws90cp/branch/stable/0.60?svg=true)](https://ci.appveyor.com/project/coin-or/Cgl/branch/stable/0.60)
+[![Linux and MacOS Builds](https://github.com/coin-or/Cgl/actions/workflows/linux-ci.yml/badge.svg?branch=stable/0.60)](https://github.com/coin-or/Cgl/actions/workflows/linux-ci.yml?query=branch%3Astable/0.60)
 
 ## DOWNLOAD
 
@@ -106,7 +107,7 @@ are archived as part of Cbc
 
  * *Linux*: On Debian/Ubuntu, Cgl is available in the package `coinor-cgl` and can be installed with apt. On Fedora, Cgl is available in the package `coin-or-Cgl`.
  * *Windows*: The easiest way to get Cgl on Windows is to download an archive as described above.
- * *Mac OS X*: The easiest way to get Cbc on Mac OS X is through [Homebrew](https://brew.sh).
+ * *Mac OS X*: The easiest way to get Cgl on Mac OS X is through [Homebrew](https://brew.sh).
    * `brew tap coin-or-tools/coinor`
    * `brew install coin-or-tools/coinor/cgl`
 
@@ -132,7 +133,7 @@ The quick start assumes you are in a bash shell.
 
 ### Using `coinbrew`
 
-To build CoinUtils from source, obtain the `coinbrew` script, do
+To build Cgl from source, obtain the `coinbrew` script, do
 ```
 wget https://raw.githubusercontent.com/coin-or/coinbrew/master/coinbrew
 chmod u+x coinbrew
