@@ -1081,7 +1081,7 @@ static void writeDebugMps(const OsiSolverInterface *solver,
   sprintf(name, "presolve%2.2d.mps", mpsNumber);
   printf("saving %s from %s - %d row, %d columns\n", 
     name, where, solver->getNumRows(), solver->getNumCols());
-  if (mpsNumber>100) {
+  if (mpsNumber>10) {
     printf("Not saving\n");
   } else {
     solver->writeMpsNative(name, NULL, NULL, 0, 1, 0);
@@ -1330,7 +1330,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     if ((tuning & 32) != 0)
       presolveActions |= 32;
     presolveActions |= 8;
-    presolveActions |= 0x200; // allow fill of 4
     pinfo->setPresolveActions(presolveActions);
     if (prohibited_)
       assert(numberProhibited_ == originalModel_->getNumCols());
@@ -1502,11 +1501,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   }
   if ((tuning & 1) != 0)
     options_ |= (16|512); // heavy stuff
-  // For now use this rather than for clique stuff
-  if ((tuning & 512) != 0) {
-    options_ |= 64; // more heavy stuff
-    tuning &= ~512;
-  }
   //bool heavyProbing = (tuning&1)!=0;
   int makeIntegers = (tuning & 6) >> 1;
   // See if we want to do initial presolve
@@ -2595,7 +2589,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     // If trying for SOS don't allow some transfers
     if (makeEquality == 2 || makeEquality == 3)
       presolveActions |= 8;
-    presolveActions |= 0x200; // allow fill of 4
     pinfo->setPresolveActions(presolveActions);
     if (prohibited_)
       assert(numberProhibited_ == oldModel->getNumCols());
@@ -3209,7 +3202,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       // If trying for SOS don't allow some transfers
       if (makeEquality == 2 || makeEquality == 3)
         presolveActions |= 8;
-      presolveActions |= 0x200; // allow fill of 4
       pinfo->setPresolveActions(presolveActions);
       if (prohibited_)
         assert(numberProhibited_ == oldModel->getNumCols());
@@ -3297,16 +3289,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       modifiedModel_[iPass] = newModel;
       oldModel = newModel;
       writeDebugMps(newModel, "ordinary3", NULL);
-      // may have had stuff fixed - so do presolve here
-      bool saveHint2, saveHint3;
-      OsiHintStrength saveStrength2,saveStrength3;
-      newModel->getHintParam(OsiDoPresolveInResolve, saveHint2, saveStrength2);
-      newModel->setHintParam(OsiDoPresolveInResolve, true, OsiHintTry);
-      newModel->getHintParam(OsiDoDualInResolve, saveHint3, saveStrength3);
-      newModel->setHintParam(OsiDoDualInResolve, true, OsiHintTry);
       newModel->resolve();
-      newModel->setHintParam(OsiDoPresolveInResolve, saveHint2, saveStrength2);
-      newModel->setHintParam(OsiDoDualInResolve, saveHint3, saveStrength3);
       if (!newModel->isProvenOptimal()) {
 	numberSolvers_ = iPass + 1;
 	break;
@@ -4306,7 +4289,7 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
 		      newBound = CoinMax(newLower[iColumn],newBound+1.0e-7);
 		    }
 		  }
-		  if (newBound<newUpper[iColumn]-1.0e-7  && newBound < 1.0e20) {
+		  if (newBound<newUpper[iColumn]-1.0e-7) {
 		    numberChanged++;
 #ifdef LOTS_OF_PRINTING
 		    printf("singleton %d obj %g %g <= %g rlo %g rup %g maxd %g maxu %g el %g\n",
@@ -4349,7 +4332,7 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
 		      newBound = CoinMin(newUpper[iColumn],newBound+1.0e-7);
 		    }
 		  }
-		  if (newBound>newLower[iColumn]+1.0e-7 && newBound > -1.0e20) {
+		  if (newBound>newLower[iColumn]+1.0e-7) {
 		    numberChanged++;
 #ifdef LOTS_OF_PRINTING
 		    printf("singleton %d obj %g %g <= %g rlo %g rup %g maxd %g maxu %g el %g\n",
@@ -6635,21 +6618,10 @@ CglPreProcess::modified(OsiSolverInterface *model,
             numberPasses = 1;
             probingCut->setMaxProbeRoot(CoinMax(saveMaxProbe, 1000));
             probingCut->setMaxElementsRoot(CoinMax(saveMaxElements, 2000));
-	    // look at density
-	    double numberElementsPer = newModel->getNumElements();
-	    numberElementsPer /= newModel->getNumCols();
-	    int numberRows = newModel->getNumRows();
-	    double density = numberElementsPer/numberRows;
-	    int maxLook = 3000;
-	    //if (density>0.01)
-	    //maxLook = static_cast<int>(30.0/density);
-	    if ((options_&64)==0)
-	      maxLook = CoinMin(maxLook,numberRows);
+	    int maxLook = CoinMin(numberColumns, numberRows)/2;
+	    maxLook = CoinMin(maxLook,2000);
             probingCut->setMaxLookRoot(CoinMax(saveMaxLook, maxLook));
             options_ &= ~16;
-          } else if (!iBigPass&&!iPass) {
-	    int n = CoinMin(3000,numberRows/10);
-            probingCut->setMaxLookRoot(CoinMax(saveMaxLook, n));
           } else if (iPass || (options_ & 64) == 0) {
             // cut back
             probingCut->setMaxElementsRoot(probingCut->getMaxElements());
@@ -7570,7 +7542,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
               numberFixed++;
             } else {
               numberBounds++;
-              if (columnLower[iColumn] > columnUpper[iColumn]+1.0e-12)
+              if (columnLower[iColumn] > columnUpper[iColumn] + 1.0e-12)
                 feasible = false;
             }
           }
@@ -7594,7 +7566,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
               numberFixed++;
             } else {
               numberBounds++;
-              if (columnLower[iColumn] > columnUpper[iColumn] + 1.0e-12)
+              if (columnLower[iColumn] > columnUpper[iColumn]+1.0e-12)
                 feasible = false;
             }
           }
