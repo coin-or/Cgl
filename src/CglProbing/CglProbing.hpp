@@ -244,6 +244,9 @@ public:
   /// Entries for clique
   inline CliqueEntry * cliqueEntry() const
   { return cliqueEntry_;}
+  /// Changed up/down (if used)
+  inline int * endFixStart() const
+  { return endFixStart_;}
   //@}
 
   /**@name Whether use objective as constraint */

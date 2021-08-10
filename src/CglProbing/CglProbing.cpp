@@ -18,6 +18,7 @@
 #include "CoinPackedMatrix.hpp"
 #include "CoinFinite.hpp"
 #include "OsiRowCutDebugger.hpp"
+#include "OsiRowCut.hpp"
 #include "CglProbing.hpp"
 //#define PROBING_EXTRA_STUFF true
 #define PROBING_EXTRA_STUFF false
@@ -36,66 +37,7 @@ public:
 typedef struct {
   int index, next;
 } CoinHashLink;
-static double multiplier[] = {1.23456789e2,-9.87654321};
-static int hashCut (const OsiRowCut2 & x, int size) 
-{
-  int xN =x.row().getNumElements();
-  double xLb = x.lb();
-  double xUb = x.ub();
-  const int * xIndices = x.row().getIndices();
-  const double * xElements = x.row().getElements();
-  unsigned int hashValue;
-  double value=1.0;
-  if (xLb>-1.0e10)
-    value += xLb*multiplier[0];
-  if (xUb<1.0e10)
-    value += xUb*multiplier[1];
-  for( int j=0;j<xN;j++) {
-    int xColumn = xIndices[j];
-    double xValue = xElements[j];
-    int k=(j&1);
-    value += (j+1)*multiplier[k]*(xColumn+1)*xValue;
-  }
-  // should be compile time but too lazy for now
-  union { double d; unsigned int i[2]; } xx;
-  if (sizeof(value)>sizeof(hashValue)) {
-    assert (sizeof(value)==2*sizeof(hashValue));
-    xx.d = value;
-    hashValue = (xx.i[0] + xx.i[1]);
-  } else {
-    assert (sizeof(value)==sizeof(hashValue));
-    xx.d = value;
-    hashValue = xx.i[0];
-  }
-  return hashValue%(size);
-}
-static bool same (const OsiRowCut2 & x, const OsiRowCut2 & y) 
-{
-  int xN =x.row().getNumElements();
-  int yN =y.row().getNumElements();
-  bool identical=false;
-  if (xN==yN) {
-    double xLb = x.lb();
-    double xUb = x.ub();
-    double yLb = y.lb();
-    double yUb = y.ub();
-    if (fabs(xLb-yLb)<1.0e-8&&fabs(xUb-yUb)<1.0e-8) {
-      const int * xIndices = x.row().getIndices();
-      const double * xElements = x.row().getElements();
-      const int * yIndices = y.row().getIndices();
-      const double * yElements = y.row().getElements();
-      int j;
-      for( j=0;j<xN;j++) {
-	if (xIndices[j]!=yIndices[j])
-	  break;
-	if (fabs(xElements[j]-yElements[j])>1.0e-12)
-	  break;
-      }
-      identical =  (j==xN);
-    }
-  }
-  return identical;
-}
+
 class row_cut {
 public:
 
@@ -2260,10 +2202,86 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	// sort to be clean
 	//std::sort(lookedAt_,lookedAt_+numberThisTime_);
         if (!numberCliques_) {
+	  int numberColumnCutsBefore = cs.sizeColCuts();
+#if FIXED_BOTH_WAYS
+	  if ((info->options&4096) != 0) {
+	    int nCols = si.getNumCols();
+	    delete [] endFixStart_;
+	    assert (!cliqueStart_);
+	    endFixStart_ = new int [2*nCols];
+	    memset(endFixStart_,0,2*nCols*sizeof(int));
+	  }
+#endif
           ninfeas= probe(si, debugger, cs, colLower, colUpper, rowCopy,columnCopy,
                          rowStartPos, realRows, rowLower, rowUpper,
                          intVar, minR, maxR, markR,
                          info);
+#if FIXED_BOTH_WAYS 
+	  if ((info->options&2048)!=0) {
+	    int nCols = si.getNumCols();
+	    int numberColumnCutsAfter = cs.sizeColCuts();
+	    int nLo2=0;
+	    int nUp2=0;
+	    if (numberColumnCutsAfter>numberColumnCutsBefore) {
+	      for (int i = numberColumnCutsBefore; i < numberColumnCutsAfter; i++) {
+		const OsiColCut *thisCut = cs.colCutPtr(i);
+		const CoinPackedVector &lbs = thisCut->lbs();
+		const CoinPackedVector &ubs = thisCut->ubs();
+		nLo2 += lbs.getNumElements();
+		nUp2 += ubs.getNumElements();
+	      }
+	    }
+	    int nLo=0;
+	    int nUp=0;
+	    int nFix=0;
+	    int nLoC=0;
+	    int nUpC=0;
+	    const double * lower = si.getColLower();
+	    const double * upper = si.getColUpper();
+	    // will have redundant bound changes
+	    CoinPackedVector lbs;
+	    CoinPackedVector ubs;
+	    for (int iColumn = 0;iColumn<nCols;iColumn++) {
+	      if (colLower[iColumn]>lower[iColumn] && intVar[iColumn]) {
+		lbs.insert(iColumn,colLower[iColumn]);
+	      }
+	      if (colUpper[iColumn]<upper[iColumn] && intVar[iColumn]) {
+		ubs.insert(iColumn,colUpper[iColumn]);
+	      }
+	    }
+	    if (lbs.getNumElements()) {
+	      OsiColCut cc;
+	      cc.setLbs(lbs);
+	      cs.insert(cc);
+	    }
+	    if (ubs.getNumElements()) {
+	      OsiColCut cc;
+	      cc.setUbs(ubs);
+	      cs.insert(cc);
+	    }
+	    for (int i=0;i<nCols;i++) {
+	      if (lower[i]!=colLower[i]) {
+		assert (lower[i]<colLower[i]);
+		nLo++;
+		if (!si.isInteger(i))
+		  nLoC++;
+		if (colLower[i]==colUpper[i])
+		  nFix++;
+	      }
+	      if (upper[i]!=colUpper[i]) {
+		assert (upper[i]>colUpper[i]);
+		nUp++;
+		if (!si.isInteger(i))
+		  nUpC++;
+	      }
+	    }
+#if FIXED_BOTH_WAYS > 1 
+	    if (nLo+nUp) 
+	      printf("www %d lower increased (%d cont, %d cc), %d upper decreased (%d, %d) - %d fixed\n",
+		     nLo,nLoC,nLo2,nUp,nUpC,nUp2,nFix);
+#endif
+	  }
+#endif
         } else {
           ninfeas= probeCliques(si, debugger, cs, colLower, colUpper, rowCopy,columnCopy,
                                 realRows,rowLower, rowUpper,
@@ -3057,8 +3075,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #ifdef ONE_ARRAY
   unsigned int DIratio = sizeof(double)/sizeof(int);
   assert (DIratio==1||DIratio==2);
-  int nSpace = 8*nCols+4*nRows+2*maxStack;
-  nSpace += (4*nCols+nRows+maxStack+DIratio-1)>>(DIratio-1);
+  int nSpace = 10*nCols+4*nRows+2*maxStack;
+  nSpace += (5*nCols+nRows+maxStack+DIratio-1)>>(DIratio-1);
   double * colsol = new double[nSpace];
   double * djs = colsol + nCols;
   double * columnGap = djs + nCols;
@@ -3071,11 +3089,25 @@ int CglProbing::probe( const OsiSolverInterface & si,
   double * element = largestNegativeInRow + nRows;
   double * lo0 = element + nCols;
   double * up0 = lo0 + maxStack;
-  int * markC = reinterpret_cast<int *> (up0+maxStack);
+  double * newLo = up0 + maxStack;
+  double * newUp = newLo + nCols;
+#if FIXED_BOTH_WAYS
+  for (int i=0;i<nCols;i++) {
+    newLo[i] = COIN_DBL_MAX;
+    newUp[i] = -COIN_DBL_MAX;
+  }
+  int nFixedBoth = 0;
+  int nToBoundZ = 0;
+  int nCutZ = 0;
+#endif
+  int * markC = reinterpret_cast<int *> (newUp+nCols);
   int * stackC = markC + nCols;
   int * stackR = stackC + 2*nCols;
   int * index = stackR + nRows;
-  int * stackC0 = index + nCols;
+  int * stackC0 = index + maxStack;
+  int * fixedBoth = stackC0 + nCols;
+  if ((info->options&2048)==0)
+    fixedBoth = NULL;
 #else 
   double * colsol = new double[nCols];
   double * djs = new double[nCols];
@@ -3095,6 +3127,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
   int * index = new int[nCols];
   int * stackC0 = new int[maxStack];
 #endif
+  int * changedDown = endFixStart_;
+  int * changedUp = changedDown ? changedDown + nCols : NULL;
   // Let us never add more than twice the number of rows worth of row cuts
   // Keep cuts out of cs until end so we can find duplicates quickly
 #define PROBING4
@@ -3426,9 +3460,17 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	  }
 	}
       }
-       int j=lookedAt_[iLook];
-      //if (j==231||j==226)
-      //printf("size %d %d j is %d\n",rowCut.numberCuts(),cs.sizeRowCuts(),j);//printf("looking at %d (%d out of %d)\n",j,iLook,numberThisTime_); 
+      int j=lookedAt_[iLook];
+#if FIXED_BOTH_WAYS
+      // clean newLo
+      if (fixedBoth) {
+	for (int i=0;i<nFixedBoth;i++) {
+	  int icol = fixedBoth[i];
+	  newLo[icol] = COIN_DBL_MAX;
+	}
+	nFixedBoth = 0;
+      }
+#endif
       solval=colsol[j];
       down = floor(solval+tolerance);
       up = ceil(solval-tolerance);
@@ -4820,10 +4862,19 @@ int CglProbing::probe( const OsiSolverInterface & si,
             }
             /* restore all */
             assert (iway==0);
+	    if (changedDown)
+	      changedDown[j] = nstackC;
             for (istackC=nstackC-1;istackC>=0;istackC--) {
               int icol=stackC[istackC];
               double oldU=saveU[istackC];
               double oldL=saveL[istackC];
+#if FIXED_BOTH_WAYS
+	      if (fixedBoth && intVar[icol]) {
+		fixedBoth[nFixedBoth++] = icol;
+		newLo[icol] = colLower[icol];
+		newUp[icol] = colUpper[icol];
+	      }
+#endif
               if(goingToTrueBound==2&&istackC&&!justReplace) {
                 // upper disaggregation cut would be
                 // xval < upper + (old_upper-upper) (jval-down)
@@ -5426,10 +5477,79 @@ int CglProbing::probe( const OsiSolverInterface & si,
             double solMove = up-saveSolval;
             double boundChange;
             /* restore all */
+	    assert (iway>0);
+	    if (changedUp)
+	      changedUp[j] = nstackC;
             for (istackC=nstackC-1;istackC>=0;istackC--) {
               int icol=stackC[istackC];
               double oldU=saveU[istackC];
               double oldL=saveL[istackC];
+#if FIXED_BOTH_WAYS
+	      if (newLo[icol]!=COIN_DBL_MAX && istackC) {
+		double loDown = newLo[icol];
+		double upDown = newUp[icol];
+		double loUp = colLower[icol];
+		double upUp = colUpper[icol];
+		double newLower = oldL;
+		double newUpper = oldU;
+		bool printit = false;
+		if (loDown>oldL+1.0e-5 && loUp>oldL+1.0e-5) {
+		  newLower = CoinMin(loDown,loUp);
+		  if (intVar[icol]) 
+		    newLower = ceil(newLower-1.0e-5);
+		  nToBoundZ ++;
+#if FIXED_BOTH_WAYS > 2
+		  printit = true;
+		  printf("x%d >= %g || ",icol,newLower);
+#endif
+		  if (upDown<oldU-1.0e-5 && upUp<oldU-1.0e-5) {
+		    newUpper = CoinMax(upDown,upUp);
+		    nToBoundZ ++;
+		    if (intVar[icol]) 
+		      newUpper = floor(newUpper+1.0e-5);
+#if FIXED_BOTH_WAYS > 2
+		    printf("<= %g || ",newUpper);
+#endif
+		  }
+		} else if (upDown<oldU-1.0e-5 && upUp<oldU-1.0e-5) {
+		  newUpper = CoinMax(upDown,upUp);
+		  if (intVar[icol]) 
+		    newUpper = floor(newUpper+1.0e-5);
+		  nToBoundZ ++;
+#if FIXED_BOTH_WAYS > 2
+		  printit = true;
+		  printf("x%d <= %g || ",icol,newUpper);
+#endif
+		} else if (loDown==upDown && loUp==upUp) {
+		  if (saveL[0]==0.0 && saveU[0]==1.0) {
+		    nCutZ ++;
+#if FIXED_BOTH_WAYS > 1
+		    printf("Cutzz x%d == %g x%d + %g || ",icol,(loUp-loDown),
+			   j,loDown);
+		    printit = true;
+#endif
+		    OsiRowCut rc;
+		    rc.setLb(loDown);
+		    rc.setUb(loDown);
+		    rc.setEffectiveness(1.0e-5);
+		    int index[2];
+		    double element[2];
+		    index[0]=j;
+		    index[1]=icol;
+		    element[0]=loDown-loUp;
+		    element[1]=1.0;
+		    rc.setRow(2,index,element,false);
+		    cs.insert(rc);
+		  }
+		}
+		if (printit)
+		  printf("Col %d bnds on %d down %g,%g up %g,%g orig %g,%g\n",
+			 j,icol,loDown,upDown,loUp,
+			 upUp,oldL,oldU);
+		oldL = newLower;
+		oldU = newUpper;
+	      }
+#endif
               if(goingToTrueBound==2&&istackC&&!justReplace) {
                 // upper disaggregation cut would be
                 // xval < upper + (old_upper-upper) (up-jval)
@@ -5997,6 +6117,11 @@ int CglProbing::probe( const OsiSolverInterface & si,
     }
   }
   delete rowCutFake;
+#if FIXED_BOTH_WAYS>1
+  if (nToBoundZ || nCutZ)
+    printf("zz %d fixed to bounds and %d == cuts\n",
+	   nToBoundZ, nCutZ);
+#endif
   return (ninfeas);
 }
 // Does probing and adding cuts

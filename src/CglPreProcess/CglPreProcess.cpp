@@ -3641,6 +3641,121 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     if (debugger)
       assert(returnModel->getRowCutDebugger());
 #endif
+#ifdef SOS_SUB_STUFF
+    // start of sos sub stuff
+    if (returnModel && !rowType_ && (tuning&6) !=0) {
+      int numberColumns = returnModel->getNumCols();
+      int numberRows = returnModel->getNumRows();
+      const CoinPackedMatrix * rowCopy = returnModel->getMatrixByRow();
+      numberRows = rowCopy->getNumRows();
+      const int * column = rowCopy->getIndices();
+      const int * rowLength = rowCopy->getVectorLengths();
+      const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
+      const double * rowLower = returnModel->getRowLower();
+      const double * rowUpper = returnModel->getRowUpper();
+      const double * element = rowCopy->getElements();
+      int *sort = new int[2*numberRows];
+      int *delrows = sort+numberRows;
+      int numberLook = 0;
+      int k = numberRows;
+      for (int i = 0; i < numberRows; i++) {
+	if (rowLength[i] == 0)
+	  continue;
+	bool possible = true;
+	if (rowLower[i]<rowUpper[i])
+	  possible = false;
+	for (CoinBigIndex j=rowStart[i];j<rowStart[i]+rowLength[i];j++) {
+	  if (element[j]!=1.0) {
+	    possible = false;
+	    break;
+	  }
+	}
+	if (possible) 
+	  sort[numberLook++] = i;
+	else
+	  sort[--k] = i;
+      }
+      int numberTotal = numberLook;
+      if (numberLook) {
+	// move others
+	for (int i=k;i<numberRows;i++)
+	  sort[numberTotal++] = sort[i];
+	
+	double *workrow = new double[numberTotal + 1];
+	
+	double *workcol = new double[numberColumns + 1];
+	coin_init_random_vec(workcol, numberColumns);
+	for (int i=0;i<numberTotal;i++) {
+	  double sum = 0.0;
+	  int iRow = sort[i];
+	  for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+	    int iColumn = column[j];
+	    sum += workcol[iColumn];
+	  }
+	  workrow[i] = sum;
+	}
+	CoinSort_2(workrow, workrow + numberLook, sort);
+	CoinSort_2(workrow+numberLook, workrow + numberTotal, sort+numberLook);
+	
+	int numberOut = 0;
+	
+	int iLook = numberLook;
+	for (int kk = 0; kk < numberLook; kk++) {
+	  double dval = workrow[kk];
+	  int ilast = sort[kk];
+	  double req = rowLower[ilast];
+	  for (int jj = iLook; jj < numberTotal; jj++) {
+	    if (workrow[jj] == dval) {
+	      int ithis = sort[jj];
+	      CoinBigIndex krs = rowStart[ithis];
+	      CoinBigIndex kre = krs + rowLength[ithis];
+	      if (rowLength[ithis] == rowLength[ilast]) {
+		CoinBigIndex ishift = rowStart[ilast] - krs;
+		CoinBigIndex k;
+		for (k = krs; k < kre; k++) {
+		  if (column[k] != column[k + ishift]) {
+		    break;
+		  }
+		}
+		if (k == kre) {
+		  /* now check to see if row satisfied */
+		  double rlo2 = rowLower[ithis];
+		  double rup2 = rowUpper[ithis];
+		  for (k = krs; k < kre; k++) {
+		    double value = req*element[k];
+		    if (value<rlo2-feasibilityTolerance ||
+			value>rup2+feasibilityTolerance)
+		      break;
+		  }
+		}
+		if (k == kre) {
+		  delrows[numberOut++] = ithis;
+		}
+	      }
+	    } else if (workrow[jj] < dval) {
+	      iLook++;
+	    } else {
+	      break;
+	    }
+	  }
+	}
+	
+	delete[] workrow;
+	delete[] workcol;
+	
+	if (numberOut) {
+	  char generalPrint[100];
+	  sprintf(generalPrint, "%d more redundant rows found",
+		  numberOut);
+	  handler_->message(CGL_GENERAL, messages_)
+	    << generalPrint
+	    << CoinMessageEol;
+	  returnModel->deleteRows(numberOut,delrows);
+	}
+      }
+      delete[] sort;
+    }
+#endif // end of sos sub stuff
     numberIntegers = 0;
     int numberBinary = 0;
     int numberColumns = returnModel->getNumCols();
@@ -6607,7 +6722,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
         if (!probingCut) {
           generator_[iGenerator]->generateCuts(*newModel, cs, info);
         } else {
-          info.options = 64;
+          info.options = 64 | 2048;
           probingCut->setMode(useSolution ? 4 : 4 | 64);
           int saveMaxElements = probingCut->getMaxElementsRoot();
           int saveMaxProbe = probingCut->getMaxProbeRoot();
@@ -9154,73 +9269,6 @@ CglBK::newSolver(const OsiSolverInterface &model)
   // mark so everything will be deleted
   left_ = -1;
   return newSolver;
-}
-static double multiplier[] = { 1.23456789e2, -9.87654321 };
-static int hashCut(const OsiRowCut &x, int size)
-{
-  int xN = x.row().getNumElements();
-  double xLb = x.lb();
-  double xUb = x.ub();
-  const int *xIndices = x.row().getIndices();
-  const double *xElements = x.row().getElements();
-  unsigned int hashValue;
-  double value = 1.0;
-  if (xLb > -1.0e10)
-    value += xLb * multiplier[0];
-  if (xUb < 1.0e10)
-    value += xUb * multiplier[1];
-  for (int j = 0; j < xN; j++) {
-    int xColumn = xIndices[j];
-    double xValue = xElements[j];
-    int k = (j & 1);
-    value += (j + 1) * multiplier[k] * (xColumn + 1) * xValue;
-  }
-  // should be compile time but too lazy for now
-  if (sizeof(value) > sizeof(hashValue)) {
-    assert(sizeof(value) == 2 * sizeof(hashValue));
-    union {
-      double d;
-      unsigned int i[2];
-    } xx;
-    xx.d = value;
-    hashValue = (xx.i[0] + xx.i[1]);
-  } else {
-    assert(sizeof(value) == sizeof(hashValue));
-    union {
-      double d;
-      unsigned int i[2];
-    } xx;
-    xx.d = value;
-    hashValue = xx.i[0];
-  }
-  return hashValue % (size);
-}
-static bool same(const OsiRowCut &x, const OsiRowCut &y)
-{
-  int xN = x.row().getNumElements();
-  int yN = y.row().getNumElements();
-  bool identical = false;
-  if (xN == yN) {
-    double xLb = x.lb();
-    double xUb = x.ub();
-    double yLb = y.lb();
-    double yUb = y.ub();
-    if (fabs(xLb - yLb) < 1.0e-8 && fabs(xUb - yUb) < 1.0e-8) {
-      const int *xIndices = x.row().getIndices();
-      const double *xElements = x.row().getElements();
-      const int *yIndices = y.row().getIndices();
-      const double *yElements = y.row().getElements();
-      int j;
-      for (j = 0; j < xN; j++) {
-        if (xIndices[j] != yIndices[j])
-          break;
-        if (fabs(xElements[j] - yElements[j]) > 1.0e-12)
-          break;
-      }
-      identical = (j == xN);
-    }
-  }
-  return identical;
 }
 CglUniqueRowCuts::CglUniqueRowCuts(int initialMaxSize, int hashMultiplier)
 {
