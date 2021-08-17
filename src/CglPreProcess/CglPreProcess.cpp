@@ -1085,6 +1085,8 @@ static void writeDebugMps(const OsiSolverInterface *solver,
     printf("Not saving\n");
   } else {
     solver->writeMpsNative(name, NULL, NULL, 0, 1, 0);
+    sprintf(name, "presolve%2.2d.bas", mpsNumber);
+    solver->writeBasisNative(name);
   }
 #if DEBUG_PREPROCESS > 1
   if (pinfo && debugSolution) {
@@ -1362,6 +1364,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   // probably okay with rowType_ but for now ..
   CoinPackedMatrix matrixByRow(*originalModel_->getMutableMatrixByRow());
   if (!rowType_ && true) {
+    writeDebugMps(originalModel_, "before_scaled", 0);
     // clean matrix
     double *elementByRow = matrixByRow.getMutableElements();
     const int *column = matrixByRow.getIndices();
@@ -1479,7 +1482,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       printf("%d rows changed %d scaled - largest error %g\n",
 	     nChanged,nScaled,largestDelta);
 #endif
-      //writeDebugMps(originalModel_, "scaled", 0);
+      writeDebugMps(originalModel_, "scaled", 0);
       delete startModel_;
       startModel_ = originalModel_->clone();
     }
