@@ -4020,7 +4020,7 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
   const int *rowLength = copy.getVectorLengths();
   double *element = copy.getMutableElements();
   int numberChanged = 1, iPass = 0;
-  double large = model.getInfinity() * 0.1; // treat bounds > this as infinite
+  double large = 1.0e100; // treat bounds > this as infinite
   int numberInfeasible = 0;
   int totalTightened = 0;
 
@@ -4091,7 +4091,7 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
 	model.setRowLower(iRow,-COIN_DBL_MAX);
 	model.setRowUpper(iRow,COIN_DBL_MAX);
       }
-    }    
+    }
     for (int iColumn=0;iColumn<numberColumns;iColumn++) {
       if (cLower[iColumn]>newLower[iColumn]) {
 	newLower[iColumn] = cLower[iColumn];
@@ -4103,7 +4103,7 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
 	columnUpper[iColumn] = cUpper[iColumn];
 	model.setColUpper(iColumn,cUpper[iColumn]);
       }
-    }    
+    }
     delete [] rowStartPos;
     delete [] cLower;
   }
@@ -4177,8 +4177,8 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
         // Build in a margin of error
         maximumUp += 1.0e-8 * fabs(maximumUp);
         maximumDown -= 1.0e-8 * fabs(maximumDown);
-        double maxUp = maximumUp + infiniteUpper * 1.0e31;
-        double maxDown = maximumDown - infiniteLower * 1.0e31;
+        double maxUp = maximumUp + infiniteUpper * 1.0e200;
+        double maxDown = maximumDown - infiniteLower * 1.0e200;
         if (maxUp <= rowUpper[iRow] + tolerance && maxDown >= rowLower[iRow] - tolerance) {
 
           // Row is redundant - make totally free
@@ -4399,6 +4399,8 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
 		    double gap = lower-maxDown;
 		    newBound = newLower[iColumn] + gap/value;
 		  }
+		  if (newBound>1.0e50)
+		    newBound = COIN_DBL_MAX;
 		  if (newBound<newUpper[iColumn]-1.0e-7) {
 		    if (model.isInteger(iColumn)) {
 		      newBound = ceil(newBound);
@@ -4442,6 +4444,8 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
 		    double gap = lower-maxDown;
 		    newBound = newUpper[iColumn] + gap/value;
 		  }
+		  if (newBound<-1.0e50)
+		    newBound = -COIN_DBL_MAX;
 		  if (newBound>newLower[iColumn]+1.0e-7) {
 		    if (model.isInteger(iColumn)) {
 		      newBound = ceil(newBound);
@@ -4544,6 +4548,8 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
         model.setColUpper(iColumn, upper);
         newLower[iColumn] = lower;
         newUpper[iColumn] = upper;
+      } else if (columnUpper[iColumn] < columnLower[iColumn]-1.0e-7) {
+	numberInfeasible++;
       }
     }
     if (!numberInfeasible) {
