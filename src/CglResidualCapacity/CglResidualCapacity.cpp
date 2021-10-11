@@ -403,13 +403,9 @@ CglResidualCapacity::determineRowType(const OsiSolverInterface& si,
 	if ( flag1 && flag2  ) rowType=ROW_BOTH;
 	break;
     default:
-#if 0
-	throw CoinError("Unknown sense", "determineRowType",
-			"CglResidualCapacity");
-#else
-	// Free row crept in
-	break;
-#endif
+      // presumably range throw CoinError("Unknown sense", "determineRowType",
+      //		"CglResidualCapacity");
+      break;
     }
     return rowType;
 }

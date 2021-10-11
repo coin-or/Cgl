@@ -35,6 +35,8 @@ public:
       256 - want alternate cuts
       512 - in sub tree (i.e. parent model)
       1024 - in must call again mode or after everything mode
+      2048 - playing around in probing
+      4096 - save number affected by probing
   */
   int options;
   /// Set true if in tree (to avoid ambiguity at first branch)

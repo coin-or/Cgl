@@ -1291,9 +1291,11 @@ void CglRedSplit::generateCuts(OsiCuts &cs)
       break;
 
     default: // free variable ? Don't know how to handle 
+#ifndef NDEBUG
       printf("### ERROR: CglRedSplit::generateCuts(): cstat[%d]: %d\n",
 	     i, cstat[i]);
-      exit(1);
+#endif
+      //exit(1);
       break;
     } 
   }
@@ -1319,9 +1321,11 @@ void CglRedSplit::generateCuts(OsiCuts &cs)
       card_contNonBasicVar++;
       break;
 
-    default: 
-      //printf("### ERROR: CglRedSlpit::generateCuts(): rstat[%d]: %d\n",
-      // i, rstat[i]);
+    default:
+#ifndef NDEBUG
+      printf("### ERROR: CglRedSplit::generateCuts(): rstat[%d]: %d\n",
+	     i, rstat[i]);
+#endif
       //exit(1);
       break;
     }
@@ -1394,7 +1398,7 @@ void CglRedSplit::generateCuts(OsiCuts &cs)
     start = static_cast<int> (nrow * rs_genalea(&seed));
     
 #ifdef RS_TRACE
-    printf("CglRedSlpit::generateCuts(): mTab: %d  new_mTab: %d\n", 
+    printf("CglRedSplit::generateCuts(): mTab: %d  new_mTab: %d\n", 
 	   card_intBasicVar_frac, new_mTab);
 #endif
 
