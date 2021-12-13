@@ -158,6 +158,13 @@ public:
   /// Returns original solver
   inline OsiSolverInterface * originalSolver() const
   { return originalSolver_;}
+  /// swap original solvers
+  inline OsiSolverInterface * swapOriginalSolver(OsiSolverInterface * solver)
+  {
+    OsiSolverInterface * swap = originalSolver_;
+    originalSolver_ = solver;
+    return swap;
+  }
   /// Set type - 0 normal, 1 add original matrix one, 2 replace
   inline void setTwomirType(int type)
   { twomirType_=type;}
