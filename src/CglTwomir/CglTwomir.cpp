@@ -507,7 +507,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 CglTwomir::CglTwomir () :
   CglCutGenerator(),
   probname_(),
-  randomNumberGenerator_(987654321),originalSolver_(NULL), 
+  randomNumberGenerator_(987654321),
   away_(0.0005),awayAtRoot_(0.0005),twomirType_(0),
   do_mir_(true), do_2mir_(true), do_tab_(true), do_form_(true),
   t_min_(1), t_max_(1), q_min_(1), q_max_(1), a_max_(2),max_elements_(50000),
@@ -519,7 +519,6 @@ CglTwomir::CglTwomir () :
 CglTwomir::CglTwomir (const CglTwomir & source) :
   CglCutGenerator(source),
   randomNumberGenerator_(source.randomNumberGenerator_),
-  originalSolver_(NULL),
   away_(source.away_),
   awayAtRoot_(source.awayAtRoot_),
   twomirType_(source.twomirType_),
@@ -555,7 +554,6 @@ CglTwomir::clone() const
 //-------------------------------------------------------------------
 CglTwomir::~CglTwomir ()
 {
-  delete originalSolver_;
 }
 
 //----------------------------------------------------------------
@@ -570,11 +568,6 @@ CglTwomir::operator=(const CglTwomir& rhs)
     away_=rhs.away_;
     awayAtRoot_=rhs.awayAtRoot_;
     twomirType_ = rhs.twomirType_;
-    delete originalSolver_;
-    if (rhs.originalSolver_)
-      originalSolver_ = rhs.originalSolver_->clone();
-    else
-      originalSolver_=NULL;
     do_mir_=rhs.do_mir_;
     do_2mir_=rhs.do_2mir_;
     do_tab_=rhs.do_tab_; 

@@ -153,18 +153,6 @@ public:
 
   /**@name Change way TwoMir works */
   //@{
-  /// Pass in a copy of original solver (clone it)
-  void passInOriginalSolver(OsiSolverInterface * solver);
-  /// Returns original solver
-  inline OsiSolverInterface * originalSolver() const
-  { return originalSolver_;}
-  /// swap original solvers
-  inline OsiSolverInterface * swapOriginalSolver(OsiSolverInterface * solver)
-  {
-    OsiSolverInterface * swap = originalSolver_;
-    originalSolver_ = solver;
-    return swap;
-  }
   /// Set type - 0 normal, 1 add original matrix one, 2 replace
   inline void setTwomirType(int type)
   { twomirType_=type;}
@@ -172,6 +160,8 @@ public:
   inline int twomirType() const
   { return twomirType_;}
   //@}
+  /// Pass in a copy of original solver (clone it)
+  void passInOriginalSolver(OsiSolverInterface * solver);
 
   /**@name Constructors and destructors */
   //@{
@@ -201,8 +191,6 @@ private:
   //@{
   /// Threadsafe random number generator
   CoinThreadRandom randomNumberGenerator_;
-  /// Original solver
-  OsiSolverInterface * originalSolver_;
   /// Only investigate if more than this away from integrality
   double away_;
   /// Only investigate if more than this away from integrality (at root)

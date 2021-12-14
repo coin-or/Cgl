@@ -1917,7 +1917,6 @@ away_(0.05),
 awayAtRoot_(0.05),
 conditionNumberMultiplier_(1.0e-18),
 largestFactorMultiplier_(1.0e-13),
-originalSolver_(NULL),
 limit_(50),
 limitAtRoot_(0),
 dynamicLimitInTree_(-1),
@@ -1937,7 +1936,6 @@ CglGomory::CglGomory (const CglGomory & source) :
   awayAtRoot_(source.awayAtRoot_),
   conditionNumberMultiplier_(source.conditionNumberMultiplier_),
   largestFactorMultiplier_(source.largestFactorMultiplier_),
-  originalSolver_(NULL),
   limit_(source.limit_),
   limitAtRoot_(source.limitAtRoot_),
   dynamicLimitInTree_(source.dynamicLimitInTree_),
@@ -1945,8 +1943,6 @@ CglGomory::CglGomory (const CglGomory & source) :
   alternateFactorization_(source.alternateFactorization_),
   gomoryType_(source.gomoryType_)
 { 
-  if (source.originalSolver_)
-    originalSolver_ = source.originalSolver_->clone();
 }
 
 //-------------------------------------------------------------------
@@ -1963,7 +1959,6 @@ CglGomory::clone() const
 //-------------------------------------------------------------------
 CglGomory::~CglGomory ()
 {
-  delete originalSolver_;
 }
 
 //----------------------------------------------------------------
@@ -1984,11 +1979,6 @@ CglGomory::operator=(const CglGomory& rhs)
     numberTimesStalled_ = rhs.numberTimesStalled_;
     alternateFactorization_=rhs.alternateFactorization_; 
     gomoryType_ = rhs.gomoryType_;
-    delete originalSolver_;
-    if (rhs.originalSolver_)
-      originalSolver_ = rhs.originalSolver_->clone();
-    else
-      originalSolver_=NULL;
   }
   return *this;
 }
