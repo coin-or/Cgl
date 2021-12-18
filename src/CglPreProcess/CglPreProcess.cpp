@@ -1081,7 +1081,7 @@ static void writeDebugMps(const OsiSolverInterface *solver,
   sprintf(name, "presolve%2.2d.mps", mpsNumber);
   printf("saving %s from %s - %d row, %d columns\n", 
     name, where, solver->getNumRows(), solver->getNumCols());
-  if (mpsNumber>10) {
+  if (mpsNumber>20) {
     printf("Not saving\n");
   } else {
     solver->writeMpsNative(name, NULL, NULL, 0, 1, 0);
@@ -2565,6 +2565,20 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   writeDebugMps(startModel_, "b4", NULL);
   int infeas = 0;
   OsiSolverInterface *startModel2 = startModel_;
+  // get free integer variables in reasonable shape
+  {
+    int numberColumns = startModel_->getNumCols();
+    const double *columnLower = startModel_->getColLower();
+    const double *columnUpper = startModel_->getColUpper();
+    for (int iColumn = 0; iColumn < numberColumns; iColumn++) {
+      if (startModel_->isInteger(iColumn)) {
+	if (columnLower[iColumn] < -1.0e14)
+	  startModel_->setColLower(iColumn,-1.0e14);
+	//if (columnUpper[iColumn] > 1.0e14)
+	//startModel_->setColUpper(iColumn,1.0e14);
+      }
+    }
+  }
   // Do we want initial presolve
   if (doInitialPresolve) {
     assert(doInitialPresolve == 1);
