@@ -2565,20 +2565,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   writeDebugMps(startModel_, "b4", NULL);
   int infeas = 0;
   OsiSolverInterface *startModel2 = startModel_;
-  // get free integer variables in reasonable shape
-  {
-    int numberColumns = startModel_->getNumCols();
-    const double *columnLower = startModel_->getColLower();
-    const double *columnUpper = startModel_->getColUpper();
-    for (int iColumn = 0; iColumn < numberColumns; iColumn++) {
-      if (startModel_->isInteger(iColumn)) {
-	if (columnLower[iColumn] < -1.0e14)
-	  startModel_->setColLower(iColumn,-1.0e14);
-	//if (columnUpper[iColumn] > 1.0e14)
-	//startModel_->setColUpper(iColumn,1.0e14);
-      }
-    }
-  }
   // Do we want initial presolve
   if (doInitialPresolve) {
     assert(doInitialPresolve == 1);
