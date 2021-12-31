@@ -2,12 +2,14 @@
 /* include the COIN-OR-wide system specific configure header */
 #include "configall_system.h"
 
+#ifdef CGLLIB_BUILD
 /* this needs to come before the include of config_cgl_default.h */
 #ifndef CGLLIB_EXPORT
 #if defined(_WIN32) && defined(DLL_EXPORT)
 #define CGLLIB_EXPORT __declspec(dllexport)
 #else
 #define CGLLIB_EXPORT
+#endif
 #endif
 #endif
 

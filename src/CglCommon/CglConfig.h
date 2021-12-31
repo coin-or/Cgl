@@ -41,13 +41,15 @@
 #define CGLLIB_EXPORT __attribute__((__visibility__("default")))
 #endif
 
+#elif defined(CGLUNITTEST_BUILD)
+#include "config.h"
 #else
 #include "config_cgl.h"
 #endif
 
 #else /* HAVE_CONFIG_H */
 
-#ifdef CGLLIB_BUILD
+#if defined(CGLLIB_BUILD) || defined(CGLUNITTEST_BUILD)
 #include "config_default.h"
 #else
 #include "config_cgl_default.h"

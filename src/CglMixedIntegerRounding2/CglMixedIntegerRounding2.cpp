@@ -581,7 +581,7 @@ CglMixedIntegerRounding2::determineRowType(//const OsiSolverInterface& si,
 				  const double* coef, const char sense, 
 				  const double rhs) const
 {
-  if (rowLen == 0 || fabs(rhs) > 1.0e20) 
+  if (rowLen == 0 || fabs(rhs) > 1.0e20 || sense == 'N') 
     return ROW_UNDEFINED;
 
   RowType rowType = ROW_UNDEFINED;
