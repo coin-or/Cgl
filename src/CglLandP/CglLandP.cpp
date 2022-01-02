@@ -531,13 +531,13 @@ void
 CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
                        const CglTreeInfo info )
 {
+    int numberRanges = 0;
     if ((info.pass == 0) && !info.inTree)
     {
       numrows_ = si.getNumRows();
-      // but switch off if ranges
+      // but switch off? if ranges
       const double * rowLower = si.getRowLower();
       const double * rowUpper = si.getRowUpper();
-      int numberRanges = 0;
       for (int i=0;i<numrows_;i++) {
 	if (rowLower[i]<rowUpper[i]) {
 	  if (rowLower[i]> -1.0e50 && rowUpper[i] < 1.0e50) {
@@ -545,9 +545,8 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	  }
 	}
       }
-      if (numberRanges) {
-	//printf("Ranges (%d) - switching off CglLandP\n",numberRanges);
-	params_.maximumCutLength = -1;
+      if (numberRanges && false) {
+	params_.maximumCutLength =-1;
 	return;
       }
     } else if (params_.maximumCutLength < 0) {
@@ -576,17 +575,100 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     OsiSolverInterface * t_si = si.clone();
     if (params.modularize)
     {
-        int new_idx = si.getNumCols();
-        int v_idx[1] = {new_idx};
-        double v_val[1] = {-1};
-        CoinPackedVector v(1, v_idx, v_val, false);
-        t_si->addCol(CoinPackedVector(), 0, 1, 0);
-        t_si->setInteger(new_idx);
-        t_si->addRow(v,0, 0);
-        t_si->resolve();
+      if (numberRanges) {
+	// modify
+      }
+      int new_idx = si.getNumCols();
+      int v_idx[1] = {new_idx};
+      double v_val[1] = {-1};
+      CoinPackedVector v(1, v_idx, v_val, false);
+      t_si->addCol(CoinPackedVector(), 0, 1, 0);
+      t_si->setInteger(new_idx);
+      t_si->addRow(v,0, 0);
+      t_si->resolve();
     }
 #else
     const OsiSolverInterface * t_si = &si;
+    int numberCuts = cs.sizeRowCuts(); 
+    double * upper = NULL;
+    CoinBigIndex * starts = NULL;
+    int * row = NULL;
+    int nThrownAway=0;
+    if (numberRanges) {
+      // modify by adding slacks
+      OsiSolverInterface *tt_si = si.clone();
+      const double * rowLower = si.getRowLower();
+      const double * rowUpper = si.getRowUpper();
+      const double * rowActivity = si.getRowActivity();
+      upper = new double[4*numberRanges];
+      double * lower = upper+numberRanges;
+      double * obj = lower+numberRanges;
+      double * element = obj+numberRanges;
+      memset(lower,0,2*numberRanges*sizeof(double));
+      starts = new CoinBigIndex[numberRanges+1];
+      row = new int[numberRanges];
+      // First add columns
+      numberRanges = 0;
+      starts[0] = 0;
+      for (int i=0;i<numrows_;i++) {
+	if (rowLower[i]<rowUpper[i]) {
+	  if (rowLower[i]> -1.0e50 && rowUpper[i] < 1.0e50) {
+	    double value = rowActivity[i];
+	    if (value-rowLower[i] < rowUpper[i]-value) {
+	      // keep rowLower
+	      //tt_si->setRowUpper(i,rowLower[i]);
+	      element[numberRanges] = -1.0;
+	    } else {
+	      // keep rowUpper
+	      //tt_si->setRowLower(i,rowUpper[i]);
+	      element[numberRanges] = 1.0;
+	    }
+	    row[numberRanges] = i;
+	    upper[numberRanges++] = rowUpper[i]-rowLower[i];
+	    starts[numberRanges] = numberRanges;
+	  }
+	}
+      }
+      tt_si->addCols(numberRanges,starts,row,element,lower,upper,obj);
+      // Now basis and values
+      int nCol = si.getNumCols();
+      double * solution = CoinCopyOfArray(tt_si->getColSolution(),
+					  nCol+numberRanges);
+      CoinWarmStartBasis * basis
+	= dynamic_cast<CoinWarmStartBasis *>(tt_si->getWarmStart());
+      numberRanges = 0;
+      for (int i=0;i<numrows_;i++) {
+	if (rowLower[i]<rowUpper[i]) {
+	  if (rowLower[i]> -1.0e50 && rowUpper[i] < 1.0e50) {
+	    double value = rowActivity[i];
+	    if (value-rowLower[i] < rowUpper[i]-value) {
+	      // keep rowLower
+	      tt_si->setRowUpper(i,rowLower[i]);
+	      value -= rowLower[i];
+	    } else {
+	      // keep rowUpper
+	      tt_si->setRowLower(i,rowUpper[i]);
+	      value = rowUpper[i]-value;
+	    }
+	    solution[nCol+numberRanges] = value;
+	    if (basis->getArtifStatus(i) ==
+		CoinWarmStartBasis::Status::basic) {
+	      // set basic
+	      basis->setStructStatus(nCol+numberRanges,
+				     CoinWarmStartBasis::Status::basic);
+	      basis->setArtifStatus(i,
+				    CoinWarmStartBasis::Status::atLowerBound);
+	    }
+	    numberRanges++;
+	  }
+	}
+      }
+      // update solution and basis
+      tt_si->setColSolution(solution);
+      tt_si->setWarmStart(basis);
+      tt_si->resolve();
+      t_si = tt_si;
+    }
 #endif
 
     cached_.getData(*t_si);
@@ -685,6 +767,34 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
         }
         else
         {
+  	    if (numberRanges) {
+	      int numberColumns = si.getNumCols();
+	      int n = cut.row().getNumElements();
+	      const int *column = cut.row().getIndices();
+	      const double *element = cut.row().getElements();
+	      bool oddSlack = false;
+	      for (int i=0;i<n;i++) {
+		if (column[i]>=numberColumns) {
+		  oddSlack=true;
+		}
+	      }
+	      if (oddSlack) {
+		nThrownAway++;
+#if 0
+		// for now throw away
+		printf("odd cut\n %d entries ncol=%d, nrange %d %g<=%g\n",
+		       n,numberColumns,numberRanges,cut.lb(),cut.ub());
+		for (int i=0;i<n;i++) {
+		  printf("(%g*x%d) ",column[i],element[i]);
+		  if ((i%5)==4)
+		    printf("\n");
+		}
+		if ((n%5))
+		  printf("\n");
+#endif
+		cut = OsiRowCut();
+	      }
+	    }
             if (canLift_)
             {
                 cut.setGloballyValid(true);
@@ -735,7 +845,21 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 #ifdef APPEND_ROW
     assert(t_si != &si);
     delete t_si;
+#else
+    if (t_si != &si) {
+      delete [] upper;
+      delete [] starts;
+      delete [] row;
+      delete t_si;
+      assert (numberRanges);
+      //printf("Ranges (%d) - switching off CglLandP after this %d cuts, %d thrown\n",
+      //     numberRanges,
+      //     cs.sizeRowCuts()-numberCuts, 
+      //     nThrownAway);
+      params_.maximumCutLength = -params_.maximumCutLength;
+    }
 #endif
+    return;
 }
 
 

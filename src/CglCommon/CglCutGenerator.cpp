@@ -15,7 +15,8 @@
 // Default Constructor
 //-------------------------------------------------------------------
 CglCutGenerator::CglCutGenerator()
-  : aggressive_(0)
+  : originalSolver_(NULL)
+  , aggressive_(0)
   , canDoGlobalCuts_(false)
 {
   // nothing to do here
@@ -29,7 +30,10 @@ CglCutGenerator::CglCutGenerator(
   : aggressive_(source.aggressive_)
   , canDoGlobalCuts_(source.canDoGlobalCuts_)
 {
-  // nothing to do here
+   if (source.originalSolver_)
+     originalSolver_ = source.originalSolver_->clone();
+   else
+     originalSolver_ = NULL;
 }
 
 //-------------------------------------------------------------------
@@ -37,7 +41,7 @@ CglCutGenerator::CglCutGenerator(
 //-------------------------------------------------------------------
 CglCutGenerator::~CglCutGenerator()
 {
-  // nothing to do here
+  delete originalSolver_;
 }
 
 //----------------------------------------------------------------
@@ -50,6 +54,11 @@ CglCutGenerator::operator=(
   if (this != &rhs) {
     aggressive_ = rhs.aggressive_;
     canDoGlobalCuts_ = rhs.canDoGlobalCuts_;
+    delete originalSolver_;
+    if (rhs.originalSolver_)
+      originalSolver_ = rhs.originalSolver_->clone();
+    else
+      originalSolver_ = NULL;
   }
   return *this;
 }

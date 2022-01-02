@@ -341,8 +341,9 @@ private:
               const int *column, const double *rowElements, 
               const CoinBigIndex *rowStart,const CoinBigIndex * rowStartPos,
 	      const int * rowLength,
+              const CoinPackedMatrix *,
               double *rowLower, double *rowUpper, 
-              int nRows,int nCols,char * intVar,int maxpass,
+              int nRows,int nCols,const char * intVar,int maxpass,
               double tolerance);
   /// This just sets minima and maxima on rows
   void tighten2(double *colLower, double * colUpper,
@@ -373,6 +374,17 @@ private:
   double * colLower_;
   /// Upper bounds on columns
   double * colUpper_;
+  /// Pass in from probe to tighten
+  double * minR_;
+  double * maxR_;
+  /// If row looked at
+  char * markRow_;
+  /// If column looked at and interesting
+  char * markColumn_;
+  /// Columns to update
+  int * lookColumn_;
+  /// Rows to look at (alternate passes)
+  int * lookRow_[2];
   /// Number of rows in snapshot (or when cliqueRow stuff computed)
   int numberRows_;
   /// Number of columns in problem ( must == current)

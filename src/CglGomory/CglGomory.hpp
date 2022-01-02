@@ -65,9 +65,6 @@ public:
   //@{
   /// Pass in a copy of original solver (clone it)
   void passInOriginalSolver(OsiSolverInterface * solver);
-  /// Returns original solver
-  inline OsiSolverInterface * originalSolver() const
-  { return originalSolver_;}
   /// Set type - 0 normal, 1 add original matrix one, 2 replace
   inline void setGomoryType(int type)
   { gomoryType_=type;}
@@ -175,8 +172,6 @@ private:
   double conditionNumberMultiplier_;
   /// Multiplier for largest factor cut relaxation
   double largestFactorMultiplier_;
-  /// Original solver
-  OsiSolverInterface * originalSolver_;
   /// Limit - only generate if fewer than this in cut
   int limit_;
   /// Limit - only generate if fewer than this in cut (at root)

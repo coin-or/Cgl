@@ -97,6 +97,16 @@ public:
   {
     return canDoGlobalCuts_;
   }
+  /// Returns original solver
+  inline OsiSolverInterface * originalSolver() const
+  { return originalSolver_;}
+  /// swap original solvers
+  inline OsiSolverInterface * swapOriginalSolver(OsiSolverInterface * solver)
+  {
+    OsiSolverInterface * swap = originalSolver_;
+    originalSolver_ = solver;
+    return swap;
+  }
   /**
      Returns true if may generate Row cuts in tree (rather than root node).
      Used so know if matrix will change in tree.  Really
@@ -121,6 +131,8 @@ public:
 
   // private:
 
+  /// Original solver (not used by all - but by enough)
+  OsiSolverInterface * originalSolver_;
   /**
      Aggressiveness - 0 = neutral, 100 is normal root node.
      Really just a hint to cut generator
