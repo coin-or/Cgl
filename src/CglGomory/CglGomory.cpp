@@ -1500,11 +1500,12 @@ CglGomory::generateCuts(
 		}
 	      }
 	    }
-	    if (largest>1.0e10*smallest||(number>20&&smallest<number*1.0e-6)||
-		numberNonInteger<-10||!number) {
+	    if (largest>1.0e8*smallest||(number>20&&smallest<number*1.0e-6)||
+		numberNonInteger<-10 || !number) {
 	      //assert (number); // debug this - looks as if it could be
 	      number=limit+1; //reject
 	      numberNonInteger=1;
+#if 0
 	    } else if (largest>1.0e9*smallest) {
 #ifdef CLP_INVESTIGATE2
 	      printf("WOuld reject %g %g ratio %g\n",smallest,largest,
@@ -1512,6 +1513,7 @@ CglGomory::generateCuts(
 #endif
 #if MORE_GOMORY_CUTS==1||MORE_GOMORY_CUTS==3
 	      accurate=false;
+#endif
 #endif
 	    } else {
 #define PRINT_NUMBER 0
@@ -1596,7 +1598,7 @@ CglGomory::generateCuts(
 	    if (number>50&&numberNonInteger)
 	      bounds[1] = rhs+tolerance6+1.0e-8*fabs(rhs); // weaken
 #if GOMORY_RELAX_NUMBER
-	    else if (number>GOMORY_RELAX_NUMBER&&numberNonInteger>1)
+	    else if (number>GOMORY_RELAX_NUMBER&&numberNonInteger>1) 
 	      bounds[1] = rhs+tolerance6+1.0e-8*fabs(rhs); // weaken
 #endif
 	    // if close to integer - round up

@@ -373,8 +373,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	    // throw away
 	    goodCut=false;
 	    break;
-	  }
-#endif
+#else
 	  if (value<5.0e-7) { // was 1.0e-9
 	    int iColumn = cutIndex[i];
 	    if (colUpper[iColumn]-colLower[iColumn]<100.0) {
@@ -388,6 +387,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	      goodCut=false;
 	      break;
 	    }
+#endif
 	  } else {
 	    int iColumn = cutIndex[i];
 	    if (colUpper[iColumn]!=colLower[iColumn]) {
@@ -401,7 +401,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	    }
 	  }
 	}
-	if (largest<5.0e9*smallest&&goodCut) {
+	if (largest<1.0e8*smallest&&goodCut) {
 	  rowcut.setRow(number, cutIndex, packed);
 	  rowcut.setUb(si.getInfinity());
 	  rowcut.setLb(rhs);
