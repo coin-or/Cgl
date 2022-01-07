@@ -652,12 +652,12 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	    }
 	    solution[nCol+numberRanges] = value;
 	    if (basis->getArtifStatus(i) ==
-		CoinWarmStartBasis::Status::basic) {
+		CoinWarmStartBasis::basic) {
 	      // set basic
 	      basis->setStructStatus(nCol+numberRanges,
-				     CoinWarmStartBasis::Status::basic);
+				     CoinWarmStartBasis::basic);
 	      basis->setArtifStatus(i,
-				    CoinWarmStartBasis::Status::atLowerBound);
+				    CoinWarmStartBasis::atLowerBound);
 	    }
 	    numberRanges++;
 	  }
