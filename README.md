@@ -81,7 +81,8 @@ The Cgl development site is https://github.com/coin-or/Cgl.
 
 ## CITE
 
-[![DOI](https://zenodo.org/badge/173502902.svg)](https://zenodo.org/badge/latestdoi/173502902)
+Code: [![DOI](https://zenodo.org/badge/173502902.svg)](https://zenodo.org/badge/latestdoi/173502902)
+
 
 ## CURRENT BUILD STATUS
 
@@ -90,6 +91,10 @@ The Cgl development site is https://github.com/coin-or/Cgl.
 [![Linux and MacOS Builds](https://github.com/coin-or/Cgl/actions/workflows/linux-ci.yml/badge.svg?branch=stable/0.60)](https://github.com/coin-or/Cgl/actions/workflows/linux-ci.yml?query=branch%3Astable/0.60)
 
 ## DOWNLOAD
+
+What follows is a quick start guide for obtaining or building
+Cgl on common platforms. More detailed information is
+available [here](https://coin-or.github.io/user_introduction.html).
 
 ### Docker image
 
@@ -123,9 +128,16 @@ Source code can be obtained either by
  * Cloning this repository from [Github](https://github.com/coin-or/Cgl) or 
  * Using the [coinbrew](https://github.com/coin-or/coinbrew) script to get the project and all dependencies (recommended, see below).   
 
-Below is a quick start guide for building on common platforms. More detailed
-build instructions are
-[here](https://coin-or.github.io/user_introduction.html).
+### Dependencies
+
+Cgl has a number of dependencies, which are detailed in
+[config.yml](.coin-or/config.yml). Dependencies on other COIN-OR projects are
+automatically downloaded when obtaining the source with `coinbrew`. For some
+of the remaining third-party dependencies, automatic download scripts and
+build wrappers are provided (and will also be automatically run for required
+and recommended dependencies), while other libraries that are aeasy to obtain
+must be installed using an appropriate package manager (or may come with your
+OS by default). 
 
 ## BUILDING from source
 
@@ -133,11 +145,12 @@ The quick start assumes you are in a bash shell.
 
 ### Using `coinbrew`
 
-To build Cgl from source, obtain the `coinbrew` script, do
+To download and build Cgl from source, execute the 
+following on the command line. 
 ```
 wget https://raw.githubusercontent.com/coin-or/coinbrew/master/coinbrew
 chmod u+x coinbrew
-./coinbrew fetch Cgl@stable/0.60
+./coinbrew fetch Cgl@0.60
 ./coinbrew build Cgl
 ```
 For more detailed instructions on coinbrew, see https://coin-or.github.io/coinbrew.
@@ -172,7 +185,8 @@ documentation [here](http://coin-or.github.io/Cgl/Doxygen).
 
 ## Project Links
 
- * [COIN-OR Initiative](http://www.coin-or.org/)
+ * [Code of Conduct](https://www.coin-or.org/code-of-conduct/)
+ * [COIN-OR Web Site](http://www.coin-or.org/)
  * [Discussion formum](https://github.com/coin-or/Cgl/discussions)
  * [Report a bug](https://github.com/coin-or/Cgl/issues/new)
  * [Doxygen-generated html documentation](http://coin-or.github.io/Cgl/Doxygen)
