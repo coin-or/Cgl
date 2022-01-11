@@ -1013,25 +1013,13 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface &si, int createSolver,
           nStrengthen++;
           if (numberEntries + jCount + 1 > maximumEntries) {
             maximumEntries = CoinMax(numberEntries + jCount + 1, (maximumEntries * 12) / 10 + 100);
-            CliqueEntry *temp = new CliqueEntry[maximumEntries];
-            memcpy(temp, entry, numberEntries * sizeof(CliqueEntry));
-            delete[] entry;
-            entry = temp;
-            int *tempI = new int[maximumEntries];
-            memcpy(tempI, whichClique, numberEntries * sizeof(int));
-            delete[] whichClique;
-            whichClique = tempI;
+            append(entry, numberEntries, maximumEntries);
+            append(whichClique, numberEntries, maximumEntries);
           }
           if (numberCliques == maximumCliques) {
             maximumCliques = (maximumCliques * 12) / 10 + 100;
-            CoinBigIndex *temp = new CoinBigIndex[maximumCliques + 1];
-            memcpy(temp, cliqueStart, (numberCliques + 1) * sizeof(CoinBigIndex));
-            delete[] cliqueStart;
-            cliqueStart = temp;
-            char *tempT = new char[maximumCliques];
-            memcpy(tempT, cliqueType, numberCliques);
-            delete[] cliqueType;
-            cliqueType = tempT;
+            append(cliqueStart, numberCliques + 1, maximumCliques + 1);
+            append(cliqueType, numberCliques, maximumCliques);
           }
           CliqueEntry eI;
           eI.fixes = 0;
@@ -1102,25 +1090,14 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface &si, int createSolver,
           nStrengthen++;
           if (numberEntries + jCount + 1 > maximumEntries) {
             maximumEntries = CoinMax(numberEntries + jCount + 1, (maximumEntries * 12) / 10 + 100);
-            CliqueEntry *temp = new CliqueEntry[maximumEntries];
-            memcpy(temp, entry, numberEntries * sizeof(CliqueEntry));
-            delete[] entry;
-            entry = temp;
-            int *tempI = new int[maximumEntries];
-            memcpy(tempI, whichClique, numberEntries * sizeof(int));
-            delete[] whichClique;
-            whichClique = tempI;
+            append(entry, numberEntries, maximumEntries);
+            append(whichClique, numberEntries, maximumEntries);
           }
           if (numberCliques == maximumCliques) {
             maximumCliques = (maximumCliques * 12) / 10 + 100;
-            CoinBigIndex *temp = new CoinBigIndex[maximumCliques + 1];
-            memcpy(temp, cliqueStart, (numberCliques + 1) * sizeof(CoinBigIndex));
-            delete[] cliqueStart;
-            cliqueStart = temp;
-            char *tempT = new char[maximumCliques];
-            memcpy(tempT, cliqueType, numberCliques);
-            delete[] cliqueType;
-            cliqueType = tempT;
+
+            append(cliqueStart, numberCliques + 1, maximumCliques + 1);
+            append(cliqueType, numberCliques, maximumCliques);
           }
           CliqueEntry eI;
           eI.fixes = 0;
@@ -1232,6 +1209,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface &si, int createSolver,
   delete[] whichClique;
   return newSolver;
 }
+
 // Take action if cut generator can fix a variable (toValue -1 for down, +1 for up)
 bool CglTreeProbingInfo::fixes(int variable, int toValue, int fixedVariable, bool fixedToLower)
 {
@@ -1248,14 +1226,9 @@ bool CglTreeProbingInfo::fixes(int variable, int toValue, int fixedVariable, boo
     if (maximumEntries_ >= CoinMax(1000000, 10 * numberIntegers_))
       return false;
     maximumEntries_ += 100 + maximumEntries_ / 2;
-    CliqueEntry *temp1 = new CliqueEntry[maximumEntries_];
-    memcpy(temp1, fixEntry_, numberEntries_ * sizeof(CliqueEntry));
-    delete[] fixEntry_;
-    fixEntry_ = temp1;
-    int *temp2 = new int[maximumEntries_];
-    memcpy(temp2, fixingEntry_, numberEntries_ * sizeof(int));
-    delete[] fixingEntry_;
-    fixingEntry_ = temp2;
+
+    append(fixEntry_, numberEntries_, maximumEntries_);
+    append(fixingEntry_, numberEntries_, maximumEntries_);
   }
   CliqueEntry entry1;
   entry1.fixes = 0;

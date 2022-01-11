@@ -2802,7 +2802,9 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       int nAdd = ((tuning & (64 + USECGLCLIQUE)) == 64 + USECGLCLIQUE && allPlusOnes) ? 2 : 1;
       CglCutGenerator **temp = generator_;
       generator_ = new CglCutGenerator *[numberCutGenerators_ + nAdd];
-      memcpy(generator_ + nAdd, temp, numberCutGenerators_ * sizeof(CglCutGenerator *));
+      if(temp != NULL) {
+        memcpy(generator_ + nAdd, temp, numberCutGenerators_ * sizeof(CglCutGenerator *));
+      }
       delete[] temp;
       numberCutGenerators_ += nAdd;
       if (nAdd == 2 || (tuning & USECGLCLIQUE) != 0) {
@@ -8072,10 +8074,7 @@ void CglPreProcess::gutsOfDestructor()
 // Add one generator
 void CglPreProcess::addCutGenerator(CglCutGenerator *generator)
 {
-  CglCutGenerator **temp = generator_;
-  generator_ = new CglCutGenerator *[numberCutGenerators_ + 1];
-  memcpy(generator_, temp, numberCutGenerators_ * sizeof(CglCutGenerator *));
-  delete[] temp;
+  append(generator_, numberCutGenerators_, numberCutGenerators_ + 1);
   generator_[numberCutGenerators_++] = generator->clone();
 }
 //#############################################################################
