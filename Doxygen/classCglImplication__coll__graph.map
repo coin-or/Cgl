@@ -1,0 +1,6 @@
+<map id="CglImplication" name="CglImplication">
+<area shape="rect" id="node2" href="$classCglCutGenerator.html" title="Cut Generator Base Class. " alt="" coords="5,95,124,121"/>
+<area shape="rect" id="node3" href="$classCglTreeProbingInfo.html" title="CglTreeProbingInfo" alt="" coords="149,95,282,121"/>
+<area shape="rect" id="node4" href="$classCglTreeInfo.html" title="Information about where the cut generator is invoked from. " alt="" coords="115,5,204,32"/>
+<area shape="rect" id="node5" href="$structCliqueEntry.html" title="Derived class to pick up probing info. " alt="" coords="228,5,315,32"/>
+</map>

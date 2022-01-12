@@ -1,0 +1,7 @@
+<map id="CglProbing" name="CglProbing">
+<area shape="rect" id="node2" href="$classCglCutGenerator.html" title="Cut Generator Base Class. " alt="" coords="257,5,376,32"/>
+<area shape="rect" id="node3" href="$structCglProbing_1_1disaggregation__struct__tag.html" title="Disaggregation cuts and for building cliques. " alt="" coords="229,57,404,98"/>
+<area shape="rect" id="node4" href="$structdisaggregationAction.html" title="Only useful type of disaggregation is most normal For now just done for 0&#45;1 variables Can be used for..." alt="" coords="5,64,148,91"/>
+<area shape="rect" id="node5" href="$structCglProbing_1_1CliqueType.html" title="Clique type. " alt="" coords="239,123,394,149"/>
+<area shape="rect" id="node6" href="$structCliqueEntry.html" title="Derived class to pick up probing info. " alt="" coords="273,177,360,204"/>
+</map>
