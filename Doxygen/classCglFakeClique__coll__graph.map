@@ -1,7 +1,0 @@
-<map id="CglFakeClique" name="CglFakeClique">
-<area shape="rect" id="node2" href="$classCglClique.html" title="CglClique" alt="" coords="131,184,209,211"/>
-<area shape="rect" id="node3" href="$classCglCutGenerator.html" title="Cut Generator Base Class. " alt="" coords="5,95,124,121"/>
-<area shape="rect" id="node6" href="$classCglProbing.html" title="Probing Cut Generator Class. " alt="" coords="22,184,107,211"/>
-<area shape="rect" id="node4" title="A graph corresponding to a fractional solution of an LP. " alt="" coords="149,95,293,121"/>
-<area shape="rect" id="node5" title="A node of the fractional graph. " alt="" coords="163,5,278,32"/>
-</map>

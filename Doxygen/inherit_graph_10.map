@@ -1,5 +1,0 @@
-<map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node2" href="$classCglMessage.html" title="This deals with Cgl messages (as against Osi messages etc) " alt="" coords="190,5,285,32"/>
-<area shape="rect" id="node3" href="$classLAP_1_1LandPMessages.html" title="Message handler for lift&#45;and&#45;project simplex. " alt="" coords="161,56,313,83"/>
-<area shape="rect" id="node4" href="$classLAP_1_1LapMessages.html" title="Output messages for Cgl. " alt="" coords="169,107,305,133"/>
-</map>
