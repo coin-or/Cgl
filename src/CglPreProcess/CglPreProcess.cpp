@@ -8074,7 +8074,8 @@ void CglPreProcess::addCutGenerator(CglCutGenerator *generator)
 {
   CglCutGenerator **temp = generator_;
   generator_ = new CglCutGenerator *[numberCutGenerators_ + 1];
-  memcpy(generator_, temp, numberCutGenerators_ * sizeof(CglCutGenerator *));
+  if( numberCutGenerators_ > 0 )
+     memcpy(generator_, temp, numberCutGenerators_ * sizeof(CglCutGenerator *));
   delete[] temp;
   generator_[numberCutGenerators_++] = generator->clone();
 }
