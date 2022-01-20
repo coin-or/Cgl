@@ -1221,6 +1221,16 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   int tuning)
 {
   double ppstart = getCurrentCPUTime();
+#define CGL_TRY_MINI_DUAL_STUFF
+#ifdef CGL_TRY_MINI_DUAL_STUFF
+  if (makeEquality==-2) {
+    OsiPresolve dummy;
+    // Just to do dual stuff using existing coding
+    //printf("start mini\n");
+    dummy.miniPresolvedModel(model);
+    //printf("end mini\n");
+  }
+#endif
 #if DEBUG_PREPROCESS > 1
   bool rcdActive = true;
   std::string modelName;
