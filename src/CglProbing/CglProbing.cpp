@@ -2365,8 +2365,10 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
         if (!numberCliques_) {
 	  int numberColumnCutsBefore = cs.sizeColCuts();
 #if FIXED_BOTH_WAYS
-	  if ((info->options&4096) != 0 && totalTimesCalled_==0) {
-	    int nCols = si.getNumCols();
+#define FIXED_BOTH_MAX 2000
+	  int nCols = si.getNumCols();
+	  if ((info->options&2048) == 2048 && totalTimesCalled_==0
+	      && nCols < FIXED_BOTH_MAX) {
 	    delete [] endFixStart_;
 	    assert (!cliqueStart_);
 	    endFixStart_ = new int [2*nCols];
@@ -3583,7 +3585,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
   double * newLo = up0 + maxStack;
   double * newUp = newLo + nCols;
 #if FIXED_BOTH_WAYS
-  bool doFixedBothWays=(totalTimesCalled_==0&&(info->options&2048)!=0);
+  bool doFixedBothWays=(totalTimesCalled_==0 && endFixStart_
+			&&(info->options&2048)!=0);
   if (doFixedBothWays) {
     for (int i=0;i<nCols;i++) {
       newLo[i] = COIN_DBL_MAX;
