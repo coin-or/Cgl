@@ -52,7 +52,7 @@ jobs:
           source coinbrew/.ci/setup_environment.sh
           bash coinbrew/coinbrew fetch ${{ github.event.repository.name }} \
           --no-prompt --skip-update \
-          --skip='ThirdParty/Metis ThirdParty/Mumps ThirdParty/Blas ThirdParty/Lapack'
+          --skip='ThirdParty/Metis ThirdParty/Mumps ThirdParty/Blas ThirdParty/Lapack' --debug
           bash coinbrew/coinbrew build ${{ github.event.repository.name }} --disable-mysql \
           --skip='ThirdParty/Metis ThirdParty/Mumps ThirdParty/Blas ThirdParty/Lapack' \
           "${COMMON_ARGS[@]}" "${ADD_ARGS[@]}" "${DBG_ARGS[@]}" \
