@@ -15,22 +15,22 @@
 #include <cstdlib>
 
 #ifdef CGL_HAS_OSICPX
-#include <OsiCpxSolverInterface.hpp>
+#include "OsiCpxSolverInterface.hpp"
 #endif
 #ifdef CGL_HAS_OSIXPR
-#include <OsiXprSolverInterface.hpp>
+#include "OsiXprSolverInterface.hpp"
 #endif
 #ifdef CGL_HAS_OSICLP
-#include <OsiClpSolverInterface.hpp>
+#include "OsiClpSolverInterface.hpp"
 #endif
 #ifdef CGL_HAS_OSIDYLP
-#include <OsiDylpSolverInterface.hpp>
+#include "OsiDylpSolverInterface.hpp"
 #endif
 #ifdef CGL_HAS_OSIGLPK
-#include <OsiGlpkSolverInterface.hpp>
+#include "OsiGlpkSolverInterface.hpp"
 #endif
 #ifdef CGL_HAS_OSIVOL
-#include <OsiVolSolverInterface.hpp>
+#include "OsiVolSolverInterface.hpp"
 #endif
 
 #include "CglSimpleRounding.hpp"
