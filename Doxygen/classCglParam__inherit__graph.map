@@ -1,0 +1,7 @@
+<map id="CglParam" name="CglParam">
+<area shape="rect" id="node1" title="Class collecting parameters for all cut generators." alt="" coords="254,5,333,32"/>
+<area shape="rect" id="node2" href="$classCglGMIParam.html" title="Class collecting parameters for the GMI cut generator." alt="" coords="5,80,109,107"/>
+<area shape="rect" id="node3" href="$classCglLandP_1_1Parameters.html" title="Class storing parameters." alt="" coords="133,80,285,107"/>
+<area shape="rect" id="node4" href="$classCglRedSplit2Param.html" title="Class collecting parameters the Reduced&#45;and&#45;split cut generator." alt="" coords="310,80,445,107"/>
+<area shape="rect" id="node5" href="$classCglRedSplitParam.html" title="Class collecting parameters the Reduced&#45;and&#45;split cut generator." alt="" coords="469,80,597,107"/>
+</map>
