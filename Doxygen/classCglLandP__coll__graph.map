@@ -1,8 +1,0 @@
-<map id="CglLandP" name="CglLandP">
-<area shape="rect" id="node2" href="$classCglCutGenerator.html" title="Cut Generator Base Class. " alt="" coords="5,273,124,300"/>
-<area shape="rect" id="node3" href="$classLAP_1_1Validator.html" title="Class to validate or reject a cut. " alt="" coords="148,273,253,300"/>
-<area shape="rect" id="node5" title="STL class. " alt="" coords="145,95,257,121"/>
-<area shape="rect" id="node7" href="$structCglLandP_1_1CachedData.html" title="Some informations that will be changed by the pivots and that we want to keep. " alt="" coords="277,273,433,300"/>
-<area shape="rect" id="node8" href="$classCglLandP_1_1Parameters.html" title="Class storing parameters. " alt="" coords="458,273,610,300"/>
-<area shape="rect" id="node9" href="$classCglParam.html" title="Class collecting parameters for all cut generators. " alt="" coords="495,184,573,211"/>
-</map>
