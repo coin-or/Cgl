@@ -1215,6 +1215,266 @@ static bool scaleRowIntegral(double* rowElem, int rowNz)
   return true;
 } /* scaleRowIntegral */
 #endif
+// returns -1 if infeasible, +n made integer
+static int analyze(OsiSolverInterface * solver)
+{
+  const double *objective = solver->getObjCoefficients() ;
+  int numberColumns = solver->getNumCols() ;
+  char * intVar = new char[numberColumns];
+  for (int i=0;i<numberColumns;i++) {
+    if (solver->isInteger(i))
+      intVar[i] = 1;
+    else
+      intVar[i] = 0;
+  }
+  double * lower = CoinCopyOfArray(solver->getColLower(),numberColumns);
+  double * upper = CoinCopyOfArray(solver->getColUpper(),numberColumns);
+  int numberRows = solver->getNumRows();
+  double direction = solver->getObjSense();
+  int iRow,iColumn;
+
+  // Row copy
+  CoinPackedMatrix matrixByRow(*solver->getMatrixByRow());
+  const double * elementByRow = matrixByRow.getElements();
+  const int * column = matrixByRow.getIndices();
+  const CoinBigIndex * rowStart = matrixByRow.getVectorStarts();
+  const int * rowLength = matrixByRow.getVectorLengths();
+
+  // Column copy
+  CoinPackedMatrix  matrixByCol(*solver->getMatrixByCol());
+  const double * element = matrixByCol.getElements();
+  const int * row = matrixByCol.getIndices();
+  const CoinBigIndex * columnStart = matrixByCol.getVectorStarts();
+  const int * columnLength = matrixByCol.getVectorLengths();
+
+  const double * rowLower = solver->getRowLower();
+  const double * rowUpper = solver->getRowUpper();
+
+  char * ignore = new char [numberRows];
+  int * which = new int[numberRows];
+  double * changeRhs = new double[numberRows];
+  memset(changeRhs,0,numberRows*sizeof(double));
+  memset(ignore,0,numberRows);
+  int numberChanged=0;
+  bool finished=false;
+  while (!finished) {
+    int saveNumberChanged = numberChanged;
+    for (iRow=0;iRow<numberRows;iRow++) {
+      int numberContinuous=0;
+      double value1=0.0,value2=0.0;
+      bool allIntegerCoeff=true;
+      double sumFixed=0.0;
+      int jColumn1=-1,jColumn2=-1;
+      for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
+        int jColumn = column[j];
+        double value = elementByRow[j];
+        if (upper[jColumn] > lower[jColumn]+1.0e-8) {
+          if (!intVar[jColumn]) {
+            if (numberContinuous==0) {
+              jColumn1=jColumn;
+              value1=value;
+            } else {
+              jColumn2=jColumn;
+              value2=value;
+            }
+            numberContinuous++;
+          } else {
+            if (fabs(value-floor(value+0.5))>1.0e-12)
+              allIntegerCoeff=false;
+          }
+        } else {
+          sumFixed += lower[jColumn]*value;
+        }
+      }
+      double low = rowLower[iRow];
+      if (low>-1.0e20) {
+        low -= sumFixed;
+        if (fabs(low-floor(low+0.5))>1.0e-12)
+          allIntegerCoeff=false;
+      }
+      double up = rowUpper[iRow];
+      if (up<1.0e20) {
+        up -= sumFixed;
+        if (fabs(up-floor(up+0.5))>1.0e-12)
+          allIntegerCoeff=false;
+      }
+      if (!allIntegerCoeff)
+        continue; // can't do
+      if (numberContinuous==1) {
+        // see if really integer
+        // This does not allow for complicated cases
+        if (low==up) {
+          if (fabs(value1)>1.0e-3) {
+            value1 = 1.0/value1;
+            if (fabs(value1-floor(value1+0.5))<1.0e-12) {
+              // integer
+              numberChanged++;
+              intVar[jColumn1]=77;
+            }
+          }
+        } else {
+          if (fabs(value1)>1.0e-3) {
+            value1 = 1.0/value1;
+            if (fabs(value1-floor(value1+0.5))<1.0e-12) {
+              // This constraint will not stop it being integer
+              ignore[iRow]=1;
+            }
+          }
+        }
+      } else if (numberContinuous==2) {
+        if (low==up) {
+          /* need general theory - for now just look at 2 cases -
+             1 - +- 1 one in column and just costs i.e. matching objective
+             2 - +- 1 two in column but feeds into G/L row which will try and minimize
+             (take out 2 for now - until fixed)
+          */
+          if (fabs(value1)==1.0&&value1*value2==-1.0&&!lower[jColumn1]
+              &&!lower[jColumn2]&&columnLength[jColumn1]==1&&columnLength[jColumn2]==1) {
+            int n=0;
+            CoinBigIndex i;
+            double objChange=direction*(objective[jColumn1]+objective[jColumn2]);
+            double bound = CoinMin(upper[jColumn1],upper[jColumn2]);
+            bound = CoinMin(bound,1.0e20);
+            for ( i=columnStart[jColumn1];i<columnStart[jColumn1]+columnLength[jColumn1];i++) {
+              int jRow = row[i];
+              double value = element[i];
+              if (jRow!=iRow) {
+                which[n++]=jRow;
+                changeRhs[jRow]=value;
+              }
+            }
+            for ( i=columnStart[jColumn2];i<columnStart[jColumn2]+columnLength[jColumn2];i++) {
+              int jRow = row[i];
+              double value = element[i];
+              if (jRow!=iRow) {
+                if (!changeRhs[jRow]) {
+                  which[n++]=jRow;
+                  changeRhs[jRow]=value;
+                } else {
+                  changeRhs[jRow]+=value;
+                }
+              }
+            }
+            if (objChange>=0.0) {
+              // see if all rows OK
+              bool good=true;
+              for (i=0;i<n;i++) {
+                int jRow = which[i];
+                double value = changeRhs[jRow];
+                if (value) {
+                  value *= bound;
+                  if (rowLength[jRow]==1) {
+                    if (value>0.0) {
+                      double rhs = rowLower[jRow];
+                      if (rhs>0.0) {
+                        double ratio =rhs/value;
+                        if (fabs(ratio-floor(ratio+0.5))>1.0e-12)
+                          good=false;
+                      }
+                    } else {
+                      double rhs = rowUpper[jRow];
+                      if (rhs<0.0) {
+                        double ratio =rhs/value;
+                        if (fabs(ratio-floor(ratio+0.5))>1.0e-12)
+                          good=false;
+                      }
+                    }
+                  } else if (rowLength[jRow]==2) {
+                    if (value>0.0) {
+                      if (rowLower[jRow]>-1.0e20)
+                        good=false;
+                    } else {
+                      if (rowUpper[jRow]<1.0e20)
+                        good=false;
+                    }
+                  } else {
+                    good=false;
+                  }
+                }
+              }
+              if (good) {
+                // both can be integer
+                numberChanged++;
+                intVar[jColumn1]=77;
+                numberChanged++;
+                intVar[jColumn2]=77;
+              }
+            }
+            // clear
+            for (i=0;i<n;i++) {
+              changeRhs[which[i]]=0.0;
+            }
+          }
+        }
+      }
+    }
+    for (iColumn=0;iColumn<numberColumns;iColumn++) {
+      if (upper[iColumn] > lower[iColumn]+1.0e-8&&!intVar[iColumn]) {
+        double value;
+        value = upper[iColumn];
+        if (value<1.0e20&&fabs(value-floor(value+0.5))>1.0e-12) 
+          continue;
+        value = lower[iColumn];
+        if (value>-1.0e20&&fabs(value-floor(value+0.5))>1.0e-12) 
+          continue;
+        bool integer=true;
+        for (CoinBigIndex j=columnStart[iColumn];j<columnStart[iColumn]+columnLength[iColumn];j++) {
+          int iRow = row[j];
+          if (!ignore[iRow]) {
+            integer=false;
+            break;
+          }
+        }
+        if (integer) {
+          // integer
+          numberChanged++;
+          intVar[iColumn]=77;
+        }
+      }
+    }
+    finished = numberChanged==saveNumberChanged;
+  }
+  bool feasible=true;
+  for (iColumn=0;iColumn<numberColumns;iColumn++) {
+    if (intVar[iColumn]==77) {
+      if (upper[iColumn]>1.0e20) {
+        upper[iColumn] = 1.0e20;
+      } else {
+        upper[iColumn] = floor(upper[iColumn]+1.0e-5);
+      }
+      if (lower[iColumn]<-1.0e20) {
+        lower[iColumn] = -1.0e20;
+      } else {
+        lower[iColumn] = ceil(lower[iColumn]-1.0e-5);
+        if (lower[iColumn]>upper[iColumn])
+          feasible=false;
+      }
+      if (lower[iColumn]==0.0&&upper[iColumn]==1.0)
+        intVar[iColumn]=1;
+      else if (lower[iColumn]==upper[iColumn])
+        intVar[iColumn]=0;
+      else
+        intVar[iColumn]=2;
+    }
+  }
+  delete [] which;
+  delete [] changeRhs;
+  delete [] ignore;
+  if (numberChanged) {
+    //printf("%d variables made integer\n",numberChanged);
+    for (int i=0;i<numberColumns;i++) {
+      if (intVar[i])
+	solver->setInteger(i);
+    }
+  }
+  delete [] intVar;
+  delete [] lower;
+  delete [] upper;
+  if (feasible)
+    return numberChanged;
+  else
+    return -1;
+}
 OsiSolverInterface *
 CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   int makeEquality, int numberPasses,
@@ -2676,11 +2936,19 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   constraint system. Safe as long as tightenPrimalBounds doesn't ask for
   the current solution.
 */
-  if (!infeas && true) {
+  if (!infeas) {
     // may be better to just do at end
     writeDebugMps(startModel2, "before", NULL);
     infeas = tightenPrimalBounds(*startModel2,false,scBound);
     writeDebugMps(startModel2, "after", NULL);
+    // make as many integer as possible
+    int numberChanged = analyze(startModel2);
+    if (numberChanged<0)
+      infeas = true;
+    else if (numberChanged)
+      handler_->message(CGL_MADE_INTEGER, messages_)
+	<< numberChanged
+	<< CoinMessageEol;
   }
   if (infeas) {
     handler_->message(CGL_INFEASIBLE, messages_)

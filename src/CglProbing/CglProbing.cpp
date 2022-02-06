@@ -1486,6 +1486,7 @@ int CglProbing::generateCutsAndModify(const OsiSolverInterface & si,
     setupRowCliqueInformation(si);
   return ninfeas;
 }
+#if 0 // moved to CglPreProcess
 bool analyze(const OsiSolverInterface * solverX, char * intVar,
              double * lower, double * upper)
 {
@@ -1728,6 +1729,7 @@ bool analyze(const OsiSolverInterface * solverX, char * intVar,
   delete solver;
   return feasible;
 }
+#endif
 int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si, 
                                    OsiCuts & cs ,
                                    double * rowLower, double * rowUpper,
@@ -1774,7 +1776,6 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       }
     }
   }
-  bool feasible=true;
   if (!info->inTree&&!info->pass) {
 #if CBC_PREPROCESS_EXPERIMENT>1
     int nRows = si.getNumRows();
@@ -1846,9 +1847,9 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     }
 #endif
     // make more integer
-    feasible = analyze(&si,intVar,colLower,colUpper);
+    //feasible = analyze(&si,intVar,colLower,colUpper);
   }
-  if (feasible&&PROBING_EXTRA_STUFF) {
+  if (PROBING_EXTRA_STUFF) {
     // tighten bounds on djs
     // should be in CbcCutGenerator and check if basic 
     const double * djs =si.getReducedCost();
@@ -2259,8 +2260,6 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 		     nRows, nCols, intVar,
 		     ((info->options&2048)==0) ? 2 : 3,
 		     primalTolerance_);
-    if (!feasible)
-      ninfeas=1;
     if (!ninfeas) {
       // create column cuts where integer bounds have changed
       {
