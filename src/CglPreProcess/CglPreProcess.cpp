@@ -1487,7 +1487,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     OsiPresolve dummy;
     // Just to do dual stuff using existing coding
     //printf("start mini\n");
-    dummy.miniPresolvedModel(model);
+    OsiSolverInterface * returnedModel = dummy.miniPresolvedModel(model);
+    delete returnedModel; // throw it away
     //printf("end mini\n");
   }
 #endif
