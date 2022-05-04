@@ -2313,8 +2313,8 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
                  rowStart, rowLength, rowLower, rowUpper,
                  minR , maxR , markR, nRows);
 #else
-	for (int i=0;i<nRows;i++)
-	  markR[i]=-1;
+	for (int j=0;j<nRows;j++)
+	  markR[j]=-1;
 #endif
         // decide what to look at
         if (mode==1) {
