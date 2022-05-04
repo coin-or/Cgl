@@ -69,6 +69,7 @@ fi
 AC_COIN_CHECK_PACKAGE(Sample, [coindatasample])
 
 # Clp can be used by CglLandP
+AC_COIN_CHECK_PACKAGE(Clp, [clp], [CglLib])
 AC_COIN_CHECK_PACKAGE(OsiClp, [osi-clp], [CglLib])
 
 #############################################################################
