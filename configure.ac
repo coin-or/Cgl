@@ -90,6 +90,7 @@ if test $coin_has_osi != yes ; then
 fi
 
 # Clp can be used by CglLandP, and also by the unitTest.
+AC_COIN_CHK_PKG(Clp,[CglLib CglUnitTest],[clp])
 AC_COIN_CHK_PKG(OsiClp,[CglLib CglUnitTest],[osi-clp])
 
 # Finalize libs and cflags for building CglLib components, then add one

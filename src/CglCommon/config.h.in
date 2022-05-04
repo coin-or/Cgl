@@ -6,6 +6,9 @@
 /* Library Visibility Attribute */
 #undef CGLUNITTEST_EXPORT
 
+/* Define to 1 if Clp is available. */
+#undef CGL_HAS_CLP
+
 /* Define to 1 if CoinUtils is available. */
 #undef CGL_HAS_COINUTILS
 

@@ -704,6 +704,8 @@ CGLLIB_CFLAGS_NOPC
 CGLLIB_LFLAGS_NOPC
 COIN_HAS_OSICLP_FALSE
 COIN_HAS_OSICLP_TRUE
+COIN_HAS_CLP_FALSE
+COIN_HAS_CLP_TRUE
 COIN_HAS_OSI_FALSE
 COIN_HAS_OSI_TRUE
 COIN_HAS_COINUTILS_FALSE
@@ -876,6 +878,9 @@ with_coinutils_cflags
 with_osi
 with_osi_lflags
 with_osi_cflags
+with_clp
+with_clp_lflags
+with_clp_cflags
 with_osiclp
 with_osiclp_lflags
 with_osiclp_cflags
@@ -1601,6 +1606,16 @@ Optional Packages:
   --with-osi-lflags       Linker flags for Osi appropriate for your
                           environment. (Most often, -l specs for libraries.)
   --with-osi-cflags       Compiler flags for Osi appropriate for your
+                          environment. (Most often, -I specs for header file
+                          directories.)
+  --without-clp           Do not use Clp. If an argument is given to
+                          --with-clp, then 'yes' is equivalent to
+                          --with-clp, 'no' is equivalent to
+                          --without-clp and any other argument is applied as
+                          for --with-clp-lflags.
+  --with-clp-lflags       Linker flags for Clp appropriate for your
+                          environment. (Most often, -l specs for libraries.)
+  --with-clp-cflags       Compiler flags for Clp appropriate for your
                           environment. (Most often, -I specs for header file
                           directories.)
   --without-osiclp        Do not use OsiClp. If an argument is given to
@@ -18303,6 +18318,254 @@ fi
 
 
 
+  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for package Clp" >&5
+printf %s "checking for package Clp... " >&6; }
+
+
+
+
+
+
+
+
+
+
+
+  coin_has_clp=noInfo
+  if test x"$COIN_SKIP_PROJECTS" != x ; then
+    for pkg in `echo $COIN_SKIP_PROJECTS | tr '[:upper:]' '[:lower:]'` ; do
+      if test "$pkg" = "clp" ; then
+        coin_has_clp=skipping
+      fi
+    done
+  fi
+
+
+  if test "$coin_has_clp" != skipping ; then
+
+
+
+
+# Check whether --with-clp was given.
+if test ${with_clp+y}
+then :
+  withval=$with_clp;
+fi
+
+
+
+# Check whether --with-clp-lflags was given.
+if test ${with_clp_lflags+y}
+then :
+  withval=$with_clp_lflags;
+fi
+
+
+
+# Check whether --with-clp-cflags was given.
+if test ${with_clp_cflags+y}
+then :
+  withval=$with_clp_cflags;
+fi
+
+
+
+
+
+
+
+
+
+
+
+
+  coin_has_clp=requested
+
+  clp_lflags=
+  clp_cflags=
+  clp_data=
+  clp_pcfiles="clp"
+
+
+  withval="$with_clp"
+  if test -n "$withval" ; then
+    case "$withval" in
+      no )
+        coin_has_clp=skipping
+        clp_failmode='command line'
+        ;;
+      yes )
+        coin_has_clp=requested
+        clp_failmode=''
+        ;;
+      build )
+        coin_has_clp=requested
+        clp_build=yes
+        clp_failmode=''
+        ;;
+      * )
+        coin_has_clp=requested
+        clp_failmode=''
+        clp_lflags="$withval"
+        clp_pcfiles=''
+        ;;
+    esac
+  else
+    if test -n "$with_clp_lflags" ||
+       test -n "$with_clp_cflags" ||
+       test -n "$with_clp_data" ; then
+      coin_has_clp=requested
+      clp_failmode=''
+      clp_pcfiles=''
+    fi
+  fi
+
+
+  if test "$coin_has_clp" != skipping ; then
+       withval="$with_clp_lflags"
+       if test -n "$withval" ; then
+         case "$withval" in
+           build | no | yes )
+             as_fn_error $? "\"$withval\" is not useful here; please specify link flags appropriate for your environment." "$LINENO" 5
+             ;;
+           * )
+             coin_has_clp=yes
+             clp_lflags="$withval"
+             clp_pcfiles=''
+             ;;
+         esac
+       fi
+
+       withval="$with_clp_cflags"
+       if test -n "$withval" ; then
+         case "$withval" in
+           build | no | yes )
+             as_fn_error $? "\"$withval\" is not useful here; please specify compile flags appropriate for your environment." "$LINENO" 5
+             ;;
+           * )
+             coin_has_clp=yes
+             clp_cflags="$withval"
+             clp_pcfiles=''
+             ;;
+         esac
+       fi
+     fi
+
+
+
+
+
+  if test $coin_has_clp = requested ; then
+    if test -n "$PKG_CONFIG" ; then
+      if test x"$clp_build" = xyes ; then
+        pcfile="coin$clp_pcfiles"
+
+
+
+  if test -n "$PKG_CONFIG" ; then
+    if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
+      CLP_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
+      coin_has_clp=yes
+    else
+      CLP_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
+      coin_has_clp=no
+    fi
+  else
+    as_fn_error $? "\"Cannot check for existence of module clp without pkgconf\"" "$LINENO" 5
+  fi
+
+      fi
+      if ! test $coin_has_clp = yes ; then
+        pcfile="$clp_pcfiles"
+
+
+
+  if test -n "$PKG_CONFIG" ; then
+    if PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --exists "$pcfile" ; then
+      CLP_VERSIONS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --modversion "$pcfile" 2>/dev/null | tr '\n' ' '`
+      coin_has_clp=yes
+    else
+      CLP_PKG_ERRORS=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG $pkg_short_errors --errors-to-stdout --print-errors "$pcfile"`
+      coin_has_clp=no
+    fi
+  else
+    as_fn_error $? "\"Cannot check for existence of module clp without pkgconf\"" "$LINENO" 5
+  fi
+
+      fi
+      if test $coin_has_clp = yes ; then
+        clp_data=`PKG_CONFIG_PATH="$COIN_PKG_CONFIG_PATH" $PKG_CONFIG --variable=datadir "$pcfile" 2>/dev/null`
+        clp_pcfiles="$pcfile"
+      fi
+    else
+      { printf "%s\n" "$as_me:${as_lineno-$LINENO}: WARNING: Check for clp via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-clp-lflags and --with-clp-cflags." >&5
+printf "%s\n" "$as_me: WARNING: Check for clp via pkg-config could not be performed as there is no pkg-config available. Consider installing pkg-config or provide appropriate values for --with-clp-lflags and --with-clp-cflags." >&2;}
+      coin_has_clp=no
+    fi
+  fi
+
+
+  if test "$BUILDTOOLS_DEBUG" = 1 ; then
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: FIND_PRIM_PKG result for clp: \"$coin_has_clp\"" >&5
+printf "%s\n" "$as_me: FIND_PRIM_PKG result for clp: \"$coin_has_clp\"" >&6;}
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: Collected values for package 'clp'" >&5
+printf "%s\n" "$as_me: Collected values for package 'clp'" >&6;}
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: clp_lflags is \"$clp_lflags\"" >&5
+printf "%s\n" "$as_me: clp_lflags is \"$clp_lflags\"" >&6;}
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: clp_cflags is \"$clp_cflags\"" >&5
+printf "%s\n" "$as_me: clp_cflags is \"$clp_cflags\"" >&6;}
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: clp_data is \"$clp_data\"" >&5
+printf "%s\n" "$as_me: clp_data is \"$clp_data\"" >&6;}
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: clp_pcfiles is \"$clp_pcfiles\"" >&5
+printf "%s\n" "$as_me: clp_pcfiles is \"$clp_pcfiles\"" >&6;}
+  fi
+
+
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $coin_has_clp" >&5
+printf "%s\n" "$coin_has_clp" >&6; }
+  else
+    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: $coin_has_clp (COIN_SKIP_PROJECTS)" >&5
+printf "%s\n" "$coin_has_clp (COIN_SKIP_PROJECTS)" >&6; }
+  fi
+
+
+  if test "$coin_has_clp" != yes ; then
+    coin_has_clp=no
+  fi
+
+
+   if test $coin_has_clp = yes; then
+  COIN_HAS_CLP_TRUE=
+  COIN_HAS_CLP_FALSE='#'
+else
+  COIN_HAS_CLP_TRUE='#'
+  COIN_HAS_CLP_FALSE=
+fi
+
+
+
+  if test $coin_has_clp = yes ; then
+
+printf "%s\n" "#define CGL_HAS_CLP 1" >>confdefs.h
+
+    CGLLIB_PCFILES="$clp_pcfiles $CGLLIB_PCFILES"
+       CGLLIB_LFLAGS="$clp_lflags $CGLLIB_LFLAGS"
+       CGLLIB_CFLAGS="$clp_cflags $CGLLIB_CFLAGS"
+      CGLUNITTEST_PCFILES="$clp_pcfiles $CGLUNITTEST_PCFILES"
+       CGLUNITTEST_LFLAGS="$clp_lflags $CGLUNITTEST_LFLAGS"
+       CGLUNITTEST_CFLAGS="$clp_cflags $CGLUNITTEST_CFLAGS"
+
+
+
+  fi
+
+
+
+
+
+
+
+
   { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking for package OsiClp" >&5
 printf %s "checking for package OsiClp... " >&6; }
 
@@ -21176,6 +21439,10 @@ Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${COIN_HAS_OSI_TRUE}" && test -z "${COIN_HAS_OSI_FALSE}"; then
   as_fn_error $? "conditional \"COIN_HAS_OSI\" was never defined.
+Usually this means the macro was only invoked conditionally." "$LINENO" 5
+fi
+if test -z "${COIN_HAS_CLP_TRUE}" && test -z "${COIN_HAS_CLP_FALSE}"; then
+  as_fn_error $? "conditional \"COIN_HAS_CLP\" was never defined.
 Usually this means the macro was only invoked conditionally." "$LINENO" 5
 fi
 if test -z "${COIN_HAS_OSICLP_TRUE}" && test -z "${COIN_HAS_OSICLP_FALSE}"; then
