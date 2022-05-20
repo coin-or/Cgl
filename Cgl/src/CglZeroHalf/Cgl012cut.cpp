@@ -2373,8 +2373,6 @@ static int last_prohib_period_mod; /* last iteration where prohibition period wa
 static hash_table hash_tab; /* hash table */
 static int A; /* parameter A in Battiti and Protasi */
 static int B; /* parameter B in Battiti and Protasi */
-static float elapsed_time; /* time elapsed since the beginning of the current
-		       tabu search call */
 
 /* clear_cur_cut: clear the current solution (no constraint in the cut) */
 static
