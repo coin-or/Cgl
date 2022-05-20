@@ -1393,6 +1393,7 @@ int CglProbing::generateCutsAndModify(const OsiSolverInterface & si,
     setupRowCliqueInformation(si);
   return ninfeas;
 }
+static
 bool analyze(const OsiSolverInterface * solverX, char * intVar,
              double * lower, double * upper)
 {

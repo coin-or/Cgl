@@ -66,6 +66,7 @@ struct sortElement{
 };
 
 // Return -1 if firstE has lower cost or same cost but lower index
+static
 int rs2_compareElements(const void* firstE, const void* secondE){
   const struct sortElement* a = static_cast<const struct sortElement*>(firstE);
   const struct sortElement* b = static_cast<const struct sortElement*>(secondE);

@@ -503,6 +503,7 @@ CglZeroHalf::generateCpp( FILE * fp)
 }
 #include <vector>
 #include <algorithm>
+static
 //bool operator() (cgl_node * x, cgl_node * y) {
 bool best(cgl_node * x, cgl_node * y) {
   return (x->distanceBack>y->distanceBack);
