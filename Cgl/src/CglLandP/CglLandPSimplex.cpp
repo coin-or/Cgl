@@ -3311,7 +3311,7 @@ CglLandPSimplex::removeRows(int nDelete, const int * rowsIdx)
     original_index_.resize(nrows_);
 
     int numStructural = basis_->getNumStructural();
-    assert(ncols_ = numStructural);
+    assert(ncols_ == numStructural);
     int nNonBasics = 0;
     for (int i = 0 ; i < numStructural ; i++)
     {
@@ -3322,7 +3322,7 @@ CglLandPSimplex::removeRows(int nDelete, const int * rowsIdx)
     }
 
     int numArtificial = basis_->getNumArtificial();
-    assert(nrows_ = numArtificial);
+    assert(nrows_ == numArtificial);
     for (int i = 0 ; i < numArtificial ; i++)
     {
         if (basis_->getArtifStatus(i)!= CoinWarmStartBasis::basic)
