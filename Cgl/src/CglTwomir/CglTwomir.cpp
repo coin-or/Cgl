@@ -97,7 +97,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 #ifdef COIN_HAS_CLP_TWOMIR
   double * objective = NULL;
   OsiClpSolverInterface * clpSolver = dynamic_cast<OsiClpSolverInterface *>(originalSolver_);
-  int numberOriginalRows;
+  int numberOriginalRows = -1;
   int numberColumns=si.getNumCols();
   int twomirType=0;
   if (!clpSolver) {
@@ -480,6 +480,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   if (twomirType==2) {
     // back to original
     int numberRows = clpSolver->getNumRows();
+    assert(numberOriginalRows >= 0);
     if (numberRows>numberOriginalRows) {
       int numberDelete = numberRows-numberOriginalRows;
       int * delRow = new int [numberDelete];

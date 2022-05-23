@@ -373,8 +373,10 @@ CglZeroHalf::refreshSolver(OsiSolverInterface * solver)
       mnz_ += iType*n;
     }
   }
+#ifndef NDEBUG
   int saveMr=mr_;
   int saveMnz=mnz_;
+#endif
   if (mnz_) {
     mc_ = numberColumns;
     mtbeg_ = new int [mr_];

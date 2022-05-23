@@ -1227,8 +1227,10 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
         return false;
     }
         
+#ifndef NDEBUG
     // Recheck the violation.
     double saveViolation = violation;
+#endif
     violation = 0.0;
     for (i = 0; i < cutLen; ++i) 
       violation += cutCoef[i] * xlp[cutInd[i]];
