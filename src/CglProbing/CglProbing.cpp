@@ -26,8 +26,6 @@
 #define FIXED_ALLOWANCE 10
 #define SIZE_ROW_MULT 4
 #define SIZE_ROW_ADD 2000
-#undef FIXED_BOTH_WAYS
-#define FIXED_BOTH_WAYS 1
 #define MANY_TIGHTEN 1
 typedef struct {double infeasibility;int sequence;} double_int_pair;
 class double_int_pair_compare {
@@ -3634,11 +3632,11 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #endif
 #ifdef UPDATE_MINR_MAXR
   int * whichRealChange = stackC0+maxStack;
-  whichRealChange = stackC0+maxStack;
 #if FIXED_BOTH_WAYS
   if (doFixedBothWays)
-    whichRealChange += nCols;
+    whichRealChange += 2*nCols;
 #endif
+  assert (whichRealChange+2*maxStack < ((int *)(colsol+nSpace)));;
 #endif
 #else 
   double * colsol = new double[nCols];
