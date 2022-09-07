@@ -3620,9 +3620,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
   // Really must clean up arrays
   // Make more efficient when two versions of tightenPrimalBounds
   double * saveFColLower = NULL;
-  double * saveFColUpper;
-  double * saveFRowLower;
-  double * saveFRowUpper;
+  double * saveFColUpper = NULL;
+  double * saveFRowLower = NULL;
+  double * saveFRowUpper = NULL;
   if ((info->options&2048)!=0) {
     saveFColLower = new double [2*nCols+2*nRows];
     saveFColUpper = saveFColLower+nCols;
@@ -5379,7 +5379,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
           }
           istackC++;
         }
-#if FIXED_BOTH_WAY || MANY_TIGHTEN
+#if FIXED_BOTH_WAYS || MANY_TIGHTEN
 	// the nCols<1000 should be on some switch
 	if (!notFeasible && iway < 2 && (info->options&2048)!=0
 	    && nCols<1000) {
@@ -6996,7 +6996,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
   delete [] largestPositiveInRow;
   delete [] largestNegativeInRow;
 #endif
-#if FIXED_BOTH_WAY || MANY_TIGHTEN
+#if FIXED_BOTH_WAYS || MANY_TIGHTEN
   delete [] saveFColLower;
 #endif
   delete [] colsol;
