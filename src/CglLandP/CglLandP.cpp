@@ -666,6 +666,8 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       // update solution and basis
       tt_si->setColSolution(solution);
       tt_si->setWarmStart(basis);
+      delete basis;
+      delete [] solution;
       tt_si->resolve();
       t_si = tt_si;
     }
