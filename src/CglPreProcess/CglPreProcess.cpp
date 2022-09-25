@@ -2390,7 +2390,9 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
     const double * elementByRow = rowCopy->getElements();
     for (int iRow = 0; iRow < numberRows; iRow++) {
-      if (rowLower[iRow]<rowUpper[iRow]) {
+      // skip free rows - unlikely to have got here but ... !
+      if (rowLower[iRow]<rowUpper[iRow] &&
+	  (rowLower[iRow] > -1.0e30 || rowUpper[iRow] < 1.0e30)) {
 	bool allInteger = true;
 	if (rowLower[iRow]>-1.0e20&&
 	    floor(rowLower[iRow]) != rowLower[iRow])
