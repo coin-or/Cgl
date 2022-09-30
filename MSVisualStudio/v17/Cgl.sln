@@ -7,13 +7,13 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libCgl", "libCgl\libCgl.vcx
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CglUnitTest", "CglUnitTest\CglUnitTest.vcxproj", "{FCF90EF8-93AE-482A-9B55-018B8338B99D}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libClp", "..\..\..\Clp\MSVisualStudio\v16\libClp\libClp.vcxproj", "{768B67D6-E6D3-4A8F-AA61-511FDBCE7937}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libClp", "..\..\..\Clp\MSVisualStudio\v17\libClp\libClp.vcxproj", "{768B67D6-E6D3-4A8F-AA61-511FDBCE7937}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libOsiClp", "..\..\..\Clp\MSVisualStudio\v16\libOsiClp\libOsiClp.vcxproj", "{79433425-EC16-410F-9B91-8D31D2109C90}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libOsiClp", "..\..\..\Clp\MSVisualStudio\v17\libOsiClp\libOsiClp.vcxproj", "{79433425-EC16-410F-9B91-8D31D2109C90}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libCoinUtils", "..\..\..\CoinUtils\MSVisualStudio\v16\libCoinUtils\libCoinUtils.vcxproj", "{6D2EF92A-D693-47E3-A325-A686E78C5FFD}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libCoinUtils", "..\..\..\CoinUtils\MSVisualStudio\v17\libCoinUtils\libCoinUtils.vcxproj", "{6D2EF92A-D693-47E3-A325-A686E78C5FFD}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libOsi", "..\..\..\Osi\MSVisualStudio\v16\libOsi\libOsi.vcxproj", "{BF5C7532-EE0A-479B-9993-72134087D530}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libOsi", "..\..\..\Osi\MSVisualStudio\v17\libOsi\libOsi.vcxproj", "{BF5C7532-EE0A-479B-9993-72134087D530}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
