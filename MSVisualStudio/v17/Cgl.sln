@@ -15,6 +15,20 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libCoinUtils", "..\..\..\Co
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libOsi", "..\..\..\Osi\MSVisualStudio\v17\libOsi\libOsi.vcxproj", "{BF5C7532-EE0A-479B-9993-72134087D530}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{657AF492-1E1A-430A-96AF-93039CF6F2E5}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\AUTHORS = ..\..\AUTHORS
+		..\..\LICENSE = ..\..\LICENSE
+		..\..\README.md = ..\..\README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{FA2B8E71-DD6B-4A8D-8052-69AB758A1144}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\.github\workflows\linux-ci.yml = ..\..\.github\workflows\linux-ci.yml
+		..\..\.github\workflows\release.yml = ..\..\.github\workflows\release.yml
+		..\..\.github\workflows\windows-ci.yml = ..\..\.github\workflows\windows-ci.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -74,6 +88,9 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{FA2B8E71-DD6B-4A8D-8052-69AB758A1144} = {657AF492-1E1A-430A-96AF-93039CF6F2E5}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E601D15F-D808-415A-BE0E-C62970CA4DBE}
