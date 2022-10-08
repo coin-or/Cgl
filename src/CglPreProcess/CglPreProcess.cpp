@@ -2854,6 +2854,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       presolveActions = 16; // actually just switch off duplicate columns for ints
     if ((tuning & 32) != 0)
       presolveActions |= 32;
+    if ((tuning & 512) != 0)
+      presolveActions |= 0x4000;
     // Do not allow all +1 to be tampered with
     //if (allPlusOnes)
     //presolveActions |= 2;
@@ -2943,11 +2945,12 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     // may be better to just do at end
     writeDebugMps(startModel2, "before", NULL);
     infeas = tightenPrimalBounds(*startModel2,false,scBound);
+    infeas = (infeas<0) ? 1 : 0;
     writeDebugMps(startModel2, "after", NULL);
     // make as many integer as possible
     int numberChanged = analyze(startModel2);
     if (numberChanged<0)
-      infeas = true;
+      infeas = 1;
     else if (numberChanged)
       handler_->message(CGL_MADE_INTEGER, messages_)
 	<< numberChanged
@@ -3574,6 +3577,21 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       modifiedModel_[iPass] = newModel;
       oldModel = newModel;
       writeDebugMps(newModel, "ordinary3", NULL);
+      // tighten bounds
+ #if DEBUG_PREPROCESS > 1
+      const OsiRowCutDebugger *debugger = newModel->getRowCutDebugger();
+      if (debugger)
+ 	printf("Contains optimal before tightenA\n");
+ #endif
+      if (!numberChanges && !numberFixed) {
+	int change = tightenPrimalBounds(*newModel,true,scBound);
+	if (change > 0)
+	  numberChanges += change;
+      }
+ #if DEBUG_PREPROCESS > 1
+       if (debugger)
+         assert(newModel->getRowCutDebugger());
+#endif
       newModel->resolve();
       if (!newModel->isProvenOptimal()) {
 	numberSolvers_ = iPass + 1;
@@ -3672,6 +3690,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     }
   }
   if (returnModel) {
+#if 0
     if (returnModel->getNumRows()) {
       // tighten bounds
 #if DEBUG_PREPROCESS > 1
@@ -3680,6 +3699,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	printf("Contains optimal before tighten\n");
 #endif
       int infeas = tightenPrimalBounds(*returnModel,true,scBound);
+      infeas = (infeas <0) ? -infeas : 0;
 #if DEBUG_PREPROCESS > 1
       if (debugger)
         assert(returnModel->getRowCutDebugger());
@@ -3700,6 +3720,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
         returnModel = NULL;
       }
     }
+#endif
   } else {
     handler_->message(CGL_INFEASIBLE, messages_)
       << CoinMessageEol;
@@ -4286,7 +4307,7 @@ tighten(double *colLower, double * colUpper,
 
 /* Tightens primal bounds to make dual and branch and cutfaster.  Unless
    fixed, bounds are slightly looser than they could be.
-   Returns non-zero if problem infeasible
+   Returns negative if problem infeasible, number tightened if feasible
 */
 int
 CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
@@ -5006,7 +5027,10 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
   delete[] newUpper;
   delete[] columnLower;
   delete[] columnUpper;
-  return (numberInfeasible);
+  if (numberInfeasible)
+    return -numberInfeasible;
+  else
+    return (totalTightened);
 }
 #define CGL_REASONABLE_INTEGER_BOUND 1.23456789e10
 // This tightens column bounds (and can declare infeasibility)

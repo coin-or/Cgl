@@ -69,7 +69,7 @@ public:
   void postProcess(OsiSolverInterface &model, int deleteStuff = 2);
   /** Tightens primal bounds to make dual and branch and cutfaster.  Unless
       fixed or integral, bounds are slightly looser than they could be.
-      Returns non-zero if problem infeasible
+      Returns negative if problem infeasible, number tightened if feasible
   */
   int tightenPrimalBounds(OsiSolverInterface &model,
 			  bool tightenRowBounds=false,
