@@ -810,6 +810,11 @@ DGG_data_t* DGG_getData(const void *osi_ptr )
         if( DGG_isConstraintBoundedAbove(data,j)) {
           if ( frac_part(rowUpper[i]) > DGG_INTEGRALITY_THRESH )
             goto DONE_ROW; 
+	  // need to check this as well
+	  if( DGG_isConstraintBoundedBelow(data,j)) {
+	    if ( frac_part(rowLower[i]) > DGG_INTEGRALITY_THRESH )
+	      goto DONE_ROW;
+	  }
         }
         else
           if ( frac_part(rowLower[i]) > DGG_INTEGRALITY_THRESH )
