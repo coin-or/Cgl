@@ -401,6 +401,8 @@ CglProbing::tighten(double *colLower, double * colUpper,
   int ntotal=0,nchange=1,jpass=0;
   double dmaxup, dmaxdown, dbound;
   int ninfeas=0;
+  // relax tolerance
+  tolerance *= 10.0;
   // For clique stuff
   double * cliqueMin=NULL;
   double * cliqueMax=NULL;
