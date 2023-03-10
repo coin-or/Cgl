@@ -77,7 +77,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\..\..\..\BuildTools\headers;..\..\..\..\CoinUtils\src\;..\..\..\src\CglCommon;..\..\..\src\CglDuplicateRow;..\..\..\src\CglMixedIntegerRounding;..\..\..\src\CglMixedIntegerRounding2;..\..\..\src\CglFlowCover;..\..\..\src\CglClique;..\..\..\src\CglOddHole;..\..\..\src\CglLandP;..\..\..\src\CglKnapsackCover;..\..\..\src\CglGomory;..\..\..\src\CglPreProcess;..\..\..\src\CglRedSplit;..\..\..\src\CglResidualCapacity;..\..\..\src\CglSimpleRounding;..\..\..\src\CglTwomir;..\..\..\src\CglRedSplit2;..\..\..\src\CglProbing;..\..\..\src\CglZeroHalf;..\..\..\src;..\..\..\..\Osi\src\Osi;..\..\..\..\Clp\src\OsiClp;..\..\..\..\Clp\src</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>CGLLIB_BUILD;WIN32;_LIB;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>CGLLIB_BUILD;_LIB;_CRT_SECURE_NO_WARNINGS;_DEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -90,7 +90,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\..\..\..\BuildTools\headers;..\..\..\..\CoinUtils\src\;..\..\..\src\CglCommon;..\..\..\src\CglDuplicateRow;..\..\..\src\CglMixedIntegerRounding;..\..\..\src\CglMixedIntegerRounding2;..\..\..\src\CglFlowCover;..\..\..\src\CglClique;..\..\..\src\CglOddHole;..\..\..\src\CglLandP;..\..\..\src\CglKnapsackCover;..\..\..\src\CglGomory;..\..\..\src\CglPreProcess;..\..\..\src\CglRedSplit;..\..\..\src\CglResidualCapacity;..\..\..\src\CglSimpleRounding;..\..\..\src\CglTwomir;..\..\..\src\CglRedSplit2;..\..\..\src\CglProbing;..\..\..\src\CglZeroHalf;..\..\..\src;..\..\..\..\Osi\src\Osi;..\..\..\..\Clp\src\OsiClp;..\..\..\..\Clp\src</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>CGLLIB_BUILD;WIN32;_LIB;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>CGLLIB_BUILD;_LIB;_CRT_SECURE_NO_WARNINGS;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -105,7 +105,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\..\..\..\BuildTools\headers;..\..\..\..\CoinUtils\src\;..\..\..\src\CglCommon;..\..\..\src\CglDuplicateRow;..\..\..\src\CglMixedIntegerRounding;..\..\..\src\CglMixedIntegerRounding2;..\..\..\src\CglFlowCover;..\..\..\src\CglClique;..\..\..\src\CglOddHole;..\..\..\src\CglLandP;..\..\..\src\CglKnapsackCover;..\..\..\src\CglGomory;..\..\..\src\CglPreProcess;..\..\..\src\CglRedSplit;..\..\..\src\CglResidualCapacity;..\..\..\src\CglSimpleRounding;..\..\..\src\CglTwomir;..\..\..\src\CglRedSplit2;..\..\..\src\CglProbing;..\..\..\src\CglZeroHalf;..\..\..\src;..\..\..\..\Osi\src\Osi;..\..\..\..\Clp\src\OsiClp;..\..\..\..\Clp\src</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>CGLLIB_BUILD;NDEBUG;_NDEBUG;WIN32;_LIB;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>CGLLIB_BUILD;_LIB;_CRT_SECURE_NO_WARNINGS;NDEBUG;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -123,7 +123,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>..\..\..\..\BuildTools\headers;..\..\..\..\CoinUtils\src\;..\..\..\src\CglCommon;..\..\..\src\CglDuplicateRow;..\..\..\src\CglMixedIntegerRounding;..\..\..\src\CglMixedIntegerRounding2;..\..\..\src\CglFlowCover;..\..\..\src\CglClique;..\..\..\src\CglOddHole;..\..\..\src\CglLandP;..\..\..\src\CglKnapsackCover;..\..\..\src\CglGomory;..\..\..\src\CglPreProcess;..\..\..\src\CglRedSplit;..\..\..\src\CglResidualCapacity;..\..\..\src\CglSimpleRounding;..\..\..\src\CglTwomir;..\..\..\src\CglRedSplit2;..\..\..\src\CglProbing;..\..\..\src\CglZeroHalf;..\..\..\src;..\..\..\..\Osi\src\Osi;..\..\..\..\Clp\src\OsiClp;..\..\..\..\Clp\src</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>CGLLIB_BUILD;NDEBUG;_NDEBUG;WIN32;_LIB;_CRT_SECURE_NO_WARNINGS;_CRT_SECURE_NO_DEPRECATE;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>CGLLIB_BUILD;_LIB;_CRT_SECURE_NO_WARNINGS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
