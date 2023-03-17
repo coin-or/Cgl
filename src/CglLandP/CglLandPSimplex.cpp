@@ -1807,7 +1807,7 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
     double r = 1.;
     double s = normedCoef( static_cast<double> (gammaSign), basics_[row_i_.num]);
 
-    bool haveSmallGammaPivot = false;
+    //bool haveSmallGammaPivot = false;
     double gammaTolerance = 0;
     if (allowDegenerate)
         gammaTolerance = 0;
@@ -1865,7 +1865,7 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
         }
         else
         {
-            haveSmallGammaPivot |= true;
+            //haveSmallGammaPivot |= true;
             if (gammaSign > 0 && row_i < 0)
             {
                 q -= row_i * val;

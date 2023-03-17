@@ -7415,7 +7415,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
                     double scale = 4.0 * 5.0 * 6.0;
                     int kGcd = -1;
                     double smallestSum = 0.0;
-                    double largestSum = 0.0;
+                    //double largestSum = 0.0;
                     for (k = start; k < end; ++k) {
                       int j = column[k];
                       double value = multiplier * rowElements[k];
@@ -7434,10 +7434,10 @@ CglPreProcess::modified(OsiSolverInterface *model,
                             smallestSum += value * columnLower[j];
                           else
                             smallestSum = -COIN_DBL_MAX;
-                          if (columnUpper[j] < -1.0e10)
-                            largestSum += value * columnUpper[j];
-                          else
-                            largestSum = COIN_DBL_MAX;
+                          //if (columnUpper[j] < -1.0e10)
+                          //  largestSum += value * columnUpper[j];
+                          //else
+                          //  largestSum = COIN_DBL_MAX;
                           value *= -scale;
                           if (fabs(value - floor(value + 0.5)) > 1.0e-12) {
                             possible = false;

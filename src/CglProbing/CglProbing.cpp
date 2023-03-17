@@ -343,7 +343,7 @@ CglProbing::tighten(double *colLower, double * colUpper,
   CoinBigIndex k, krs, kre;
   int dolrows;
   int iflagu, iflagl;
-  int ntotal=0,nchange=1,jpass=0;
+  int /*ntotal=0,*/nchange=1,jpass=0;
   double dmaxup, dmaxdown, dbound;
   int ninfeas=0;
   // relax tolerance
@@ -1231,7 +1231,7 @@ CglProbing::tighten(double *colLower, double * colUpper,
       }
     }
     nchange=ilbred+iubred+nrwdrp;
-    ntotal += nchange;
+    //ntotal += nchange;
     if (ninfeas) break;
   }
   delete [] cliqueMin;
@@ -5607,7 +5607,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
           iway=3;
           nfixed++;
           OsiColCut cc;
-          int nTot=0,nFix=0,nInt=0;
+          int /*nTot=0,*/nFix=0,nInt=0;
           bool ifCut=false;
           for (istackC=0;istackC<nstackC;istackC++) {
             int icol=stackC[istackC];
@@ -5624,7 +5624,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
             }
           }
           if (nFix) {
-            nTot=nFix;
+            //nTot=nFix;
 	    cleanBounds(1,nFix,index,element);
             cc.setUbs(nFix,index,element);
             nFix=0;
@@ -5644,7 +5644,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
             }
           }
           if (nFix) {
-            nTot+=nFix;
+            //nTot+=nFix;
 	    cleanBounds(-1,nFix,index,element);
             cc.setLbs(nFix,index,element);
           }
@@ -6210,7 +6210,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 markC[icol]=istackC+100000;
               }
               OsiColCut cc;
-              int nTot=0,nFix=0,nInt=0;
+              int /*nTot=0,*/nFix=0,nInt=0;
               bool ifCut=false;
               for (istackC=1;istackC<nstackC0;istackC++) {
                 int icol=stackC0[istackC];
@@ -6243,7 +6243,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 }
               }
               if (nFix) {
-                nTot=nFix;
+                //nTot=nFix;
 		cleanBounds(-1,nFix,index,element);
                 cc.setLbs(nFix,index,element);
                 nFix=0;
@@ -6314,7 +6314,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 }
               }
               if (nFix) {
-                nTot+=nFix;
+                //nTot+=nFix;
 		cleanBounds(1,nFix,index,element);
                 cc.setUbs(nFix,index,element);
               }
@@ -7867,7 +7867,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 	    nfixed++;
             if (mode_) {
 	      OsiColCut cc;
-	      int nTot=0,nFix=0,nInt=0;
+	      int /*nTot=0,*/nFix=0,nInt=0;
 	      bool ifCut=false;
 	      for (istackC=0;istackC<nstackC;istackC++) {
 		int icol=stackC[istackC];
@@ -7884,7 +7884,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		}
 	      }
 	      if (nFix) {
-		nTot=nFix;
+		//nTot=nFix;
 		cleanBounds(1,nFix,index,element);
 		cc.setUbs(nFix,index,element);
 		nFix=0;
@@ -7904,7 +7904,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		}
 	      }
 	      if (nFix) {
-		nTot+=nFix;
+		//nTot+=nFix;
 		cleanBounds(-1,nFix,index,element);
 		cc.setLbs(nFix,index,element);
 	      }
@@ -8257,7 +8257,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		}
 		if (mode_) {
 		  OsiColCut cc;
-		  int nTot=0,nFix=0,nInt=0;
+		  int /*nTot=0,*/nFix=0,nInt=0;
 		  bool ifCut=false;
 		  for (istackC=0;istackC<nstackC0;istackC++) {
 		    int icol=stackC0[istackC];
@@ -8278,7 +8278,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		    }
 		  }
 		  if (nFix) {
-		    nTot=nFix;
+		    //nTot=nFix;
 		    cleanBounds(-1,nFix,index,element);
 		    cc.setLbs(nFix,index,element);
 		    nFix=0;
@@ -8302,7 +8302,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		    }
 		  }
 		  if (nFix) {
-		    nTot+=nFix;
+		    //nTot+=nFix;
 		    cleanBounds(1,nFix,index,element);
 		    cc.setUbs(nFix,index,element);
 		  }
