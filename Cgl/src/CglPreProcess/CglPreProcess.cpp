@@ -3091,7 +3091,7 @@ int CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model, double factor)
   int numberChanged = 1, iPass = 0;
   double large = model.getInfinity() * 0.1; // treat bounds > this as infinite
   int numberInfeasible = 0;
-  int totalTightened = 0;
+  //int totalTightened = 0;
 
   double tolerance;
   model.getDblParam(OsiPrimalTolerance, tolerance);
@@ -3369,7 +3369,7 @@ int CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model, double factor)
         }
       }
     }
-    totalTightened += numberChanged;
+    //totalTightened += numberChanged;
     if (iPass == 1)
       numberCheck = numberChanged >> 4;
     if (numberInfeasible)
@@ -5609,7 +5609,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
                     double scale = 4.0 * 5.0 * 6.0;
                     int kGcd = -1;
                     double smallestSum = 0.0;
-                    double largestSum = 0.0;
+                    //double largestSum = 0.0;
                     for (k = start; k < end; ++k) {
                       int j = column[k];
                       double value = multiplier * rowElements[k];
@@ -5628,10 +5628,10 @@ CglPreProcess::modified(OsiSolverInterface *model,
                             smallestSum += value * columnLower[j];
                           else
                             smallestSum = -COIN_DBL_MAX;
-                          if (columnUpper[j] < -1.0e10)
-                            largestSum += value * columnUpper[j];
-                          else
-                            largestSum = COIN_DBL_MAX;
+                          //if (columnUpper[j] < -1.0e10)
+                          //  largestSum += value * columnUpper[j];
+                          //else
+                          //  largestSum = COIN_DBL_MAX;
                           value *= -scale;
                           if (fabs(value - floor(value + 0.5)) > 1.0e-12) {
                             possible = false;
