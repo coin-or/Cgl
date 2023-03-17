@@ -171,12 +171,12 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       }
       numberCopy=0;
       numberAdd=0;
-      const double * rowSolution = si.getRowActivity();
-      double offset=0.0;
+      //const double * rowSolution = si.getRowActivity();
+      //double offset=0.0;
       for (int iRow=numberOriginalRows;iRow<numberRows;iRow++) {
 	if (!copy[iRow-numberOriginalRows]) {
 	  double value = pi[iRow];
-	  offset += rowSolution[iRow]*value;
+	  //offset += rowSolution[iRow]*value;
 	  for (CoinBigIndex k=rowStart[iRow];
 	       k<rowStart[iRow]+rowLength[iRow];k++) {
 	    int iColumn=column[k];

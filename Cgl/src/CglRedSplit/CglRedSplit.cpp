@@ -325,12 +325,12 @@ void CglRedSplit::reduce_contNonBasicTab() {
     norm[i] = rs_dotProd(contNonBasicTab[i], contNonBasicTab[i], nTab);
   }
 
+#ifdef RS_TRACE
   double sum_norms = 0;
   for(i=0; i<mTab; i++) {
     sum_norms += norm[i];
   }
 
-#ifdef RS_TRACE
   printf("CglRedSplit::reduce_contNonBasicTab():Initial sum of  norms: %f\n", 
 	 sum_norms);
 #endif
@@ -394,12 +394,12 @@ void CglRedSplit::reduce_contNonBasicTab() {
   rs_printmatINT("pi_mat", pi_mat, mTab, mTab);
 #endif
 
+#ifdef RS_TRACE
   sum_norms = 0;
   for(i=0; i<mTab; i++) {
     sum_norms += norm[i];
   }
 
-#ifdef RS_TRACE
   printf("CglRedSplit::reduce_contNonBasicTab():Final sum of norms: %f\n", sum_norms);
 #endif
 
