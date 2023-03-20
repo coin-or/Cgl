@@ -1609,7 +1609,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       assert(numberProhibited_ == originalModel_->getNumCols());
     presolvedModel =
       pinfo->presolvedModel(*originalModel_, feasibilityTolerance, true,
-			    5, prohibited_, true, rowType_);
+			    5, prohibited_, true, rowType_,scBound);
     startModel_ = originalModel_;
     if (presolvedModel) {
       // update prohibited and rowType
@@ -2879,7 +2879,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     // Extend if you want other solvers to keep solution
     bool keepSolution = solverName == "clp";
     //double feasibilityTolerance = ((tuning & 1024) == 0) ? CGL_PREPROCESS_TOLERANCE : 1.0e-4;
-    presolvedModel = pinfo->presolvedModel(*oldModel, feasibilityTolerance, true, 5, prohibited_, keepSolution, rowType_);
+    presolvedModel = pinfo->presolvedModel(*oldModel, feasibilityTolerance, true, 5, prohibited_, keepSolution, rowType_,scBound);
     oldModel->messageHandler()->setLogLevel(saveLogLevel);
     if (presolvedModel) {
       //#define MAKE_LESS_THAN
@@ -3510,7 +3510,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       // Extend if you want other solvers to keep solution
       bool keepSolution = solverName == "clp";
       presolvedModel = pinfo->presolvedModel(*oldModel, feasibilityTolerance, true, 5,
-        prohibited_, keepSolution, rowType_);
+        prohibited_, keepSolution, rowType_,scBound);
       oldModel->messageHandler()->setLogLevel(saveLogLevel);
       if (!presolvedModel) {
         returnModel = NULL;
@@ -4322,7 +4322,9 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
 				   bool tightenRowBounds,
 				   double * scBound)
 {
-  // return 0;
+  // temporary
+  if (scBound)
+    return 0;
   // Get a row copy in standard format
   CoinPackedMatrix copy = *model.getMatrixByRow();
   // get matrix data pointers
@@ -5421,12 +5423,13 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
         const double *columnLower = modelM->getColLower();
         const double *columnUpper = modelM->getColUpper();
 	if (scBound) {
+	  // looks odd
 	  int numberColumns0 =
 	    CoinMax(originalModel_->getNumCols(),model_[0]->getNumCols());
 	  original = new int [numberColumns0];
 	  for (int i=0;i<numberColumns0;i++)
 	    original[i]=i;
-	  for (int jPass=0;jPass<iPass;jPass++) {
+	  for (int jPass=0;jPass<=iPass;jPass++) {
 	    OsiPresolve * pinfo = presolve_[jPass];
 	    const int *forward = pinfo->originalColumns();
 	    OsiSolverInterface * solver = model_[jPass];
@@ -5453,16 +5456,28 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
                 value, model->getColUpper()[iColumn]);
 #endif
             }
-          } else if (columnUpper[iColumn] == columnLower[iColumn]) {
+          } else if (columnUpper[iColumn] == columnLower[iColumn] && !scBound) {
             if (columnUpper2[iColumn] > columnLower2[iColumn] && !model->isInteger(iColumn)) {
               model->setColUpper(iColumn, columnLower[iColumn]);
               model->setColLower(iColumn, columnLower[iColumn]);
             }
 	  } else if (scBound) {
+            double value = solutionM[iColumn];
 	    int jColumn = original[iColumn];
-	    if (scBound[jColumn]!=-COIN_DBL_MAX) {
+	    if (scBound[jColumn]==-COIN_DBL_MAX) {
+	      if (columnUpper[iColumn] == columnLower[iColumn]) {
+		if (columnUpper2[iColumn] > columnLower2[iColumn] && !model->isInteger(iColumn)) {
+		  model->setColUpper(iColumn, columnLower[iColumn]);
+		  model->setColLower(iColumn, columnLower[iColumn]);
+		}
+	      }
+	    } else {
 	      double lower =scBound[jColumn];
-              model->setColLower(iColumn, lower);
+	      assert (value<1.0e-5||value>lower-1.0e-5);
+	      if (value<1.0e-5) 
+		model->setColUpper(iColumn,0.0);
+	      else
+		model->setColLower(iColumn, lower);
 	    }
           }
         }
@@ -5687,10 +5702,17 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
             }
 #endif
 	    if (scBound) {
+              double value = solutionM[iColumn];
 	      int jColumn = original[iColumn];
 	      if (scBound[jColumn]!=-COIN_DBL_MAX) {
 		double lower =scBound[jColumn];
-		modelM2->setColLower(iColumn, lower);
+		assert (value<1.0e-5||value>lower-1.0e-5);
+		if (value<1.0e-5) { 
+		  modelM2->setColUpper(jColumn,0.0);
+		} else {
+		  modelM2->setColLower(jColumn, lower);
+		  //modelM2->setColUpper(iColumn, value);
+		}
 	      }
 	    }
           }
@@ -7435,9 +7457,9 @@ CglPreProcess::modified(OsiSolverInterface *model,
                           else
                             smallestSum = -COIN_DBL_MAX;
                           //if (columnUpper[j] < -1.0e10)
-                          //  largestSum += value * columnUpper[j];
+			  //  largestSum += value * columnUpper[j];
                           //else
-                          //  largestSum = COIN_DBL_MAX;
+			  //  largestSum = COIN_DBL_MAX;
                           value *= -scale;
                           if (fabs(value - floor(value + 0.5)) > 1.0e-12) {
                             possible = false;
