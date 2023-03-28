@@ -29,6 +29,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{
 		..\..\.github\workflows\windows-ci.yml = ..\..\.github\workflows\windows-ci.yml
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{14BDCE3D-C9CE-4739-9A78-C3BE5FD99887}"
+	ProjectSection(SolutionItems) = preProject
+		CglTest.cmd = CglTest.cmd
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -90,7 +95,9 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{FCF90EF8-93AE-482A-9B55-018B8338B99D} = {14BDCE3D-C9CE-4739-9A78-C3BE5FD99887}
 		{FA2B8E71-DD6B-4A8D-8052-69AB758A1144} = {657AF492-1E1A-430A-96AF-93039CF6F2E5}
+		{14BDCE3D-C9CE-4739-9A78-C3BE5FD99887} = {657AF492-1E1A-430A-96AF-93039CF6F2E5}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E601D15F-D808-415A-BE0E-C62970CA4DBE}
