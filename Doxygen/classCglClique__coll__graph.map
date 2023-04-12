@@ -1,6 +1,0 @@
-<map id="CglClique" name="CglClique">
-<area shape="rect" id="node1" title=" " alt="" coords="47,184,125,211"/>
-<area shape="rect" id="node2" href="$classCglCutGenerator.html" title="Cut Generator Base Class." alt="" coords="5,95,124,121"/>
-<area shape="rect" id="node3" href="$structCglClique_1_1frac__graph.html" title="A graph corresponding to a fractional solution of an LP." alt="" coords="149,95,293,121"/>
-<area shape="rect" id="node4" href="$structCglClique_1_1fnode.html" title="A node of the fractional graph." alt="" coords="163,5,278,32"/>
-</map>

@@ -1,6 +1,0 @@
-<map id="CglGMI" name="CglGMI">
-<area shape="rect" id="node1" title="Gomory cut generator with several cleaning procedures, used to test the numerical safety of the resul..." alt="" coords="53,171,119,197"/>
-<area shape="rect" id="node2" href="$classCglCutGenerator.html" title="Cut Generator Base Class." alt="" coords="5,81,124,108"/>
-<area shape="rect" id="node3" href="$classCglGMIParam.html" title="Class collecting parameters for the GMI cut generator." alt="" coords="149,81,253,108"/>
-<area shape="rect" id="node4" href="$classCglParam.html" title="Class collecting parameters for all cut generators." alt="" coords="161,5,240,32"/>
-</map>
