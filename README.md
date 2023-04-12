@@ -5,7 +5,7 @@
 Projects such as this one are maintained by a small group of volunteers under
 the auspices of the non-profit [COIN-OR Foundation](https://www.coin-or.org)
 and we need your help! Please consider [sponsoring our
-activities](https://github.com/sponsors/coin-or).
+activities](https://github.com/sponsors/coin-or) or [volunteering](mailto:volunteer@coin-or.org) to help!
 
 [![Latest Release](https://img.shields.io/github/v/release/coin-or/Cgl?sort=semver)](https://github.com/coin-or/Cgl/releases)
 
@@ -174,7 +174,7 @@ OS by default).
 
 ## BUILDING from source
 
-These quick start instructions assumes you are in a bash shell. 
+These quick start instructions assume you are in a bash shell. 
 
 ### Using `coinbrew`
 
@@ -223,7 +223,7 @@ documentation [here](http://coin-or.github.io/Cgl/Doxygen).
  * [COIN-OR general discussion forum](https://github.com/orgs/coin-or/discussions)
  * [Cgl Discussion forum](https://github.com/coin-or/Cgl/discussions)
  * [Report a bug](https://github.com/coin-or/Cgl/issues/new)
- * [Doxygen-generated html documentation](http://coin-or.github.io/Cgl/Doxygen)
+ * [Doxygen generated documentation](http://coin-or.github.io/Cgl/Doxygen)
 
 ---------
 
