@@ -4490,8 +4490,8 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
         // Build in a margin of error
         maximumUp += 1.0e-8 * fabs(maximumUp);
         maximumDown -= 1.0e-8 * fabs(maximumDown);
-        double maxUp = maximumUp + infiniteUpper * 1.0e200;
-        double maxDown = maximumDown - infiniteLower * 1.0e200;
+        double maxUp = (!infiniteUpper) ? maximumUp : COIN_DBL_MAX;
+        double maxDown = (!infiniteLower) ? maximumDown : -COIN_DBL_MAX;
         if (maxUp <= rowUpper[iRow] + tolerance && maxDown >= rowLower[iRow] - tolerance) {
 
           // Row is redundant - make totally free
@@ -4698,7 +4698,7 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
 	    if (anyChange) {
 	      numberChanged++;
 	    } else if (columnLength[iColumn] == 1) {
-#ifdef CBC_PREPROCESS_EXPERIMENT
+#if 0 //def CBC_PREPROCESS_EXPERIMENT
 	      // may be able to do better
 	      // should be picked up elsewhere if no objective
 	      if (objective[iColumn]) {
