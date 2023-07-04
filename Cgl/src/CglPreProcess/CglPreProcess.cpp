@@ -265,8 +265,10 @@ static int makeIntegers2(OsiSolverInterface *model, int mode)
     bool allGood = true;
     double direction = model->getObjSense();
     int numberObj = 0;
+#if CBC_USEFUL_PRINTING > 1
     int numberEq = 0;
     int numberEqI = 0;
+#endif
     int numberZero = 0;
     int numberNonZero = 0;
     if (false) {
@@ -321,9 +323,9 @@ static int makeIntegers2(OsiSolverInterface *model, int mode)
             }
             bool singletonRow = true;
             bool equality = false;
-            int nC = 0;
             int xxxx = 0;
 #if CBC_USEFUL_PRINTING
+            int nC = 0;
             bool badCount = false;
 #endif
             for (CoinBigIndex j = start; j < end; j++) {
@@ -346,7 +348,9 @@ static int makeIntegers2(OsiSolverInterface *model, int mode)
                   else
                     xxxx = 15;
                 }
+#if CBC_USEFUL_PRINTING
                 nC++;
+#endif
               } else if (rowLower[iRow] == rowUpper[iRow]) {
                 equality = true;
               }
@@ -395,7 +399,9 @@ static int makeIntegers2(OsiSolverInterface *model, int mode)
               thisGood = false;
             // Can we make equality
             if (end == start + 1 && !equality && false) {
+#if CBC_USEFUL_PRINTING > 1
               numberEq++;
+#endif
               int iRow = row[start];
               if (element[start] > 0.0)
                 model->setRowUpper(iRow, rowLower[iRow]);
@@ -459,7 +465,9 @@ static int makeIntegers2(OsiSolverInterface *model, int mode)
             }
             // Can we make equality
             if (end == start + 1 && !equality && false) {
+#if CBC_USEFUL_PRINTING > 1
               numberEq++;
+#endif
               int iRow = row[start];
               if (element[start] < 0.0)
                 model->setRowUpper(iRow, rowLower[iRow]);
@@ -477,7 +485,9 @@ static int makeIntegers2(OsiSolverInterface *model, int mode)
                 || fabs(element[start]) != 1.0) {
                 // no good
               } else if (false) {
+#if CBC_USEFUL_PRINTING > 1
                 numberEqI++;
+#endif
                 if (element[start] * objValue > 0.0)
                   model->setRowUpper(iRow, rowLower[iRow]);
                 else
@@ -1705,7 +1715,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   // See if all + 1
   bool allPlusOnes = true;
   int nPossible = 0;
-  int numberMadeEquality = 0;
+  //int numberMadeEquality = 0;
   for (iRow = 0; iRow < numberRows; iRow++) {
     int numberP1 = 0, numberM1 = 0;
     int numberTotal = 0;
@@ -1825,7 +1835,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     if (possibleSlack && makeEquality == -2 && (!good || state <= 0)) {
       if (numberTotal < minimumLength)
         continue;
-      numberMadeEquality++;
+      //numberMadeEquality++;
       element[numberSlacks] = (upperValue < 1.0e10) ? 1.0 : -1.0;
       rows[numberSlacks++] = iRow + numberRows;
     }
@@ -1956,7 +1966,9 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   //const double * columnElements = matrixByColumn->getElements();
   double *obj = CoinCopyOfArray(startModel_->getObjCoefficients(), numberColumns);
   double offset;
+#if CBC_USEFUL_PRINTING > 1
   int numberMoved = 0;
+#endif
   startModel_->getDblParam(OsiObjOffset, offset);
   // This is not a vital loop so be careful
 #ifndef SKIP_MOVE_COSTS_TO_INTEGERS
@@ -2062,8 +2074,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
           move = smallestNeg;
         if (move) {
           // can move objective
-          numberMoved++;
 #if CBC_USEFUL_PRINTING > 1
+          numberMoved++;
           if (rhs)
             printf("ZZZ on col %d move %g offset %g\n",
               jColumn, move, move * rhs);
@@ -3432,7 +3444,7 @@ int CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model, double factor)
           CoinBigIndex rStart = rowStart[iRow];
           CoinBigIndex rEnd = rowStart[iRow] + rowLength[iRow];
           CoinBigIndex j;
-          int numberInteger = 0;
+          //int numberInteger = 0;
           //int whichInteger=-1;
           // Compute possible lower and upper ranges
           for (j = rStart; j < rEnd; ++j) {
@@ -3440,7 +3452,7 @@ int CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model, double factor)
             iColumn = column[j];
             if (newUpper[iColumn] > newLower[iColumn]) {
               if (model.isInteger(iColumn)) {
-                numberInteger++;
+                //numberInteger++;
                 //whichInteger=iColumn;
               }
               largest = CoinMax(largest, fabs(value));
@@ -4001,7 +4013,9 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
       //const double * columnUpper = model->getColUpper();
       const double *objective = model->getObjCoefficients();
       double direction = model->getObjSense();
+#ifndef NDEBUG
       int numberCheck = 0;
+#endif
       double tolerance;
       model->getDblParam(OsiPrimalTolerance, tolerance);
       tolerance *= 10.0;
@@ -4011,7 +4025,9 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
           double value2 = floor(value);
           // See if empty integer
           if (value != value2) {
+#ifndef NDEBUG
             numberCheck++;
+#endif
             int allowed = 0;
             // can we go up
             double movement = value2 + 1.0 - value;
@@ -4217,12 +4233,12 @@ CglPreProcess::modified(OsiSolverInterface *model,
   int numberRows = newModel->getNumRows();
   CglUniqueRowCuts twoCuts(numberRows);
   int numberColumns = newModel->getNumCols();
-  int number01Integers = 0;
-  int iColumn;
-  for (iColumn = 0; iColumn < numberColumns; iColumn++) {
-    if (newModel->isBinary(iColumn))
-      number01Integers++;
-  }
+  //int number01Integers = 0;
+  //int iColumn;
+  //for (iColumn = 0; iColumn < numberColumns; iColumn++) {
+  //  if (newModel->isBinary(iColumn))
+  //    number01Integers++;
+  //}
 #if CBC_USEFUL_PRINTING > 0
   printf("At beginning of modified %d rows and %d columns (pass %d - doing %d minor passes)\n",
     numberRows, numberColumns, iBigPass, numberPasses);
@@ -6677,19 +6693,23 @@ void CglPreProcess::update(const OsiPresolve *pinfo,
     const int *original = pinfo->originalColumns();
     int numberColumns = solver->getNumCols();
     // number prohibited must stay constant
-    int n = 0;
     int i;
+#ifndef NDEBUG
+    int n = 0;
     for (i = 0; i < numberProhibited_; i++) {
       if (prohibited_[i])
         n++;
     }
     int n2 = 0;
+#endif
     for (i = 0; i < numberColumns; i++) {
       int iColumn = original[i];
       assert(i == 0 || iColumn > original[i - 1]);
       char p = prohibited_[iColumn];
+#ifndef NDEBUG
       if (p)
         n2++;
+#endif
       prohibited_[i] = p;
     }
     assert(n == n2);
@@ -6870,7 +6890,7 @@ void CglPreProcess::passInRowTypes(const char *rowTypes, int numberRows)
 void CglPreProcess::makeInteger()
 {
   // First check if we need to
-  int numberInteger = 0;
+  //int numberInteger = 0;
   {
     const double *lower = startModel_->getColLower();
     const double *upper = startModel_->getColUpper();
@@ -6880,7 +6900,7 @@ void CglPreProcess::makeInteger()
     for (iColumn = 0; iColumn < numberColumns; iColumn++) {
       if (upper[iColumn] > lower[iColumn] + 1.0e-8) {
         if (startModel_->isInteger(iColumn))
-          numberInteger++;
+          ;//numberInteger++;
         else
           numberContinuous++;
       }
@@ -7389,7 +7409,7 @@ CglBK::CglBK(const OsiSolverInterface &model, const char *rowType,
   }
   CoinSort_2(sort, sort + nSort, which);
   double value = sort[0];
-  int nDominated = 0;
+  //int nDominated = 0;
   for (int i = 1; i < nSort; i++) {
     if (sort[i] == value) {
       int i1 = which[i - 1];
@@ -7413,7 +7433,7 @@ CglBK::CglBK(const OsiSolverInterface &model, const char *rowType,
         int iColumn22 = column[last2];
         if (iColumn11 == iColumn21 && iColumn12 == iColumn22 && elementByRow[first1] == elementByRow[first2] && elementByRow[last1] == elementByRow[last2]) {
           dominated_[i2] = 1;
-          nDominated++;
+          //nDominated++;
         }
       }
     }

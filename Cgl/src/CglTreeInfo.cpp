@@ -566,7 +566,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface &si, int createSolver,
 #if 1
     for (iRow = 0; iRow < numberRows; iRow++) {
       int numberP1 = 0, numberM1 = 0;
-      int numberTotal = 0;
+      //int numberTotal = 0;
       CoinBigIndex j;
       double upperValue = rowUpper[iRow];
       double lowerValue = rowLower[iRow];
@@ -584,7 +584,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface &si, int createSolver,
           break;
         } else {
           iColumn = backward_[iColumn];
-          numberTotal++;
+          //numberTotal++;
         }
         if (fabs(value) != 1.0) {
           good = false;
