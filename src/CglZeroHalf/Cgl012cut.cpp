@@ -769,7 +769,7 @@ void free_sep_graph(separation_graph *s_graph)
      
 auxiliary_graph *define_aux_graph(separation_graph *s_graph /* input separation graph */)
 {
-  int j, k, indjk, auxj1, auxj2, auxk1, auxk2, noutj, totoutj, narcs;
+  int j, k, indjk, auxj1, auxj2, auxk1, auxk2, /*noutj,*/ totoutj, narcs;
   edge *s_edge;
   auxiliary_graph *a_graph;
 
@@ -813,7 +813,7 @@ auxiliary_graph *define_aux_graph(separation_graph *s_graph /* input separation 
     a_graph->nodes[auxj2].firstArc = &(a_graph->arcs[narcs+totoutj]);
 #endif
     /* add the edges as arcs outgoing from j to the auxiliary graph */
-    noutj = 0;
+    //noutj = 0;
     for ( k = 0; k < s_graph->nnodes; k++ ) {
       if ( k != j ) {
 	auxk1 = AG_TWIN1(k); auxk2 = AG_TWIN2(k);
@@ -832,7 +832,7 @@ auxiliary_graph *define_aux_graph(separation_graph *s_graph /* input separation 
 	  a_graph->arcs[narcs].to = auxk1;
 	  a_graph->arcs[narcs+totoutj].to = auxk2;
 #endif
-	  narcs++; noutj++; 
+	  narcs++; //noutj++;
 	}
 	s_edge = s_graph->odd_adj_list[indjk];
 	if ( s_edge != NULL ) {
@@ -854,7 +854,7 @@ auxiliary_graph *define_aux_graph(separation_graph *s_graph /* input separation 
 	    a_graph->nodes[auxj2].first = &(a_graph->arcs[narcs+totoutj]);
 	  } 
 	  ... */
-	  narcs++; noutj++; 
+	  narcs++; //noutj++;
 	}
       }
     }
