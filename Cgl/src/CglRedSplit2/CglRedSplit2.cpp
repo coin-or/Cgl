@@ -1476,7 +1476,7 @@ void CglRedSplit2::unflip(double *row, double *tabrowrhs) {
 /************************************************************************/
 int CglRedSplit2::check_dynamism(double *row) {
 
-  int i, nelem = 0;
+  int i;
   double val, max_val = 0, min_val = param.getINFINIT();
 
   for(i=0; i<ncol; i++) {
@@ -1484,7 +1484,6 @@ int CglRedSplit2::check_dynamism(double *row) {
     max_val = CoinMax(max_val, val);
     if(val > param.getEPS_COEFF()) {
       min_val = CoinMin(min_val, val);
-      nelem++;
     }
   }
 
