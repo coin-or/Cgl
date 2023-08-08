@@ -24,7 +24,9 @@
 #include "CoinBuild.hpp"
 #include "CoinHelperFunctions.hpp"
 #include "CoinWarmStartBasis.hpp"
+#ifdef CBC_HAS_CLP
 #include "OsiClpSolverInterface.hpp"
+#endif
 #include "CglProbing.hpp"
 #include "CglDuplicateRow.hpp"
 #include "CglClique.hpp"
@@ -3598,6 +3600,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	int change = tightenPrimalBounds(*newModel,true,scBound);
 	if (change > 0)
 	  numberChanges += change;
+#ifdef CBC_HAS_CLP
 	OsiClpSolverInterface * clpSolver = dynamic_cast<OsiClpSolverInterface *>(newModel);
 	if (clpSolver) {
 	  change = clpSolver->tightenBounds();
@@ -3606,6 +3609,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	    //printf("Clp tightenBounds tightened %d\n",change);
 	  }
 	}
+#endif
       }
  #if DEBUG_PREPROCESS > 1
        if (debugger)

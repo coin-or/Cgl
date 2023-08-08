@@ -28,7 +28,9 @@
 #endif
 #include "CoinRational.hpp"
 #endif
+#ifdef CBC_HAS_CLP
 #define CGL_HAS_CLP_GOMORY
+#endif
 #ifdef CGL_HAS_CLP_GOMORY
 #include "OsiClpSolverInterface.hpp"
 #endif
@@ -336,6 +338,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	cs.rowCutPtr(i)->setGloballyValid();
     }
   }
+#ifdef CGL_HAS_CLP_GOMORY
   if ((gomoryType_%10)==2) {
     // back to original
     assert(clpSolver);
@@ -349,6 +352,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       delete [] delRow;
     }
   }
+#endif
 }
 
 // Returns value - floor but allowing for small errors
