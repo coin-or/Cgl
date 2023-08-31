@@ -198,13 +198,19 @@ void CglStored::addCut(const OsiCuts &cs)
 {
   int numberRowCuts = cs.sizeRowCuts();
   for (int i = 0; i < numberRowCuts; i++) {
+    int numberCuts = cuts_.sizeRowCuts();
     cuts_.insert(*cs.rowCutPtr(i));
+    // Keep when diving
+    cuts_.rowCutPtr(numberCuts)->setEffectiveness(COIN_DBL_MAX);
   }
 }
 // Add a row cut
 void CglStored::addCut(const OsiRowCut &cut)
 {
+  int numberCuts = cuts_.sizeRowCuts();
   cuts_.insert(cut);
+  // Keep when diving
+  cuts_.rowCutPtr(numberCuts)->setEffectiveness(COIN_DBL_MAX);
 }
 // Add a row cut from a packed vector
 void CglStored::addCut(double lb, double ub, const CoinPackedVector &vector)
@@ -214,7 +220,10 @@ void CglStored::addCut(double lb, double ub, const CoinPackedVector &vector)
   rc.mutableRow().setTestForDuplicateIndex(false);
   rc.setLb(lb);
   rc.setUb(ub);
+  int numberCuts = cuts_.sizeRowCuts();
   cuts_.insert(rc);
+  // Keep when diving
+  cuts_.rowCutPtr(numberCuts)->setEffectiveness(COIN_DBL_MAX);
 }
 // Add a row cut from elements
 void CglStored::addCut(double lb, double ub, int size, const int *colIndices, const double *elements)
@@ -223,7 +232,10 @@ void CglStored::addCut(double lb, double ub, int size, const int *colIndices, co
   rc.setRow(size, colIndices, elements, false);
   rc.setLb(lb);
   rc.setUb(ub);
+  int numberCuts = cuts_.sizeRowCuts();
   cuts_.insert(rc);
+  // Keep when diving
+  cuts_.rowCutPtr(numberCuts)->setEffectiveness(COIN_DBL_MAX);
 }
 
 //-------------------------------------------------------------------
