@@ -5718,9 +5718,9 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
 #endif
 	    if (scBound) {
               double value = solutionM[iColumn];
-	      int jColumn = original[iColumn];
-	      if (scBound[jColumn]!=-COIN_DBL_MAX) {
-		double lower =scBound[jColumn];
+	      int jColumn2 = original[iColumn];
+	      if (scBound[jColumn2]!=-COIN_DBL_MAX) {
+		double lower =scBound[jColumn2];
 		assert (value<1.0e-5||value>lower-1.0e-5);
 		if (value<1.0e-5) { 
 		  modelM2->setColUpper(jColumn,0.0);
