@@ -1618,6 +1618,11 @@ DGG_generateCutsFromBase( DGG_constraint_t *orig_base,
   if (orig_base->sense == 'L') return 0;
   if (orig_base->nz == 0) return 0;
 
+#define CGL_TWOMIR_LARGE_RHS 1.0e10
+#ifdef CGL_TWOMIR_LARGE_RHS 
+  if (fabs(orig_base->rhs) > CGL_TWOMIR_LARGE_RHS )
+    return 0;
+#endif
   rval = DGG_transformConstraint(data, &x, &rc, &isint, orig_base);
   double frac = frac_part(orig_base->rhs);
   //printf ("frac = %.7f, r %.7f, fr %.7f\n", frac, orig_base->rhs, floor(orig_base->rhs));
