@@ -1,0 +1,6 @@
+<map id="CglRedSplit" name="CglRedSplit">
+<area shape="rect" id="node1" title="Gomory Reduce&#45;and&#45;Split Cut Generator Class; See method generateCuts()." alt="" coords="41,171,131,197"/>
+<area shape="rect" id="node2" href="$classCglCutGenerator.html" title="Cut Generator Base Class." alt="" coords="5,81,124,108"/>
+<area shape="rect" id="node3" href="$classCglRedSplitParam.html" title="Class collecting parameters the Reduced&#45;and&#45;split cut generator." alt="" coords="149,81,277,108"/>
+<area shape="rect" id="node4" href="$classCglParam.html" title="Class collecting parameters for all cut generators." alt="" coords="173,5,252,32"/>
+</map>
