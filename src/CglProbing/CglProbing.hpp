@@ -215,6 +215,12 @@ public:
   /// Which ones looked at this time
   inline const int * lookedAt() const
   { return lookedAt_;}
+  /// Modified upper bounds (if set)
+  inline const double *colUpper() const
+  { return colUpper_;}
+  /// Modified lower bounds (if set)
+  inline const double *colLower() const
+  { return colLower_;}
   //@}
 
   /**@name Stop or restart row cuts (otherwise just fixing from probing) */
@@ -301,6 +307,15 @@ private:
   //@{
   /// Does probing and adding cuts (without cliques and mode_!=0)
   int probe( const OsiSolverInterface & si, 
+	     const OsiRowCutDebugger * debugger, 
+	     OsiCuts & cs, 
+	     double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,
+	     CoinPackedMatrix *columnCopy,const CoinBigIndex * rowStartPos,
+	     const int * realRow, const double * rowLower, const double * rowUpper,
+	     const char * intVar, double * minR, double * maxR, int * markR, 
+	     CglTreeInfo * info);
+  /// Does probing and adding cuts (without cliques and mode_!=0)
+  int probeFast( const OsiSolverInterface & si, 
 	     const OsiRowCutDebugger * debugger, 
 	     OsiCuts & cs, 
 	     double * colLower, double * colUpper, CoinPackedMatrix *rowCopy,

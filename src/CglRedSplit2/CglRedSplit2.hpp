@@ -309,7 +309,7 @@ private:
   // strategy in practice. Corresponds to BRS3 in the paper.
   int sort_rows_by_cosine(struct sortElement* array, int rowIndex, 
 			  int maxRows, int whichTab) const;
-
+#ifdef CHECK_SPLIT_TIME // incredibly expensive!
   // Did we hit the time limit?
   inline bool checkTime() const{
     if ((CoinCpuTime() - startTime) < param.getTimeLimit()){
@@ -317,6 +317,11 @@ private:
     }
     return false;
   }
+#else
+  inline bool checkTime() const{
+    return true;
+  }
+#endif
 
   //@}
 

@@ -17,7 +17,7 @@
 #include "CoinSort.hpp"
 #include "CoinPackedMatrix.hpp"
 #include "OsiRowCutDebugger.hpp"
-#define GUBCOVER 1
+//#define GUBCOVER 1
 //#define PRINT_DEBUG
 //#define CGL_DEBUG 1
 //-----------------------------------------------------------------------------
@@ -70,7 +70,6 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
   // For each row point to vub variable
   // -1 if no vub
   // -2 if can skip row for knapsacks
-
   int * vub = new int [nRows];
 
   // Now vubValue are for positive coefficients and vlbValue for negative
@@ -3905,7 +3904,7 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
       }
     }
     int iUpper = upperValue > INT_MAX ? INT_MAX : static_cast<int> (floor(upperValue+1.0e-5));
-    int iLower = lowerValue < INT_MIN ? INT_MIN : static_cast<int> (ceil(lowerValue-1.0e-5));
+    int iLower = lowerValue < -INT_MIN ? -INT_MIN : static_cast<int> (ceil(lowerValue-1.0e-5));
     int state=0;
     if (upperValue<1.0e6) {
       if (iUpper==1-numberM1)

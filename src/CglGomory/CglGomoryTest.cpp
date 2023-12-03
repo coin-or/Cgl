@@ -16,7 +16,50 @@
 #include "CoinWarmStartBasis.hpp"
 #include "CglGomory.hpp"
 
-
+void convertColumnCuts(OsiCuts & osicuts)
+{
+  int nColCuts = osicuts.sizeColCuts();
+  if (nColCuts) {
+    std::cout<<"There are "<<nColCuts<<" gomory column cuts! - converting"
+	     <<std::endl;
+    // convert to row cut
+    for (int i=0;i<nColCuts;i++) {
+      const OsiColCut * cut = osicuts.colCutPtr(i);
+      const CoinPackedVector lbs = cut->lbs();
+      const CoinPackedVector ubs = cut->ubs();
+      int ncols;
+      const int * cols;
+      const double * values;
+      double one = -1.0;
+      ncols = lbs.getNumElements();
+      cols = lbs.getIndices();
+      values = lbs.getElements();
+      for (int j=0;j<ncols;j++) {
+	int jColumn = cols[j];
+	double value = values[j];
+	// convert to <=
+	OsiRowCut rc;
+	rc.setRow(1,&jColumn,&one,false);
+	rc.setLb(-COIN_DBL_MAX);
+	rc.setUb(-value);
+	osicuts.insertIfNotDuplicate(rc);
+      }
+      one = 1.0;
+      ncols = ubs.getNumElements();
+      cols = ubs.getIndices();
+      values = ubs.getElements();
+      for (int j=0;j<ncols;j++) {
+	int jColumn = cols[j];
+	double value = values[j];
+	OsiRowCut rc;
+	rc.setRow(1,&jColumn,&one,false);
+	rc.setLb(-COIN_DBL_MAX);
+	rc.setUb(value);
+	osicuts.insertIfNotDuplicate(rc);
+      }
+    }
+  } 
+}
 //--------------------------------------------------------------------------
 // ** At present this does not use any solver
 void
@@ -531,6 +574,8 @@ CglGomoryUnitTest(
 		       /* objective,*/ colsol1,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
+    // new version may create a column cut if just one element
+    convertColumnCuts(osicuts);
     nRowCuts = osicuts.sizeRowCuts();
     std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==1);
@@ -742,6 +787,7 @@ CglGomoryUnitTest(
 		 /*objective,*/ colsol1,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
+    convertColumnCuts(osicuts);
     nRowCuts = osicuts.sizeRowCuts();
     std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==1);
@@ -1234,6 +1280,7 @@ CglGomoryUnitTest(
 		 /*objective,*/ colsol1,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
+    convertColumnCuts(osicuts);
     nRowCuts = osicuts.sizeRowCuts();
     std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==1);
@@ -1367,6 +1414,7 @@ CglGomoryUnitTest(
 		       /*objective,*/ colsol1,
 		 colLower, colUpper,
 		 rowLower, rowUpper, intVar, &warm);
+    convertColumnCuts(osicuts);
     nRowCuts = osicuts.sizeRowCuts();
     std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==1);

@@ -288,7 +288,6 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   DGG_list_init (&cut_list);
 
   DGG_data_t* data = DGG_getData(reinterpret_cast<const void *> (useSolver));
-
   // Note that the lhs variables are hash defines to data->cparams.*
   q_max = q_max_;
   q_min = q_min_;
@@ -404,10 +403,59 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	  }
 	}
 	if (largest<1.0e8*smallest&&goodCut) {
-	  rowcut.setRow(number, cutIndex, packed);
-	  rowcut.setUb(si.getInfinity());
-	  rowcut.setLb(rhs);
-	  cs.insertIfNotDuplicate(rowcut);
+	  if (number > 1) {
+	    rowcut.setRow(number, cutIndex, packed);
+	    rowcut.setUb(si.getInfinity());
+	    rowcut.setLb(rhs);
+	    cs.insertIfNotDuplicate(rowcut);
+	  } else {
+	    // singleton row cut!
+	    double lb = rhs;
+	    double ub = COIN_DBL_MAX;
+	    double value = packed[0];
+	    int iColumn = cutIndex[0];
+	    double lbCol = colLower[iColumn];
+	    double ubCol = colUpper[iColumn];
+	    bool isInteger =  si.isInteger(iColumn);
+	    // turn lb,ub into new bounds on column
+	    if (value>0) {
+	      lb = lb/value;
+	      if (isInteger)
+		lb = ceil(lb-1.0e-4);
+	      ub = ubCol;
+	    } else {
+	      ub = lb/value;
+	      if (isInteger)
+		ub = floor(ub+1.0e-4);
+	      lb = lbCol;
+	    }
+	    if (lb>ub+1.0e-4) {
+	      // infeasible
+	      //printf("CUTinf\n");
+	      OsiRowCut rc;
+	      rc.setRow(0,cutIndex,packed,false);
+	      rc.setLb(1.0);
+	      rc.setUb(0.0);
+	      cs.insertIfNotDuplicate(rc);
+	    } else if (lb>lbCol || ub<ubCol) {
+	      if (!isInteger) {
+		// think
+		//printf("CUTnotint\n");
+	      } else {
+		OsiColCut cc;
+		if (lb>lbCol)
+		  cc.setLbs(1,&iColumn,&lb);
+		if (ub<ubCol)
+		  cc.setUbs(1,&iColumn,&ub);
+		cs.insert(cc);
+		//printf("CUT %g<=%g -> %g<= %g\n",
+		//	   colLower[iColumn],colUpper[iColumn],
+		//  lb,ub);
+	      }
+	    } else {
+	    //printf("CUT whynone\n");
+	    }
+	  }
 	}
 #else
 	rowcut.setRow(cut->nz, cut->index, cut->coeff);
@@ -619,6 +667,19 @@ int DGG_freeData( DGG_data_t *data )
   free(data->ub);
   free(data->x);
   free(data->rc);
+#ifdef TWOMIR_LESS_MALLOC
+  free(data->xtemp_);
+  free(data->rctemp_);
+  free(data->skalatemp_);
+  DGG_freeConstraint(data->constrainttemp0_);
+  DGG_freeConstraint(data->constrainttemp1_);
+  free(data->pitemp_);
+  free(data->rowIsBasictemp_);
+  // is row+nrowfree(data->colIsBasictemp_);
+  delete data->vector0_;
+  delete data->vector1_;
+  //free (data->spareArray0_);
+#endif
 
   free(data);
   return 0;
@@ -660,18 +721,34 @@ DGG_data_t* DGG_getData(const void *osi_ptr )
   /* set number of columns and number of rows */
   data->ncol = si->getNumCols();
   data->nrow = si->getNumRows();
-
+  int total = data->ncol+data->nrow;
   /* set ninteger */
   data->ninteger = 0;
 
   /* allocate memory for the arrays in 'data' */
-  data->info = reinterpret_cast<int*> (malloc( sizeof(int)*(data->ncol+data->nrow)) );
-  data->lb = reinterpret_cast<double*> (malloc( sizeof(double)*(data->ncol+data->nrow)) );
-  data->ub = reinterpret_cast<double*> (malloc( sizeof(double)*(data->ncol+data->nrow)) );
-  data->x  = reinterpret_cast<double*> (malloc( sizeof(double)*(data->ncol+data->nrow)) );
-  data->rc = reinterpret_cast<double*> (malloc( sizeof(double)*(data->ncol+data->nrow)) );
+  data->info = reinterpret_cast<int*> (malloc( sizeof(int)*total) );
+  data->lb = reinterpret_cast<double*> (malloc( sizeof(double)*total) );
+  data->ub = reinterpret_cast<double*> (malloc( sizeof(double)*total) );
+  data->x  = reinterpret_cast<double*> (malloc( sizeof(double)*total) );
+  data->rc = reinterpret_cast<double*> (malloc( sizeof(double)*total) );
+#ifdef TWOMIR_LESS_MALLOC
+  // get space for scaling etc
+  data->xtemp_ = reinterpret_cast<double*> (malloc( sizeof(double)*total));
+  data->rctemp_ = reinterpret_cast<double*> (malloc( sizeof(double)*total));
+  data->pitemp_ = reinterpret_cast<char*>   (malloc( sizeof(char)*total));
+  data->skalatemp_ = reinterpret_cast<int*>   (malloc( sizeof(int)*total));
+  // need to work on this one i.e. copy
+  data->rowIsBasictemp_ = reinterpret_cast<int*>   (malloc( sizeof(int)*total));
+  data->colIsBasictemp_ = data->rowIsBasictemp_+data->nrow; 
+  data->constrainttemp0_ = DGG_newConstraint(total);
+  data->constrainttemp1_ = DGG_newConstraint(total);
+  data->vector0_ = new CoinIndexedVector(data->nrow);
+  data->vector1_ = new CoinIndexedVector(data->nrow);
+  //data->spareArray0_ = reinterpret_cast<double*> (malloc( sizeof(double)*total));
+  //memset(data->spareArray0_,0,sizeof(double)*total);
+#endif
 
-  memset(data->info, 0, sizeof(int)*(data->ncol+data->nrow));
+  memset(data->info, 0, sizeof(int)*total);
 
   /* set parameters for column variables */
   data->nbasic_col = 0;
@@ -859,7 +936,11 @@ DGG_getSlackExpression(const void *osi_ptr, DGG_data_t* data, int row_index)
   const double *rowUpper;
   const double *rowLower;
     
+#ifndef TWOMIR_LESS_MALLOC
   row = DGG_newConstraint(data->ncol);
+#else
+  row = DGG_newConstraint(data,1);
+#endif
 
   rowBeg = rowMatrixPtr->getVectorStarts();
   rowCnt = rowMatrixPtr->getVectorLengths();
@@ -927,109 +1008,92 @@ DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
   const double *rowLower = si->getRowLower();
 
   /* allocate memory for constraint in non-sparse form */
-  int nz = 0;
   double *value = NULL, rhs = 0.0;
+#ifndef TWOMIR_LESS_MALLOC
   value = reinterpret_cast<double*>(malloc(sizeof(double)*(data->nrow+data->ncol)));
   memset(value, 0, sizeof(double)*(data->nrow+data->ncol));
+#endif
 
 
   /* obtain the tableau row coefficients for all variables */
-  /* note: we could speed this up by only computing non-basic variables */
+  int nz = 0;
+  int nz1;
   {
     int i, j, cnt = 0;
     double one = 1.0;
-    CoinIndexedVector work;
-    CoinIndexedVector array;
+    CoinIndexedVector *work = data->vector0_;
+    CoinIndexedVector *array = data->vector1_;
 
-    work.reserve(data->nrow);
-    array.reserve(data->nrow);
-
-    array.setVector(1,&colIsBasic[index],&one);
+    array->setVector(1,&colIsBasic[index],&one);
  
-    factorization.updateColumnTranspose ( &work, &array );
+    factorization.updateColumnTranspose ( work, array );
 
-    int * arrayRows = array.getIndices();
-    double *arrayElements = array.denseVector();
-    cnt = array.getNumElements();
-
+    int * arrayRows = array->getIndices();
+    double *arrayElements = array->denseVector();
+    cnt = array->getNumElements();
+    double * coeff = tabrow->coeff;
+    int * indices = tabrow->index;
+    // pivot
+    //coeff[0] = 1.0;
+    //indices[0] = index;
+    int ncol = data->ncol;
     /* compute column (structural) variable coefficients */
-    for(j = 0; j < data->ncol; j++) {
-      value[j] = 0.0;
-      for(CoinBigIndex i=colBeg[j]; i < colBeg[j]+colCnt[j]; i++)
-        value[j] += colMat[i]*arrayElements[ colInd[i] ];
+    for(j = 0; j < ncol; j++) {
+      if ( !DGG_isBasic(data, j) || j==index) {
+	double value = 0.0;
+	for(CoinBigIndex i=colBeg[j]; i < colBeg[j]+colCnt[j]; i++)
+	  value += colMat[i]*arrayElements[ colInd[i] ];
+	if ( fabs(value) > DGG_MIN_TABLEAU_COEFFICIENT ) {
+	  coeff[nz] = value;
+	  indices[nz] = j;
+	  nz++;
+	}
+      }
     }
-
-#if DGG_DEBUG_SOLVER
-    /* check pivot */ 
-    if ( fabs(value[index] - 1.0) > DGG_INTEGRALITY_THRESH )
-       DGG_THROW(1, "pivot is not one"); 
-#endif
-
     /* compute row variable (slack/logical) variable coefficients */
-
-    for(j = 0; j < cnt; j++){
-      if ( DGG_isEqualityConstraint(data,data->ncol + arrayRows[j]) && !mode )
-        value[ data->ncol + arrayRows[j] ] = 0.0;
-      else if ( DGG_isConstraintBoundedAbove(data, data->ncol + arrayRows[j]) )
-        value[ data->ncol + arrayRows[j] ] = arrayElements[ arrayRows[j] ];
-      else
-        value[ data->ncol + arrayRows[j] ] = -1*arrayElements[ arrayRows[j] ];
-    }
-
-    /* compute rhs */
+    /* and compute rhs */
     rhs = 0.0;
-    for(i=0; i < cnt; i++){
-      if ( DGG_isConstraintBoundedAbove(data,data->ncol + arrayRows[i]) )
-        rhs += arrayElements[arrayRows[i]]*rowUpper[arrayRows[i]];
+    nz1 = nz;
+    for(j = 0; j < cnt; j++){
+      int iRow = arrayRows[j];
+      int iSeq = ncol+iRow;
+      double value = arrayElements[iRow];
+      arrayElements[iRow] = 0.0;
+      if ( DGG_isEqualityConstraint(data,iSeq) && !mode ) {
+        //value[ iSeq ] = 0.0;
+      } else if ( DGG_isConstraintBoundedAbove(data, iSeq) ) {
+        //value[ iSeq ] = arrayElements[ iRow ];
+	coeff[nz] = value;
+	indices[nz++] = iSeq;
+      } else {
+        //value[ iSeq ] = -1*arrayElements[ iRow ];
+	coeff[nz] = -value;
+	indices[nz++] = iSeq;
+      }
+      if ( DGG_isConstraintBoundedAbove(data,iSeq) )
+        rhs += value*rowUpper[iRow];
       else
-        rhs += arrayElements[arrayRows[i]]*rowLower[arrayRows[i]];
+        rhs += value*rowLower[iRow];
     }
-
-   /* free 'work' and 'array' ?? do the empty functions do it?? they are not 
-      cleared in CglGomory. Is that due to a mistake? Is it done on purpose? */ 
-   /*
-   work.empty();
-   array.empty();
-   */
+    // say array clear
+    array->setNumElements(0);
   }
 
-  /* count non-zeroes */
-  nz = 0; 
-  int j;
-  for( j=0; j<data->ncol+data->nrow; j++){
-    if ( fabs(value[j]) > DGG_MIN_TABLEAU_COEFFICIENT )
-      nz += 1;
-  }
 
-  /* put in sparse constraint format */
-  /* technical issue: should we let max_nz == nz or should we instead 
-     set max_nz == (nrow+ncol). The advantage of the latter approach
-     is that later, when we substitute the slacks, the denser column 
-     will not require us to re-allocate memory */
-
-  tabrow->max_nz = nz;
-
-  if (tabrow->coeff)
-    free(tabrow->coeff);
-  if (tabrow->index)
-    free(tabrow->index);
-  
-  tabrow->coeff = reinterpret_cast<double*> (malloc(sizeof(double)*nz));
-  tabrow->index = reinterpret_cast<int*> (malloc(sizeof(int)*nz));
- 
-  tabrow->nz = 0;
-  for( j = 0; j < data->ncol + data->nrow; j++)
-    if ( fabs(value[j]) > DGG_MIN_TABLEAU_COEFFICIENT ){
-      tabrow->coeff[tabrow->nz] = value[j];
-      tabrow->index[tabrow->nz] = j;
-      tabrow->nz += 1;    
-    }
-
+  tabrow->nz = nz;
+  CoinSort_2(tabrow->index+nz1,tabrow->index+nz,tabrow->coeff+nz1);
+#if 0
+  printf("NN index %d nz %d rhs %g\n",index,nz,rhs);
+  for (int i=0;i<nz;i++)
+    printf("%d %g\n",tabrow->index[i],tabrow->coeff[i]);
+#endif
   tabrow->sense = 'E';
   tabrow->rhs = rhs;
 
+#ifndef TWOMIR_LESS_MALLOC
   /* CLEANUP */
   free(value);
+#endif
 
   return 0;
 }
@@ -1141,7 +1205,35 @@ DGG_constraint_t *DGG_copyConstraint(DGG_constraint_t* c)
 
   return nc;
 }
+#ifdef TWOMIR_LESS_MALLOC
+DGG_constraint_t* DGG_newConstraint(DGG_data_t *data, int which) 
+{
+  DGG_constraint_t *c = which ? data->constrainttemp1_ : data->constrainttemp0_;
+  c->nz = 0;
+  // c->max_nz = max_arrays;
+  c->rhs = 0.0;
+  c->sense = '?';
 
+  return c;
+}
+
+DGG_constraint_t *DGG_copyConstraint(DGG_constraint_t* c,
+				     DGG_data_t *data, int which)
+{
+
+  if (!c)
+    return NULL; 
+  DGG_constraint_t *nc = which ? data->constrainttemp1_ : data->constrainttemp0_;
+  nc->nz = c->nz;
+  nc->rhs = c->rhs;
+  nc->sense = c->sense;
+
+  memcpy(nc->coeff, c->coeff, sizeof(double)*nc->nz);
+  memcpy(nc->index, c->index, sizeof(int)*nc->nz);
+
+  return nc;
+}
+#endif
 void DGG_scaleConstraint(DGG_constraint_t *c, int t)
 {
   int i;
@@ -1215,9 +1307,15 @@ int DGG_transformConstraint( DGG_data_t *data,
                              DGG_constraint_t *constraint )
 {
   double half;
+#ifndef TWOMIR_LESS_MALLOC
   double *px = reinterpret_cast<double*> (malloc( sizeof(double)*constraint->max_nz ));
   double *rc = reinterpret_cast<double*> (malloc( sizeof(double)*constraint->max_nz ));
   char   *pi = reinterpret_cast<char*>   (malloc( sizeof(char)  *constraint->max_nz ));
+#else
+  double *px = data->xtemp_;
+  double *rc = data->rctemp_;
+  char   *pi = data->pitemp_;
+#endif
 
   {
     int i, idx;
@@ -1305,7 +1403,9 @@ DGG_substituteSlacks( const void *solver_ptr,
       for(j=0; j < row->nz; j++)
 	lcut[ row->index[j] ] += row->coeff[j]*cut->coeff[i];
       lrhs -= row->rhs*cut->coeff[i];
+#ifndef TWOMIR_LESS_MALLOC
       DGG_freeConstraint(row);
+#endif
     }
   }
 
@@ -1424,8 +1524,13 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
   if(talk) printf ("2mir_test: generating tab row cuts\n");
   /* allocate memory for basic column/row indicators */
   int *rowIsBasic = 0, *colIsBasic = 0;
+#ifndef TWOMIR_LESS_MALLOC
   rowIsBasic = reinterpret_cast<int*>(malloc(sizeof(int)*data->nrow));
   colIsBasic = reinterpret_cast<int*>(malloc(sizeof(int)*data->ncol));
+#else
+  rowIsBasic = data->rowIsBasictemp_;
+  colIsBasic = data->colIsBasictemp_;
+#endif
     
   /* initialize the IsBasic arrays with -1 / 1 values indicating 
      where the basic rows and columns are. NOTE: WE could do this 
@@ -1471,8 +1576,10 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
     DGG_CHECKRVAL(rval, rval);
   }
 
-  free(rowIsBasic);
+#ifndef TWOMIR_LESS_MALLOC
+   free(rowIsBasic);
   free(colIsBasic);
+#endif
 
   if(talk)
     printf ("2mir_test: generated %d tab cuts\n", cut_list->n - nc);
@@ -1533,7 +1640,11 @@ int DGG_generateFormulationCutsFromBase( DGG_constraint_t *base,
   int int_skala;
   double skala;
   int num_inlist = 0;
+#ifndef TWOMIR_LESS_MALLOC
   int* skala_list = reinterpret_cast<int*> (malloc( sizeof(int)*base->nz ));
+#else
+  int* skala_list = data->skalatemp_;
+#endif
   char *isint = NULL;
   double *xout = NULL, *rcout = NULL;
   DGG_constraint_t *scaled_base = NULL;
@@ -1557,7 +1668,13 @@ int DGG_generateFormulationCutsFromBase( DGG_constraint_t *base,
       // check if slack is too large
       if (fabs(slack/skala) > 0.5) continue;
 
+#ifndef TWOMIR_LESS_MALLOC
       scaled_base = DGG_copyConstraint(base);
+#else
+      // need to think and write new copy
+      //scaled_base = DGG_copyConstraint(base);
+      scaled_base = DGG_copyConstraint(base,data,0);
+#endif
       DGG_CHECKRVAL1((scaled_base == NULL),-1);
 
       if(base->sense == 'L') {
@@ -1585,17 +1702,21 @@ int DGG_generateFormulationCutsFromBase( DGG_constraint_t *base,
       DGG_CHECKRVAL1(rval, rval);
       
     END_LOOP:
+#ifndef TWOMIR_LESS_MALLOC
       DGG_freeConstraint(scaled_base);
+#endif
       scaled_base = NULL;
     }      
   }
 
  CLEANUP:
+#ifndef TWOMIR_LESS_MALLOC
   if (isint) free(isint);    
   if (xout)  free(xout);   
-  if (rcout)  free(rcout);   
+  if (rcout)  free(rcout);
   if (skala_list) free(skala_list);
   if (scaled_base != NULL) DGG_freeConstraint (scaled_base);
+#endif
   return rval;
 }
 
@@ -1627,7 +1748,9 @@ DGG_generateCutsFromBase( DGG_constraint_t *orig_base,
   double frac = frac_part(orig_base->rhs);
   //printf ("frac = %.7f, r %.7f, fr %.7f\n", frac, orig_base->rhs, floor(orig_base->rhs));
   if (rval || frac < data->gomory_threshold || frac > 1-data->gomory_threshold){
+#ifndef TWOMIR_LESS_MALLOC
     free (x); free (rc); free (isint);
+#endif
     return 0;
   }
 
@@ -1729,9 +1852,11 @@ DGG_generateCutsFromBase( DGG_constraint_t *orig_base,
   }
 
  CLEANUP:
+#ifndef TWOMIR_LESS_MALLOC
   if (x) free(x);
   if (rc) free (rc);
   if (isint) free(isint);
+#endif
   return 0;
 }
 

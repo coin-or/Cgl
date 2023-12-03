@@ -1686,17 +1686,81 @@ CglGomory::generateCuts(
 		  abort();
 	      }
 #endif
+	      if (number>1) {
 #if MORE_GOMORY_CUTS<2
-	      nTotalEls -= number;
-	      cs.insertIfNotDuplicate(rc);
-#else
-	      if(number<saveLimit) {
 		nTotalEls -= number;
 		cs.insertIfNotDuplicate(rc);
-	      } else {
-		longCuts.insertIfNotDuplicate(rc);
-	      }
+#else
+		if(number<saveLimit) {
+		  nTotalEls -= number;
+		  cs.insertIfNotDuplicate(rc);
+		} else {
+		  longCuts.insertIfNotDuplicate(rc);
+		}
 #endif
+	      } else {
+		// singleton row cut!
+		double lb = bounds[0];
+		double ub = bounds[1];
+		double value = packed[0];
+		int iColumn = cutIndex[0];
+		double lbCol = colLower[iColumn];
+		double ubCol = colUpper[iColumn];
+		// turn lb,ub into new bounds on column
+		if (lb==-COIN_DBL_MAX) {
+		  if (value<0) {
+		    lb = ub/value;
+		    if (intVar[iColumn])
+		      lb = ceil(lb-1.0e-4);
+		    ub = ubCol;
+		  } else {
+		    ub = ub/value;
+		    if (intVar[iColumn])
+		      ub = floor(ub+1.0e-4);
+		    lb = lbCol;
+		  }
+		} else if (ub==COIN_DBL_MAX) {
+		  if (value>0) {
+		    lb = lb/value;
+		    if (intVar[iColumn])
+		      lb = ceil(lb-1.0e-4);
+		    ub = ubCol;
+		  } else {
+		    ub = lb/value;
+		    if (intVar[iColumn])
+		      ub = floor(ub+1.0e-4);
+		    lb = lbCol;
+		  }
+		} else {
+		  abort();
+		}
+		if (lb>ub+1.0e-4) {
+		  // infeasible
+		  //printf("CUTinf\n");
+		  OsiRowCut rc;
+		  rc.setRow(0,cutIndex,packed,false);
+		  rc.setLb(1.0);
+		  rc.setUb(0.0);
+		  cs.insertIfNotDuplicate(rc);
+		} else if (lb>lbCol || ub<ubCol) {
+		  if (!intVar[iColumn]) {
+		    // think
+		    //printf("CUTnotint\n");
+		  } else {
+		    OsiColCut cc;
+		    if (lb>lbCol)
+		      cc.setLbs(1,&iColumn,&lb);
+		    if (ub<ubCol)
+		      cc.setUbs(1,&iColumn,&ub);
+		    cs.insert(cc);
+		    //printf("CUT %g<=%g -> %g<= %g\n",
+		    //	   colLower[iColumn],colUpper[iColumn],
+		    //   lb,ub);
+		  }
+		} else {
+		//printf("CUT whynone\n");
+		}
+	      }
 	      //printf("nTot %d kCol %d iCol %d ibasic %d\n",
 	      //     nTotalEls,kColumn,iColumn,iBasic);
 	      numberAdded++;

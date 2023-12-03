@@ -736,7 +736,7 @@ int CglRedSplit::generate_packed_row(const double *lclXlp,
 
   if(value > rhs) {
     value -= rhs;
-    if(value < param.getMINVIOL()) {
+    if(value < param.getMINVIOL()*(*card_row)) {
 
 #ifdef RS_TRACE
       printf("CglRedSplit::generate_packed_row(): Cut discarded: violation: %12.10f\n", value);
@@ -1566,7 +1566,7 @@ double *slack_val = new double[nrow];
       }
 
       if(generate_packed_row(xlp, row, rowind, rowelem, &card_row, 
-			     tabrowrhs)) {
+			     tabrowrhs)&&card_row<300) {
       	OsiRowCut rc;
 	rc.setRow(card_row, rowind, rowelem);
 	rc.setLb(-param.getINFINIT());

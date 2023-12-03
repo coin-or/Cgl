@@ -1235,7 +1235,7 @@ void CglRedSplit2::reduce_workNonBasicTab(int numRowsReduction,
 #endif
 
 #ifdef RS2_TRACE
-  sum_norms = 0;
+  double sum_norms = 0;
   for(i=0; i<mTab; i++) {
     sum_norms += norm[i];
   }
@@ -1546,7 +1546,7 @@ int CglRedSplit2::generate_packed_row(const double *lclXlp,
 
   if(value > rhs) {
     value = value-rhs;
-    if(value < param.getMINVIOL()) {
+    if(value < param.getMINVIOL()*(*card_row)) {
 
 #ifdef RS2_TRACE
       printf("CglRedSplit2::generate_packed_row(): Cut discarded: violation: %12.10f\n", value);
@@ -2092,17 +2092,19 @@ int CglRedSplit2::generateCuts(OsiCuts* cs, int maxNumCuts, int* lambda)
 		  }
 		  // now, add cut to the collection if needed
 		  if (cs != NULL){
-		    OsiRowCut rc;
-		    rc.setRow(card_row, rowind, rowelem);
-		    rc.setLb(-param.getINFINIT());
-		    double adjust = param.getEPS_RELAX_ABS();
-		    if(param.getEPS_RELAX_REL() > 0.0) {
-		      adjust += fabs(tabrowrhs) * param.getEPS_RELAX_REL();
+		    if (card_row<300) {
+		      OsiRowCut rc;
+		      rc.setRow(card_row, rowind, rowelem);
+		      rc.setLb(-param.getINFINIT());
+		      double adjust = param.getEPS_RELAX_ABS();
+		      if(param.getEPS_RELAX_REL() > 0.0) {
+			adjust += fabs(tabrowrhs) * param.getEPS_RELAX_REL();
+		      }
+		      rc.setUb(tabrowrhs + adjust);   
+		      // relax the constraint slightly
+		      buffcs->insertIfNotDuplicate(rc, CoinAbsFltEq(param.getEPS()));
+		      numCuts = buffcs->sizeRowCuts() - initNumCuts;
 		    }
-		    rc.setUb(tabrowrhs + adjust);   
-		    // relax the constraint slightly
-		    buffcs->insertIfNotDuplicate(rc, CoinAbsFltEq(param.getEPS()));
-		    numCuts = buffcs->sizeRowCuts() - initNumCuts;
 		  }
 		  else{
 		    numCuts++;
@@ -2480,9 +2482,9 @@ int CglRedSplit2::tiltLandPcut(const OsiSolverInterface* si,
   solver = const_cast<OsiSolverInterface*>(si);
   if(solver == NULL) {
     printf("### WARNING: CglRedSplit2::tiltLandPcut(): no solver available.\n");
-    return 0;    
-  }  
-
+    return 0;   
+  }    
+ 
   // Reset some members of CglRedSplit2
   card_intBasicVar = 0;
   card_intBasicVar_frac = 0;

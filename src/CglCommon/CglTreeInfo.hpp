@@ -37,6 +37,9 @@ public:
       1024 - in must call again mode or after everything mode
       2048 - playing around in probing
       4096 - save number affected by probing
+      8192 - problem found to be infeasible
+      16384 - just going for column cuts
+      32768 - do all integer columns
   */
   int options;
   /// Set true if in tree (to avoid ambiguity at first branch)

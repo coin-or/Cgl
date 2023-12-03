@@ -46,16 +46,7 @@ public:
   row_cut(int nRows, bool initialPass )
   {
     numberCuts_=0;
-    if (nRows<500) {
-      maxSize_ = SIZE_ROW_MULT*nRows + SIZE_ROW_ADD;
-    } else if (nRows<5000) {
-      maxSize_ = (SIZE_ROW_MULT*nRows + SIZE_ROW_ADD)>>1;
-    } else if (nRows<10000) {
-      maxSize_ = (SIZE_ROW_MULT*(nRows>>1) + SIZE_ROW_ADD)>>1;
-    } else {
-      maxSize_ = (SIZE_ROW_MULT*CoinMin(nRows,100000) + SIZE_ROW_ADD)>>2;
-    }
-    size_ = (maxSize_>>3)+10;
+    size_ = 100;
     if (initialPass)
       size_ = size_>>1;
     if (size_<1000)
@@ -83,13 +74,10 @@ public:
   { return rowCut_[i];}
   int numberCuts() const
   { return numberCuts_;}
-  inline bool outOfSpace() const
-  { return maxSize_==numberCuts_;}
   OsiRowCut2 ** rowCut_;
   /// Hash table
   CoinHashLink *hash_;
   int size_;
-  int maxSize_;
   int hashSize_;
   int nRows_;
   int numberCuts_;
@@ -97,15 +85,15 @@ public:
   // Return 0 if added, 1 if not, -1 if not added because of space
   int addCutIfNotDuplicate(OsiRowCut & cut,int whichRow=-1)
   {
-    if (numberCuts_==size_&&numberCuts_<maxSize_) {
-      size_ = CoinMin(2*size_+100,maxSize_);
+    if (numberCuts_==size_) {
+      size_ = 2*size_+100;
       if (size_<1000)
 	hashSize_=4*size_;
       else
 	hashSize_=2*size_;
 #ifdef COIN_DEVELOP
-      printf("increaing size from %d to %d (hash size %d, maxsize %d)\n",
-	     numberCuts_,size_,hashSize_,maxSize_);
+      printf("increaing size from %d to %d (hash size %d)\n",
+	     numberCuts_,size_,hashSize_);
 #endif
       OsiRowCut2 ** temp = new  OsiRowCut2 * [size_];
       delete [] hash_;
@@ -1397,6 +1385,7 @@ void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   colLower_	= NULL;
   colUpper_	= NULL;
   rowCuts_=saveRowCuts;
+  return;
 }
 int CglProbing::generateCutsAndModify(const OsiSolverInterface & si, 
 				      OsiCuts & cs,
@@ -1765,8 +1754,10 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   CoinMemcpyN(si.getColLower(),nCols,colLower);
   CoinMemcpyN(si.getColUpper(),nCols,colUpper);
   const double * colsol =si.getColSolution();
-  // and put reasonable bounds on integer variables
+  // and put reasonable bounds on variables
   for (i=0;i<nCols;i++) {
+    colUpper[i] = CoinMin(colUpper[i],1.0e29);
+    colLower[i] = CoinMax(colLower[i],-1.0e29);
     if (intVar[i]) {
 #ifndef NDEBUG
       numberIntegers++;
@@ -1989,11 +1980,10 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     CoinBigIndex nElements=rowCopy->getNumElements();
     int nTotalOut=0;
     int nRealRows = si.getNumRows();
-    for (i=0;i<nRows;i++) {
+    // keep objective
+    for (i=0;i<nRealRows;i++) {
       if (rowLength[i]>maxElements||(rowLower[i]<-1.0e20&&rowUpper[i]>1.0e20)) {
-	// keep objective
-	if (i<nRealRows) 
-	  nTotalOut+=rowLength[i];
+	nTotalOut+=rowLength[i];
       }
     }
     // keep all if only a few dense
@@ -2321,16 +2311,25 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	  markR[j]=-1;
 #endif
         // decide what to look at
-        if (mode==1) {
+        if (mode==1 && (info->options&32768)==0) {
           const double * colsol = si.getColSolution();
           double_int_pair * array = new double_int_pair [nCols];
 #	  ifdef ZEROFAULT
 	  std::memset(array,0,sizeof(double_int_pair)*nCols) ;
 #	  endif
+	  /*
+	    >=100 throw away long > define/100
+	    1 - bias against long always but use away
+	    2 - bias against long always but don't use away
+	    4 - throw does not apply in tree
+	    8 - throw does not  apply at root
+	    16 - throw only applies if fast
+	    32 - bias does not apply at root
+	   */
+	  // start defined
 	  double multiplier = -1.0;
 	  if (info->inTree||(info->pass&1)!=0)
 	    multiplier=1.0;
-	  //const int * columnLength = si.getMatrixByCol()->getVectorLengths();
           for (i=0;i<nCols;i++) {
             if (intVar[i]&&colUpper[i]-colLower[i]>1.0e-8) {
               double away = fabs(0.5-(colsol[i]-floor(colsol[i])));
@@ -2342,7 +2341,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
               }
             }
           }
-	  //printf("maxP %d num %d\n",maxProbe,numberThisTime_);
+	  // end defined - start if
           std::sort(array,array+numberThisTime_,double_int_pair_compare());
           //numberThisTime_=CoinMin(numberThisTime_,maxProbe);
           for (i=0;i<numberThisTime_;i++) {
@@ -2356,13 +2355,6 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
             }
           }
         }
-#if 0
-        // Only look at short rows
-        for (i=0;i<nRows;i++) {
-          if (rowLength[i]>maxElements)
-            abort(); //markR[i]=-2;
-        }
-#endif
 	// sort to be clean
 	//std::sort(lookedAt_,lookedAt_+numberThisTime_);
         if (!numberCliques_) {
@@ -2378,12 +2370,21 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	    memset(endFixStart_,0,2*nCols*sizeof(int));
 	  }
 #endif
+	  /// FAST
+	  if ((info->options&16384)==0) {
           ninfeas= probe(si, debugger, cs, colLower, colUpper, rowCopy,columnCopy,
                          rowStartPos, realRows, rowLower, rowUpper,
                          intVar, minR, maxR, markR,
                          info);
+	  } else {
+          ninfeas= probeFast(si, debugger, cs, colLower, colUpper, rowCopy,columnCopy,
+                         rowStartPos, realRows, rowLower, rowUpper,
+                         intVar, minR, maxR, markR,
+                         info);
+	  }
 #if FIXED_BOTH_WAYS 
-	  if ((info->options&2048)!=0) {
+#define CC_AT_END 1
+	  if ((info->options&2048)!=0||(CC_AT_END&&(info->options&16384)!=0)) {
 	    int nCols = si.getNumCols();
 	    int numberColumnCutsAfter = cs.sizeColCuts();
 	    int nLo2=0;
@@ -3530,20 +3531,20 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		       debugger
 #endif 
 		       ,OsiCuts & cs, 
-		       double * colLower, double * colUpper, 
+		       double *COIN_RESTRICT colLower, double *COIN_RESTRICT colUpper, 
 		       CoinPackedMatrix *rowCopy,
 		       CoinPackedMatrix *columnCopy,
-		       const CoinBigIndex * rowStartPos,const int * realRows, 
-		       const double * rowLower, const double * rowUpper,
-		       const char * intVar, double * minR, double * maxR, 
-		       int * markR, 
+		       const CoinBigIndex *COIN_RESTRICT rowStartPos,const int *COIN_RESTRICT realRows, 
+		       const double *COIN_RESTRICT rowLower, const double *COIN_RESTRICT rowUpper,
+		       const char *COIN_RESTRICT intVar, double *COIN_RESTRICT minR, double *COIN_RESTRICT maxR, 
+		       int *COIN_RESTRICT markR, 
 		       CglTreeInfo * info)
 {
   int nRows=rowCopy->getNumRows();
   int nRowsSafe=CoinMin(nRows,si.getNumRows());
   int nCols=rowCopy->getNumCols();
-  const double * currentColLower = si.getColLower();
-  const double * currentColUpper = si.getColUpper();
+  const double *COIN_RESTRICT currentColLower = si.getColLower();
+  const double *COIN_RESTRICT currentColUpper = si.getColUpper();
   // Set up maxes
   int maxStack = info->inTree ? maxStack_ : maxStackRoot_;
   int maxPass = info->inTree ? maxPass_ : maxPassRoot_;
@@ -3563,7 +3564,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
   assert (DIratio==1||DIratio==2);
   int nSpace = 10*nCols+4*nRows+2*maxStack;
   nSpace += (6*nCols+nRows+DIratio-1)>>(DIratio-1);
-#define UPDATE_MINR_MAXR
+  //#define UPDATE_MINR_MAXR
 #ifdef UPDATE_MINR_MAXR
   // If works try and use existing arrays
   nSpace += 2*maxStack;
@@ -3573,20 +3574,20 @@ int CglProbing::probe( const OsiSolverInterface & si,
   nSpace += 2*nCols;
   nSpace += nCols>>(DIratio-1);
 #endif
-  double * colsol = new double[nSpace];
-  double * djs = colsol + nCols;
-  double * columnGap = djs + nCols;
-  double * saveL = columnGap + nCols;
-  double * saveU = saveL + 2*nCols;
-  double * saveMin = saveU + 2*nCols;
-  double * saveMax = saveMin + nRows;
-  double * largestPositiveInRow = saveMax + nRows;
-  double * largestNegativeInRow = largestPositiveInRow + nRows;
-  double * element = largestNegativeInRow + nRows;
-  double * lo0 = element + nCols;
-  double * up0 = lo0 + maxStack;
-  double * newLo = up0 + maxStack;
-  double * newUp = newLo + nCols;
+  double *COIN_RESTRICT colsol = new double[nSpace];
+  double *COIN_RESTRICT djs = colsol + nCols;
+  double *COIN_RESTRICT columnGap = djs + nCols;
+  double *COIN_RESTRICT saveL = columnGap + nCols;
+  double *COIN_RESTRICT saveU = saveL + 2*nCols;
+  double *COIN_RESTRICT saveMin = saveU + 2*nCols;
+  double *COIN_RESTRICT saveMax = saveMin + nRows;
+  double *COIN_RESTRICT largestPositiveInRow = saveMax + nRows;
+  double *COIN_RESTRICT largestNegativeInRow = largestPositiveInRow + nRows;
+  double *COIN_RESTRICT element = largestNegativeInRow + nRows;
+  double *COIN_RESTRICT lo0 = element + nCols;
+  double *COIN_RESTRICT up0 = lo0 + maxStack;
+  double *COIN_RESTRICT newLo = up0 + maxStack;
+  double *COIN_RESTRICT newUp = newLo + nCols;
 #if FIXED_BOTH_WAYS
   bool doFixedBothWays=(totalTimesCalled_==0 && endFixStart_
 			&&(info->options&2048)!=0);
@@ -3597,38 +3598,40 @@ int CglProbing::probe( const OsiSolverInterface & si,
     }
   }
   int nFixedBoth = 0;
+#if FIXED_BOTH_WAYS > 2
   int nToBoundZ = 0;
   int nCutZ = 0;
 #endif
+#endif
 #ifndef UPDATE_MINR_MAXR
-  int * markC = reinterpret_cast<int *> (newUp+nCols);
+  int *COIN_RESTRICT markC = reinterpret_cast<int *COIN_RESTRICT> (newUp+nCols);
 #else
   // If works try and use existing arrays
   // If + then increase in lower, negative decrease in upper
-  double * realChange = newUp+nCols;
-  int * markC = reinterpret_cast<int *> (realChange+nCols);
+  double *COIN_RESTRICT realChange = newUp+nCols;
+  int *COIN_RESTRICT markC = reinterpret_cast<int *COIN_RESTRICT> (realChange+nCols);
 #endif
-  int * stackC = markC + nCols;
-  int * stackR = stackC + 2*nCols;
-  int * index = stackR + nRows;
-  int * stackC0 = index + nCols;
+  int *COIN_RESTRICT stackC = markC + nCols;
+  int *COIN_RESTRICT stackR = stackC + 2*nCols;
+  int *COIN_RESTRICT index = stackR + nRows;
+  int *COIN_RESTRICT stackC0 = index + nCols;
 #if FIXED_BOTH_WAYS
-  int * fixedBoth = stackC0 + nCols;
+  int *COIN_RESTRICT fixedBoth = stackC0 + nCols;
   // Really must clean up arrays
   // Make more efficient when two versions of tightenPrimalBounds
-  double * saveFColLower = new double [2*nCols+2*nRows];
-  double * saveFColUpper = saveFColLower+nCols;
-  double * saveFRowLower = saveFColUpper+nCols;
-  double * saveFRowUpper = saveFRowLower+nRows;
+  double *COIN_RESTRICT saveFColLower = new double [2*nCols+2*nRows];
+  double *COIN_RESTRICT saveFColUpper = saveFColLower+nCols;
+  double *COIN_RESTRICT saveFRowLower = saveFColUpper+nCols;
+  double *COIN_RESTRICT saveFRowUpper = saveFRowLower+nRows;
   if (!doFixedBothWays) 
     fixedBoth = NULL;
 #elif MANY_TIGHTEN
   // Really must clean up arrays
   // Make more efficient when two versions of tightenPrimalBounds
-  double * saveFColLower = NULL;
-  double * saveFColUpper = NULL;
-  double * saveFRowLower = NULL;
-  double * saveFRowUpper = NULL;
+  double *COIN_RESTRICT saveFColLower = NULL;
+  double *COIN_RESTRICT saveFColUpper = NULL;
+  double *COIN_RESTRICT saveFRowLower = NULL;
+  double *COIN_RESTRICT saveFRowUpper = NULL;
   if ((info->options&2048)!=0) {
     saveFColLower = new double [2*nCols+2*nRows];
     saveFColUpper = saveFColLower+nCols;
@@ -3637,7 +3640,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
   }
 #endif
 #ifdef UPDATE_MINR_MAXR
-  int * whichRealChange = stackC0+maxStack;
+  int *COIN_RESTRICT whichRealChange = stackC0+maxStack;
 #if FIXED_BOTH_WAYS
   if (doFixedBothWays)
     whichRealChange += 2*nCols;
@@ -3645,29 +3648,29 @@ int CglProbing::probe( const OsiSolverInterface & si,
   assert (whichRealChange+2*maxStack < ((int *)(colsol+nSpace)));;
 #endif
 #else 
-  double * colsol = new double[nCols];
-  double * djs = new double[nCols];
-  double * columnGap = new double [nCols];
-  double * saveL = new double [2*nCols];
-  double * saveU = new double [2*nCols];
-  double * saveMin = new double [nRows];
-  double * saveMax = new double [nRows];
-  double * largestPositiveInRow = new double [nRows];
-  double * largestNegativeInRow = new double [nRows];
-  double * element = new double[nCols];
-  double * lo0 = new double[maxStack];
-  double * up0 = new double[maxStack];
-  int * markC = new int [nCols];
-  int * stackC = new int [2*nCols];
-  int * stackR = new int [nRows];
-  int * index = new int[nCols];
-  int * stackC0 = new int[maxStack];
+  double *COIN_RESTRICT colsol = new double[nCols];
+  double *COIN_RESTRICT djs = new double[nCols];
+  double *COIN_RESTRICT columnGap = new double [nCols];
+  double *COIN_RESTRICT saveL = new double [2*nCols];
+  double *COIN_RESTRICT saveU = new double [2*nCols];
+  double *COIN_RESTRICT saveMin = new double [nRows];
+  double *COIN_RESTRICT saveMax = new double [nRows];
+  double *COIN_RESTRICT largestPositiveInRow = new double [nRows];
+  double *COIN_RESTRICT largestNegativeInRow = new double [nRows];
+  double *COIN_RESTRICT element = new double[nCols];
+  double *COIN_RESTRICT lo0 = new double[maxStack];
+  double *COIN_RESTRICT up0 = new double[maxStack];
+  int *COIN_RESTRICT markC = new int [nCols];
+  int *COIN_RESTRICT stackC = new int [2*nCols];
+  int *COIN_RESTRICT stackR = new int [nRows];
+  int *COIN_RESTRICT index = new int[nCols];
+  int *COIN_RESTRICT stackC0 = new int[maxStack];
 #endif
 #ifdef UPDATE_MINR_MAXR
   int numberRealChanges = 0;
 #endif
-  int * changedDown = endFixStart_;
-  int * changedUp = changedDown ? changedDown + nCols : NULL;
+  int *COIN_RESTRICT changedDown = endFixStart_;
+  int *COIN_RESTRICT changedUp = changedDown ? changedDown + nCols : NULL;
   // Let us never add more than twice the number of rows worth of row cuts
   // Keep cuts out of cs until end so we can find duplicates quickly
 #define PROBING4
@@ -3678,7 +3681,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #endif
   if (!info->inTree&&!info->pass) 
     nRowsFake *= 10;
-  bool justReplace = ((info->options&64)!=0)&&(realRows!=NULL);
+  bool justReplace = ((info->options&64)!=0)&&(realRows!=NULL)||
+    ((info->options&16384)!=0);
   if (justReplace) {
     nRowsFake=nRows;
   }
@@ -3689,17 +3693,17 @@ int CglProbing::probe( const OsiSolverInterface & si,
     rowCutFake = new row_cut(10000, !info->inTree);
   }
   totalTimesCalled_++;
-  const int * column = rowCopy->getIndices();
-  const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
-  const double * rowElements = rowCopy->getElements();
-  const int * row = columnCopy->getIndices();
-  const CoinBigIndex * columnStart = columnCopy->getVectorStarts();
-  const int * columnLength = columnCopy->getVectorLengths(); 
-  const double * columnElements = columnCopy->getElements();
+  const int *COIN_RESTRICT column = rowCopy->getIndices();
+  const CoinBigIndex *COIN_RESTRICT rowStart = rowCopy->getVectorStarts();
+  const double *COIN_RESTRICT rowElements = rowCopy->getElements();
+  const int *COIN_RESTRICT row = columnCopy->getIndices();
+  const CoinBigIndex *COIN_RESTRICT columnStart = columnCopy->getVectorStarts();
+  const int *COIN_RESTRICT columnLength = columnCopy->getVectorLengths(); 
+  const double *COIN_RESTRICT columnElements = columnCopy->getElements();
 #define MOVE_SINGLETONS
 #ifdef MOVE_SINGLETONS
-  const double * objective = si.getObjCoefficients();
-  const int * columnLength2 = si.getMatrixByCol()->getVectorLengths();
+  const double *COIN_RESTRICT objective = si.getObjCoefficients();
+  const int *COIN_RESTRICT columnLength2 = si.getMatrixByCol()->getVectorLengths();
   // see whether to do
   int moveSingletonRows=nRows;
   if (nRows>si.getNumRows()) {
@@ -3731,8 +3735,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
   CoinMemcpyN( si.getColSolution(),nCols,colsol);
   disaggEffectiveness=1.0e-3;
   rowCuts=rowCuts_;
-  //CoinBigIndex * rowStartPos = new CoinBigIndex [nRows];
-  const int * rowLength = rowCopy->getVectorLengths(); 
+  //CoinBigIndex *COIN_RESTRICT rowStartPos = new CoinBigIndex [nRows];
+  const int *COIN_RESTRICT rowLength = rowCopy->getVectorLengths(); 
   for (int i=0;i<nRows;i++) {
     assert (rowStart[i]+rowLength[i]==rowStart[i+1]);
     CoinBigIndex kk;
@@ -3872,10 +3876,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
   bool saveFixingInfo =  false;
 #if PROBING100
   CglTreeProbingInfo * probingInfo = dynamic_cast<CglTreeProbingInfo *> (info);
-  const int * backward = NULL;
-  const int * integerVariable = NULL;
-  const int * toZero = NULL;
-  const int * toOne = NULL;
+  const int *COIN_RESTRICT backward = NULL;
+  const int *COIN_RESTRICT integerVariable = NULL;
+  const int *COIN_RESTRICT toZero = NULL;
+  const int *COIN_RESTRICT toOne = NULL;
   const fixEntry * fixEntries=NULL;
 #endif
   if (info->inTree) {
@@ -3955,48 +3959,12 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	}
       }
     }
-    double leftTotalStackD=maxStack;
-    leftTotalStackD *= CoinMax(200,maxProbe);
-    int leftTotalStack;
-    if (leftTotalStackD<COIN_INT_MAX)
-      leftTotalStack=static_cast<int>(leftTotalStackD);
-    else
-      leftTotalStack=COIN_INT_MAX;
-#ifdef PROBING5
-    if (!info->inTree&&!info->pass)
-      leftTotalStack = 1234567890;
-#endif
     //printf("maxStack %d maxPass %d numberThisTime %d info pass %d\n",
     //   maxStack,maxPass,numberThisTime_,info->pass);
     for (iLook=0;iLook<numberThisTime_;iLook++) {
       double solval;
       double down;
       double up;
-      if (rowCut.outOfSpace()||leftTotalStack<=0) {
-	if (!justFix&&(!nfixed||info->inTree)) {
-#ifdef COIN_DEVELOP
-	  if (!info->inTree)
-	    printf("Exiting a on pass %d, maxProbe %d\n",
-		   ipass,maxProbe);
-#endif	  
-	  break;
-	} else if (justFix<=0) {
-	  if (!info->inTree) {
-	    rowCuts=0;
-	    justFix=1;
-	    disaggEffectiveness=COIN_DBL_MAX;
-	    needEffectiveness=COIN_DBL_MAX;
-	    //maxStack=10;
-	    maxPass=1;
-	  } else if (!nfixed) {
-#ifdef COIN_DEVELOP
-	    printf("Exiting b on pass %d, maxProbe %d\n",
-		   ipass,maxProbe);
-#endif	  
-	    break;
-	  }
-	}
-      }
       int j=lookedAt_[iLook];
 #ifdef UPDATE_MINR_MAXR
       // update
@@ -4302,7 +4270,6 @@ int CglProbing::probe( const OsiSolverInterface & si,
           }
         }
         while (istackC<nstackC&&nstackC<maxStack) { // could be istackC<maxStack?
-	  leftTotalStack--;
           int jway;
           int jcol =stackC[istackC];
           jway=markC[jcol];
@@ -5390,8 +5357,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	if (!notFeasible && iway < 2 && (info->options&2048)!=0
 	    && nCols<1000) {
 	  // try tighten
-	  double * rLower = const_cast<double *>(rowLower); 
-	  double * rUpper = const_cast<double *>(rowUpper);
+	  double *COIN_RESTRICT rLower = const_cast<double *COIN_RESTRICT>(rowLower); 
+	  double *COIN_RESTRICT rUpper = const_cast<double *COIN_RESTRICT>(rowUpper);
 	  // must be able to do better
 	  memcpy(saveFColLower,colLower,nCols*sizeof(double));
 	  memcpy(saveFColUpper,colUpper,nCols*sizeof(double));
@@ -5446,8 +5413,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	  }
 	  if (checkBefore)
 	    printf("Checking column %d way %d\n",j,iway);
-	  double * maxRow2 = new double[2*nRows];
-	  double * minRow2 = maxRow2 + nRows;
+	  double *COIN_RESTRICT maxRow2 = new double[2*nRows];
+	  double *COIN_RESTRICT minRow2 = maxRow2 + nRows;
 	  memset(maxRow2,0,2*nRows*sizeof(double));
 	  int nRows2 = nRows;
 	  for (int i=0;i<nCols;i++) {
@@ -5849,8 +5816,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     // can be a cut
                     // subtract gap from upper and integer coefficient
                     // saveU and saveL spare
-                    int * index = reinterpret_cast<int *>(saveL);
-                    double * element = saveU;
+                    int *COIN_RESTRICT index = reinterpret_cast<int *COIN_RESTRICT>(saveL);
+                    double *COIN_RESTRICT element = saveU;
                     int n=0;
                     bool coefficientExists=false;
 		    double sum2=0.0;
@@ -6002,8 +5969,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     // can be a cut
                     // add gap to lower and integer coefficient
                     // saveU and saveL spare
-                    int * index = reinterpret_cast<int *>(saveL);
-                    double * element = saveU;
+                    int *COIN_RESTRICT index = reinterpret_cast<int *COIN_RESTRICT>(saveL);
+                    double *COIN_RESTRICT element = saveU;
                     int n=0;
                     bool coefficientExists=false;
 		    double sum2=0.0;
@@ -6362,12 +6329,16 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		double upUp = colUpper[icol];
 		double newLower = oldL;
 		double newUpper = oldU;
+#if FIXED_BOTH_WAYS > 2
 		bool printit = false;
+#endif
 		if (loDown>oldL+1.0e-5 && loUp>oldL+1.0e-5) {
 		  newLower = CoinMin(loDown,loUp);
 		  if (intVar[icol]) 
 		    newLower = ceil(newLower-1.0e-5);
+#if FIXED_BOTH_WAYS > 2
 		  nToBoundZ ++;
+#endif
 #ifdef JUST_ONE_CC
 		  lbsBoth.insert(icol,newLower);
 #endif
@@ -6377,7 +6348,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #endif
 		  if (upDown<oldU-1.0e-5 && upUp<oldU-1.0e-5) {
 		    newUpper = CoinMax(upDown,upUp);
+#if FIXED_BOTH_WAYS > 2
 		    nToBoundZ ++;
+#endif
 		    if (intVar[icol]) 
 		      newUpper = floor(newUpper+1.0e-5);
 #if FIXED_BOTH_WAYS > 2
@@ -6388,7 +6361,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		  newUpper = CoinMax(upDown,upUp);
 		  if (intVar[icol]) 
 		    newUpper = floor(newUpper+1.0e-5);
+#if FIXED_BOTH_WAYS > 2
 		  nToBoundZ ++;
+#endif
 #ifdef JUST_ONE_CC
 		  ubsBoth.insert(icol,newUpper);
 #endif
@@ -6398,8 +6373,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #endif
 		} else if (loDown==upDown && loUp==upUp) {
 		  if (saveL[0]==0.0 && saveU[0]==1.0) {
-		    nCutZ ++;
 #if FIXED_BOTH_WAYS > 1
+		    nCutZ ++;
 		    printf("Cutzz x%d == %g x%d + %g || ",icol,(loUp-loDown),
 			   j,loDown);
 		    printit = true;
@@ -6418,10 +6393,12 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		    cs.insert(rc);
 		  }
 		}
+#if FIXED_BOTH_WAYS > 2
 		if (printit)
 		  printf("Col %d bnds on %d down %g,%g up %g,%g orig %g,%g\n",
 			 j,icol,loDown,upDown,loUp,
 			 upUp,oldL,oldU);
+#endif
 #ifdef UPDATE_MINR_MAXR
 		if (oldL < newLower) {
 		  // tighten minR and maxR
@@ -6572,8 +6549,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     // can be a cut
                     // add gap to integer coefficient
                     // saveU and saveL spare
-                    int * index = reinterpret_cast<int *>(saveL);
-                    double * element = saveU;
+                    int *COIN_RESTRICT index = reinterpret_cast<int *COIN_RESTRICT>(saveL);
+                    double *COIN_RESTRICT element = saveU;
                     int n=0;
                     bool coefficientExists=false;
 		    double sum2=0.0;
@@ -6675,8 +6652,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     // can be a cut
                     // subtract gap from integer coefficient
                     // saveU and saveL spare
-                    int * index = reinterpret_cast<int *>(saveL);
-                    double * element = saveU;
+                    int *COIN_RESTRICT index = reinterpret_cast<int *COIN_RESTRICT>(saveL);
+                    double *COIN_RESTRICT element = saveU;
                     int n=0;
                     bool coefficientExists=false;
 		    double sum2=0.0;
@@ -6780,7 +6757,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
       }
     }
   }
-  if ((!ninfeas&&!rowCut.outOfSpace())&&(info->strengthenRow||
+  if (!ninfeas&&(info->strengthenRow||
                  !rowCut.numberCuts())&&rowCuts) {
     // Try and find ALL big M's
     for (int i = 0; i < nRowsSafe; ++i) {
@@ -7007,7 +6984,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #endif
   delete [] colsol;
   // Add in row cuts
-  if (!ninfeas) {
+  if (!ninfeas && (info->options&16384)==0) {
     if (!justReplace) {
       rowCut.addCuts(cs,info->strengthenRow,info->pass);
     } else {
@@ -7033,8 +7010,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
       OsiRowCut thisCut = cs.rowCut(k) ;
       printf("Cut %d is %g <=",k,thisCut.lb());
       int n=thisCut.row().getNumElements();
-      const int * column = thisCut.row().getIndices();
-      const double * element = thisCut.row().getElements();
+      const int *COIN_RESTRICT column = thisCut.row().getIndices();
+      const double *COIN_RESTRICT element = thisCut.row().getElements();
       assert (n);
       for (int i=0;i<n;i++) {
 	printf(" %g*x%d",element[i],column[i]);
@@ -7047,7 +7024,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
     numberCliques_ = rowCutFake->numberCuts();
     CoinBigIndex numberElements = 2*numberCliques_;
     cliqueEntry_  = new CliqueEntry [numberElements];
-    int * column = reinterpret_cast<int *>(cliqueEntry_);
+    int *COIN_RESTRICT column = reinterpret_cast<int *COIN_RESTRICT>(cliqueEntry_);
     numberElements = 0;
     for (int iCut=0;iCut<numberCliques_;iCut++) {
       column[numberElements++]=rowCutFake->cut(iCut)->row().getIndices()[0];
@@ -11381,4 +11358,1954 @@ CglImplication::generateCpp( FILE * fp)
   fprintf(fp,"3  CglImplication implication;\n");
   return "implication";
 
+}
+// Start FAST
+// Does probing but no cuts
+int CglProbing::probeFast( const OsiSolverInterface & si, 
+		       const OsiRowCutDebugger *
+#ifdef CGL_DEBUG
+		       debugger
+#endif 
+		       ,OsiCuts & cs, 
+		       double *COIN_RESTRICT colLower, double *COIN_RESTRICT colUpper, 
+		       CoinPackedMatrix *rowCopy,
+		       CoinPackedMatrix *columnCopy,
+		       const CoinBigIndex *COIN_RESTRICT rowStartPos,const int *COIN_RESTRICT realRows, 
+		       const double *COIN_RESTRICT rowLower, const double *COIN_RESTRICT rowUpper,
+		       const char *COIN_RESTRICT intVar, double *COIN_RESTRICT minR, double *COIN_RESTRICT maxR, 
+		       int *COIN_RESTRICT markR, 
+		       CglTreeInfo * info)
+{
+  int nRows=rowCopy->getNumRows();
+  int nRowsSafe=CoinMin(nRows,si.getNumRows());
+  int nCols=rowCopy->getNumCols();
+  const double *COIN_RESTRICT currentColLower = si.getColLower();
+  const double *COIN_RESTRICT currentColUpper = si.getColUpper();
+  // Set up maxes
+  int maxPass =  maxPass_;
+  // need a way for user to ask for more
+  int maxStack=80;
+  double relaxedTolerance=2.0*primalTolerance_;
+#define ONE_ARRAY
+#ifdef ONE_ARRAY
+  unsigned int DIratio = sizeof(double)/sizeof(int);
+  assert (DIratio==1||DIratio==2);
+  int nSpace = 10*nCols+4*nRows+2*maxStack;
+  nSpace += (6*nCols+nRows+DIratio-1)>>(DIratio-1);
+  //#define UPDATE_MINR_MAXR
+#undef UPDATE_MINR_MAXR
+#ifdef UPDATE_MINR_MAXR
+  // If works try and use existing arrays
+  nSpace += 2*maxStack;
+  nSpace += maxStack>>(DIratio-1);
+#endif
+#if FIXED_BOTH_WAYS
+  nSpace += 2*nCols;
+  nSpace += nCols>>(DIratio-1);
+#endif
+  double *COIN_RESTRICT colsol = new double[nSpace];
+  double *COIN_RESTRICT djs = colsol + nCols;
+  double *COIN_RESTRICT columnGap = djs + nCols;
+  double *COIN_RESTRICT saveL = columnGap + nCols;
+  double *COIN_RESTRICT saveU = saveL + 2*nCols;
+  double *COIN_RESTRICT saveMin = saveU + 2*nCols;
+  double *COIN_RESTRICT saveMax = saveMin + nRows;
+  double *COIN_RESTRICT largestPositiveInRow = saveMax + nRows;
+  double *COIN_RESTRICT largestNegativeInRow = largestPositiveInRow + nRows;
+  double *COIN_RESTRICT element = largestNegativeInRow + nRows;
+  double *COIN_RESTRICT lo0 = element + nCols;
+  double *COIN_RESTRICT up0 = lo0 + maxStack;
+  double *COIN_RESTRICT newLo = up0 + maxStack;
+  double *COIN_RESTRICT newUp = newLo + nCols;
+#if FIXED_BOTH_WAYS
+  bool doFixedBothWays=(totalTimesCalled_==0 && endFixStart_
+			&&(info->options&2048)!=0);
+  if (doFixedBothWays) {
+    for (int i=0;i<nCols;i++) {
+      newLo[i] = COIN_DBL_MAX;
+      newUp[i] = -COIN_DBL_MAX;
+    }
+  }
+  int nFixedBoth = 0;
+#if FIXED_BOTH_WAYS > 2
+  int nToBoundZ = 0;
+  int nCutZ = 0;
+#endif
+#endif
+#ifndef UPDATE_MINR_MAXR
+  int *COIN_RESTRICT markC = reinterpret_cast<int *COIN_RESTRICT> (newUp+nCols);
+#else
+  // If works try and use existing arrays
+  // If + then increase in lower, negative decrease in upper
+  double *COIN_RESTRICT realChange = newUp+nCols;
+  int *COIN_RESTRICT markC = reinterpret_cast<int *COIN_RESTRICT> (realChange+nCols);
+#endif
+  int *COIN_RESTRICT stackC = markC + nCols;
+  int *COIN_RESTRICT stackR = stackC + 2*nCols;
+  int *COIN_RESTRICT index = stackR + nRows;
+  int *COIN_RESTRICT stackC0 = index + nCols;
+#if FIXED_BOTH_WAYS
+  int *COIN_RESTRICT fixedBoth = stackC0 + nCols;
+  // Really must clean up arrays
+  // Make more efficient when two versions of tightenPrimalBounds
+  double *COIN_RESTRICT saveFColLower = new double [2*nCols+2*nRows];
+  double *COIN_RESTRICT saveFColUpper = saveFColLower+nCols;
+  double *COIN_RESTRICT saveFRowLower = saveFColUpper+nCols;
+  double *COIN_RESTRICT saveFRowUpper = saveFRowLower+nRows;
+  if (!doFixedBothWays) 
+    fixedBoth = NULL;
+#endif
+#ifdef UPDATE_MINR_MAXR
+  int *COIN_RESTRICT whichRealChange = stackC0+maxStack;
+#if FIXED_BOTH_WAYS
+  if (doFixedBothWays)
+    whichRealChange += 2*nCols;
+#endif
+  assert (whichRealChange+2*maxStack < ((int *)(colsol+nSpace)));;
+#endif
+#else 
+  double *COIN_RESTRICT colsol = new double[nCols];
+  double *COIN_RESTRICT djs = new double[nCols];
+  double *COIN_RESTRICT columnGap = new double [nCols];
+  double *COIN_RESTRICT saveL = new double [2*nCols];
+  double *COIN_RESTRICT saveU = new double [2*nCols];
+  double *COIN_RESTRICT saveMin = new double [nRows];
+  double *COIN_RESTRICT saveMax = new double [nRows];
+  double *COIN_RESTRICT largestPositiveInRow = new double [nRows];
+  double *COIN_RESTRICT largestNegativeInRow = new double [nRows];
+  double *COIN_RESTRICT element = new double[nCols];
+  double *COIN_RESTRICT lo0 = new double[maxStack];
+  double *COIN_RESTRICT up0 = new double[maxStack];
+  int *COIN_RESTRICT markC = new int [nCols];
+  int *COIN_RESTRICT stackC = new int [2*nCols];
+  int *COIN_RESTRICT stackR = new int [nRows];
+  int *COIN_RESTRICT index = new int[nCols];
+  int *COIN_RESTRICT stackC0 = new int[maxStack];
+#endif
+#ifdef UPDATE_MINR_MAXR
+  int numberRealChanges = 0;
+#endif
+  int *COIN_RESTRICT changedDown = endFixStart_;
+  int *COIN_RESTRICT changedUp = changedDown ? changedDown + nCols : NULL;
+  totalTimesCalled_++;
+  const int *COIN_RESTRICT column = rowCopy->getIndices();
+  const CoinBigIndex *COIN_RESTRICT rowStart = rowCopy->getVectorStarts();
+  const double *COIN_RESTRICT rowElements = rowCopy->getElements();
+  const int *COIN_RESTRICT row = columnCopy->getIndices();
+  const CoinBigIndex *COIN_RESTRICT columnStart = columnCopy->getVectorStarts();
+  const int *COIN_RESTRICT columnLength = columnCopy->getVectorLengths(); 
+  const double *COIN_RESTRICT columnElements = columnCopy->getElements();
+  bool anyColumnCuts=false;
+  int ninfeas=0;
+  /* clean up djs and solution */
+  CoinMemcpyN(si.getReducedCost(),nCols,djs);
+  CoinMemcpyN( si.getColSolution(),nCols,colsol);
+  //CoinBigIndex *COIN_RESTRICT rowStartPos = new CoinBigIndex [nRows];
+  const int *COIN_RESTRICT rowLength = rowCopy->getVectorLengths(); 
+  for (int i=0;i<nRows;i++) {
+    assert (rowStart[i]+rowLength[i]==rowStart[i+1]);
+    CoinBigIndex kk;
+#ifndef NDEBUG
+    for ( kk =rowStart[i];kk<rowStart[i+1];kk++) {
+      double value = rowElements[kk];
+      if (value>0.0) 
+	break;
+    }
+    assert (rowStartPos[i]==kk);
+#endif
+    double value;
+    value=0.0;
+    for ( kk =rowStart[i];kk<rowStartPos[i];kk++) {
+      int iColumn = column[kk];
+      double gap = CoinMin(1.0e100,colUpper[iColumn]-colLower[iColumn]);
+      value = CoinMin(value,gap*rowElements[kk]);
+    }
+    largestNegativeInRow[i]=value;
+    value=0.0;
+    for ( ;kk<rowStart[i+1];kk++) {
+      int iColumn = column[kk];
+      double gap = CoinMin(1.0e100,colUpper[iColumn]-colLower[iColumn]);
+      value = CoinMax(value,gap*rowElements[kk]);
+    }
+    largestPositiveInRow[i]=value;
+  }
+  for (int i = 0; i < nCols; ++i) {
+    double djValue = djs[i];
+    double gap=colUpper[i]-colLower[i];
+    if (gap>1.0e-8) {
+      if (colsol[i]<colLower[i]+primalTolerance_) {
+        colsol[i]=colLower[i];
+        djs[i] = CoinMax(0.0,djValue);
+      } else if (colsol[i]>colUpper[i]-primalTolerance_) {
+        colsol[i]=colUpper[i];
+        djs[i] = CoinMin(0.0,djValue);
+      } else {
+        djs[i]=0.0;
+      }
+    }
+    columnGap[i]=gap-primalTolerance_;
+  }
+
+  int ipass=0,nfixed=-1;
+
+  double cutoff;
+  bool cutoff_available = si.getDblParam(OsiDualObjectiveLimit,cutoff);
+  if (!cutoff_available||usingObjective_<0) { // cut off isn't set or isn't valid
+    cutoff = si.getInfinity();
+  }
+  if (fabs(cutoff)>1.0e30)
+    assert (cutoff>1.0e30);
+  double current = si.getObjValue();
+  /* for both way coding */
+  int nstackC0=-1;
+  int nstackR,nstackC;
+  //int nFix=0;
+  for (int i=0;i<nCols;i++) {
+    if (colUpper[i]-colLower[i]<1.0e-8) {
+      markC[i]=3;
+      //nFix++;
+    } else {
+      markC[i]=0;
+      if (colUpper[i]>1.0e10)
+	markC[i] |= 8;
+      if (colLower[i]<-1.0e10)
+	markC[i] |= 4;
+    }
+  }
+  double tolerance = 1.0e1*primalTolerance_;
+  while (ipass<maxPass&&nfixed) {
+    int iLook;
+    ipass++;
+    //printf("pass %d\n",ipass);
+    nfixed=0;
+    int justFix= (!info->inTree&&!info->pass) ? -1 : 0;
+    int maxProbe = info->inTree ? maxProbe_ : maxProbeRoot_;
+    if (justFix<0)
+      maxProbe=numberThisTime_;
+    if (maxProbe==123) {
+      // Try and be a bit intelligent
+      maxProbe=0;
+      if (!info->inTree) {
+	if (!info->pass||numberThisTime_<-100) {
+	  maxProbe=numberThisTime_;
+	} else {
+	  int cutDown = 4;
+	  int offset = info->pass % cutDown;
+	  int i;
+	  int k=0;
+	  int kk=offset;
+	  for (i=0;i<numberThisTime_;i++) {
+	    if (!kk) {
+#define XXXXXX
+#ifdef XXXXXX
+	      lookedAt_[maxProbe]=lookedAt_[i];
+#endif
+	      maxProbe++;
+	      kk=cutDown-1;
+	    } else {
+	      stackC[k++]=lookedAt_[i];
+	      kk--;
+	    }
+	  }
+#ifdef XXXXXX
+	  memcpy(lookedAt_+maxProbe,stackC,k*sizeof(int));
+#endif
+	}
+      } else {
+	// in tree
+	if (numberThisTime_<200) {
+	  maxProbe=numberThisTime_;
+	} else {
+	  int cutDown = CoinMax(numberThisTime_/100,4);
+	  int offset = info->pass % cutDown;
+	  int i;
+	  int k=0;
+	  int kk=offset;
+	  for (i=0;i<numberThisTime_;i++) {
+	    if (!kk) {
+#ifdef XXXXXX
+	      lookedAt_[maxProbe]=lookedAt_[i];
+#endif
+	      maxProbe++;
+	      kk=cutDown-1;
+	    } else {
+	      stackC[k++]=lookedAt_[i];
+	      kk--;
+	    }
+	  }
+#ifdef XXXXXX
+	  memcpy(lookedAt_+maxProbe,stackC,k*sizeof(int));
+#endif
+	}
+      }
+    }
+    //printf("maxStack %d maxPass %d numberThisTime %d info pass %d\n",
+    //   maxStack,maxPass,numberThisTime_,info->pass);
+    for (iLook=0;iLook<numberThisTime_;iLook++) {
+      double solval;
+      double down;
+      double up;
+      int j=lookedAt_[iLook];
+#ifdef UPDATE_MINR_MAXR
+      // update
+      bool feasible2 = true;
+      for (int i=0;i<numberRealChanges;i++) {
+	int jcol = whichRealChange[i];
+	double movement = realChange[i];
+	CoinBigIndex k;
+        for ( k=columnStart[jcol];
+	      k<columnStart[jcol]+columnLength[jcol];k++) {
+          int irow = row[k];
+          double value = columnElements[k];
+          if (movement>0.0) {
+            /* up */
+            if (value>0.0) {
+              /* up does not change - down does */
+              if (minR[irow]>-1.0e10)
+                minR[irow] += value * movement;
+              if (minR[irow]>rowUpper[irow]+1.0e-5) {
+                feasible2 = false;
+                break;
+              }
+            } else {
+              /* down does not change - up does */
+              if (maxR[irow]<1.0e10)
+                maxR[irow] += value * movement;
+              if (maxR[irow]<rowLower[irow]-1.0e-5) {
+                feasible2 = false;
+                break;
+              }
+            }
+          } else {
+            /* down */
+            if (value<0.0) {
+              /* up does not change - down does */
+              if (minR[irow]>-1.0e10)
+                minR[irow] += value * movement;
+              if (minR[irow]>rowUpper[irow]+1.0e-5) {
+                feasible2 = false;
+                break;
+              }
+            } else {
+              /* down does not change - up does */
+              if (maxR[irow]<1.0e10)
+                maxR[irow] += value * movement;
+              if (maxR[irow]<rowLower[irow]-1.0e-5) {
+                feasible2 = false;
+                break;
+              }
+            }
+          }
+        }
+      }
+      if (!feasible2) {
+	printf("NOT feasible\n");
+      }
+      numberRealChanges = 0;
+#endif
+#if FIXED_BOTH_WAYS
+      // clean newLo
+      if (doFixedBothWays) {
+	for (int i=0;i<nFixedBoth;i++) {
+	  int icol = fixedBoth[i];
+	  newLo[icol] = COIN_DBL_MAX;
+	}
+	nFixedBoth = 0;
+      }
+#endif
+      solval=colsol[j];
+      down = floor(solval+tolerance);
+      up = ceil(solval-tolerance);
+      if(columnGap[j]<0.0)
+	markC[j]=3;
+      if ((markC[j]&3)!=0||!intVar[j])
+	continue;
+      if (solval>=colUpper[j]-tolerance||solval<=colLower[j]+tolerance||up==down) {
+	if (solval<=colLower[j]+2.0*tolerance) {
+	  solval = colLower[j]+1.0e-1;
+	  down=colLower[j];
+	  up=down+1.0;
+	} else if (solval>=colUpper[j]-2.0*tolerance) {
+	  solval = colUpper[j]-1.0e-1;
+	  up=colUpper[j];
+	  down=up-1;
+	} else {
+          // odd
+          up=down+1.0;
+          solval = down+1.0e-1;
+        }
+      }
+      assert (up<=colUpper[j]);
+      assert (down>=colLower[j]);
+      assert (up>down);
+      int istackC,iway, istackR;
+      int way[]={1,2,1};
+      int feas[]={1,2,4};
+      int feasible=0;
+      int notFeasible;
+      for (iway=0;iway<3;iway ++) {
+        //int fixThis=0;
+        double objVal=current;
+        stackC[0]=j;
+        markC[j]=way[iway];
+        double solMovement;
+        double movement;
+        if (way[iway]==1) {
+          movement=down-colUpper[j];
+          solMovement = down-colsol[j];
+          assert(movement<-0.99999);
+          if (fabs(down-colLower[j])<1.0e-7) {
+            down=colLower[j];
+          }
+        } else {
+          movement=up-colLower[j];
+          solMovement = up-colsol[j];
+          assert(movement>0.99999);
+          if (fabs(up-colUpper[j])<1.0e-7) {
+            up=colUpper[j];
+          }
+        }
+#ifdef PRINT_DEBUG
+        if (fabs(movement)>1.01) {
+          printf("big %d %g %g %g\n",j,colLower[j],solval,colUpper[j]);
+        }
+#endif
+        if (solMovement*djs[j]>0.0)
+          objVal += solMovement*djs[j];
+        nstackC=1;
+        nstackR=0;
+        saveL[0]=colLower[j];
+        saveU[0]=colUpper[j];
+        assert (saveU[0]>saveL[0]);
+        notFeasible=0;
+        if (movement<0.0) {
+          colUpper[j] += movement;
+          colUpper[j] = floor(colUpper[j]+0.5);
+	  columnGap[j] = colUpper[j]-colLower[j]-primalTolerance_;
+#ifdef PRINT_DEBUG
+          printf("** Trying %d down to 0\n",j);
+#endif
+        } else {
+          colLower[j] += movement;
+          colLower[j] = floor(colLower[j]+0.5);
+	  columnGap[j] = colUpper[j]-colLower[j]-primalTolerance_;
+#ifdef PRINT_DEBUG
+          printf("** Trying %d up to 1\n",j);
+#endif
+        }
+        if (fabs(colUpper[j]-colLower[j])<1.0e-6)
+          markC[j]=3; // say fixed
+	markC[j] &= ~12;
+	if (colUpper[j]>1.0e10)
+	  markC[j] |= 8;
+	if (colLower[j]<-1.0e10)
+	  markC[j] |= 4;
+        istackC=0;
+        /* update immediately */
+	CoinBigIndex k;
+        for ( k=columnStart[j];k<columnStart[j]+columnLength[j];k++) {
+          int irow = row[k];
+          double value = columnElements[k];
+          assert (markR[irow]!=-2);
+          if (markR[irow]==-1) {
+            stackR[nstackR]=irow;
+            markR[irow]=nstackR;
+            saveMin[nstackR]=minR[irow];
+            saveMax[nstackR]=maxR[irow];
+            nstackR++;
+          }
+          /* could check immediately if violation */
+          if (movement>0.0) {
+            /* up */
+            if (value>0.0) {
+              /* up does not change - down does */
+              if (minR[irow]>-1.0e10)
+                minR[irow] += value * movement;
+              if (minR[irow]>rowUpper[irow]+1.0e-5) {
+                notFeasible=1;
+                istackC=1;
+                break;
+              }
+            } else {
+              /* down does not change - up does */
+              if (maxR[irow]<1.0e10)
+                maxR[irow] += value * movement;
+              if (maxR[irow]<rowLower[irow]-1.0e-5) {
+                notFeasible=1;
+                istackC=1;
+                break;
+              }
+            }
+          } else {
+            /* down */
+            if (value<0.0) {
+              /* up does not change - down does */
+              if (minR[irow]>-1.0e10)
+                minR[irow] += value * movement;
+              if (minR[irow]>rowUpper[irow]+1.0e-5) {
+                notFeasible=1;
+                istackC=1;
+                break;
+              }
+            } else {
+              /* down does not change - up does */
+              if (maxR[irow]<1.0e10)
+                maxR[irow] += value * movement;
+              if (maxR[irow]<rowLower[irow]-1.0e-5) {
+                notFeasible=1;
+                istackC=1;
+                break;
+              }
+            }
+          }
+        }
+        while (istackC<nstackC&&nstackC<maxStack) { // could be istackC<maxStack?
+          int jway;
+          int jcol =stackC[istackC];
+          jway=markC[jcol];
+          for (k=columnStart[jcol];k<columnStart[jcol]+columnLength[jcol];k++) {
+            // break if found not feasible
+            if (notFeasible)
+              break;
+            int irow = row[k];
+	    /* see if anything forced */
+	    CoinBigIndex rStart = rowStart[irow];
+	    CoinBigIndex rEnd = rowStartPos[irow];
+	    double rowUp = rowUpper[irow];
+	    double rowUp2=0.0;
+	    bool doRowUpN;
+	    bool doRowUpP;
+	    if (rowUp<1.0e10) {
+	      doRowUpN=true;
+	      doRowUpP=true;
+	      rowUp2 = rowUp-minR[irow];
+	      if (rowUp2<-tolerance) {
+		notFeasible=true;
+		break;
+	      } else {
+		if (rowUp2+largestNegativeInRow[irow]>0)
+		  doRowUpN=false;
+		if (rowUp2-largestPositiveInRow[irow]>0)
+		  doRowUpP=false;
+	      }
+	    } else {
+	      doRowUpN=false;
+	      doRowUpP=false;
+	      rowUp2=COIN_DBL_MAX;
+	    }
+	    double rowLo = rowLower[irow];
+	    double rowLo2=0.0;
+	    bool doRowLoN;
+	    bool doRowLoP;
+	    if (rowLo>-1.0e10) {
+	      doRowLoN=true;
+	      doRowLoP=true;
+	      rowLo2 = rowLo-maxR[irow];
+	      if (rowLo2>tolerance) {
+		notFeasible=true;
+		break;
+	      } else {
+		if (rowLo2-largestNegativeInRow[irow]<0)
+		  doRowLoN=false;
+		if (rowLo2+largestPositiveInRow[irow]<0)
+		  doRowLoP=false;
+	      }
+	    } else {
+	      doRowLoN=false;
+	      doRowLoP=false;
+	      rowLo2=-COIN_DBL_MAX;
+	    }
+	    if (doRowUpN&&doRowLoN) {
+	      //doRowUpN=doRowLoN=false;
+	      // Start neg values loop
+	      for (CoinBigIndex kk =rStart;kk<rEnd;kk++) {
+		int kcol=column[kk];
+		int markIt=markC[kcol];
+		if ((markIt&3)!=3) {
+		  double value2=rowElements[kk];
+		  if (colUpper[kcol]<=1e10)
+		    assert ((markIt&8)==0);
+		  else
+		    assert ((markIt&8)!=0);
+		  if (colLower[kcol]>=-1e10)
+		    assert ((markIt&4)==0);
+		  else
+		    assert ((markIt&4)!=0);
+		  assert (value2<0.0);
+		  double gap = columnGap[kcol]*value2;
+		  bool doUp = (rowUp2 + gap < -1.0e-7);
+		  bool doDown = (rowLo2 -gap > 1.0e-7);
+		  if (doUp||doDown) {
+		    double moveUp=0.0;
+		    double moveDown=0.0;
+		    double newUpper=-1.0;
+		    double newLower=1.0;
+		    if ( doUp&&(markIt&(2+8))==0) {
+		      double dbound = colUpper[kcol]+rowUp2/value2;
+		      if (intVar[kcol]) {
+			markIt |= 2;
+			newLower = ceil(dbound-relaxedTolerance);
+		      } else {
+			newLower=dbound;
+			if (newLower+primalTolerance_>colUpper[kcol]&&
+			    newLower-primalTolerance_<=colUpper[kcol]) {
+			  newLower=colUpper[kcol];
+			  markIt |= 2;
+			  //markIt=3;
+			} else {
+			  // avoid problems - fix later ?
+			  markIt=3;
+			}
+		      }
+		      moveUp = newLower-colLower[kcol];
+		    }
+		    if ( doDown&&(markIt&(1+4))==0) {
+		      double dbound = colLower[kcol] + rowLo2/value2;
+		      if (intVar[kcol]) {
+			markIt |= 1;
+			newUpper = floor(dbound+relaxedTolerance);
+		      } else {
+			newUpper=dbound;
+			if (newUpper-primalTolerance_<colLower[kcol]&&
+			    newUpper+primalTolerance_>=colLower[kcol]) {
+			  newUpper=colLower[kcol];
+			  markIt |= 1;
+			  //markIt=3;
+			} else {
+			  // avoid problems - fix later ?
+			  markIt=3;
+			}
+		      }
+		      moveDown = newUpper-colUpper[kcol];
+		    }
+		    if (!moveUp&&!moveDown)
+		      continue;
+		    bool onList = ((markC[kcol]&3)!=0);
+		    if (nstackC<2*maxStack) {
+		      markC[kcol] = markIt;
+		    }
+		    if (moveUp&&nstackC<2*maxStack) {
+		      //fixThis++;
+		      if (!onList) {
+			stackC[nstackC]=kcol;
+			saveL[nstackC]=colLower[kcol];
+			saveU[nstackC]=colUpper[kcol];
+			assert (saveU[nstackC]>saveL[nstackC]);
+			assert (nstackC<nCols);
+			nstackC++;
+			onList=true;
+		      }
+		      if (newLower>colsol[kcol]) {
+			if (djs[kcol]<0.0) {
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (newLower>colUpper[kcol]+primalTolerance_);
+			} else {
+			  objVal += moveUp*djs[kcol];
+			}
+		      }
+		      if (intVar[kcol]) 
+			newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
+		      colLower[kcol]=newLower;
+		      columnGap[kcol] = colUpper[kcol]-newLower-primalTolerance_;
+		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
+			markC[kcol]=3; // say fixed
+		      }
+		      markC[kcol] &= ~12;
+		      if (colUpper[kcol]>1.0e10)
+			markC[kcol] |= 8;
+		      if (colLower[kcol]<-1.0e10)
+			markC[kcol] |= 4;
+		      /* update immediately */
+		      for (CoinBigIndex jj =columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
+			int krow = row[jj];
+			double value = columnElements[jj];
+			assert (markR[krow]!=-2);
+			if (markR[krow]==-1) {
+			  stackR[nstackR]=krow;
+			  markR[krow]=nstackR;
+			  saveMin[nstackR]=minR[krow];
+			  saveMax[nstackR]=maxR[krow];
+			  nstackR++;
+			}
+			/* could check immediately if violation */
+			/* up */
+			if (value>0.0) {
+			  /* up does not change - down does */
+			  if (minR[krow]>-1.0e10)
+			    minR[krow] += value*moveUp;
+			  if (krow==irow)
+			    rowUp2 = rowUp-minR[irow];
+			  if (minR[krow]>rowUpper[krow]+1.0e-5) {
+			    colUpper[kcol]=-1.0e50; /* force infeasible */
+			    break;
+			  }
+			} else {
+			  /* down does not change - up does */
+			  if (maxR[krow]<1.0e10)
+			    maxR[krow] += value*moveUp;
+			  if (krow==irow)
+			    rowLo2 = rowLo-maxR[irow];
+			  if (maxR[krow]<rowLower[krow]-1.0e-5) {
+			    colUpper[kcol]=-1.0e50; /* force infeasible */
+			    break;
+			  }
+			}
+		      }
+		    }
+		    if (moveDown&&nstackC<2*maxStack) {
+		      //fixThis++;
+		      if (!onList) {
+			stackC[nstackC]=kcol;
+			saveL[nstackC]=colLower[kcol];
+			saveU[nstackC]=colUpper[kcol];
+			assert (saveU[nstackC]>saveL[nstackC]);
+			assert (nstackC<nCols);
+			nstackC++;
+			onList=true;
+		      }
+		      if (newUpper<colsol[kcol]) {
+			if (djs[kcol]>0.0) {
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (colLower[kcol]>newUpper+primalTolerance_);
+			} else {
+			  objVal += moveDown*djs[kcol];
+			}
+		      }
+		      if (intVar[kcol])
+			newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
+		      colUpper[kcol]=newUpper;
+		      columnGap[kcol] = newUpper-colLower[kcol]-primalTolerance_;
+		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
+			markC[kcol]=3; // say fixed
+		      }
+		      markC[kcol] &= ~12;
+		      if (colUpper[kcol]>1.0e10)
+			markC[kcol] |= 8;
+		      if (colLower[kcol]<-1.0e10)
+			markC[kcol] |= 4;
+		      /* update immediately */
+		      for (CoinBigIndex jj =columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
+			int krow = row[jj];
+			double value = columnElements[jj];
+			assert (markR[krow]!=-2);
+			if (markR[krow]==-1) {
+			  stackR[nstackR]=krow;
+			  markR[krow]=nstackR;
+			  saveMin[nstackR]=minR[krow];
+			  saveMax[nstackR]=maxR[krow];
+			  nstackR++;
+			}
+			/* could check immediately if violation */
+			/* down */
+			if (value<0.0) {
+			  /* up does not change - down does */
+			  if (minR[krow]>-1.0e10)
+			    minR[krow] += value*moveDown;
+			  if (krow==irow)
+			    rowUp2 = rowUp-minR[irow];
+			  if (minR[krow]>rowUpper[krow]+1.0e-5) {
+			    colUpper[kcol]=-1.0e50; /* force infeasible */
+			    columnGap[kcol] = -1.0e50;
+			    break;
+			  }
+			} else {
+			  /* down does not change - up does */
+			  if (maxR[krow]<1.0e10)
+			    maxR[krow] += value*moveDown;
+			  if (krow==irow)
+			    rowLo2 = rowLo-maxR[irow];
+			  if (maxR[krow]<rowLower[krow]-1.0e-5) {
+			    colUpper[kcol]=-1.0e50; /* force infeasible */
+			    columnGap[kcol] = -1.0e50;
+			    break;
+			  }
+			}
+		      }
+		    }
+		    if (colLower[kcol]>colUpper[kcol]+primalTolerance_) {
+		      notFeasible=1;;
+		      k=columnStart[jcol]+columnLength[jcol];
+		      istackC=nstackC+1;
+		      break;
+		    }
+		  }
+		}
+	      } // end big loop rStart->rPos
+	    } else if (doRowUpN) {
+	      // Start neg values loop
+	      for (CoinBigIndex kk =rStart;kk<rEnd;kk++) {
+		int kcol =column[kk];
+		int markIt=markC[kcol];
+		if ((markIt&3)!=3) {
+		  double value2=rowElements[kk];
+		  double gap = columnGap[kcol]*value2;
+		  if (!(rowUp2 + gap < -1.0e-7))
+		    continue;
+		  double moveUp=0.0;
+		  double newLower=1.0;
+		  if ((markIt&(2+8))==0) {
+		    double dbound = colUpper[kcol]+rowUp2/value2;
+		    if (intVar[kcol]) {
+		      markIt |= 2;
+		      newLower = ceil(dbound-relaxedTolerance);
+		    } else {
+		      newLower=dbound;
+		      if (newLower+primalTolerance_>colUpper[kcol]&&
+			  newLower-primalTolerance_<=colUpper[kcol]) {
+			newLower=colUpper[kcol];
+			markIt |= 2;
+			//markIt=3;
+		      } else {
+			// avoid problems - fix later ?
+			markIt=3;
+		      }
+		    }
+		    moveUp = newLower-colLower[kcol];
+		    if (!moveUp)
+		      continue;
+		    bool onList = ((markC[kcol]&3)!=0);
+		    if (nstackC<2*maxStack) {
+		      markC[kcol] = markIt;
+		    }
+		    if (moveUp&&nstackC<2*maxStack) {
+		      //fixThis++;
+		      if (!onList) {
+			stackC[nstackC]=kcol;
+			saveL[nstackC]=colLower[kcol];
+			saveU[nstackC]=colUpper[kcol];
+			assert (saveU[nstackC]>saveL[nstackC]);
+			assert (nstackC<nCols);
+			nstackC++;
+			onList=true;
+		      }
+		      if (newLower>colsol[kcol]) {
+			if (djs[kcol]<0.0) {
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (newLower>colUpper[kcol]+primalTolerance_);
+			} else {
+			  objVal += moveUp*djs[kcol];
+			}
+		      }
+		      if (intVar[kcol]) 
+			newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
+		      colLower[kcol]=newLower;
+		      columnGap[kcol] = colUpper[kcol]-newLower-primalTolerance_;
+		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
+			markC[kcol]=3; // say fixed
+		      }
+		      markC[kcol] &= ~12;
+		      if (colUpper[kcol]>1.0e10)
+			markC[kcol] |= 8;
+		      if (colLower[kcol]<-1.0e10)
+			markC[kcol] |= 4;
+		      /* update immediately */
+		      for (CoinBigIndex jj =columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
+			int krow = row[jj];
+			double value = columnElements[jj];
+			assert (markR[krow]!=-2);
+			if (markR[krow]==-1) {
+			  stackR[nstackR]=krow;
+			  markR[krow]=nstackR;
+			  saveMin[nstackR]=minR[krow];
+			  saveMax[nstackR]=maxR[krow];
+			  nstackR++;
+			}
+			/* could check immediately if violation */
+			/* up */
+			if (value>0.0) {
+			  /* up does not change - down does */
+			  if (minR[krow]>-1.0e10)
+			    minR[krow] += value*moveUp;
+			  if (krow==irow)
+			    rowUp2 = rowUp-minR[irow];
+			  if (minR[krow]>rowUpper[krow]+1.0e-5) {
+			    colUpper[kcol]=-1.0e50; /* force infeasible */
+			    columnGap[kcol] = -1.0e50;
+			    break;
+			  }
+			} else {
+			  /* down does not change - up does */
+			  if (maxR[krow]<1.0e10)
+			    maxR[krow] += value*moveUp;
+			  if (krow==irow)
+			    rowLo2 = rowLo-maxR[irow];
+			  if (maxR[krow]<rowLower[krow]-1.0e-5) {
+			    colUpper[kcol]=-1.0e50; /* force infeasible */
+			    columnGap[kcol] = -1.0e50;
+			    break;
+			  }
+			}
+		      }
+		    }
+		    if (colLower[kcol]>colUpper[kcol]+primalTolerance_) {
+		      notFeasible=1;;
+		      k=columnStart[jcol]+columnLength[jcol];
+		      istackC=nstackC+1;
+		      break;
+		    }
+		  }
+		}
+	      } // end big loop rStart->rPos
+	    } else if (doRowLoN) {
+	      // Start neg values loop
+	      for (CoinBigIndex kk =rStart;kk<rEnd;kk++) {
+		int kcol =column[kk];
+		if ((markC[kcol]&3)!=3) {
+		  double moveDown=0.0;
+		  double newUpper=-1.0;
+		  double value2=rowElements[kk];
+		  int markIt=markC[kcol];
+		  assert (value2<0.0);
+		  double gap = columnGap[kcol]*value2;
+		  bool doDown = (rowLo2 -gap > 1.0e-7);
+		  if (doDown&& (markIt&(1+4))==0 ) {
+		    double dbound = colLower[kcol] + rowLo2/value2;
+		    if (intVar[kcol]) {
+		      markIt |= 1;
+		      newUpper = floor(dbound+relaxedTolerance);
+		    } else {
+		      newUpper=dbound;
+		      if (newUpper-primalTolerance_<colLower[kcol]&&
+			  newUpper+primalTolerance_>=colLower[kcol]) {
+			newUpper=colLower[kcol];
+			markIt |= 1;
+			//markIt=3;
+		      } else {
+			// avoid problems - fix later ?
+			markIt=3;
+		      }
+		    }
+		    moveDown = newUpper-colUpper[kcol];
+		    if (!moveDown)
+		    continue;
+		    bool onList = ((markC[kcol]&3)!=0);
+		    if (nstackC<2*maxStack) {
+		      markC[kcol] = markIt;
+		    }
+		    if (moveDown&&nstackC<2*maxStack) {
+		      //fixThis++;
+		      if (!onList) {
+			stackC[nstackC]=kcol;
+			saveL[nstackC]=colLower[kcol];
+			saveU[nstackC]=colUpper[kcol];
+			assert (saveU[nstackC]>saveL[nstackC]);
+			assert (nstackC<nCols);
+			nstackC++;
+			onList=true;
+		      }
+		      if (newUpper<colsol[kcol]) {
+			if (djs[kcol]>0.0) {
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (colLower[kcol]>newUpper+primalTolerance_);
+			} else {
+			  objVal += moveDown*djs[kcol];
+			}
+		      }
+		      if (intVar[kcol])
+			newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
+		      colUpper[kcol]=newUpper;
+		      columnGap[kcol] = newUpper-colLower[kcol]-primalTolerance_;
+		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
+			markC[kcol]=3; // say fixed
+		      }
+		      markC[kcol] &= ~12;
+		      if (colUpper[kcol]>1.0e10)
+			markC[kcol] |= 8;
+		      if (colLower[kcol]<-1.0e10)
+			markC[kcol] |= 4;
+		      /* update immediately */
+		      for (CoinBigIndex jj =columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
+			int krow = row[jj];
+			double value = columnElements[jj];
+			assert (markR[krow]!=-2);
+			if (markR[krow]==-1) {
+			  stackR[nstackR]=krow;
+			  markR[krow]=nstackR;
+			  saveMin[nstackR]=minR[krow];
+			  saveMax[nstackR]=maxR[krow];
+			  nstackR++;
+			}
+			/* could check immediately if violation */
+			/* down */
+			if (value<0.0) {
+			  /* up does not change - down does */
+			  if (minR[krow]>-1.0e10)
+			    minR[krow] += value*moveDown;
+			  if (krow==irow)
+			    rowUp2 = rowUp-minR[irow];
+			  if (minR[krow]>rowUpper[krow]+1.0e-5) {
+			    colUpper[kcol]=-1.0e50; /* force infeasible */
+			    columnGap[kcol] = -1.0e50;
+			    break;
+			  }
+			} else {
+			  /* down does not change - up does */
+			  if (maxR[krow]<1.0e10)
+			    maxR[krow] += value*moveDown;
+			  if (krow==irow)
+			    rowLo2 = rowLo-maxR[irow];
+			  if (maxR[krow]<rowLower[krow]-1.0e-5) {
+			    colUpper[kcol]=-1.0e50; /* force infeasible */
+			    columnGap[kcol] = -1.0e50;
+			    break;
+			  }
+			}
+		      }
+		    }
+		    if (colLower[kcol]>colUpper[kcol]+primalTolerance_) {
+		      notFeasible=1;;
+		      k=columnStart[jcol]+columnLength[jcol];
+		      istackC=nstackC+1;
+		      break;
+		    }
+		  }
+		}
+	      } // end big loop rStart->rPos
+	    }
+	    rStart = rEnd;
+	    rEnd = rowStart[irow+1];
+	    if (doRowUpP&&doRowLoP) {
+	      //doRowUpP=doRowLoP=false;
+	      // Start pos values loop
+	      for (CoinBigIndex kk =rStart;kk<rEnd;kk++) {
+		int kcol=column[kk];
+		int markIt=markC[kcol];
+		if ((markIt&3)!=3) {
+		  double value2=rowElements[kk];
+		  assert (value2 > 0.0);
+		  /* positive element */
+		  double gap = columnGap[kcol]*value2;
+		  bool doDown = (rowLo2 + gap > 1.0e-7);
+		  bool doUp = (rowUp2 - gap < -1.0e-7);
+		  if (doDown||doUp) {
+		    double moveUp=0.0;
+		    double moveDown=0.0;
+		    double newUpper=-1.0;
+		    double newLower=1.0;
+		    if (doDown&&(markIt&(2+8))==0) {
+		      double dbound = colUpper[kcol] + rowLo2/value2;
+		      if (intVar[kcol]) {
+			markIt |= 2;
+			newLower = ceil(dbound-relaxedTolerance);
+		      } else {
+			newLower=dbound;
+			if (newLower+primalTolerance_>colUpper[kcol]&&
+			    newLower-primalTolerance_<=colUpper[kcol]) {
+			  newLower=colUpper[kcol];
+			  markIt |= 2;
+			  //markIt=3;
+			} else {
+			  // avoid problems - fix later ?
+			  markIt=3;
+			}
+		      }
+		      moveUp = newLower-colLower[kcol];
+		    }
+		    if (doUp&&(markIt&(1+4))==0) {
+		      double dbound = colLower[kcol] + rowUp2/value2;
+		      if (intVar[kcol]) {
+			markIt |= 1;
+			newUpper = floor(dbound+relaxedTolerance);
+		      } else {
+			newUpper=dbound;
+			if (newUpper-primalTolerance_<colLower[kcol]&&
+			    newUpper+primalTolerance_>=colLower[kcol]) {
+			  newUpper=colLower[kcol];
+			  markIt |= 1;
+			  //markIt=3;
+			} else {
+			  // avoid problems - fix later ?
+			  markIt=3;
+			}
+		      }
+		      moveDown = newUpper-colUpper[kcol];
+		    }
+		    if (!moveUp&&!moveDown)
+		      continue;
+		    bool onList = ((markC[kcol]&3)!=0);
+		    if (nstackC<2*maxStack) {
+		      markC[kcol] = markIt;
+		    }
+		    if (moveUp&&nstackC<2*maxStack) {
+		      //fixThis++;
+		      if (!onList) {
+			stackC[nstackC]=kcol;
+			saveL[nstackC]=colLower[kcol];
+			saveU[nstackC]=colUpper[kcol];
+			assert (saveU[nstackC]>saveL[nstackC]);
+			assert (nstackC<nCols);
+			nstackC++;
+			onList=true;
+		      }
+		      if (newLower>colsol[kcol]) {
+			if (djs[kcol]<0.0) {
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (newLower>colUpper[kcol]+primalTolerance_);
+			} else {
+			  objVal += moveUp*djs[kcol];
+			}
+		      }
+		      if (intVar[kcol]) 
+			newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
+		      colLower[kcol]=newLower;
+		      columnGap[kcol] = colUpper[kcol]-newLower-primalTolerance_;
+		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
+			markC[kcol]=3; // say fixed
+		      }
+		      markC[kcol] &= ~12;
+		      if (colUpper[kcol]>1.0e10)
+			markC[kcol] |= 8;
+		      if (colLower[kcol]<-1.0e10)
+			markC[kcol] |= 4;
+		      /* update immediately */
+		      for (CoinBigIndex jj =columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
+			int krow = row[jj];
+			double value = columnElements[jj];
+			assert (markR[krow]!=-2);
+			if (markR[krow]==-1) {
+			  stackR[nstackR]=krow;
+			  markR[krow]=nstackR;
+			  saveMin[nstackR]=minR[krow];
+			  saveMax[nstackR]=maxR[krow];
+			  nstackR++;
+			}
+			/* could check immediately if violation */
+			/* up */
+			if (value>0.0) {
+			  /* up does not change - down does */
+			  if (minR[krow]>-1.0e10)
+			    minR[krow] += value*moveUp;
+			  if (krow==irow)
+			    rowUp2 = rowUp-minR[irow];
+			  if (minR[krow]>rowUpper[krow]+1.0e-5) {
+			    colUpper[kcol]=-1.0e50; /* force infeasible */
+			    columnGap[kcol] = -1.0e50;
+			    break;
+			  }
+			} else {
+			  /* down does not change - up does */
+			  if (maxR[krow]<1.0e10)
+			    maxR[krow] += value*moveUp;
+			  if (krow==irow)
+			    rowLo2 = rowLo-maxR[irow];
+			  if (maxR[krow]<rowLower[krow]-1.0e-5) {
+			    colUpper[kcol]=-1.0e50; /* force infeasible */
+			    columnGap[kcol] = -1.0e50;
+			    break;
+			  }
+			}
+		      }
+		    }
+		    if (moveDown&&nstackC<2*maxStack) {
+		      //fixThis++;
+		      if (!onList) {
+			stackC[nstackC]=kcol;
+			saveL[nstackC]=colLower[kcol];
+			saveU[nstackC]=colUpper[kcol];
+			assert (saveU[nstackC]>saveL[nstackC]);
+			assert (nstackC<nCols);
+			nstackC++;
+			onList=true;
+		      }
+		      if (newUpper<colsol[kcol]) {
+			if (djs[kcol]>0.0) {
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (colLower[kcol]>newUpper+primalTolerance_);
+			} else {
+			  objVal += moveDown*djs[kcol];
+			}
+		      }
+		      if (intVar[kcol])
+			newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
+		      colUpper[kcol]=newUpper;
+		      columnGap[kcol] = newUpper-colLower[kcol]-primalTolerance_;
+		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
+			markC[kcol]=3; // say fixed
+		      }
+		      markC[kcol] &= ~12;
+		      if (colUpper[kcol]>1.0e10)
+			markC[kcol] |= 8;
+		      if (colLower[kcol]<-1.0e10)
+			markC[kcol] |= 4;
+		      /* update immediately */
+		      for (CoinBigIndex jj =columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
+			int krow = row[jj];
+			double value = columnElements[jj];
+			assert (markR[krow]!=-2);
+			if (markR[krow]==-1) {
+			  stackR[nstackR]=krow;
+			  markR[krow]=nstackR;
+			  saveMin[nstackR]=minR[krow];
+			  saveMax[nstackR]=maxR[krow];
+			  nstackR++;
+			}
+			/* could check immediately if violation */
+			/* down */
+			if (value<0.0) {
+			  /* up does not change - down does */
+			  if (minR[krow]>-1.0e10)
+			    minR[krow] += value*moveDown;
+			  if (krow==irow)
+			    rowUp2 = rowUp-minR[irow];
+			  if (minR[krow]>rowUpper[krow]+1.0e-5) {
+			    colUpper[kcol]=-1.0e50; /* force infeasible */
+			    columnGap[kcol] = -1.0e50;
+			    break;
+			  }
+			} else {
+			  /* down does not change - up does */
+			  if (maxR[krow]<1.0e10)
+			    maxR[krow] += value*moveDown;
+			  if (krow==irow)
+			    rowLo2 = rowLo-maxR[irow];
+			  if (maxR[krow]<rowLower[krow]-1.0e-5) {
+			    colUpper[kcol]=-1.0e50; /* force infeasible */
+			    columnGap[kcol] = -1.0e50;
+			    break;
+			  }
+			}
+		      }
+		    }
+		    if (colLower[kcol]>colUpper[kcol]+primalTolerance_) {
+		      notFeasible=1;;
+		      k=columnStart[jcol]+columnLength[jcol];
+		      istackC=nstackC+1;
+		      break;
+		    }
+		  }
+		}
+	      } // end big loop rPos->rEnd
+	    } else if (doRowUpP) {
+	      // Start pos values loop
+	      for (CoinBigIndex kk =rStart;kk<rEnd;kk++) {
+		int kcol =column[kk];
+		int markIt=markC[kcol];
+		if ((markIt&3)!=3) {
+		  double value2=rowElements[kk];
+		  assert (value2 > 0.0);
+		  /* positive element */
+		  double gap = columnGap[kcol]*value2;
+		  bool doUp = (rowUp2 - gap < -1.0e-7);
+		  if (doUp&&(markIt&(1+4))==0) {
+		    double newUpper=-1.0;
+		    double dbound = colLower[kcol] + rowUp2/value2;
+		    if (intVar[kcol]) {
+		      markIt |= 1;
+		      newUpper = floor(dbound+relaxedTolerance);
+		    } else {
+		      newUpper=dbound;
+		      if (newUpper-primalTolerance_<colLower[kcol]&&
+			  newUpper+primalTolerance_>=colLower[kcol]) {
+			newUpper=colLower[kcol];
+			markIt |= 1;
+			//markIt=3;
+		      } else {
+			// avoid problems - fix later ?
+			markIt=3;
+		      }
+		    }
+		    double moveDown = newUpper-colUpper[kcol];
+		    if (!moveDown)
+		      continue;
+		    bool onList = ((markC[kcol]&3)!=0);
+		    if (nstackC<2*maxStack) {
+		      markC[kcol] = markIt;
+		    }
+		    if (nstackC<2*maxStack) {
+		      //fixThis++;
+		      if (!onList) {
+			stackC[nstackC]=kcol;
+			saveL[nstackC]=colLower[kcol];
+			saveU[nstackC]=colUpper[kcol];
+			assert (saveU[nstackC]>saveL[nstackC]);
+			assert (nstackC<nCols);
+			nstackC++;
+			onList=true;
+		      }
+		      if (newUpper<colsol[kcol]) {
+			if (djs[kcol]>0.0) {
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (colLower[kcol]>newUpper+primalTolerance_);
+			} else {
+			  objVal += moveDown*djs[kcol];
+			}
+		      }
+		      if (intVar[kcol])
+			newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
+		      colUpper[kcol]=newUpper;
+		      columnGap[kcol] = newUpper-colLower[kcol]-primalTolerance_;
+		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
+			markC[kcol]=3; // say fixed
+		      }
+		      markC[kcol] &= ~12;
+		      if (colUpper[kcol]>1.0e10)
+			markC[kcol] |= 8;
+		      if (colLower[kcol]<-1.0e10)
+			markC[kcol] |= 4;
+		      /* update immediately */
+		      for (CoinBigIndex jj =columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
+			int krow = row[jj];
+			double value = columnElements[jj];
+			assert (markR[krow]!=-2);
+			if (markR[krow]==-1) {
+			  stackR[nstackR]=krow;
+			  markR[krow]=nstackR;
+			  saveMin[nstackR]=minR[krow];
+			  saveMax[nstackR]=maxR[krow];
+			  nstackR++;
+			}
+			/* could check immediately if violation */
+			/* down */
+			if (value<0.0) {
+			  /* up does not change - down does */
+			  if (minR[krow]>-1.0e10)
+			    minR[krow] += value*moveDown;
+			  if (krow==irow)
+			    rowUp2 = rowUp-minR[irow];
+			  if (minR[krow]>rowUpper[krow]+1.0e-5) {
+			    colUpper[kcol]=-1.0e50; /* force infeasible */
+			    columnGap[kcol] = -1.0e50;
+			    break;
+			  }
+			} else {
+			  /* down does not change - up does */
+			  if (maxR[krow]<1.0e10)
+			    maxR[krow] += value*moveDown;
+			  if (krow==irow)
+			    rowLo2 = rowLo-maxR[irow];
+			  if (maxR[krow]<rowLower[krow]-1.0e-5) {
+			    colUpper[kcol]=-1.0e50; /* force infeasible */
+			    columnGap[kcol] = -1.0e50;
+			    break;
+			  }
+			}
+		      }
+		    }
+		    if (colLower[kcol]>colUpper[kcol]+primalTolerance_) {
+		      notFeasible=1;;
+		      k=columnStart[jcol]+columnLength[jcol];
+		      istackC=nstackC+1;
+		      break;
+		    }
+		  }
+		}
+	      } // end big loop rPos->rEnd
+	    } else if (doRowLoP) {
+	      // Start pos values loop
+	      for (CoinBigIndex kk =rStart;kk<rEnd;kk++) {
+		int kcol =column[kk];
+		if ((markC[kcol]&3)!=3) {
+		  double value2=rowElements[kk];
+		  int markIt=markC[kcol];
+		  assert (value2 > 0.0);
+		  /* positive element */
+		  double gap = columnGap[kcol]*value2;
+		  bool doDown = (rowLo2 +gap > 1.0e-7);
+		  if (doDown&&(markIt&(2+8))==0) {
+		    double newLower=1.0;
+		    double dbound = colUpper[kcol] + rowLo2/value2;
+		    if (intVar[kcol]) {
+		      markIt |= 2;
+		      newLower = ceil(dbound-relaxedTolerance);
+		    } else {
+		      newLower=dbound;
+		      if (newLower+primalTolerance_>colUpper[kcol]&&
+			  newLower-primalTolerance_<=colUpper[kcol]) {
+			newLower=colUpper[kcol];
+			markIt |= 2;
+			//markIt=3;
+		      } else {
+			// avoid problems - fix later ?
+			markIt=3;
+			}
+		    }
+		    double moveUp = newLower-colLower[kcol];
+		    if (!moveUp)
+		      continue;
+		    bool onList = ((markC[kcol]&3)!=0);
+		    if (nstackC<2*maxStack) {
+		      markC[kcol] = markIt;
+		    }
+		    if (nstackC<2*maxStack) {
+		      //fixThis++;
+		      if (!onList) {
+			stackC[nstackC]=kcol;
+			saveL[nstackC]=colLower[kcol];
+			saveU[nstackC]=colUpper[kcol];
+			assert (saveU[nstackC]>saveL[nstackC]);
+			assert (nstackC<nCols);
+			nstackC++;
+			onList=true;
+		      }
+		      if (newLower>colsol[kcol]) {
+			if (djs[kcol]<0.0) {
+			  /* should be infeasible if integer */
+			  if (intVar[kcol])
+			    assert (newLower>colUpper[kcol]+primalTolerance_);
+			} else {
+			  objVal += moveUp*djs[kcol];
+			}
+		      }
+		      if (intVar[kcol]) 
+			newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
+		      colLower[kcol]=newLower;
+		      columnGap[kcol] = colUpper[kcol]-newLower-primalTolerance_;
+		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
+			markC[kcol]=3; // say fixed
+		      }
+		      markC[kcol] &= ~12;
+		      if (colUpper[kcol]>1.0e10)
+			markC[kcol] |= 8;
+		      if (colLower[kcol]<-1.0e10)
+			markC[kcol] |= 4;
+		      /* update immediately */
+		      for (CoinBigIndex jj =columnStart[kcol];jj<columnStart[kcol]+columnLength[kcol];jj++) {
+			int krow = row[jj];
+			double value = columnElements[jj];
+			assert (markR[krow]!=-2);
+			if (markR[krow]==-1) {
+			  stackR[nstackR]=krow;
+			  markR[krow]=nstackR;
+			  saveMin[nstackR]=minR[krow];
+			  saveMax[nstackR]=maxR[krow];
+			  nstackR++;
+			}
+			/* could check immediately if violation */
+			/* up */
+			if (value>0.0) {
+			  /* up does not change - down does */
+			  if (minR[krow]>-1.0e10)
+			    minR[krow] += value*moveUp;
+			  if (krow==irow)
+			    rowUp2 = rowUp-minR[irow];
+			  if (minR[krow]>rowUpper[krow]+1.0e-5) {
+			    colUpper[kcol]=-1.0e50; /* force infeasible */
+			    columnGap[kcol] = -1.0e50;
+			    break;
+			  }
+			} else {
+			  /* down does not change - up does */
+			  if (maxR[krow]<1.0e10)
+			    maxR[krow] += value*moveUp;
+			  if (krow==irow)
+			    rowLo2 = rowLo-maxR[irow];
+			  if (maxR[krow]<rowLower[krow]-1.0e-5) {
+			    colUpper[kcol]=-1.0e50; /* force infeasible */
+			    columnGap[kcol] = -1.0e50;
+			    break;
+			  }
+			}
+		      }
+		    }
+		    if (colLower[kcol]>colUpper[kcol]+primalTolerance_) {
+		      notFeasible=1;;
+		      k=columnStart[jcol]+columnLength[jcol];
+		      istackC=nstackC+1;
+		      break;
+		    }
+		  }
+		}
+	      } // end big loop rPos->rEnd
+	    }
+          }
+          istackC++;
+        }
+#if FIXED_BOTH_WAYS 
+	// the nCols<1000 should be on some switch
+	if (!notFeasible && iway < 2 && (info->options&2048)!=0
+	    && nCols<1000) {
+	  // try tighten
+	  double *COIN_RESTRICT rLower = const_cast<double *COIN_RESTRICT>(rowLower); 
+	  double *COIN_RESTRICT rUpper = const_cast<double *COIN_RESTRICT>(rowUpper);
+	  // must be able to do better
+	  memcpy(saveFColLower,colLower,nCols*sizeof(double));
+	  memcpy(saveFColUpper,colUpper,nCols*sizeof(double));
+	  memcpy(saveFRowLower,rLower,nRows*sizeof(double));
+	  memcpy(saveFRowUpper,rUpper,nRows*sizeof(double));
+	  // move stackR
+	  memcpy(lookRow_[0],stackR,nstackR*sizeof(int));
+	  numberRows_=nstackR;
+	  int returnCode =
+	    tighten(colLower,colUpper,
+		    column, rowElements, rowStart, 
+		    rowStartPos, rowLength, columnCopy, rLower, rUpper, 
+                    nRows, nCols, intVar, 10, primalTolerance_);
+	  if (returnCode) {
+	    // printf("INFEAS for j %d and way %d\n",j,iway);
+	    notFeasible = 1;
+	  }
+#if 0
+	  // maybe should do more than nstackC
+	  for (int i=1;i<nstackC;i++) {
+	    int icol = stackC[i];
+	    assert (saveFColLower[icol]<=colLower[icol]);
+	    assert (saveFColUpper[icol]>=colUpper[icol]);
+	    saveFColLower[icol]=colLower[icol];
+	    saveFColUpper[icol]>=colUpper[icol];
+	  }
+#endif
+	  memcpy(colLower,saveFColLower,nCols*sizeof(double));
+	  memcpy(colUpper,saveFColUpper,nCols*sizeof(double));
+	  memcpy(rLower,saveFRowLower,nRows*sizeof(double));
+	  memcpy(rUpper,saveFRowUpper,nRows*sizeof(double));
+	}
+#endif
+        if (!notFeasible) {
+          if (objVal<=cutoff) {
+            feasible |= feas[iway];
+          } else {
+#ifdef PRINT_DEBUG
+            printf("not feasible on dj\n");
+#endif
+            notFeasible=1;
+            if (iway==1&&feasible==0) {
+              /* not feasible at all */
+              ninfeas=1;
+              j=nCols-1;
+              break;
+            }
+	  }
+        } else if (iway==1&&feasible==0) {
+          /* not feasible at all */
+          ninfeas=1;
+          j=nCols-1;
+          iLook=numberThisTime_;
+          ipass=maxPass;
+          break;
+        }
+        if (iway==2||(iway==1&&feasible==2)) {
+          /* keep */
+          iway=3;
+          nfixed++;
+          OsiColCut cc;
+          int /*nTot=0,*/nFix=0,nInt=0;
+          for (istackC=0;istackC<nstackC;istackC++) {
+            int icol=stackC[istackC];
+            if (intVar[icol]) {
+              if (colUpper[icol]<currentColUpper[icol]-1.0e-4) {
+                element[nFix]=colUpper[icol];
+                index[nFix++]=icol;
+                nInt++;
+              }
+            }
+          }
+          if (nFix) {
+            //nTot=nFix;
+	    cleanBounds(1,nFix,index,element);
+            cc.setUbs(nFix,index,element);
+            nFix=0;
+          }
+          for (istackC=0;istackC<nstackC;istackC++) {
+            int icol=stackC[istackC];
+            if (intVar[icol]) {
+              if (colLower[icol]>currentColLower[icol]+1.0e-4) {
+                element[nFix]=colLower[icol];
+                index[nFix++]=icol;
+                nInt++;
+              }
+            }
+          }
+          if (nFix) {
+            //nTot+=nFix;
+	    cleanBounds(-1,nFix,index,element);
+            cc.setLbs(nFix,index,element);
+          }
+          // could tighten continuous as well
+          if (nInt) {
+#ifdef CGL_DEBUG
+            checkBounds(debugger,cc);
+#endif
+#ifndef CC_AT_END
+            cs.insert(cc);
+#endif
+          }
+          for (istackC=0;istackC<nstackC;istackC++) {
+            int icol=stackC[istackC];
+            if (colUpper[icol]-colLower[icol]>primalTolerance_) {
+              markC[icol]&= ~3;
+            } else {
+              markC[icol]=3;
+            }
+          }
+          for (istackR=0;istackR<nstackR;istackR++) {
+            int irow=stackR[istackR];
+            markR[irow]=-1;
+          }
+        } else {
+          /* is it worth seeing if can increase coefficients
+             or maybe better see if it is a cut */
+          if (iway==0) {
+            nstackC0=CoinMin(nstackC,maxStack);
+            double boundChange;
+            if (notFeasible) {
+              nstackC0=0;
+            } else {
+              for (istackC=0;istackC<nstackC0;istackC++) {
+                int icol=stackC[istackC];
+                stackC0[istackC]=icol;
+                lo0[istackC]=colLower[icol];
+                up0[istackC]=colUpper[icol];
+              }
+            }
+            /* restore all */
+            assert (iway==0);
+	    if (changedDown)
+	      changedDown[j] = nstackC;
+            for (istackC=nstackC-1;istackC>=0;istackC--) {
+              int icol=stackC[istackC];
+              double oldU=saveU[istackC];
+              double oldL=saveL[istackC];
+#if FIXED_BOTH_WAYS
+	      if (doFixedBothWays && intVar[icol]) {
+		assert (newLo[icol]==COIN_DBL_MAX);
+		fixedBoth[nFixedBoth++] = icol;
+		newLo[icol] = colLower[icol];
+		newUp[icol] = colUpper[icol];
+	      }
+#endif
+              colUpper[icol]=oldU;
+              colLower[icol]=oldL;
+	      columnGap[icol] = oldU-oldL-primalTolerance_;
+              markC[icol]= 0;
+	      if (oldU>1.0e10)
+		markC[icol] |= 8;
+	      if (oldL<-1.0e10)
+		markC[icol] |= 4;
+            }
+            for (istackR=0;istackR<nstackR;istackR++) {
+              int irow=stackR[istackR];
+              minR[irow]=saveMin[istackR];
+              maxR[irow]=saveMax[istackR];
+              markR[irow]=-1;
+            }
+          } else {
+            if (iway==1&&feasible==3) {
+              iway=3;
+              /* point back to stack */
+              for (istackC=nstackC-1;istackC>=0;istackC--) {
+                int icol=stackC[istackC];
+                markC[icol]=istackC+100000;
+              }
+              OsiColCut cc;
+              int /*nTot=0,*/nFix=0,nInt=0;
+              for (istackC=1;istackC<nstackC0;istackC++) {
+                int icol=stackC0[istackC];
+                int istackC1=markC[icol]-100000;
+                if (istackC1>=0) {
+		  markC[icol] -= 100000;
+                  if (CoinMin(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
+		    double saveBound = saveL[istackC1];
+                    saveL[istackC1]=CoinMin(lo0[istackC],colLower[icol]);
+#ifdef UPDATE_MINR_MAXR
+		    if (saveBound < saveL[istackC1]) {
+		      // tighten minR and maxR
+		      assert (numberRealChanges<2*maxStack);
+		      realChange[numberRealChanges] = saveL[istackC1]-saveBound;
+		      whichRealChange[numberRealChanges++] = icol;
+		    }
+#endif
+                    if (intVar[icol]/*||!info->inTree*/) {
+                      element[nFix]=saveL[istackC1];
+                      index[nFix++]=icol;
+                      nInt++;
+                    }
+                    nfixed++;
+                  } 
+                }
+              }
+              if (nFix) {
+                //nTot=nFix;
+		cleanBounds(-1,nFix,index,element);
+                cc.setLbs(nFix,index,element);
+                nFix=0;
+              }
+              for (istackC=1;istackC<nstackC0;istackC++) {
+                int icol=stackC0[istackC];
+                int istackC1=markC[icol]-100000;
+                if (istackC1>=0) {
+		  markC[icol] -= 100000;
+                  if (CoinMax(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
+		    double saveBound = saveU[istackC1];
+                    saveU[istackC1]=CoinMax(up0[istackC],colUpper[icol]);
+#ifdef UPDATE_MINR_MAXR
+		    if (saveBound < saveU[istackC1]) {
+		      // tighten minR and maxR 
+		      assert (numberRealChanges<2*maxStack);
+		      realChange[numberRealChanges] = saveBound-saveU[istackC1];
+		      whichRealChange[numberRealChanges++] = icol;
+		    }
+#endif
+                    if (intVar[icol]/*||!info->inTree*/) {
+                      element[nFix]=saveU[istackC1];
+                      index[nFix++]=icol;
+                      nInt++;
+                    }
+                    nfixed++;
+		  }
+                }
+              }
+              if (nFix) {
+                //nTot+=nFix;
+		cleanBounds(1,nFix,index,element);
+                cc.setUbs(nFix,index,element);
+              }
+              // could tighten continuous as well
+              if (nInt) {
+#ifdef CGL_DEBUG
+                checkBounds(debugger,cc);
+#endif
+#ifndef CC_AT_END
+                cs.insert(cc);
+#endif
+              }
+            }
+            double boundChange;
+            /* restore all */
+	    assert (iway>0);
+	    if (changedUp)
+	      changedUp[j] = nstackC;
+#if FIXED_BOTH_WAYS
+	    //#define JUST_ONE_CC
+#ifdef JUST_ONE_CC
+	    CoinPackedVector lbsBoth;
+	    CoinPackedVector ubsBoth;
+#endif
+#endif
+            for (istackC=nstackC-1;istackC>0;istackC--) {
+              int icol=stackC[istackC];
+              double oldU=saveU[istackC];
+              double oldL=saveL[istackC];
+#if FIXED_BOTH_WAYS
+	      if (doFixedBothWays&&newLo[icol]!=COIN_DBL_MAX) {
+		double loDown = newLo[icol];
+		double upDown = newUp[icol];
+		double loUp = colLower[icol];
+		double upUp = colUpper[icol];
+		double newLower = oldL;
+		double newUpper = oldU;
+#if FIXED_BOTH_WAYS > 2
+		bool printit = false;
+#endif
+		if (loDown>oldL+1.0e-5 && loUp>oldL+1.0e-5) {
+		  newLower = CoinMin(loDown,loUp);
+		  if (intVar[icol]) 
+		    newLower = ceil(newLower-1.0e-5);
+#if FIXED_BOTH_WAYS > 2
+		  nToBoundZ ++;
+#endif
+#ifdef JUST_ONE_CC
+		  lbsBoth.insert(icol,newLower);
+#endif
+		  if (upDown<oldU-1.0e-5 && upUp<oldU-1.0e-5) {
+		    newUpper = CoinMax(upDown,upUp);
+#if FIXED_BOTH_WAYS > 2
+		    nToBoundZ ++;
+#endif
+		    if (intVar[icol]) 
+		      newUpper = floor(newUpper+1.0e-5);
+		  }
+		} else if (upDown<oldU-1.0e-5 && upUp<oldU-1.0e-5) {
+		  newUpper = CoinMax(upDown,upUp);
+		  if (intVar[icol]) 
+		    newUpper = floor(newUpper+1.0e-5);
+#if FIXED_BOTH_WAYS > 2
+		  nToBoundZ ++;
+#endif
+#ifdef JUST_ONE_CC
+		  ubsBoth.insert(icol,newUpper);
+#endif
+		}
+#if FIXED_BOTH_WAYS > 2
+		if (printit)
+		  printf("Col %d bnds on %d down %g,%g up %g,%g orig %g,%g\n",
+			 j,icol,loDown,upDown,loUp,
+			 upUp,oldL,oldU);
+#endif
+#ifdef UPDATE_MINR_MAXR
+		if (oldL < newLower) {
+		  // tighten minR and maxR
+		  assert (numberRealChanges<2*maxStack);
+		  realChange[numberRealChanges] = newLower - oldL;
+		  whichRealChange[numberRealChanges++] = icol;
+		}
+		if (oldU > newUpper) {
+		  // tighten minR and maxR 
+		  assert (numberRealChanges<2*maxStack);
+		  realChange[numberRealChanges] = newUpper - oldU;
+		  whichRealChange[numberRealChanges++] = icol;
+		}
+#ifndef JUST_ONE_CC
+		  // temp to check
+#ifndef CC_AT_END
+		  if (oldL < newLower || oldU > newUpper) {
+		    OsiColCut cc;
+		    CoinPackedVector lbs;
+		    CoinPackedVector ubs;
+		    lbs.insert(icol,newLower);
+		    ubs.insert(icol,newUpper);
+		    cc.setLbs(lbs);
+		    cc.setUbs(ubs);
+		    cs.insert(cc);
+		  }
+#endif
+#endif
+#endif
+		oldL = newLower;
+		oldU = newUpper;
+	      }
+#endif
+              colUpper[icol]=oldU;
+              colLower[icol]=oldL;
+	      columnGap[icol] = oldU-oldL-primalTolerance_;
+              if (oldU>oldL+1.0e-4) {
+                markC[icol]=0;
+		if (oldU>1.0e10)
+		  markC[icol] |= 8;
+		if (oldL<-1.0e10)
+		  markC[icol] |= 4;
+              } else {
+                markC[icol]=3;
+	      }
+            }
+#if FIXED_BOTH_WAYS
+#ifdef JUST_ONE_CC
+#ifndef CC_AT_END
+	    if (lbsBoth.getNumElements() || ubsBoth.getNumElements()) { 
+	      OsiColCut cc;
+	      if (lbsBoth.getNumElements())
+		cc.setLbs(lbsBoth);
+	      if ( ubsBoth.getNumElements())  
+		cc.setUbs(ubsBoth);
+	      cs.insert(cc);
+	    }
+#endif
+#endif
+#endif
+	    // first
+	    {
+              double oldU=saveU[0];
+              double oldL=saveL[0];
+              colUpper[j]=oldU;
+              colLower[j]=oldL;
+	      columnGap[j] = oldU-oldL-primalTolerance_;
+	      assert (oldU>oldL+1.0e-4);
+	      markC[j]=0;
+	      if (oldU>1.0e10)
+		markC[j] |= 8;
+	      if (oldL<-1.0e10)
+		markC[j] |= 4;
+	    }
+            for (istackR=0;istackR<nstackR;istackR++) {
+              int irow=stackR[istackR];
+              minR[irow]=saveMin[istackR];
+              maxR[irow]=saveMax[istackR];
+              markR[irow]=-1;
+            }
+          }
+        }
+      }
+    }
+  }
+#if 0 //ndef NDEBUG
+  if (!ninfeas) {
+    // check all column cuts reflected in bounds
+    double * lower = colsol;
+    double * upper = djs;
+    memcpy(lower,colLower,nCols*sizeof(double));
+    memcpy(upper,colUpper,nCols*sizeof(double));
+    int nCuts = cs.sizeColCuts();
+    for (int i=0;i<nCuts;i++) {
+      OsiColCut * cut = cs.colCutPtr(i);
+      const CoinPackedVector lbs = cut->lbs();
+      const CoinPackedVector ubs = cut->ubs();
+      int ncols;
+      const int * cols;
+      const double * values;
+      ncols = lbs.getNumElements();
+      cols = lbs.getIndices();
+      values = lbs.getElements();
+      for (int j=0;j<ncols;j++) {
+	int jColumn = cols[j];
+	double value = values[j];
+	lower[jColumn] = CoinMax(lower[jColumn],value);
+      }
+      ncols = ubs.getNumElements();
+      cols = ubs.getIndices();
+      values = ubs.getElements();
+      for (int j=0;j<ncols;j++) {
+	int jColumn = cols[j];
+	double value = values[j];
+	upper[jColumn] = CoinMin(upper[jColumn],value);
+      }
+    }
+    // arrays should be same
+    for (int i=0;i<nCols;i++) {
+      assert (lower[i]==colLower[i]);
+      assert (upper[i]==colUpper[i]);
+    }
+  }
+#endif
+#if 0 //def CC_AT_END
+  if (!ninfeas) {
+    // One big cc
+    const double * originalLower = si.getColLower();
+    const double * originalUpper = si.getColUpper();
+    CoinPackedVector lbs;
+    CoinPackedVector ubs;
+    for (int j=0;j<nCols;j++) {
+      // try without later
+      if (intVar[j]) {
+	if (colLower[j]>originalLower[j]) {
+	  lbs.insert(j,colLower[j]);
+	}
+	if (colUpper[j]<originalUpper[j]) {
+	  ubs.insert(j,colUpper[j]);
+	}
+      }
+    }
+    int nCuts = 0;
+    OsiColCut cc;
+    if (lbs.getNumElements()) {
+      cc.setLbs(lbs);
+      nCuts = lbs.getNumElements();
+    }
+    if (ubs.getNumElements()) {
+      cc.setUbs(ubs);
+      nCuts += ubs.getNumElements();
+    }
+    if (nCuts) {
+      cs.insert(cc);
+    }
+  }
+#endif
+#ifndef ONE_ARRAY
+  delete [] stackC0;
+  delete [] lo0;
+  delete [] up0;
+  delete [] columnGap;
+  delete [] markC;
+  delete [] stackC;
+  delete [] stackR;
+  delete [] saveL;
+  delete [] saveU;
+  delete [] saveMin;
+  delete [] saveMax;
+  delete [] index;
+  delete [] element;
+  delete [] djs;
+  delete [] largestPositiveInRow;
+  delete [] largestNegativeInRow;
+#endif
+#if FIXED_BOTH_WAYS
+  delete [] saveFColLower;
+#endif
+  delete [] colsol;
+  return (ninfeas);
 }

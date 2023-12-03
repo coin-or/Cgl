@@ -257,9 +257,9 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   const int* colInd = matrixByRow.getIndices();
   const CoinBigIndex* rowStart = matrixByRow.getVectorStarts();
   const int* rowLength = matrixByRow.getVectorLengths();
-    
-  int* ind        = 0;
-  double* coef    = 0;
+  int numberColumns = si.getNumCols();
+  int* ind = new int [numberColumns];
+  double* coef = new double [numberColumns];
   int iRow;
   CoinBigIndex iCol;
 
@@ -278,10 +278,6 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     const CoinBigIndex sta = rowStart[iRow];     // Start position of iRow
     int rowLen = rowLength[iRow]; // iRow length / non-zero elements
 
-    if (ind != 0) { delete [] ind; ind = 0; }
-    ind = new int [rowLen];
-    if (coef != 0) { delete [] coef; coef = 0; }
-    coef = new double [rowLen];
 
     CoinBigIndex lastPos = sta + rowLen;
     double thisRhs = rhs[iRow];
@@ -344,8 +340,8 @@ void CglFlowCover::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       cs.rowCutPtr(i)->setGloballyValid();
   }
 
-  if (ind != 0)  { delete [] ind; ind = 0; }
-  if (coef != 0) { delete [] coef; coef = 0; }
+  delete [] ind;
+  delete [] coef;
 }
 
 //-------------------------------------------------------------------

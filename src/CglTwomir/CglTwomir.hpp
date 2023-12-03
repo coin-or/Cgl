@@ -38,6 +38,7 @@ typedef struct{
   int max_elements;
 } cutParams;
 
+#define TWOMIR_LESS_MALLOC
 typedef struct
 {
   double gomory_threshold; /* factional variable must be this away from int */
@@ -55,6 +56,25 @@ typedef struct
   double *x;       /* current solution */
   double *rc;      /* current reduced cost */
   double *opt_x;
+#ifdef TWOMIR_LESS_MALLOC
+  /* the following arrays are to avoid many mallocs
+   - they are used in DGG_transformConstraint and similar. */
+  double *xtemp_;     /* values for cuts */
+  double *rctemp_;
+  double *tabrowcoeff_;
+  int *skalatemp_;
+  int *tabrowindex_;
+  DGG_constraint_t *constrainttemp0_;
+  DGG_constraint_t *constrainttemp1_;
+  char *pitemp_;
+  int *rowIsBasictemp_;
+  int *colIsBasictemp_;
+  CoinIndexedVector * vector0_;
+  CoinIndexedVector * vector1_;
+  double * spareArray0_;
+  void * spare1;
+  void * spare2;
+#endif
 
   cutParams cparams;
 } DGG_data_t;
@@ -416,7 +436,11 @@ DGG_constraint_t* DGG_newConstraint(int max_arrays);
 void DGG_freeConstraint(DGG_constraint_t *c);
 DGG_constraint_t *DGG_copyConstraint(DGG_constraint_t *c);
 void DGG_scaleConstraint(DGG_constraint_t *c, int t);
-
+#ifdef TWOMIR_LESS_MALLOC
+DGG_constraint_t* DGG_newConstraint(DGG_data_t *data, int which); 
+DGG_constraint_t *DGG_copyConstraint(DGG_constraint_t* c,
+				     DGG_data_t *data, int which);
+#endif
 /******************** CONFIGURATION *******************************************/
 void DGG_list_init (DGG_list_t *l);
 int DGG_list_addcut (DGG_list_t *l, DGG_constraint_t *cut, int ctype, double alpha);
