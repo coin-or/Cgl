@@ -12,6 +12,9 @@
 //#define PRINT_DEBUG
 //#define CGL_DEBUG 1
 //#undef NDEBUG
+#ifndef FIXED_BOTH_WAYS
+#define FIXED_BOTH_WAYS 1
+#endif
 #include "CoinPragma.hpp"
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedVector.hpp"

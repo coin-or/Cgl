@@ -874,6 +874,9 @@ CglGomory::generateCuts(
 	   saveLimit,limit,info.inTree ? 'Y' : 'N',info.pass,
 	   numberRows,numberColumns,numberElements);
 #endif
+#if CBC_CHECK_CUT_LENGTH
+  limit = CoinMin(limit,CBC_CHECK_CUT_LENGTH*numberRows);
+#endif
   int nCandidates=0;
   for (iColumn=0;iColumn<numberColumns;iColumn++) {
     // This returns pivot row for columns or -1 if not basic (C) ====
@@ -1598,6 +1601,9 @@ CglGomory::generateCuts(
 	    bounds[1]=rhs;
 	    if (number>50&&numberNonInteger)
 	      bounds[1] = rhs+tolerance6+1.0e-8*fabs(rhs); // weaken
+#ifndef GOMORY_RELAX_NUMBER
+#define GOMORY_RELAX_NUMBER 5
+#endif
 #if GOMORY_RELAX_NUMBER
 	    else if (number>GOMORY_RELAX_NUMBER&&numberNonInteger>1) 
 	      bounds[1] = rhs+tolerance6+1.0e-8*fabs(rhs); // weaken

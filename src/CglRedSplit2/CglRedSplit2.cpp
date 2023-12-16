@@ -2092,7 +2092,9 @@ int CglRedSplit2::generateCuts(OsiCuts* cs, int maxNumCuts, int* lambda)
 		  }
 		  // now, add cut to the collection if needed
 		  if (cs != NULL){
-		    if (card_row<300) {
+#if CBC_CHECK_CUT_LENGTH
+		    if (card_row<CBC_CHECK_CUT_LENGTH*nrow) {
+#endif
 		      OsiRowCut rc;
 		      rc.setRow(card_row, rowind, rowelem);
 		      rc.setLb(-param.getINFINIT());
@@ -2104,7 +2106,9 @@ int CglRedSplit2::generateCuts(OsiCuts* cs, int maxNumCuts, int* lambda)
 		      // relax the constraint slightly
 		      buffcs->insertIfNotDuplicate(rc, CoinAbsFltEq(param.getEPS()));
 		      numCuts = buffcs->sizeRowCuts() - initNumCuts;
+#if CBC_CHECK_CUT_LENGTH
 		    }
+#endif
 		  }
 		  else{
 		    numCuts++;

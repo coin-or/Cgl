@@ -29,6 +29,7 @@
 #endif
 #include "CglProbing.hpp"
 #include "CglDuplicateRow.hpp"
+#include "CoinPresolveDupcol.hpp"
 #include "CglClique.hpp"
 //#define PRINT_DEBUG 1
 //#define COIN_DEVELOP 1

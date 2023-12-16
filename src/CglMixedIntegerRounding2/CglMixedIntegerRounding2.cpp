@@ -855,6 +855,14 @@ CglMixedIntegerRounding2::generateMirCuts(
 #endif
 
 	// if a cut was found, insert it into cs
+#if CBC_CHECK_CUT_LENGTH
+	{
+	  const CoinPackedVector & row = cMirCut.row();
+	  int n=row.getNumElements();
+	  if (n>CBC_CHECK_CUT_LENGTH*numRows_)
+	    hasCut = false;
+	}
+#endif
 	if (hasCut)  {
 	  // look at cut to see if unstable
 	  const CoinPackedVector & row = cMirCut.row();
