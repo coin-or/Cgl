@@ -4586,7 +4586,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
                   lower1[1] = CoinMax(lower1[1], u / el[1][1]);
                   upper1[1] = CoinMin(upper1[1], l / el[1][1]);
                 }
-                if (CoinMin(lower1[0], lower1[1]) > colLower[1]) {
+                if (CoinMin(lower1[0], lower1[1]) > colLower[1] + 1.0e-6) {
 #if CBC_USEFUL_PRINTING > 0
                   printf("for jColumn1 0-bounds %g,%g 1-bounds %g,%g\n",
                     lower1[0], upper1[0], lower1[1], upper1[1]);
@@ -4601,7 +4601,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
                   colLower[1] = value;
                   newModel->setColLower(jColumn1, value);
                 }
-                if (CoinMax(upper1[0], upper1[1]) < colUpper[1]) {
+                if (CoinMax(upper1[0], upper1[1]) < colUpper[1] - 1.0e-6) {
 #if CBC_USEFUL_PRINTING > 0
                   printf("for jColumn1 0-bounds %g,%g 1-bounds %g,%g\n",
                     lower1[0], upper1[0], lower1[1], upper1[1]);
@@ -4616,7 +4616,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
                   colUpper[1] = value;
                   newModel->setColUpper(jColumn1, value);
                 }
-                if (lower1[0] > colUpper[1] || upper1[0] < colLower[1]) {
+                if (lower1[0] > colUpper[1] + 1.0e-6 || upper1[0] < colLower[1] - 1.0e-6) {
 #if CBC_USEFUL_PRINTING > 0
                   printf("for jColumn1 0-bounds %g,%g 1-bounds %g,%g\n",
                     lower1[0], upper1[0], lower1[1], upper1[1]);
@@ -4626,7 +4626,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
                   newModel->setColLower(iColumn, 1.0);
                   nMarkRow = 0; // stop looking
                 }
-                if (lower1[1] > colUpper[1] || upper1[1] < colLower[1]) {
+                if (lower1[1] > colUpper[1] + 1.0e-6 || upper1[1] < colLower[1] - 1.0e-6) {
 #if CBC_USEFUL_PRINTING > 0
                   printf("for jColumn1 0-bounds %g,%g 1-bounds %g,%g\n",
                     lower1[0], upper1[0], lower1[1], upper1[1]);
@@ -4636,7 +4636,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
                   newModel->setColLower(iColumn, 0.0);
                   nMarkRow = 0; // stop looking
                 }
-                if (colLower[0] > colUpper[0] || colLower[1] > colUpper[1] + 1.0e-6) {
+                if (colLower[0] > colUpper[0] + 1.0e-6 || colLower[1] > colUpper[1] + 1.0e-6) {
 #if CBC_USEFUL_PRINTING > 0
                   printf("** infeasible\n");
 #endif
