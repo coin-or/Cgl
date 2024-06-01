@@ -169,7 +169,7 @@ public:
   //@{
   /// Set MAXAGGR_
   inline void setMAXAGGR_ (int maxaggr) {
-    if (maxaggr > 0) {
+    if (maxaggr > 0 || maxaggr == -1) {
       MAXAGGR_ = maxaggr;
     }
     else {
@@ -315,7 +315,7 @@ private:
 			const double& rhsMixedKnapsack,
 			const CoinIndexedVector& contVariablesInS,
                         CoinIndexedVector * workVector,
-			OsiRowCut& flowCut ) const;
+			OsiRowCut& flowCut, int iAggregate ) const;
 
   // function to create one c-MIR inequality
   void cMirInequality( const int numInt, 
@@ -412,7 +412,6 @@ private:
   char * sense_;
   // RHS of rows (modified if ranges)
   double * RHS_;
-  
 };
 
 //#############################################################################

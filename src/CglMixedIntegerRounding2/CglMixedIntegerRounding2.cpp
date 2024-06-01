@@ -8,22 +8,19 @@
 // Copyright (C) 2004, International Business Machines Corporation and others. 
 // All Rights Reserved.
 // This code is published under the Eclipse Public License.
-
 //#include <cmath>
 //#include <cstdlib>
 #include <cassert>
-
 #include "CoinPragma.hpp"
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedMatrix.hpp"
 #include "CoinPackedVector.hpp"
-
-#include "CglMixedIntegerRounding2.hpp"
-//#define CGL_DEBUG2 2
-#if CGL_DEBUG2
-static int xxxxxx=0;
-static int yyyyyy=1687;
+#ifdef CBC_HAS_CLP
+#include "OsiClpSolverInterface.hpp"
 #endif
+//#define CGL_DEBUG 1
+#include "CglMixedIntegerRounding2.hpp"
+//#undef NDEBUG
 //-----------------------------------------------------------------------------
 // Generate Mixed Integer Rounding inequality
 //------------------------------------------------------------------- 
@@ -39,7 +36,14 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
   bool preReso = false;
   si.getHintParam(OsiDoPresolveInInitial, preInit);
   si.getHintParam(OsiDoPresolveInResolve, preReso);
-
+  // Deal with MAXAGGR_
+  int saveMaxAggr = MAXAGGR_;
+  if (MAXAGGR_==-1) {
+    if(!info.inTree && info.pass<1000)
+      MAXAGGR_=5; // up at root
+    else
+      MAXAGGR_=1;
+  }
   if (preInit == false &&  preReso == false && doPreproc_ == -1 ) { // Do once
     if (doneInitPre_ == false) {   
       mixIntRoundPreprocess(si);
@@ -58,7 +62,115 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
       }  
     }
   }
-
+  int numberColumns = si.getNumCols();
+#ifdef CBC_HAS_CLP
+#define MODIFY_LP 2
+#endif
+#if MODIFY_LP //def CBC_HAS_CLP
+  // need Clp to set row solution for new row
+  const OsiClpSolverInterface * clpSolver =
+    dynamic_cast<const OsiClpSolverInterface *>(&si);
+  if (!info.inTree && clpSolver && clpSolver->getObjSense()==1.0) {
+    if (info.level>=0) {
+#if MODIFY_LP==1
+      // if cutoff turn objective into constraint
+      const double * obj = si.getObjCoefficients();
+      double limit;
+      clpSolver->getDblParam(OsiDualObjectiveLimit,limit);
+      int nVar=0;
+      int nContVar=0;
+      for (int i=0;i<numberColumns;i++) {
+	if (obj[i]) {
+	  nVar++;
+	  if (!si.isInteger(i))
+	    nContVar++;
+	}
+      }
+      // adjust for constant
+      limit += clpSolver->getModelPtr()->objectiveOffset();
+      // maybe switch off
+      //if (nVar>200||nContVar==0||nContVar==nVar)
+      //limit = 1.0e20;
+      if (limit < 1.0e10) {
+	OsiClpSolverInterface si2 = *clpSolver;
+	int * columns = new int [numberColumns];
+	double * objective = CoinCopyOfArray(obj,numberColumns);
+	const double * solution = si2.getColSolution();
+	int n = 0;
+	double obj = 0.0;
+	for (int i=0;i<numberColumns;i++) {
+	  if (objective[i]) {
+	    obj += solution[i]*objective[i];
+	    objective[n] = objective[i];
+	    columns[n++] = i;
+	  }
+	}
+	si2.addRow(n,columns,objective,-COIN_DBL_MAX,limit);
+	delete [] columns;
+	si2.getModelPtr()->primalRowSolution()[si2.getNumRows()-1] = obj;
+      }
+#else
+      assert(MODIFY_LP==2);
+      // make all >= <=
+      OsiClpSolverInterface si2 = *clpSolver;
+      ClpModel *model = si2.getModelPtr();
+      int numberRows = model->numberRows();
+      int numberColumns = model->numberColumns();
+      double * rowLower = model->rowLower();
+      double * rowUpper = model->rowUpper();
+      double * rowSol = model->primalRowSolution();
+      double * rowDual = model->dualRowSolution();
+      bool * swap = new bool[numberRows];
+      int nChanged = 0;
+      for (int i=0;i<numberRows;i++) {
+	if (rowUpper[i]<1.0e50) {
+	  swap[i] = false;
+	} else {
+	  swap[i] = true;
+	  nChanged++;
+	}
+      }
+      if (nChanged) {
+	//printf("%d G rows\n",nChanged);
+	ClpPackedMatrix *clpMatrix = dynamic_cast< ClpPackedMatrix * >(model->clpMatrix());
+	CoinPackedMatrix *matrix = clpMatrix ? clpMatrix->matrix() : NULL;
+	if (matrix) {
+	  // get rid of row copy
+	  model->setNewRowCopy(NULL);
+	  const CoinBigIndex *columnStart = matrix->getVectorStarts();
+	  const int *columnLength = matrix->getVectorLengths();
+	  const int *row = matrix->getIndices();
+	  double *element = matrix->getMutableElements();
+	  for (int iColumn=0;iColumn<numberColumns;iColumn++) {
+	    for (CoinBigIndex j=columnStart[iColumn];
+		 j<columnStart[iColumn]+columnLength[iColumn];j++) {
+	      int iRow = row[j];
+	      if (swap[iRow])
+		element[j] = - element[j];
+	    }
+	  }
+	  for (int i=0;i<numberRows;i++) {
+	    if (swap[i]) {
+	      rowUpper[i] = -rowLower[i]; 
+	      rowLower[i] = - COIN_DBL_MAX; 
+	      rowSol[i] = -rowSol[i]; 
+	      rowDual[i] = - rowDual[i]; 
+	    }
+	  }
+	}
+	delete [] swap;
+	CglTreeInfo info2 = info;
+	info2.level = -1-info.level;
+	generateCuts(si2,cs,info2);
+	return;
+      } else {
+	delete [] swap;
+      }
+#endif
+    } 
+  }
+#endif
+    
   int numberRowCutsBefore = cs.sizeRowCuts();
   const double* xlp        = si.getColSolution();  // LP solution
   const double* colUpperBound = si.getColUpper();  // vector of upper bounds
@@ -94,7 +206,7 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
     for (int i=numberRowCutsBefore;i<numberRowCutsAfter;i++)
       cs.rowCutPtr(i)->setGloballyValid();
   }
-
+  MAXAGGR_ = saveMaxAggr;
 }
 
 //-------------------------------------------------------------------
@@ -274,8 +386,13 @@ CglMixedIntegerRounding2::gutsOfCopy (const CglMixedIntegerRounding2& rhs)
   }
 
   if (numRows_ > 0) {
-    rowTypes_ = new RowType [numRows_];
+#define SAFE_ROWS
+#ifdef SAFE_ROWS
+    rowTypes_ = new RowType [2*numRows_];
     CoinDisjointCopyN(rhs.rowTypes_, numRows_, rowTypes_);
+#else
+    rowTypes_ = new RowType [numRows_];
+#endif
     indRows_ = new int [numRows_];
     CoinDisjointCopyN(rhs.indRows_, numRows_, indRows_);
     sense_ = CoinCopyOfArray(rhs.sense_,numRows_);
@@ -356,7 +473,11 @@ mixIntRoundPreprocess(const OsiSolverInterface& si)
   if (rowTypes_ != 0) {
     delete [] rowTypes_; rowTypes_ = 0;
   }
+#ifdef SAFE_ROWS
+  rowTypes_ = new RowType [2*numRows_];     // Destructor will free memory
+#else
   rowTypes_ = new RowType [numRows_];     // Destructor will free memory
+#endif
 
   // Summarize the row type information.
 #if CGL_DEBUG
@@ -438,6 +559,10 @@ mixIntRoundPreprocess(const OsiSolverInterface& si)
 		      "CglMixedIntegerRounding2");
     }
   }
+#ifdef SAFE_ROWS
+  // save copy
+  memcpy(rowTypes_+numRows_,rowTypes_,numRows_*sizeof(RowType));
+#endif
 
   // allocate memory for vector of indices of all rows
   if (indRows_ != 0) { delete [] indRows_; indRows_ = 0; }
@@ -699,7 +824,6 @@ CglMixedIntegerRounding2::generateMirCuts(
 			    const CoinBigIndex* colStarts,
 			    OsiCuts& cs ) const
 {
-
 #if CGL_DEBUG
   // OPEN FILE
   std::ofstream fout("stats.dat");
@@ -723,31 +847,33 @@ CglMixedIntegerRounding2::generateMirCuts(
   // violated cut is found
   int numRowMixAndRowContVB = numRowMix_ + numRowContVB_;
   int numRowMixAndRowContVBAndRowInt = numRowMixAndRowContVB + numRowInt_;
-  // Get large enough vector
-  CoinIndexedVector rowAggregated(si.getNumCols());
-  CoinIndexedVector rowToAggregate(si.getNumCols());
-  CoinIndexedVector mixedKnapsack(si.getNumCols());
-  CoinIndexedVector contVariablesInS(si.getNumCols());
-  CoinIndexedVector rowToUse(si.getNumCols());
+  CoinIndexedVector rowAggregated(si.getNumCols()+MAXAGGR_+1);
+  CoinIndexedVector rowToAggregate(si.getNumCols()+MAXAGGR_+1);
+  CoinIndexedVector mixedKnapsack(si.getNumCols()+MAXAGGR_+1);
+  CoinIndexedVector contVariablesInS(si.getNumCols()+MAXAGGR_+1);
+  CoinIndexedVector rowToUse(si.getNumCols()+MAXAGGR_+1);
   // And work vectors
   CoinIndexedVector workVectors[4];
   for (int i=0; i<4; i++)
-    workVectors[i].reserve(si.getNumCols());
+    workVectors[i].reserve(si.getNumCols()+MAXAGGR_+1);
   CoinIndexedVector setRowsAggregated(si.getNumRows());
+  CoinAbsFltEq tolTest(1.0e-4);
   for (int iRow = 0; iRow < numRowMixAndRowContVBAndRowInt; ++iRow) {
 
     int rowSelected;  // row selected to be aggregated next
     int colSelected;  // column selected for pivot in aggregation
+#ifdef SAFE_ROWS
+    for (int i = 1; i < MAXAGGR_; ++i) 
+      listColsSelected[i] = -1;
+#endif
     rowAggregated.clear();
     double rhsAggregated;
     // create a set with the indices of rows selected
     setRowsAggregated.clear();
-
     // loop until the maximum number of aggregated rows is reached
     for (int iAggregate = 0; iAggregate < MAXAGGR_; ++iAggregate) {
-
       if (iAggregate == 0) {
-
+	
 	// select row
 	if (iRow < numRowMix_) {
 	  rowSelected = indRowMix_[iRow];
@@ -758,50 +884,54 @@ CglMixedIntegerRounding2::generateMirCuts(
 	else {
 	  rowSelected = indRowInt_[iRow - numRowMixAndRowContVB];
 	}
-
-	copyRowSelected(iAggregate, rowSelected, setRowsAggregated,
+	copyRowSelected(0, rowSelected, setRowsAggregated,
 			listRowsAggregated, xlpExtra, sense_[rowSelected], 
 			RHS_[rowSelected], LHS[rowSelected], 
 			matrixByRow, rowAggregated, rhsAggregated);
-
       } 
       else {
 
 	// search for a row to aggregate
 	bool foundRowToAggregate = selectRowToAggregate(
 							/*si,*/ rowAggregated,
-					colUpperBound, colLowerBound, 
-					setRowsAggregated, xlp, 
-					coefByCol, rowInds, colStarts,
-					rowSelected, colSelected);
+							colUpperBound, colLowerBound, 
+							setRowsAggregated, xlp, 
+							coefByCol, rowInds, colStarts,
+							rowSelected, colSelected);
 
 	// if finds row to aggregate, compute aggregated row
 	if (foundRowToAggregate) {
 
 	  rowToAggregate.clear();
 	  double rhsToAggregate;
-
+	  
 	  listColsSelected[iAggregate] = colSelected;
-
+	  
 	  copyRowSelected(iAggregate, rowSelected, setRowsAggregated,
 			  listRowsAggregated, xlpExtra, sense_[rowSelected], 
 			  RHS_[rowSelected], LHS[rowSelected], 
 			  matrixByRow, rowToAggregate, rhsToAggregate);
-
+	  
 	  // call aggregate row heuristic
 	  aggregateRow(colSelected, rowToAggregate, rhsToAggregate, 
 		       rowAggregated, rhsAggregated);
-
+#ifdef SAFE_ROWS
+	  // take out all rows in selected column
+	  CoinBigIndex iStart = colStarts[colSelected];
+	  CoinBigIndex iStop  = colStarts[colSelected+1];
+	  for (CoinBigIndex i = iStart; i < iStop; ++i) {
+	    int rowInd = rowInds[i];
+	    rowTypes_[rowInd] = ROW_UNDEFINED;
+	  }
+#endif
 	}
 	else
 	  break;
       }
-
       // construct cMIR with current rowAggregated
       // and, if upperLimit=2 construct also a cMIR with 
       // the current rowAggregated multiplied by -1
       for (int i = 0; i < upperLimit; ++i) {
-      
 	// create vector for mixed knapsack constraint
 	double rhsMixedKnapsack;
         rowToUse.copy(rowAggregated);
@@ -819,11 +949,11 @@ CglMixedIntegerRounding2::generateMirCuts(
 
 	// call bound substitution heuristic
 	bool foundMixedKnapsack = boundSubstitution(
-					si, rowToUse, 
-					xlp, xlpExtra, 
-					colUpperBound, colLowerBound,
-					mixedKnapsack, rhsMixedKnapsack, 
-					sStar, contVariablesInS);
+						    si, rowToUse, 
+						    xlp, xlpExtra, 
+						    colUpperBound, colLowerBound,
+						    mixedKnapsack, rhsMixedKnapsack, 
+						    sStar, contVariablesInS);
     
 	// if it did not find a mixed knapsack it is because there is at
 	// least one integer variable with lower bound different than zero
@@ -845,7 +975,7 @@ CglMixedIntegerRounding2::generateMirCuts(
 				     xlp, sStar, colUpperBound, colLowerBound, 
 				     mixedKnapsack,
 				     rhsMixedKnapsack, contVariablesInS,
-				     workVectors,cMirCut);
+				     workVectors,cMirCut,iAggregate);
 
 #if CGL_DEBUG
 	// PRINT STATISTICS
@@ -876,25 +1006,39 @@ CglMixedIntegerRounding2::generateMirCuts(
 	    smallest=CoinMin(smallest,value);
 	  }
 	  if (largest>1.0e8*smallest||largest>1.0e7||smallest<1.0e-5) {
-#if CGL_DEBUG2
+#if CGL_DEBUG
 	    printf("Unstable Mixed cut %g <= ",cMirCut.lb());
+#endif
+	  } else {
+#if CGL_DEBUG
+	    std::cout << "MIR cut generated " << std::endl;
 	    const int * columns = row.getIndices();
 	    for (int i=0;i<n;i++) 
 	      printf("(%d,%g) ",columns[i],elements[i]);
 	    printf("<= %g\n",cMirCut.ub());
 #endif
-	  } else {
-#if CGL_DEBUG
-	    std::cout << "MIR cut generated " << std::endl;
-#endif
-	    cs.insertIfNotDuplicate(cMirCut);
+	    cs.insertIfNotDuplicate(cMirCut,tolTest);
 	  }
 	}
 
       }
 	
     }
-
+#ifdef SAFE_ROWS
+    // put back row types
+    for (int jAggregate=1;jAggregate<MAXAGGR_;jAggregate++) {
+      int indCol = listColsSelected[jAggregate];
+      if (indCol>=0) {
+	RowType *saved = rowTypes_+numRows_;
+	CoinBigIndex iStart = colStarts[indCol];
+	CoinBigIndex iStop  = colStarts[indCol+1];
+	for (CoinBigIndex i = iStart; i < iStop; ++i) {
+	  int rowInd = rowInds[i];
+	  rowTypes_[rowInd] = saved[rowInd];
+	}
+      }
+    }
+#endif
   }
 
   // free memory
@@ -1263,7 +1407,8 @@ CglMixedIntegerRounding2::cMirSeparation(
 			    const double& rhsMixedKnapsack,
 			    const CoinIndexedVector& contVariablesInS,
                             CoinIndexedVector * workVectors,
-			    OsiRowCut& cMirCut) const
+			    OsiRowCut& cMirCut,
+			    int iAggregate) const
 {
 
   bool generated = false;
@@ -1411,6 +1556,8 @@ CglMixedIntegerRounding2::cMirSeparation(
 
   // write the best cut found with the model variables
   int numCont = contVariablesInS.getNumElements();
+  // do slacks at end to avoid serious bug when MAXATTR_ > 2 
+  int firstSlack = -1;
   for ( j = 0; j < numCont; ++j) {
     int indCol = contVarInSIndices[j];
     double coefCol = contVarInSElements[indCol];
@@ -1453,29 +1600,37 @@ CglMixedIntegerRounding2::cMirSeparation(
       }
     }
     else {  // variable is slack variable
-      // in this case the LB = 0 and the UB = infinity
-      // copy the row selected to a vector of type CoinIndexedVector
-      const int iRow = listRowsAggregated[indCol - numCols_];
-
-      double multiplier;
-      if (sense[iRow] == 'L') {
-	// if it is a <= inequality, the coefficient of the slack is 1
-	 multiplier = (- sCoefBestCut * coefCol);
-      }
-      else {
-	// if it is a <= inequality, the coefficient of the slack is -1
-	multiplier = (sCoefBestCut * coefCol);
-      }
-      rhsBestCut += RHS[iRow]*multiplier;
-      CoinShallowPackedVector row = matrixByRow.getVector(iRow);
-      int nElements = row.getNumElements();
-      const int * column = row.getIndices();
-      const double * element = row.getElements();
-      for (int i=0;i<nElements;i++) 
-        bestCut->add(column[i],element[i]*multiplier);
+      if (firstSlack<0)
+	firstSlack = j;
     }
   }
-
+  if (firstSlack>=0) {
+    for ( j = firstSlack; j < numCont; ++j) {
+      int indCol = contVarInSIndices[j];
+      if (indCol >= numCols_) { // variable is slack variable
+	double coefCol = contVarInSElements[indCol];
+	// in this case the LB = 0 and the UB = infinity
+	// copy the row selected to a vector of type CoinIndexedVector
+	const int iRow = listRowsAggregated[indCol - numCols_];
+	double multiplier;
+	if (sense[iRow] == 'L') {
+	  // if it is a <= inequality, the coefficient of the slack is 1
+	  multiplier = (- sCoefBestCut * coefCol);
+	}
+	else {
+	  // if it is a <= inequality, the coefficient of the slack is -1
+	  multiplier = (sCoefBestCut * coefCol);
+	}
+	rhsBestCut += RHS[iRow]*multiplier;
+	CoinShallowPackedVector row = matrixByRow.getVector(iRow);
+	int nElements = row.getNumElements();
+	const int * column = row.getIndices();
+	const double * element = row.getElements();
+	for (int i=0;i<nElements;i++) 
+	  bestCut->add(column[i],element[i]*multiplier);
+      }
+    }
+  }
   // Check the violation of the cut after it is written with the original
   // variables.
   int cutLen = bestCut->getNumElements();
@@ -1484,30 +1639,14 @@ CglMixedIntegerRounding2::cMirSeparation(
   double cutRHS = rhsBestCut;
   double violation = 0.0;
   double normCut = 0.0;
-#if CGL_DEBUG2
-  double smallest=COIN_DBL_MAX;
-#endif
   double largest=0.0;
   // Also weaken by small coefficients
   for ( j = 0; j < cutLen; ++j) {
     int column = cutInd[j];
     double value = cutCoef[column];
-#if CGL_DEBUG2
-    smallest=CoinMin(smallest,fabs(value));
-    normCut += value * value;
-#endif
     largest=CoinMax(largest,fabs(value));
   }
   double testValue=CoinMax(1.0e-6*largest,1.0e-12);
-#if CGL_DEBUG2
-  normCut=sqrt(normCut);
-  printf("smallest %g largest %g norm %g - %d elements - rhs %g - %d\n",
-  	 smallest,largest,normCut,cutLen,cutRHS,xxxxxx);
-  xxxxxx++;
-  if (xxxxxx==yyyyyy)
-    printf("trouble\n");
-  normCut=0.0;
-#endif
   int n=0;
   for ( j = 0; j < cutLen; ++j) {
     int column = cutInd[j];
@@ -1516,41 +1655,20 @@ CglMixedIntegerRounding2::cMirSeparation(
       violation += value * xlp[column];
       normCut += value * value;
       cutInd[n++]=column;
-#if CGL_DEBUG2
-      printf("taking %d %g\n",column,value);
-#endif
     } else if (value) {
       cutCoef[column]=0.0;
       // Weaken
       if (value>0.0) {
-#if CGL_DEBUG2
-	printf("not taking %d %g - lb %g - rhs -> %g\n",column,value,
-	       colLowerBound[column],
-	       cutRHS - value*colLowerBound[column]);
-#endif
         // Allow for at lower bound
 	double modification = value*colLowerBound[column];
 	if (colLowerBound[column]>0.0) {
-#if CGL_DEBUG2
-	  printf("weakening modification from %g to zero\n",
-		 modification);
-#endif
 	  modification=0.0;
 	}
         cutRHS -= modification;
       } else {
-#if CGL_DEBUG2
-	printf("not taking %d %g - ub %g - rhs -> %g\n",column,value,
-	       colUpperBound[column],
-	       cutRHS - value*colUpperBound[column]);
-#endif
         // Allow for at upper bound
 	double modification = value*colUpperBound[column];
 	if (colUpperBound[column]<0.0) {
-#if CGL_DEBUG2
-	  printf("weakening modification from %g to zero\n",
-		 modification);
-#endif
 	  modification=0.0;
 	}
         cutRHS -= modification;
@@ -1563,14 +1681,15 @@ CglMixedIntegerRounding2::cMirSeparation(
 
   if ( violation > TOLERANCE_ ) {
     // cutCoef is still unpacked
-    std::sort(cutInd,cutInd+cutLen);
-    int i;
-    for ( i=0;i<cutLen;i++) {
-      int column=cutInd[i];
-      assert (cutCoef[column]);
-      double value = cutCoef[column];
-      cutCoef[column] =0.0;
-      cutCoef[i]=value;
+    int cutLen=0;
+    int numberColumns = si.getNumCols();
+    for (int i=0;i<numberColumns;i++) {
+      double value = cutCoef[i];
+      if (value) {
+	cutCoef[i] = 0.0;
+	cutCoef[cutLen]=value;
+	cutInd[cutLen++] = i;
+      }
     }
     cMirCut.setRow(cutLen, cutInd, cutCoef);
     cMirCut.setLb(-1.0 * infinity);
@@ -1587,7 +1706,7 @@ CglMixedIntegerRounding2::cMirSeparation(
 #endif
     // Zero bestCut by hand
     bestCut->setNumElements(0);
-    for ( i=0;i<cutLen;i++) {
+    for ( int i=0;i<cutLen;i++) {
       cutCoef[i]=0.0;
     }
     generated = true;
