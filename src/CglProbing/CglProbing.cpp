@@ -164,6 +164,11 @@ public:
 	if (value<1.0e-12||value>1.0e12) 
 	  bad=true;
       }
+      // take out if bounds dubious
+      if (newLb<-1.0e12&&newLb>-1.0e40)
+	bad = true;
+      if (newUb>1.0e12&&newUb<1.0e40)
+	bad = true;
       if (bad)
 	return 1;
       OsiRowCut2 newCut(whichRow);
