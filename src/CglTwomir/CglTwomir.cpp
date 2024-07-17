@@ -39,7 +39,7 @@ class CoinWarmStartBasis;
 #define  t_min  data->cparams.t_min
 #define  a_max  data->cparams.a_max
 #define  max_elements  data->cparams.max_elements
-
+//#define CGL_DEBUG
 #ifdef CGL_DEBUG
 // Declarations and defines for debug build.
 
@@ -80,7 +80,6 @@ void testus( DGG_constraint_t *cut){ //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 #define talk false
 
 #endif	// CGL_DEBUG
-
 
 //-------------------------------------------------------------------
 // Generate  cuts
@@ -407,7 +406,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	    rowcut.setRow(number, cutIndex, packed);
 	    rowcut.setUb(si.getInfinity());
 	    rowcut.setLb(rhs);
-	    cs.insertIfNotDuplicate(rowcut);
+	    cs.insertIfNotDuplicateAndClean(rowcut,61);
 	  } else {
 	    // singleton row cut!
 	    double lb = rhs;
@@ -436,7 +435,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	      rc.setRow(0,cutIndex,packed,false);
 	      rc.setLb(1.0);
 	      rc.setUb(0.0);
-	      cs.insertIfNotDuplicate(rc);
+	      cs.insertIfNotDuplicateAndClean(rc,62);
 	    } else if (lb>lbCol || ub<ubCol) {
 	      if (!isInteger) {
 		// think
@@ -461,7 +460,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	rowcut.setRow(cut->nz, cut->index, cut->coeff);
 	rowcut.setUb(si->getInfinity());
 	rowcut.setLb(cut->rhs);
-	cs.insertIfNotDuplicate(rowcut);
+	cs.insertIfNotDuplicateAndClean(rowcut,63);
 #endif
       }
     
@@ -476,7 +475,6 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 #endif
     }
   }
-  
   for ( i=0; i<cut_list.n; i++)
     DGG_freeConstraint (cut_list.c[i]);
   DGG_list_free (&cut_list);

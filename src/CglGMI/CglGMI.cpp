@@ -1264,10 +1264,10 @@ void CglGMI::generateCuts(OsiCuts &cs)
       rc.setLb(-param.getINFINIT());
       rc.setUb(cutRhs);
       if (!param.getCHECK_DUPLICATES()) {
-	cs.insertIfNotDuplicate(rc);
+	cs.insertIfNotDuplicateAndClean(rc,21);
       }
       else{
-	cs.insertIfNotDuplicate(rc, CoinAbsFltEq(param.getEPS_COEFF()));
+	cs.insertIfNotDuplicateAndClean(rc, 22, CoinAbsFltEq(param.getEPS_COEFF()));
       }
     }
 

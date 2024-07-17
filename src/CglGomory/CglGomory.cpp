@@ -1695,13 +1695,13 @@ CglGomory::generateCuts(
 	      if (number>1) {
 #if MORE_GOMORY_CUTS<2
 		nTotalEls -= number;
-		cs.insertIfNotDuplicate(rc);
+		cs.insertIfNotDuplicateAndClean(rc,11);
 #else
 		if(number<saveLimit) {
 		  nTotalEls -= number;
-		  cs.insertIfNotDuplicate(rc);
+		  cs.insertIfNotDuplicateAndClean(rc,12);
 		} else {
-		  longCuts.insertIfNotDuplicate(rc);
+		  longCuts.insertIfNotDuplicateAndClean(rc,13);
 		}
 #endif
 	      } else {
@@ -1747,7 +1747,7 @@ CglGomory::generateCuts(
 		  rc.setRow(0,cutIndex,packed,false);
 		  rc.setLb(1.0);
 		  rc.setUb(0.0);
-		  cs.insertIfNotDuplicate(rc);
+		  cs.insertIfNotDuplicateAndClean(rc,14);
 		} else if (lb>lbCol || ub<ubCol) {
 		  if (!intVar[iColumn]) {
 		    // think
@@ -1776,7 +1776,7 @@ CglGomory::generateCuts(
 	      rc.setRow(number,cutIndex,packed,false);
 	      rc.setLb(bounds[0]);
 	      rc.setUb(bounds[1]);   
-	      secondaryCuts.insertIfNotDuplicate(rc);
+	      secondaryCuts.insertIfNotDuplicateAndClean(rc,15);
 #endif
 	    }
 	  } else {
@@ -1877,7 +1877,7 @@ CglGomory::generateCuts(
     while (nTotalEls>0) {
       for (int i=0;i<numberLong;i++) {
 	nTotalEls -= longCuts.rowCutPtr(i)->row().getNumElements();
-	cs.insertIfNotDuplicate(longCuts.rowCut(i));
+	cs.insertIfNotDuplicateAndClean(longCuts.rowCut(i),16);
 	numberAdded ++;
 	if (nTotalEls<=0)
 	  break;
@@ -1889,7 +1889,7 @@ CglGomory::generateCuts(
     while (nTotalEls>0) {
       for (int i=0;i<numberInaccurate;i++) {
 	nTotalEls -= secondaryCuts.rowCutPtr(i)->row().getNumElements();
-	cs.insertIfNotDuplicate(secondaryCuts.rowCut(i));
+	cs.insertIfNotDuplicateAndClean(secondaryCuts.rowCut(i),17);
 	numberAdded ++;
 	if (nTotalEls<=0)
 	  break;

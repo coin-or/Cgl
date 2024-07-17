@@ -34,15 +34,20 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
   // everytime this function is called. Otherwise, just do once.
   bool preInit = false;
   bool preReso = false;
+  info_ = &info;
   si.getHintParam(OsiDoPresolveInInitial, preInit);
   si.getHintParam(OsiDoPresolveInResolve, preReso);
   // Deal with MAXAGGR_
   int saveMaxAggr = MAXAGGR_;
-  if (MAXAGGR_==-1) {
-    if(!info.inTree && info.pass<1000)
+  if (MAXAGGR_<0) {
+    if(!info.inTree && info.pass<1000) {
       MAXAGGR_=5; // up at root
-    else
-      MAXAGGR_=1;
+    } else {
+      if (MAXAGGR_==-1)
+	MAXAGGR_=1;
+      else
+	return;
+    }
   }
   if (preInit == false &&  preReso == false && doPreproc_ == -1 ) { // Do once
     if (doneInitPre_ == false) {   
@@ -993,6 +998,14 @@ CglMixedIntegerRounding2::generateMirCuts(
 	    hasCut = false;
 	}
 #endif
+#if 1
+	if (info_->pass || info_->inTree) {
+	  const CoinPackedVector & row = cMirCut.row();
+	  int n=row.getNumElements();
+	  if (n>0.8*numCols_)
+	    hasCut = false;
+	}
+#endif
 	if (hasCut)  {
 	  // look at cut to see if unstable
 	  const CoinPackedVector & row = cMirCut.row();
@@ -1017,7 +1030,7 @@ CglMixedIntegerRounding2::generateMirCuts(
 	      printf("(%d,%g) ",columns[i],elements[i]);
 	    printf("<= %g\n",cMirCut.ub());
 #endif
-	    cs.insertIfNotDuplicate(cMirCut,tolTest);
+	    cs.insertIfNotDuplicateAndClean(cMirCut,31,tolTest);
 	  }
 	}
 

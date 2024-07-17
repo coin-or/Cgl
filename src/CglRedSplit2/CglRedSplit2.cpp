@@ -2111,7 +2111,7 @@ int CglRedSplit2::generateCuts(OsiCuts* cs, int maxNumCuts, int* lambda)
 		      }
 		      rc.setUb(tabrowrhs + adjust);   
 		      // relax the constraint slightly
-		      buffcs->insertIfNotDuplicate(rc, CoinAbsFltEq(param.getEPS()));
+		      buffcs->insertIfNotDuplicateAndClean(rc, 51, CoinAbsFltEq(param.getEPS()));
 		      numCuts = buffcs->sizeRowCuts() - initNumCuts;
 #if CBC_CHECK_CUT_LENGTH
 		    }
@@ -2137,7 +2137,7 @@ int CglRedSplit2::generateCuts(OsiCuts* cs, int maxNumCuts, int* lambda)
     // also delete temp data
     if (buffcs){
       for (int i = 0; i < numCuts && i < maxNumCuts; ++i){
-	cs->insertIfNotDuplicate(buffcs->rowCut(quality[i].index),
+	cs->insertIfNotDuplicateAndClean(buffcs->rowCut(quality[i].index),52,
 				 CoinAbsFltEq(param.getEPS_COEFF()));
       }
       delete buffcs;

@@ -169,7 +169,7 @@ public:
   //@{
   /// Set MAXAGGR_
   inline void setMAXAGGR_ (int maxaggr) {
-    if (maxaggr > 0 || maxaggr == -1) {
+    if (maxaggr > 0 || maxaggr == -1 || maxaggr ==-2) {
       MAXAGGR_ = maxaggr;
     }
     else {
@@ -412,6 +412,8 @@ private:
   char * sense_;
   // RHS of rows (modified if ranges)
   double * RHS_;
+  // Pointer to info
+  const CglTreeInfo *info_;
 };
 
 //#############################################################################
