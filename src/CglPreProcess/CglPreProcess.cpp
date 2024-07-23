@@ -4317,6 +4317,61 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     for ( int i=0 ; (i<returnModel->getNumCols()) ; i++ )
       returnModel->setColName( i, model.getColName( originalColumns()[i] ) );
   }
+  // clean model
+  if (returnModel) {
+    int numberRows = returnModel->getNumRows();
+    int numberColumns = returnModel->getNumCols();
+    CoinPackedMatrix matrixByRow(*returnModel->getMutableMatrixByRow());
+    // clean rhs
+    double *elementByRow = matrixByRow.getMutableElements();
+    const int *column = matrixByRow.getIndices();
+    const CoinBigIndex *rowStart = matrixByRow.getVectorStarts();
+    const int *rowLength = matrixByRow.getVectorLengths();
+    
+    const double *rowLower = returnModel->getRowLower();
+    const double *rowUpper = returnModel->getRowUpper();
+    for (int iRow=0;iRow<numberRows;iRow++) {
+      CoinBigIndex start = rowStart[iRow];
+      CoinBigIndex end = start+rowLength[iRow];
+      bool allInteger = true;
+      for (CoinBigIndex j=start;j<end;j++) {
+	if (!returnModel->isInteger(column[j])) {
+	  allInteger = false;
+	  break;
+	}
+	double value = fabs(elementByRow[j]);
+	if (value-floor(value+0.5)>1.0e-13) {
+	  allInteger = false;
+	  break;
+	}
+      }
+      if (allInteger) {
+	double lower = rowLower[iRow];
+	double upper = rowUpper[iRow];
+	double lowerNew = lower;
+	double upperNew = upper;
+	if (lower>-1.0e15&&lower!=floor(lower+0.5)) {
+	  if (fabs(lower-floor(lower+0.5))<1.0e-13) {
+	    lowerNew = floor(lower+0.5);
+	  }
+	}
+	if (upper<1.0e15&&upper!=floor(upper+0.5)) {
+	  if (fabs(upper-floor(upper+0.5))<1.0e-13) {
+	    upperNew = floor(upper+0.5);
+	  }
+	}
+	if (lowerNew<=upperNew) {
+	  if (lowerNew!=lower)
+	    returnModel->setRowLower(iRow,lowerNew);
+	  if (upperNew!=upper)
+	    returnModel->setRowUpper(iRow,upperNew);
+	} else {
+	  printf("LOOKS infeas\n");
+	}
+      }
+    }
+  }
+  // end clean model
   delete [] scBound;
   return returnModel;
 }
