@@ -20,6 +20,7 @@
 #define _CglBKClique_h_
 
 #include <CglCutGenerator.hpp>
+#include "CoinBronKerbosch.hpp"
 
 class CoinCliqueList;
 class CoinConflictGraph;
@@ -119,11 +120,9 @@ public:
   void setMinViol(const double minViol);
 
   /**
-   * Set the pivoting strategy used in BK algorithm:
-   * 0 = off; 1 = random; 2 = degree; 3 = weight; 4 = modified degree;
-   * 5 = modified weight; 6 = modified degree + modified weight.
+   * Set the pivoting strategy used in BK algorithm
    **/
-  void setPivotingStrategy(const size_t pivotingStrategy);
+  void setPivotingStrategy(const CoinBronKerbosch::PivotingStrategy pivotingStrategy);
 
   /**
    * Number of cuts separated.
@@ -221,7 +220,7 @@ private:
   /**
    * Pivoting strategy employed in the BK algorithm.
    **/
-  size_t pivotingStrategy_;
+  CoinBronKerbosch::PivotingStrategy pivotingStrategy_;
 
   /**
    * Strategy used to extend cliques.
