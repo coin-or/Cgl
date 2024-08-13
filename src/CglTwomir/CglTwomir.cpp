@@ -391,8 +391,8 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	  } else {
 	    int iColumn = cutIndex[i];
 	    if (colUpper[iColumn]!=colLower[iColumn]) {
-	      largest=CoinMax(largest,value);
-	      smallest=CoinMin(smallest,value);
+	      largest=std::max(largest,value);
+	      smallest=std::min(smallest,value);
 	      cutIndex[number]=cutIndex[i];
 	      packed[number++]=packed[i];
 	    } else {
@@ -1891,7 +1891,7 @@ DGG_add2stepToList ( DGG_constraint_t *base, char *isint, double * /*x*/,
   bht = ABOV(base->rhs);
 
   double best_rc = 0;
-  for(i=0; i<base->nz; i++) if (isint[i]) best_rc = CoinMax(best_rc, fabs(rc[i]));
+  for(i=0; i<base->nz; i++) if (isint[i]) best_rc = std::max(best_rc, fabs(rc[i]));
   double  rc_cutoff = best_rc / 10;
 
   for(i=0; i<base->nz; i++){
@@ -1917,7 +1917,7 @@ DGG_add2stepToList ( DGG_constraint_t *base, char *isint, double * /*x*/,
     rc_val = COIN_DBL_MAX; // this gives a lower bound on obj. fn. improvement
 
     for(i=0; i<cut->nz; i++) if(cut->coeff[i]> 1E-6){
-      rc_val = CoinMin(rc_val, fabs(rc[i])/cut->coeff[i]);
+      rc_val = std::min(rc_val, fabs(rc[i])/cut->coeff[i]);
     }
     rc_val *= cut->rhs;
 

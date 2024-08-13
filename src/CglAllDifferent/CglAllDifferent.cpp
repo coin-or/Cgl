@@ -83,8 +83,8 @@ void CglAllDifferent::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   for (i=0;i<numberSets_;i++) {
     for (int j=start_[i];j<start_[i+1];j++) {
       int k=which_[j];
-      offset = CoinMin(offset,lo[k]);
-      maxValue = CoinMax(maxValue,up[k]);
+      offset = std::min(offset,lo[k]);
+      maxValue = std::max(maxValue,up[k]);
     }
     numberLook++;
     int gap = maxValue-offset+1;
@@ -452,7 +452,7 @@ originalWhich_(NULL)
     for (i=0;i<n;i++) {
       int iColumn = which[i];
       assert (iColumn>=0);
-      maxValue = CoinMax(iColumn,maxValue);
+      maxValue = std::max(iColumn,maxValue);
     }
     maxValue++;
     int * translate = new int[maxValue];

@@ -156,10 +156,10 @@ public:
   /// Get the value of minReduc
   double getMinReduc() const;
 
-  /** Set the maximum allowed value for (mTab * mTab * CoinMax(mTab, nTab)) where 
+  /** Set the maximum allowed value for (mTab * mTab * std::max(mTab, nTab)) where 
       mTab is the number of rows used in the combinations and nTab is the 
       number of continuous non basic variables. The work of the generator is 
-      proportional to (mTab * mTab * CoinMax(mTab, nTab)). Reducing the value of 
+      proportional to (mTab * mTab * std::max(mTab, nTab)). Reducing the value of 
       maxTab makes the generator faster, but weaker. Default: 1e7. */
   void setMaxTab(double value);
   /// Get the value of maxTab

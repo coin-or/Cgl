@@ -620,19 +620,19 @@ double CglRedSplit::row_scale_factor(double *row) {
 
   for(i=0; i<ncol; i++) {
     val = fabs(row[i]);
-    max_val = CoinMax(max_val, val);
+    max_val = std::max(max_val, val);
     norm += val * val;
 
     if(low_is_lub[i] + up_is_lub[i]) {
       if(val > param.getEPS_COEFF_LUB()) {
-	min_val = CoinMin(min_val, val);
+	min_val = std::min(min_val, val);
 	has_lub = 1;
 	nelem++;
       }
     }
     else {
       if(val > param.getEPS_COEFF()) {
-	min_val = CoinMin(min_val, val);
+	min_val = std::min(min_val, val);
 	nelem++;
      }
     }
@@ -1355,7 +1355,7 @@ void CglRedSplit::generateCuts(OsiCuts &cs)
     return; // no cuts can be generated
   }
 
-  /* Loop is mTab * mTab * CoinMax(mTab, nTab) so may be very expensive. 
+  /* Loop is mTab * mTab * std::max(mTab, nTab) so may be very expensive. 
      Reduce mTab if the above value is larger than maxTab_ */
 
   int new_mTab = card_intBasicVar_frac;

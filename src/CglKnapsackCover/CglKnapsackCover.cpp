@@ -2500,7 +2500,7 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
 	}
 #ifdef CLP_INVESTIGATE
 	nTry++;
-	int k=CoinMin(nClique,4);
+	int k=std::min(nClique,4);
 	howMany[k]++;
 	if ((nTry%100)==0) {
 	  printf("TRY %d ",nTry);
@@ -3260,7 +3260,7 @@ CglKnapsackCover::liftCoverCut(
     rho[0]=lambda;
     rho[cover.getNumElements()]=0.0;
     for (i=1; i<cover.getNumElements(); i++){
-      rho[i]=CoinMax(0.0, cover.getElements()[i]- muMinusLambda[1]);
+      rho[i]=std::max(0.0, cover.getElements()[i]- muMinusLambda[1]);
     }
     
     int h;

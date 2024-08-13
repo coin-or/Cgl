@@ -948,7 +948,7 @@ CglMixedIntegerRounding::selectRowToAggregate(
                       VUB.getVal() * xlp[VUB.getVar()] : colUpperBound[indCol];
 
     // Compute distances from current solution to upper and lower bounds
-    double delta = CoinMin(xlp[indCol] - LB, UB - xlp[indCol]);
+    double delta = std::min(xlp[indCol] - LB, UB - xlp[indCol]);
 
     // In case this variable is acceptable look for possible rows
     if (delta > deltaMax) {

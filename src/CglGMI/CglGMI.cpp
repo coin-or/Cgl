@@ -735,8 +735,8 @@ bool CglGMI::checkDynamism(const double* cutElem, const int* cutIndex,
   for (int i = 0; i < cutNz; ++i) {
     if (!isZero(cutElem[i])) {
       val = fabs(cutElem[i]);
-      min = CoinMin(min, val);
-      max = CoinMax(max, val);
+      min = std::min(min, val);
+      max = std::max(max, val);
     }
   }
   if (max > min*param.getMAXDYN()) {
@@ -821,7 +821,7 @@ bool CglGMI::scaleCut(double* cutElem, int* cutIndex, int cutNz,
     double max = fabs(cutRhs);
     for (int i = 0; i < cutNz; ++i) {
       if (!isZero(cutElem[i])) {
-	max = CoinMax(max, fabs(cutElem[i]));
+	max = std::max(max, fabs(cutElem[i]));
       }
     }
     if (max < param.getEPS() || max > param.getMAXDYN()) {
@@ -1030,7 +1030,7 @@ void CglGMI::generateCuts(OsiCuts &cs)
   for (int i = 0; i < ncol; ++i) {
     // j is the variable which is basic in row i
     if ((cstat[i] == 1) && (isInteger[i])) {
-      if (CoinMin(aboveInteger(xlp[i]),
+      if (std::min(aboveInteger(xlp[i]),
 		  1-aboveInteger(xlp[i])) > param.getAway()) {
 	listFracBasic[numFracBasic] = i;
 	numFracBasic++;
