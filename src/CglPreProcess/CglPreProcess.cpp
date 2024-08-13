@@ -1346,8 +1346,8 @@ static int analyze(OsiSolverInterface * solver)
             int n=0;
             CoinBigIndex i;
             double objChange=direction*(objective[jColumn1]+objective[jColumn2]);
-            double bound = CoinMin(upper[jColumn1],upper[jColumn2]);
-            bound = CoinMin(bound,1.0e20);
+            double bound = std::min(upper[jColumn1],upper[jColumn2]);
+            bound = std::min(bound,1.0e20);
             for ( i=columnStart[jColumn1];i<columnStart[jColumn1]+columnLength[jColumn1];i++) {
               int jRow = row[i];
               double value = element[i];
@@ -1710,7 +1710,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	    double value = mult*tempSave[i];
 	    if (value) {
 	      double vint = floor(value+0.01);
-	      largestError = CoinMax(largestError,fabs(value-vint));
+	      largestError = std::max(largestError,fabs(value-vint));
 	      assert (fabs(vint)>0.9);
 	    }
 	  }
@@ -1754,7 +1754,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	  if (fabs(element[iRow])!=1.0) {
 	    value *= element[iRow];
 	    double vint = floor(value+0.01);
-	    largestDelta = CoinMax(largestDelta,fabs(value-vint));
+	    largestDelta = std::max(largestDelta,fabs(value-vint));
 	    assert (largestDelta<1.0e-9);
 	    columnElements[j] = vint;
 	    assert (fabs(vint)>0.9);
@@ -1823,10 +1823,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   int iColumn;
   for (iColumn = 0; iColumn < numberColumns; iColumn++) {
     if (originalModel_->isInteger(iColumn)) {
-      double lo = CoinMax(lower[iColumn], ceil(lower[iColumn] - 1.0e-6));
+      double lo = std::max(lower[iColumn], ceil(lower[iColumn] - 1.0e-6));
       if (lo > lower[iColumn])
         originalModel_->setColLower(iColumn, lo);
-      double up = CoinMin(upper[iColumn], floor(upper[iColumn] + 1.0e-6));
+      double up = std::min(upper[iColumn], floor(upper[iColumn] + 1.0e-6));
       if (up < upper[iColumn])
         originalModel_->setColUpper(iColumn, up);
       if (lo > up)
@@ -2193,7 +2193,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
         startModel_->setColSolution(newSolution);
         delete[] newSolution;
         writeDebugMps(startModel_, "start", NULL);
-        if (numberElements < 10 * CoinMin(numberColumns, 100 * numberY)) {
+        if (numberElements < 10 * std::min(numberColumns, 100 * numberY)) {
           handler_->message(CGL_ADDED_INTEGERS, messages_)
             << numberY << numberSOS << numberElements
             << CoinMessageEol;
@@ -2582,7 +2582,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     memset(cc,0,sizeof(cc));
     for (int i=0;i<numberRows;i++) {
       if (rowLower[i]==rowUpper[i]) {
-	int k = CoinMin(counts[i],9);
+	int k = std::min(counts[i],9);
 	cc[k]++;
       }
     }
@@ -2593,7 +2593,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     memset(cc,0,sizeof(cc));
     for (int i=0;i<numberRows;i++) {
       if (rowLower[i]!=rowUpper[i]) {
-	int k = CoinMin(counts[i],9);
+	int k = std::min(counts[i],9);
 	cc[k]++;
       }
     }
@@ -2796,9 +2796,9 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
           double objValue = obj[iColumn];
           if (upper[iColumn] > lower[iColumn]) {
             if (objValue >= 0.0)
-              smallestPos = CoinMin(smallestPos, objValue);
+              smallestPos = std::min(smallestPos, objValue);
             else
-              smallestNeg = CoinMax(smallestNeg, objValue);
+              smallestNeg = std::max(smallestNeg, objValue);
           }
         }
       }
@@ -3886,7 +3886,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
               double last = sort[0];
               int nDiff = 1;
               for (i = 1; i < n; i++) {
-                if (sort[i] > last + CoinMax(fabs(last) * 1.0e-8, 1.0e-5)) {
+                if (sort[i] > last + std::max(fabs(last) * 1.0e-8, 1.0e-5)) {
                   nDiff++;
                 }
                 last = sort[i];
@@ -3909,7 +3909,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
             double last = sort[0];
             int nDiff = 1;
             for (i = 1; i < n; i++) {
-              if (sort[i] > last + CoinMax(fabs(last) * 1.0e-8, 1.0e-5)) {
+              if (sort[i] > last + std::max(fabs(last) * 1.0e-8, 1.0e-5)) {
                 nDiff++;
               }
               last = sort[i];
@@ -3942,8 +3942,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
             // make sure gaps OK
             double last = sort[0];
             for (int i = 1; i < n; i++) {
-              double next = last + CoinMax(fabs(last) * 1.0e-8, 1.0e-5);
-              sort[i] = CoinMax(sort[i], next);
+              double next = last + std::max(fabs(last) * 1.0e-8, 1.0e-5);
+              sort[i] = std::max(sort[i], next);
               last = sort[i];
             }
             //CoinCopyN(sort,n,weightSOS_+start);
@@ -4152,7 +4152,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   if (returnModel) {
     int numberColumns = returnModel->getNumCols();
     int numberRows = returnModel->getNumRows();
-    int * del = new int [CoinMax(numberColumns,numberRows)];
+    int * del = new int [std::max(numberColumns,numberRows)];
     int * original = new int [numberColumns];
     int nDel=0;
     for (int i=0;i<numberColumns;i++) {
@@ -4580,12 +4580,12 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
 	  if (tightenRowBounds && upper>lower && allInteger) {
 	    double lowerNew = lower;
 	    double upperNew = upper;
-	    maxUp = CoinMax(maxUp,lower);
-	    maxDown = CoinMin(maxDown,upper);
+	    maxUp = std::max(maxUp,lower);
+	    maxDown = std::min(maxDown,upper);
 	    if (!infiniteLower && maxDown > lower + 1.0e-6) 
-	      lowerNew = CoinMax(maxDown-1.0e-6,lower);
+	      lowerNew = std::max(maxDown-1.0e-6,lower);
 	    if (!infiniteUpper && maxUp < upper - 1.0e-6)
-	      upperNew = CoinMin(maxUp+1.0e-6,upper);
+	      upperNew = std::min(maxUp+1.0e-6,upper);
 	    if (lowerNew > upperNew) {
 	      printf("BAD bounds of %g (%g) and %g (%g) on row %d\n",
 		     lowerNew,lower,upperNew,upper,iRow);
@@ -4598,8 +4598,8 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
 		       iRow,
 		       lower,upper);
 #endif
-		lower = CoinMax(lower,ceil(lowerNew-1.0e-1));
-		upper = CoinMin(upper,floor(upperNew+1.0e-1));
+		lower = std::max(lower,ceil(lowerNew-1.0e-1));
+		upper = std::min(upper,floor(upperNew+1.0e-1));
 	      } else {
 		lower = lowerNew;
 		upper = upperNew;
@@ -4788,9 +4788,9 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
 		  if (newBound<newUpper[iColumn]-1.0e-7) {
 		    if (model.isInteger(iColumn)) {
 		      newBound = ceil(newBound);
-		      newBound = CoinMax(newLower[iColumn],newBound);
+		      newBound = std::max(newLower[iColumn],newBound);
 		    } else {
-		      newBound = CoinMax(newLower[iColumn],newBound+1.0e-7);
+		      newBound = std::max(newLower[iColumn],newBound+1.0e-7);
 		    }
 		  }
 		  if (newBound<newUpper[iColumn]-1.0e-7) {
@@ -4833,9 +4833,9 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
 		  if (newBound>newLower[iColumn]+1.0e-7) {
 		    if (model.isInteger(iColumn)) {
 		      newBound = ceil(newBound);
-		      newBound = CoinMin(newUpper[iColumn],newBound);
+		      newBound = std::min(newUpper[iColumn],newBound);
 		    } else {
-		      newBound = CoinMin(newUpper[iColumn],newBound+1.0e-7);
+		      newBound = std::min(newUpper[iColumn],newBound+1.0e-7);
 		    }
 		  }
 		  if (newBound>newLower[iColumn]+1.0e-7) {
@@ -4920,12 +4920,12 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
               lower -= useTolerance;
             else
               lower = floor(lower + 0.5);
-            lower = CoinMax(columnLower[iColumn], lower);
+            lower = std::max(columnLower[iColumn], lower);
             if (fabs(upper - floor(upper + 0.5)) > 1.0e-9)
               upper += useTolerance;
             else
               upper = floor(upper + 0.5);
-            upper = CoinMin(columnUpper[iColumn], upper);
+            upper = std::min(columnUpper[iColumn], upper);
           }
         }
         model.setColLower(iColumn, lower);
@@ -4962,7 +4962,7 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
                 //numberInteger++;
                 //whichInteger=iColumn;
               }
-              largest = CoinMax(largest, fabs(value));
+              largest = std::max(largest, fabs(value));
               if (value > 0.0) {
                 if (newUpper[iColumn] >= large) {
                   ++infiniteUpper;
@@ -5496,7 +5496,7 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
 	if (scBound) {
 	  // looks odd
 	  int numberColumns0 =
-	    CoinMax(originalModel_->getNumCols(),model_[0]->getNumCols());
+	    std::max(originalModel_->getNumCols(),model_[0]->getNumCols());
 	  original = new int [numberColumns0];
 	  for (int i=0;i<numberColumns0;i++)
 	    original[i]=i;
@@ -5577,8 +5577,8 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
         int i;
         for (i = 0; i < numberColumns; i++) {
           double value = solution[i];
-          value = CoinMin(value, upper[i]);
-          value = CoinMax(value, lower[i]);
+          value = std::min(value, upper[i]);
+          value = std::max(value, lower[i]);
           solution[i] = value;
         }
         model->setColSolution(solution);
@@ -5751,8 +5751,8 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
           if (columnUpper[iColumn] == columnLower[iColumn]) {
             if (columnUpper2[jColumn] > columnLower2[jColumn] && !modelM2->isInteger(jColumn)) {
               double value = solutionM[iColumn];
-              value = CoinMax(value, columnLower[iColumn]);
-              value = CoinMin(value, columnUpper[iColumn]);
+              value = std::max(value, columnLower[iColumn]);
+              value = std::min(value, columnUpper[iColumn]);
 #if CBC_USEFUL_PRINTING > 1
               printf("assuming %d fixed to solution of %g (was %g) - bounds %g %g, old bounds and sol %g %g\n",
                 jColumn, value, solutionM2[jColumn], columnLower2[jColumn], columnUpper2[jColumn],
@@ -5765,8 +5765,8 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
 #if CBC_USEFUL_PRINTING
             if (columnUpper2[jColumn] > columnLower2[jColumn] && !modelM2->isInteger(jColumn)) {
               double value = solutionM[iColumn];
-              value = CoinMax(value, columnLower[iColumn]);
-              value = CoinMin(value, columnUpper[iColumn]);
+              value = std::max(value, columnLower[iColumn]);
+              value = std::min(value, columnUpper[iColumn]);
               printf("assuming %d not fixed to solution of %g (was %g) - bounds %g %g, old bounds and sol %g %g\n",
                 jColumn, value, solutionM2[jColumn], columnLower2[jColumn], columnUpper2[jColumn],
                 columnLower[iColumn], columnUpper[iColumn]);
@@ -5836,7 +5836,7 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
         double value2 = floor(value + 0.5);
         // if test fails then empty integer
         if (fabs(value - value2) < 1.0e-3) {
-          value2 = CoinMax(CoinMin(value2, columnUpper[iColumn]), columnLower[iColumn]);
+          value2 = std::max(std::min(value2, columnUpper[iColumn]), columnLower[iColumn]);
           model->setColLower(iColumn, value2);
           model->setColUpper(iColumn, value2);
         } else {
@@ -6010,7 +6010,7 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
   numberIterationsPost_ += originalModel_->getIterationCount();
   //printf("Time without basis %g seconds, %d iterations\n",CoinCpuTime()-time1,originalModel_->getIterationCount());
   double objectiveValue = originalModel_->getObjValue();
-  double testObj = 1.0e-8 * CoinMax(fabs(saveObjectiveValue), fabs(objectiveValue)) + 1.0e-4;
+  double testObj = 1.0e-8 * std::max(fabs(saveObjectiveValue), fabs(objectiveValue)) + 1.0e-4;
   if (!originalModel_->isProvenOptimal()) {
 #if COIN_DEVELOP
     whichMps++;
@@ -6439,45 +6439,45 @@ CglPreProcess::modified(OsiSolverInterface *model,
                 l = lower[0];
                 u = upper[0];
                 if (el[1][0] > 0.0) {
-                  lower1[0] = CoinMax(lower1[0], l / el[1][0]);
-                  upper1[0] = CoinMin(upper1[0], u / el[1][0]);
+                  lower1[0] = std::max(lower1[0], l / el[1][0]);
+                  upper1[0] = std::min(upper1[0], u / el[1][0]);
                 } else {
-                  lower1[0] = CoinMax(lower1[0], u / el[1][0]);
-                  upper1[0] = CoinMin(upper1[0], l / el[1][0]);
+                  lower1[0] = std::max(lower1[0], u / el[1][0]);
+                  upper1[0] = std::min(upper1[0], l / el[1][0]);
                 }
                 l = lower[1];
                 u = upper[1];
                 if (el[1][1] > 0.0) {
-                  lower1[0] = CoinMax(lower1[0], l / el[1][1]);
-                  upper1[0] = CoinMin(upper1[0], u / el[1][1]);
+                  lower1[0] = std::max(lower1[0], l / el[1][1]);
+                  upper1[0] = std::min(upper1[0], u / el[1][1]);
                 } else {
-                  lower1[0] = CoinMax(lower1[0], u / el[1][1]);
-                  upper1[0] = CoinMin(upper1[0], l / el[1][1]);
+                  lower1[0] = std::max(lower1[0], u / el[1][1]);
+                  upper1[0] = std::min(upper1[0], l / el[1][1]);
                 }
                 l = lower[0] - el[0][0];
                 u = upper[0] - el[0][0];
                 if (el[1][0] > 0.0) {
-                  lower1[1] = CoinMax(lower1[1], l / el[1][0]);
-                  upper1[1] = CoinMin(upper1[1], u / el[1][0]);
+                  lower1[1] = std::max(lower1[1], l / el[1][0]);
+                  upper1[1] = std::min(upper1[1], u / el[1][0]);
                 } else {
-                  lower1[1] = CoinMax(lower1[1], u / el[1][0]);
-                  upper1[1] = CoinMin(upper1[1], l / el[1][0]);
+                  lower1[1] = std::max(lower1[1], u / el[1][0]);
+                  upper1[1] = std::min(upper1[1], l / el[1][0]);
                 }
                 l = lower[1] - el[0][1];
                 u = upper[1] - el[0][1];
                 if (el[1][1] > 0.0) {
-                  lower1[1] = CoinMax(lower1[1], l / el[1][1]);
-                  upper1[1] = CoinMin(upper1[1], u / el[1][1]);
+                  lower1[1] = std::max(lower1[1], l / el[1][1]);
+                  upper1[1] = std::min(upper1[1], u / el[1][1]);
                 } else {
-                  lower1[1] = CoinMax(lower1[1], u / el[1][1]);
-                  upper1[1] = CoinMin(upper1[1], l / el[1][1]);
+                  lower1[1] = std::max(lower1[1], u / el[1][1]);
+                  upper1[1] = std::min(upper1[1], l / el[1][1]);
                 }
-                if (CoinMin(lower1[0], lower1[1]) > colLower[1] + 1.0e-6) {
+                if (std::min(lower1[0], lower1[1]) > colLower[1] + 1.0e-6) {
 #if CBC_USEFUL_PRINTING > 0
                   printf("for jColumn1 0-bounds %g,%g 1-bounds %g,%g\n",
                     lower1[0], upper1[0], lower1[1], upper1[1]);
 #endif
-                  double value = CoinMin(lower1[0], lower1[1]);
+                  double value = std::min(lower1[0], lower1[1]);
                   if (newModel->isInteger(jColumn1))
                     value = ceil(value - 1.0e-5);
 #if CBC_USEFUL_PRINTING > 0
@@ -6487,12 +6487,12 @@ CglPreProcess::modified(OsiSolverInterface *model,
                   colLower[1] = value;
                   newModel->setColLower(jColumn1, value);
                 }
-                if (CoinMax(upper1[0], upper1[1]) < colUpper[1] - 1.0e-6) {
+                if (std::max(upper1[0], upper1[1]) < colUpper[1] - 1.0e-6) {
 #if CBC_USEFUL_PRINTING > 0
                   printf("for jColumn1 0-bounds %g,%g 1-bounds %g,%g\n",
                     lower1[0], upper1[0], lower1[1], upper1[1]);
 #endif
-                  double value = CoinMax(upper1[0], upper1[1]);
+                  double value = std::max(upper1[0], upper1[1]);
                   if (newModel->isInteger(jColumn1))
                     value = floor(value + 1.0e-5);
 #if CBC_USEFUL_PRINTING > 0
@@ -6616,8 +6616,8 @@ CglPreProcess::modified(OsiSolverInterface *model,
                 for (int k = 1; k < nBits; k++) {
                   double value = fabs(el[k][i]);
                   if (value) {
-                    largest = CoinMax(largest, value);
-                    smallest = CoinMin(smallest, value);
+                    largest = std::max(largest, value);
+                    smallest = std::min(smallest, value);
                   }
                 }
                 scaleFactor[i] = 1.0 / sqrt(largest * smallest);
@@ -6850,8 +6850,8 @@ CglPreProcess::modified(OsiSolverInterface *model,
 	    elementByRow2[nEls]=value;
 	    if (value>0.0)
 	      nPos++;
-	    largest=CoinMax(fabs(value),largest);
-	    smallest=CoinMin(fabs(value),smallest);
+	    largest=std::max(fabs(value),largest);
+	    smallest=std::min(fabs(value),smallest);
 	    column2[nEls++]=kColumn;
 	  }
 	  if (typeRow>=0 && smallest*1.0e7>largest) {
@@ -7150,15 +7150,15 @@ CglPreProcess::modified(OsiSolverInterface *model,
 	    //if (/*!iBigPass &&*/ !iPass /*&&(options_&(16|64))!=0*/) {
             noStrengthening = true;
             numberPasses = 1;
-            probingCut->setMaxProbeRoot(CoinMax(saveMaxProbe, 1000));
-            probingCut->setMaxElementsRoot(CoinMax(saveMaxElements, 2000));
-	    int maxLook = CoinMin(numberColumns, numberRows)/2;
+            probingCut->setMaxProbeRoot(std::max(saveMaxProbe, 1000));
+            probingCut->setMaxElementsRoot(std::max(saveMaxElements, 2000));
+	    int maxLook = std::min(numberColumns, numberRows)/2;
 	    if ((options_&16)!=0) {
 	      maxLook = numberColumns;
 	      info.options |= 32768;
 	    }
-	    maxLook = CoinMin(maxLook,2000);
-            probingCut->setMaxLookRoot(CoinMax(saveMaxLook, maxLook));
+	    maxLook = std::min(maxLook,2000);
+            probingCut->setMaxLookRoot(std::max(saveMaxLook, maxLook));
             options_ &= ~16;
           } else if (iPass || (options_ & 64) == 0) {
             // cut back
@@ -7788,7 +7788,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
           for (int i = 0; i < nCuts; i++)
             tempCuts[i] = cs.rowCutPtr(i);
           std::sort(tempCuts, tempCuts + nCuts);
-          tempCuts[nCuts] = CoinMax(whichCut[numberRows - 1], tempCuts[nCuts - 1]) + 1;
+          tempCuts[nCuts] = std::max(whichCut[numberRows - 1], tempCuts[nCuts - 1]) + 1;
           int iCut = 0;
           void *cut = tempCuts[0];
           for (int i = 0; i < numberRows; i++) {
@@ -8725,8 +8725,8 @@ CglPreProcess::someFixed(OsiSolverInterface &model,
   int numberToFix = static_cast< int >(numberColumns * (1.0 - fractionToKeep));
   if (!fixContinuousAsWell)
     numberToFix = static_cast< int >((numberColumns - numberContinuous) * (1.0 - fractionToKeep));
-  numberToFix = CoinMax(numberToFix, numberThrow);
-  numberToFix = CoinMin(number, numberToFix);
+  numberToFix = std::max(numberToFix, numberThrow);
+  numberToFix = std::min(number, numberToFix);
 #if CBC_USEFUL_PRINTING
   printf("%d columns fixed\n", numberToFix);
 #endif
@@ -8946,8 +8946,8 @@ void CglPreProcess::makeInteger()
             int n = 0;
             CoinBigIndex i;
             double objChange = direction * (objective[jColumn1] + objective[jColumn2]);
-            double bound = CoinMin(upper[jColumn1], upper[jColumn2]);
-            bound = CoinMin(bound, 1.0e20);
+            double bound = std::min(upper[jColumn1], upper[jColumn2]);
+            bound = std::min(bound, 1.0e20);
             for (i = columnStart[jColumn1]; i < columnStart[jColumn1] + columnLength[jColumn1]; i++) {
               int jRow = row[i];
               double value = element[i];
@@ -9200,7 +9200,7 @@ CglPreProcess::cliqueIt(OsiSolverInterface &model,
     printf("%d possible odd cliques?\n", nOdd);
 #endif
   double numberElements = 0;
-  if (numberCliques > CoinMax(1, static_cast< int >(cliquesNeeded * numberRows))) {
+  if (numberCliques > std::max(1, static_cast< int >(cliquesNeeded * numberRows))) {
     numberCliques = 0;
     for (int i = 0; i < numberRows; i++) {
       if (type[i] >= 0) {
@@ -9227,7 +9227,7 @@ CglPreProcess::cliqueIt(OsiSolverInterface &model,
     }
   }
   OsiSolverInterface *newSolver = NULL;
-  if (numberCliques > CoinMax(1, static_cast< int >(cliquesNeeded * numberRows))) {
+  if (numberCliques > std::max(1, static_cast< int >(cliquesNeeded * numberRows))) {
     if (numberElements < 5.0e7 && numberElements < numberCliques * 100) {
 #if CBC_USEFUL_PRINTING > 0
       printf("%d cliques needing 2 * %g ints\n",
@@ -9419,7 +9419,7 @@ CglBK::CglBK(const OsiSolverInterface &model, const char *rowType,
     if (rowType[i] >= 0)
       n++;
   }
-  cliqueMatrix_->reserve(CoinMin(100, n), 5 * numberPossible_);
+  cliqueMatrix_->reserve(std::min(100, n), 5 * numberPossible_);
 }
 
 // Copy constructor .
@@ -9532,7 +9532,7 @@ void CglBK::bronKerbosch()
 #if 0
     int nCplusN=numberCandidates_+(numberPossible_-firstNot_);
     int iChoose = CoinDrand48()*nCplusN;
-    iChoose=CoinMin(0,nCplusN-1);
+    iChoose=std::min(0,nCplusN-1);
     if (iChoose>=numberCandidates_) {
       iChoose -= numberCandidates_;
       iChoose += firstNot_;

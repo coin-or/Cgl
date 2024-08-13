@@ -382,7 +382,7 @@ CglLandPSimplex::computeWeights(CglLandP::LHSnorm norm, CglLandP::Normalization 
             CoinBigIndex end = begin + length[i];
             for (CoinBigIndex k = begin ; k < end ; k++)
             {
-                rows_weights[ind[k]] = CoinMax(fabs(val[k]), rows_weights[ind[k]]);
+                rows_weights[ind[k]] = std::max(fabs(val[k]), rows_weights[ind[k]]);
                 rhs_weight_ += fabs(val[k]);
                 nnz[ind[k]] ++;
             }
@@ -624,7 +624,7 @@ CglLandPSimplex::optimize
     bool optimal = false;
     int nRowFailed = 0;
 
-    double timeLimit = CoinMin(params.timeLimit, params.singleCutTimeLimit);
+    double timeLimit = std::min(params.timeLimit, params.singleCutTimeLimit);
     timeLimit += CoinCpuTime();
     // double timeBegin = CoinCpuTime();
     int maximumCutLength = params.maximumCutLength;

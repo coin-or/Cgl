@@ -115,7 +115,7 @@ CglClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
    }
    // Just original rows
    if (justOriginalRows_&&info.inTree) 
-     sp_numrows = CoinMin(info.formulation_rows,sp_numrows);
+     sp_numrows = std::min(info.formulation_rows,sp_numrows);
    
 #ifndef MAX_CGLCLIQUE_ROWS
 #define MAX_CGLCLIQUE_ROWS 100000
@@ -220,7 +220,7 @@ CglClique::find_rcl(OsiCuts& cs)
       for (k = 0; k < nodenum; k++)
 	 if (cand[k])
 	    cl_indices[cl_length++] = k;
-      largest_length = CoinMax(cl_length, largest_length);
+      largest_length = std::max(cl_length, largest_length);
 
       /* if there is anything in indices, enumerate (or greedily find)
 	 maximal cliques */
@@ -335,7 +335,7 @@ CglClique::find_scl(OsiCuts& cs)
 	 v = current_indices[best_ind];
 	 v_deg = current_degrees[best_ind];
 	 v_val = current_values[best_ind];
-	 largest_star_size = CoinMax(largest_star_size, v_deg);
+	 largest_star_size = std::max(largest_star_size, v_deg);
 	 continue;
       }
 
@@ -394,7 +394,7 @@ CglClique::find_scl(OsiCuts& cs)
       v = current_indices[best_ind];
       v_deg = current_degrees[best_ind];
       v_val = current_values[best_ind];
-      largest_star_size = CoinMax(largest_star_size, v_deg);
+      largest_star_size = std::max(largest_star_size, v_deg);
    }
 
    const int clique_cnt = clique_cnt_e + clique_cnt_g;

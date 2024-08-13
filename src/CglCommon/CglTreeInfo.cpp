@@ -343,7 +343,7 @@ static int outDupsEtc(int numberIntegers, int &numberCliques, int &numberMatrixC
         int iValue = value[kClique];
         if (iValue < numberIntegers)
           break;
-        iLowest = CoinMin(iLowest, kClique);
+        iLowest = std::min(iLowest, kClique);
       }
       if (jClique > jFirst) {
         // mark all apart from lowest number as duplicate and move on
@@ -1012,7 +1012,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface &si, int createSolver,
           printf("] by %d(0)\n", iColumn);
           nStrengthen++;
           if (numberEntries + jCount + 1 > maximumEntries) {
-            maximumEntries = CoinMax(numberEntries + jCount + 1, (maximumEntries * 12) / 10 + 100);
+            maximumEntries = std::max(numberEntries + jCount + 1, (maximumEntries * 12) / 10 + 100);
             CliqueEntry *temp = new CliqueEntry[maximumEntries];
             memcpy(temp, entry, numberEntries * sizeof(CliqueEntry));
             delete[] entry;
@@ -1101,7 +1101,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface &si, int createSolver,
 #endif
           nStrengthen++;
           if (numberEntries + jCount + 1 > maximumEntries) {
-            maximumEntries = CoinMax(numberEntries + jCount + 1, (maximumEntries * 12) / 10 + 100);
+            maximumEntries = std::max(numberEntries + jCount + 1, (maximumEntries * 12) / 10 + 100);
             CliqueEntry *temp = new CliqueEntry[maximumEntries];
             memcpy(temp, entry, numberEntries * sizeof(CliqueEntry));
             delete[] entry;
@@ -1178,7 +1178,7 @@ CglTreeProbingInfo::analyze(const OsiSolverInterface &si, int createSolver,
   if (numberCliques > numberMatrixCliques || alwaysDo) {
     newSolver = si.clone();
     // Delete all rows
-    CoinBigIndex *start = new CoinBigIndex[CoinMax(numberRows, numberCliques + 1)];
+    CoinBigIndex *start = new CoinBigIndex[std::max(numberRows, numberCliques + 1)];
     int i;
     int *start2 = reinterpret_cast< int * >(start);
     for (i = 0; i < numberRows; i++)
@@ -1245,7 +1245,7 @@ bool CglTreeProbingInfo::fixes(int variable, int toValue, int fixedVariable, boo
   int fixedTo = fixedToLower ? 0 : 1;
   if (numberEntries_ == maximumEntries_) {
     // See if taking too much memory
-    if (maximumEntries_ >= CoinMax(1000000, 10 * numberIntegers_))
+    if (maximumEntries_ >= std::max(1000000, 10 * numberIntegers_))
       return false;
     maximumEntries_ += 100 + maximumEntries_ / 2;
     CliqueEntry *temp1 = new CliqueEntry[maximumEntries_];

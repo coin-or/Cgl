@@ -818,22 +818,22 @@ CglProbing::tighten(double *colLower, double * colUpper,
                 if (value > 0.0) {
                   dmaxup2 += value;
                   cliqueMax2[iClique] = cliqueMax[iClique];
-                  cliqueMax[iClique] = CoinMax(cliqueMax[iClique],value);
+                  cliqueMax[iClique] = std::max(cliqueMax[iClique],value);
                 } else if (value<0.0) {
                   dmaxdown2 +=  value;
                   cliqueMin2[iClique] = cliqueMin[iClique];
-                  cliqueMin[iClique] = CoinMin(cliqueMin[iClique],value);
+                  cliqueMin[iClique] = std::min(cliqueMin[iClique],value);
                 }
               } else {
                 sumZeroFixes += value;
                 if (value > 0.0) {
                   dmaxup2 += value;
                   cliqueMin2[iClique] = cliqueMin[iClique];
-                  cliqueMin[iClique] = CoinMin(cliqueMin[iClique],-value);
+                  cliqueMin[iClique] = std::min(cliqueMin[iClique],-value);
                 } else if (value<0.0) {
                   dmaxdown2 +=  value;
                   cliqueMax2[iClique] = cliqueMax[iClique];
-                  cliqueMax[iClique] = CoinMax(cliqueMax[iClique],-value);
+                  cliqueMax[iClique] = std::max(cliqueMax[iClique],-value);
                 }
               }
             }
@@ -1594,8 +1594,8 @@ bool analyze(const OsiSolverInterface * solverX, char * intVar,
             int n=0;
             CoinBigIndex i;
             double objChange=direction*(objective[jColumn1]+objective[jColumn2]);
-            double bound = CoinMin(upper[jColumn1],upper[jColumn2]);
-            bound = CoinMin(bound,1.0e20);
+            double bound = std::min(upper[jColumn1],upper[jColumn2]);
+            bound = std::min(bound,1.0e20);
             for ( i=columnStart[jColumn1];i<columnStart[jColumn1]+columnLength[jColumn1];i++) {
               int jRow = row[i];
               double value = element[i];
@@ -1764,8 +1764,8 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   const double * colsol =si.getColSolution();
   // and put reasonable bounds on variables
   for (i=0;i<nCols;i++) {
-    colUpper[i] = CoinMin(colUpper[i],1.0e29);
-    colLower[i] = CoinMax(colLower[i],-1.0e29);
+    colUpper[i] = std::min(colUpper[i],1.0e29);
+    colLower[i] = std::max(colLower[i],-1.0e29);
     if (intVar[i]) {
 #ifndef NDEBUG
       numberIntegers++;
@@ -1868,7 +1868,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       assert (cutoff>1.0e30);
     double current = si.getObjValue();
     current *= direction;
-    double gap=CoinMax(cutoff-current,1.0e-1);
+    double gap=std::max(cutoff-current,1.0e-1);
     for (int i = 0; i < nCols; ++i) {
       double djValue = djs[i]*direction;
       if (colUpper[i]-colLower[i]>1.0e-8) {
@@ -1881,7 +1881,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
               double newUpper = colLower[i] + gap/djValue;
               if (newUpper<colUpper[i]) {
                 //printf("%d ub from %g to %g\n",i,colUpper[i],newUpper);
-                colUpper[i]= CoinMax(newUpper,colLower[i]+1.0e-5);
+                colUpper[i]= std::max(newUpper,colLower[i]+1.0e-5);
               }
             }
           }
@@ -1894,7 +1894,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
               double newLower = colUpper[i] + gap/djValue;
               if (newLower>colLower[i]) {
                 //printf("%d lb from %g to %g\n",i,colLower[i],newLower);
-                colLower[i]= CoinMin(newLower,colUpper[i]-1.0e-5);
+                colLower[i]= std::min(newLower,colUpper[i]-1.0e-5);
               }
             }
           }
@@ -2226,7 +2226,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
     rowCopy->setNumElements(newSize);
   }
   CoinPackedMatrix * columnCopy=new CoinPackedMatrix(*rowCopy,0,0,true);
-  int nRowsSafe=CoinMin(nRows,si.getNumRows());
+  int nRowsSafe=std::min(nRows,si.getNumRows());
 #ifdef CGL_DEBUG
   const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
   if (debugger&&!debugger->onOptimalPath(si))
@@ -2276,14 +2276,14 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	    // check integer
 	    assert (colUpper[i]==floor(colUpper[i]+0.5));
 	    assert (colLower[i]==floor(colLower[i]+0.5));
-	    //colUpper[i] = CoinMin(upper[i],floor(colUpper[i]+1.0e-4));
+	    //colUpper[i] = std::min(upper[i],floor(colUpper[i]+1.0e-4));
 	    if (colUpper[i]<upper[i]-1.0e-8) {
 	      if (colUpper[i]<colsol[i]-1.0e-8)
 		ifCut=1;
 	      ubs.insert(i,colUpper[i]);
 	      numberChanged++;
 	    }
-	    //colLower[i] = CoinMax(lower[i],ceil(colLower[i]-1.0e-4));
+	    //colLower[i] = std::max(lower[i],ceil(colLower[i]-1.0e-4));
 	    if (colLower[i]>lower[i]+1.0e-8) {
 	      if (colLower[i]>colsol[i]+1.0e-8)
 		ifCut=1;
@@ -2351,7 +2351,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
           }
 	  // end defined - start if
           std::sort(array,array+numberThisTime_,double_int_pair_compare());
-          //numberThisTime_=CoinMin(numberThisTime_,maxProbe);
+          //numberThisTime_=std::min(numberThisTime_,maxProbe);
           for (i=0;i<numberThisTime_;i++) {
             lookedAt_[i]=array[i].sequence;
           }
@@ -2485,7 +2485,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       }
     }
     std::sort(array,array+numberThisTime_,double_int_pair_compare());
-    numberThisTime_=CoinMin(numberThisTime_,maxProbe);
+    numberThisTime_=std::min(numberThisTime_,maxProbe);
     for (i=0;i<numberThisTime_;i++) {
       lookedAt_[i]=array[i].sequence;
     }
@@ -2806,7 +2806,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       // could also see if any are cliques
       int longest=0;
       for (i=0;i<number01Integers_;i++) 
-        longest = CoinMax(longest, cutVector_[i].length);
+        longest = std::max(longest, cutVector_[i].length);
       unsigned int * sortit = new unsigned int[longest];
       for (i=0;i<number01Integers_;i++) {
         disaggregation & thisOne=cutVector_[i];
@@ -3549,7 +3549,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		       CglTreeInfo * info)
 {
   int nRows=rowCopy->getNumRows();
-  int nRowsSafe=CoinMin(nRows,si.getNumRows());
+  int nRowsSafe=std::min(nRows,si.getNumRows());
   int nCols=rowCopy->getNumCols();
   const double *COIN_RESTRICT currentColLower = si.getColLower();
   const double *COIN_RESTRICT currentColUpper = si.getColUpper();
@@ -3557,10 +3557,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
   int maxStack = info->inTree ? maxStack_ : maxStackRoot_;
   int maxPass = info->inTree ? maxPass_ : maxPassRoot_;
   if ((totalTimesCalled_%10)==-1) {
-    int newMax=CoinMin(2*maxStack,50);
-    maxStack=CoinMax(newMax,maxStack);
+    int newMax=std::min(2*maxStack,50);
+    maxStack=std::max(newMax,maxStack);
   }
-  maxStack = CoinMin(maxStack,90000);
+  maxStack = std::min(maxStack,90000);
   // need a way for user to ask for more
   maxStack=80;
   //if ((info->options&2048)!=0&&!info->pass)
@@ -3760,15 +3760,15 @@ int CglProbing::probe( const OsiSolverInterface & si,
     value=0.0;
     for ( kk =rowStart[i];kk<rowStartPos[i];kk++) {
       int iColumn = column[kk];
-      double gap = CoinMin(1.0e100,colUpper[iColumn]-colLower[iColumn]);
-      value = CoinMin(value,gap*rowElements[kk]);
+      double gap = std::min(1.0e100,colUpper[iColumn]-colLower[iColumn]);
+      value = std::min(value,gap*rowElements[kk]);
     }
     largestNegativeInRow[i]=value;
     value=0.0;
     for ( ;kk<rowStart[i+1];kk++) {
       int iColumn = column[kk];
-      double gap = CoinMin(1.0e100,colUpper[iColumn]-colLower[iColumn]);
-      value = CoinMax(value,gap*rowElements[kk]);
+      double gap = std::min(1.0e100,colUpper[iColumn]-colLower[iColumn]);
+      value = std::max(value,gap*rowElements[kk]);
     }
     largestPositiveInRow[i]=value;
   }
@@ -3779,10 +3779,10 @@ int CglProbing::probe( const OsiSolverInterface & si,
     if (gap>1.0e-8) {
       if (colsol[i]<colLower[i]+primalTolerance_) {
         colsol[i]=colLower[i];
-        djs[i] = CoinMax(0.0,djValue);
+        djs[i] = std::max(0.0,djValue);
       } else if (colsol[i]>colUpper[i]-primalTolerance_) {
         colsol[i]=colUpper[i];
-        djs[i] = CoinMin(0.0,djValue);
+        djs[i] = std::min(0.0,djValue);
       } else {
         djs[i]=0.0;
       }
@@ -3944,7 +3944,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	if (numberThisTime_<200) {
 	  maxProbe=numberThisTime_;
 	} else {
-	  int cutDown = CoinMax(numberThisTime_/100,4);
+	  int cutDown = std::max(numberThisTime_/100,4);
 	  int offset = info->pass % cutDown;
 	  int i;
 	  int k=0;
@@ -4548,7 +4548,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol]) 
-			newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
+			newLower = std::max(colLower[kcol],ceil(newLower-1.0e-4));
 		      colLower[kcol]=newLower;
 		      columnGap[kcol] = colUpper[kcol]-newLower-primalTolerance_;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
@@ -4617,7 +4617,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol])
-			newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
+			newUpper = std::min(colUpper[kcol],floor(newUpper+1.0e-4));
 		      colUpper[kcol]=newUpper;
 		      columnGap[kcol] = newUpper-colLower[kcol]-primalTolerance_;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
@@ -4733,7 +4733,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol]) 
-			newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
+			newLower = std::max(colLower[kcol],ceil(newLower-1.0e-4));
 		      colLower[kcol]=newLower;
 		      columnGap[kcol] = colUpper[kcol]-newLower-primalTolerance_;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
@@ -4849,7 +4849,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol])
-			newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
+			newUpper = std::min(colUpper[kcol],floor(newUpper+1.0e-4));
 		      colUpper[kcol]=newUpper;
 		      columnGap[kcol] = newUpper-colLower[kcol]-primalTolerance_;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
@@ -4994,7 +4994,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol]) 
-			newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
+			newLower = std::max(colLower[kcol],ceil(newLower-1.0e-4));
 		      colLower[kcol]=newLower;
 		      columnGap[kcol] = colUpper[kcol]-newLower-primalTolerance_;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
@@ -5065,7 +5065,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol])
-			newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
+			newUpper = std::min(colUpper[kcol],floor(newUpper+1.0e-4));
 		      colUpper[kcol]=newUpper;
 		      columnGap[kcol] = newUpper-colLower[kcol]-primalTolerance_;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
@@ -5181,7 +5181,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol])
-			newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
+			newUpper = std::min(colUpper[kcol],floor(newUpper+1.0e-4));
 		      colUpper[kcol]=newUpper;
 		      columnGap[kcol] = newUpper-colLower[kcol]-primalTolerance_;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
@@ -5297,7 +5297,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol]) 
-			newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
+			newLower = std::max(colLower[kcol],ceil(newLower-1.0e-4));
 		      colLower[kcol]=newLower;
 		      columnGap[kcol] = colUpper[kcol]-newLower-primalTolerance_;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
@@ -5426,8 +5426,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
 	  memset(maxRow2,0,2*nRows*sizeof(double));
 	  int nRows2 = nRows;
 	  for (int i=0;i<nCols;i++) {
-	    double low = CoinMax(colLower[i],-1.0e20);
-	    double high = CoinMin(colUpper[i],1.0e20);
+	    double low = std::max(colLower[i],-1.0e20);
+	    double high = std::min(colUpper[i],1.0e20);
 	    if (high<-1.020) {
 	      nRows2=0;
 	      break;
@@ -5655,7 +5655,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
           /* is it worth seeing if can increase coefficients
              or maybe better see if it is a cut */
           if (iway==0) {
-            nstackC0=CoinMin(nstackC,maxStack);
+            nstackC0=std::min(nstackC,maxStack);
             double solMove = saveSolval-down;
             double boundChange;
             if (notFeasible) {
@@ -5856,11 +5856,11 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		    double ub =rowUpper[irow]-gap*(colLower[j]+1.0);
                     rc.setUb(ub);
                     double effectiveness=sum2-ub;
-                    effectiveness = CoinMax(effectiveness,
+                    effectiveness = std::max(effectiveness,
 					    (sum-gap*colsol[j]
 					     -maxR[irow])/gap);
 		    if (!coefficientExists)
-		      effectiveness=CoinMax(1.0e-7,
+		      effectiveness=std::max(1.0e-7,
 					    effectiveness);
                     rc.setEffectiveness(effectiveness);
                     //rc.setEffectiveness((sum-gap*colsol[j]-maxR[irow])/gap);
@@ -6010,11 +6010,11 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     rc.setUb(COIN_DBL_MAX);
                     // effectiveness
                     double effectiveness=lb-sum2;
-                    effectiveness = CoinMax(effectiveness,
+                    effectiveness = std::max(effectiveness,
 					    (minR[irow]-
 					     sum-gap*colsol[j])/gap);
 		    if (!coefficientExists)
-		      effectiveness=CoinMax(1.0e-7,
+		      effectiveness=std::max(1.0e-7,
 					    effectiveness);
                     rc.setEffectiveness(effectiveness);
                     if (rc.effectiveness()>needEffectiveness) {
@@ -6076,7 +6076,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
             if (iway==1&&feasible==3) {
 	    if ((info->options&2048)!=0 && false) {
 	      printf("way %d j %d ",iway,j);
-	      for (int i=0;i<CoinMin(nCols,10);i++) {
+	      for (int i=0;i<std::min(nCols,10);i++) {
 		if (intVar[i] && colUpper[i]<1.5) 
 		  printf("(%d,%d) ",(int)(colLower[i]),(int)(colUpper[i]));
 	      }
@@ -6196,9 +6196,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 int istackC1=markC[icol]-100000;
                 if (istackC1>=0) {
 		  markC[icol] -= 100000;
-                  if (CoinMin(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
+                  if (std::min(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
 		    double saveBound = saveL[istackC1];
-                    saveL[istackC1]=CoinMin(lo0[istackC],colLower[icol]);
+                    saveL[istackC1]=std::min(lo0[istackC],colLower[icol]);
 #ifdef UPDATE_MINR_MAXR
 		    if (saveBound < saveL[istackC1]) {
 		      // tighten minR and maxR
@@ -6232,9 +6232,9 @@ int CglProbing::probe( const OsiSolverInterface & si,
                 int istackC1=markC[icol]-100000;
                 if (istackC1>=0) {
 		  markC[icol] -= 100000;
-                  if (CoinMax(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
+                  if (std::max(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
 		    double saveBound = saveU[istackC1];
-                    saveU[istackC1]=CoinMax(up0[istackC],colUpper[icol]);
+                    saveU[istackC1]=std::max(up0[istackC],colUpper[icol]);
 #ifdef UPDATE_MINR_MAXR
 		    if (saveBound < saveU[istackC1]) {
 		      // tighten minR and maxR 
@@ -6341,7 +6341,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		bool printit = false;
 #endif
 		if (loDown>oldL+1.0e-5 && loUp>oldL+1.0e-5) {
-		  newLower = CoinMin(loDown,loUp);
+		  newLower = std::min(loDown,loUp);
 		  if (intVar[icol]) 
 		    newLower = ceil(newLower-1.0e-5);
 #if FIXED_BOTH_WAYS > 2
@@ -6355,7 +6355,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		  printf("x%d >= %g || ",icol,newLower);
 #endif
 		  if (upDown<oldU-1.0e-5 && upUp<oldU-1.0e-5) {
-		    newUpper = CoinMax(upDown,upUp);
+		    newUpper = std::max(upDown,upUp);
 #if FIXED_BOTH_WAYS > 2
 		    nToBoundZ ++;
 #endif
@@ -6366,7 +6366,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 #endif
 		  }
 		} else if (upDown<oldU-1.0e-5 && upUp<oldU-1.0e-5) {
-		  newUpper = CoinMax(upDown,upUp);
+		  newUpper = std::max(upDown,upUp);
 		  if (intVar[icol]) 
 		    newUpper = floor(newUpper+1.0e-5);
 #if FIXED_BOTH_WAYS > 2
@@ -6590,11 +6590,11 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     rc.setUb(ub);
                     // effectiveness
                     double effectiveness=sum2-ub;
-                    effectiveness = CoinMax(effectiveness,
+                    effectiveness = std::max(effectiveness,
 					    (sum+gap*colsol[j]-
 					     rowUpper[irow])/gap);
 		    if (!coefficientExists)
-		      effectiveness=CoinMax(1.0e-7,
+		      effectiveness=std::max(1.0e-7,
 					    effectiveness);
                     rc.setEffectiveness(effectiveness);
                     if (rc.effectiveness()>needEffectiveness) {
@@ -6692,11 +6692,11 @@ int CglProbing::probe( const OsiSolverInterface & si,
                     rc.setLb(lb);
                     rc.setUb(COIN_DBL_MAX);
 		    double effectiveness=lb-sum2;
-                    effectiveness = CoinMax(effectiveness,
+                    effectiveness = std::max(effectiveness,
 					    (rowLower[irow]-
 					     sum+gap*colsol[j])/gap);
 		    if (!coefficientExists)
-		      effectiveness=CoinMax(1.0e-7,
+		      effectiveness=std::max(1.0e-7,
 					    effectiveness);
                     rc.setEffectiveness(effectiveness);
                     if (rc.effectiveness()>needEffectiveness) {
@@ -6796,7 +6796,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
           }
         }
         if (kInt>=0) {
-          double upperBound = CoinMin(colUpper[kInt],static_cast<double>(COIN_INT_MAX));
+          double upperBound = std::min(colUpper[kInt],static_cast<double>(COIN_INT_MAX));
 	  double upAdjust=0.0;
 	  double downAdjust=0.0;
           for (k = krs; k < kre; ++k) {
@@ -7153,10 +7153,10 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
       if (colUpper[i]-colLower[i]>1.0e-8) {
 	if (colsol[i]<colLower[i]+primalTolerance_) {
 	  colsol[i]=colLower[i];
-	  djs[i] = CoinMax(0.0,djs[i]);
+	  djs[i] = std::max(0.0,djs[i]);
 	} else if (colsol[i]>colUpper[i]-primalTolerance_) {
 	  colsol[i]=colUpper[i];
-	  djs[i] = CoinMin(0.0,djs[i]);
+	  djs[i] = std::min(0.0,djs[i]);
 	} else {
 	  djs[i]=0.0;
 	}
@@ -7684,7 +7684,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol])
-			newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
+			newLower = std::max(colLower[kcol],ceil(newLower-1.0e-4));
 		      colLower[kcol]=newLower;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
 			markC[kcol]=3; // say fixed
@@ -7766,7 +7766,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol])
-			newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
+			newUpper = std::min(colUpper[kcol],floor(newUpper+1.0e-4));
 		      colUpper[kcol]=newUpper;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
 			markC[kcol]=3; // say fixed
@@ -7926,7 +7926,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 	    /* is it worth seeing if can increase coefficients
 	       or maybe better see if it is a cut */
 	    if (iway==0) {
-	      nstackC0=CoinMin(nstackC,maxStack);
+	      nstackC0=std::min(nstackC,maxStack);
 	      double solMove = saveSolval-down;
 	      double boundChange;
 	      if (notFeasible) {
@@ -8253,8 +8253,8 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		    int istackC1=markC[icol]-100000;
 		    if (istackC1>=0) {
 		      markC[icol] -= 100000;
-		      if (CoinMin(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
-			saveL[istackC1]=CoinMin(lo0[istackC],colLower[icol]);
+		      if (std::min(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
+			saveL[istackC1]=std::min(lo0[istackC],colLower[icol]);
 			if (intVar[icol]) {
 			  element[nFix]=saveL[istackC1];
 			  index[nFix++]=icol;
@@ -8277,8 +8277,8 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 		    int istackC1=markC[icol]-100000;
 		    if (istackC1>=0) {
 		      markC[icol] -= 100000;
-		      if (CoinMax(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
-			saveU[istackC1]=CoinMax(up0[istackC],colUpper[icol]);
+		      if (std::max(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
+			saveU[istackC1]=std::max(up0[istackC],colUpper[icol]);
 			if (intVar[icol]) {
 			  element[nFix]=saveU[istackC1];
 			  index[nFix++]=icol;
@@ -8777,7 +8777,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
     }
   }
   std::sort(array,array+nLook,double_int_pair_compare());
-  nLook=CoinMin(nLook,maxProbe);
+  nLook=std::min(nLook,maxProbe);
   const double * currentColLower = si.getColLower();
   const double * currentColUpper = si.getColUpper();
   double * tempL = new double [nCols];
@@ -9259,7 +9259,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                       onList=true;
                     }
                     if (intVar[kcol])
-                      newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
+                      newLower = std::max(colLower[kcol],ceil(newLower-1.0e-4));
                     colLower[kcol]=newLower;
                     if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
                       markC[kcol]=3; // say fixed
@@ -9329,7 +9329,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                       onList=true;
                     }
                     if (intVar[kcol])
-                      newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
+                      newUpper = std::min(colUpper[kcol],floor(newUpper+1.0e-4));
                     colUpper[kcol]=newUpper;
                     if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
                       markC[kcol]=3; // say fixed
@@ -9469,7 +9469,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
           /* is it worth seeing if can increase coefficients
              or maybe better see if it is a cut */
           if (iway==0) {
-            nstackC0=CoinMin(nstackC,maxStack);
+            nstackC0=std::min(nstackC,maxStack);
             if (notFeasible) {
               nstackC0=0;
             } else {
@@ -9669,8 +9669,8 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                   int istackC1=markC[icol]-100000;
                   if (istackC1>=0) {
 		    markC[icol] -= 100000;
-                    if (CoinMin(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
-                      saveL[istackC1]=CoinMin(lo0[istackC],colLower[icol]);
+                    if (std::min(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
+                      saveL[istackC1]=std::min(lo0[istackC],colLower[icol]);
                       if (intVar[icol]) {
                         element[nFix]=saveL[istackC1];
                         index[nFix++]=icol;
@@ -9693,8 +9693,8 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
                   int istackC1=markC[icol]-100000;
                   if (istackC1>=0) {
 		  markC[icol] -= 100000;
-		  if (CoinMax(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
-                      saveU[istackC1]=CoinMax(up0[istackC],colUpper[icol]);
+		  if (std::max(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
+                      saveU[istackC1]=std::max(up0[istackC],colUpper[icol]);
                       if (intVar[icol]) {
                         element[nFix]=saveU[istackC1];
                         index[nFix++]=icol;
@@ -11385,7 +11385,7 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
 		       CglTreeInfo * info)
 {
   int nRows=rowCopy->getNumRows();
-  int nRowsSafe=CoinMin(nRows,si.getNumRows());
+  int nRowsSafe=std::min(nRows,si.getNumRows());
   int nCols=rowCopy->getNumCols();
   const double *COIN_RESTRICT currentColLower = si.getColLower();
   const double *COIN_RESTRICT currentColUpper = si.getColUpper();
@@ -11525,15 +11525,15 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
     value=0.0;
     for ( kk =rowStart[i];kk<rowStartPos[i];kk++) {
       int iColumn = column[kk];
-      double gap = CoinMin(1.0e100,colUpper[iColumn]-colLower[iColumn]);
-      value = CoinMin(value,gap*rowElements[kk]);
+      double gap = std::min(1.0e100,colUpper[iColumn]-colLower[iColumn]);
+      value = std::min(value,gap*rowElements[kk]);
     }
     largestNegativeInRow[i]=value;
     value=0.0;
     for ( ;kk<rowStart[i+1];kk++) {
       int iColumn = column[kk];
-      double gap = CoinMin(1.0e100,colUpper[iColumn]-colLower[iColumn]);
-      value = CoinMax(value,gap*rowElements[kk]);
+      double gap = std::min(1.0e100,colUpper[iColumn]-colLower[iColumn]);
+      value = std::max(value,gap*rowElements[kk]);
     }
     largestPositiveInRow[i]=value;
   }
@@ -11543,10 +11543,10 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
     if (gap>1.0e-8) {
       if (colsol[i]<colLower[i]+primalTolerance_) {
         colsol[i]=colLower[i];
-        djs[i] = CoinMax(0.0,djValue);
+        djs[i] = std::max(0.0,djValue);
       } else if (colsol[i]>colUpper[i]-primalTolerance_) {
         colsol[i]=colUpper[i];
-        djs[i] = CoinMin(0.0,djValue);
+        djs[i] = std::min(0.0,djValue);
       } else {
         djs[i]=0.0;
       }
@@ -11624,7 +11624,7 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
 	if (numberThisTime_<200) {
 	  maxProbe=numberThisTime_;
 	} else {
-	  int cutDown = CoinMax(numberThisTime_/100,4);
+	  int cutDown = std::max(numberThisTime_/100,4);
 	  int offset = info->pass % cutDown;
 	  int i;
 	  int k=0;
@@ -12013,7 +12013,7 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol]) 
-			newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
+			newLower = std::max(colLower[kcol],ceil(newLower-1.0e-4));
 		      colLower[kcol]=newLower;
 		      columnGap[kcol] = colUpper[kcol]-newLower-primalTolerance_;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
@@ -12082,7 +12082,7 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol])
-			newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
+			newUpper = std::min(colUpper[kcol],floor(newUpper+1.0e-4));
 		      colUpper[kcol]=newUpper;
 		      columnGap[kcol] = newUpper-colLower[kcol]-primalTolerance_;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
@@ -12198,7 +12198,7 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol]) 
-			newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
+			newLower = std::max(colLower[kcol],ceil(newLower-1.0e-4));
 		      colLower[kcol]=newLower;
 		      columnGap[kcol] = colUpper[kcol]-newLower-primalTolerance_;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
@@ -12314,7 +12314,7 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol])
-			newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
+			newUpper = std::min(colUpper[kcol],floor(newUpper+1.0e-4));
 		      colUpper[kcol]=newUpper;
 		      columnGap[kcol] = newUpper-colLower[kcol]-primalTolerance_;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
@@ -12459,7 +12459,7 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol]) 
-			newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
+			newLower = std::max(colLower[kcol],ceil(newLower-1.0e-4));
 		      colLower[kcol]=newLower;
 		      columnGap[kcol] = colUpper[kcol]-newLower-primalTolerance_;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
@@ -12530,7 +12530,7 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol])
-			newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
+			newUpper = std::min(colUpper[kcol],floor(newUpper+1.0e-4));
 		      colUpper[kcol]=newUpper;
 		      columnGap[kcol] = newUpper-colLower[kcol]-primalTolerance_;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
@@ -12646,7 +12646,7 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol])
-			newUpper = CoinMin(colUpper[kcol],floor(newUpper+1.0e-4));
+			newUpper = std::min(colUpper[kcol],floor(newUpper+1.0e-4));
 		      colUpper[kcol]=newUpper;
 		      columnGap[kcol] = newUpper-colLower[kcol]-primalTolerance_;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
@@ -12762,7 +12762,7 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
 			}
 		      }
 		      if (intVar[kcol]) 
-			newLower = CoinMax(colLower[kcol],ceil(newLower-1.0e-4));
+			newLower = std::max(colLower[kcol],ceil(newLower-1.0e-4));
 		      colLower[kcol]=newLower;
 		      columnGap[kcol] = colUpper[kcol]-newLower-primalTolerance_;
 		      if (fabs(colUpper[kcol]-colLower[kcol])<1.0e-6) {
@@ -12950,7 +12950,7 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
           /* is it worth seeing if can increase coefficients
              or maybe better see if it is a cut */
           if (iway==0) {
-            nstackC0=CoinMin(nstackC,maxStack);
+            nstackC0=std::min(nstackC,maxStack);
             double boundChange;
             if (notFeasible) {
               nstackC0=0;
@@ -13008,9 +13008,9 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
                 int istackC1=markC[icol]-100000;
                 if (istackC1>=0) {
 		  markC[icol] -= 100000;
-                  if (CoinMin(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
+                  if (std::min(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
 		    double saveBound = saveL[istackC1];
-                    saveL[istackC1]=CoinMin(lo0[istackC],colLower[icol]);
+                    saveL[istackC1]=std::min(lo0[istackC],colLower[icol]);
 #ifdef UPDATE_MINR_MAXR
 		    if (saveBound < saveL[istackC1]) {
 		      // tighten minR and maxR
@@ -13039,9 +13039,9 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
                 int istackC1=markC[icol]-100000;
                 if (istackC1>=0) {
 		  markC[icol] -= 100000;
-                  if (CoinMax(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
+                  if (std::max(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
 		    double saveBound = saveU[istackC1];
-                    saveU[istackC1]=CoinMax(up0[istackC],colUpper[icol]);
+                    saveU[istackC1]=std::max(up0[istackC],colUpper[icol]);
 #ifdef UPDATE_MINR_MAXR
 		    if (saveBound < saveU[istackC1]) {
 		      // tighten minR and maxR 
@@ -13102,7 +13102,7 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
 		bool printit = false;
 #endif
 		if (loDown>oldL+1.0e-5 && loUp>oldL+1.0e-5) {
-		  newLower = CoinMin(loDown,loUp);
+		  newLower = std::min(loDown,loUp);
 		  if (intVar[icol]) 
 		    newLower = ceil(newLower-1.0e-5);
 #if FIXED_BOTH_WAYS > 2
@@ -13112,7 +13112,7 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
 		  lbsBoth.insert(icol,newLower);
 #endif
 		  if (upDown<oldU-1.0e-5 && upUp<oldU-1.0e-5) {
-		    newUpper = CoinMax(upDown,upUp);
+		    newUpper = std::max(upDown,upUp);
 #if FIXED_BOTH_WAYS > 2
 		    nToBoundZ ++;
 #endif
@@ -13120,7 +13120,7 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
 		      newUpper = floor(newUpper+1.0e-5);
 		  }
 		} else if (upDown<oldU-1.0e-5 && upUp<oldU-1.0e-5) {
-		  newUpper = CoinMax(upDown,upUp);
+		  newUpper = std::max(upDown,upUp);
 		  if (intVar[icol]) 
 		    newUpper = floor(newUpper+1.0e-5);
 #if FIXED_BOTH_WAYS > 2
@@ -13242,7 +13242,7 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
       for (int j=0;j<ncols;j++) {
 	int jColumn = cols[j];
 	double value = values[j];
-	lower[jColumn] = CoinMax(lower[jColumn],value);
+	lower[jColumn] = std::max(lower[jColumn],value);
       }
       ncols = ubs.getNumElements();
       cols = ubs.getIndices();
@@ -13250,7 +13250,7 @@ int CglProbing::probeFast( const OsiSolverInterface & si,
       for (int j=0;j<ncols;j++) {
 	int jColumn = cols[j];
 	double value = values[j];
-	upper[jColumn] = CoinMin(upper[jColumn],value);
+	upper[jColumn] = std::min(upper[jColumn],value);
       }
     }
     // arrays should be same

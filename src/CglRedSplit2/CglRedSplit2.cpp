@@ -1080,7 +1080,7 @@ void CglRedSplit2::reduce_workNonBasicTab(int numRowsReduction,
 					  CglRedSplit2Param::RowSelectionStrategy rowSelectionStrategy,
 					  int maxIterations) {
   // Use at most this number of rows
-  int maxRowsReduction = CoinMin(numRowsReduction, mTab);
+  int maxRowsReduction = std::min(numRowsReduction, mTab);
   if (maxRowsReduction == 1){
     return;
   }
@@ -1327,7 +1327,7 @@ void CglRedSplit2::generate_row(int index_row, double *row) {
     }
   }
   for (int i=0;i<nrow+ncol;i++) {
-    assert (fabs(row[i]-rowTemp[i])<1.0e-11+1.0e-8*CoinMax(fabs(row[i]),fabs(rowTemp[i])));
+    assert (fabs(row[i]-rowTemp[i])<1.0e-11+1.0e-8*std::max(fabs(row[i]),fabs(rowTemp[i])));
   }
   delete [] rowTemp;
 #else
@@ -1480,9 +1480,9 @@ int CglRedSplit2::check_dynamism(double *row) {
 
   for(i=0; i<ncol; i++) {
     val = fabs(row[i]);
-    max_val = CoinMax(max_val, val);
+    max_val = std::max(max_val, val);
     if(val > param.getEPS_COEFF()) {
-      min_val = CoinMin(min_val, val);
+      min_val = std::min(min_val, val);
     }
   }
 

@@ -1015,8 +1015,8 @@ CglMixedIntegerRounding2::generateMirCuts(
 	  double smallest = COIN_DBL_MAX;
 	  for (int i=0;i<n;i++) {
 	    double value = fabs(elements[i]);
-	    largest=CoinMax(largest,value);
-	    smallest=CoinMin(smallest,value);
+	    largest=std::max(largest,value);
+	    smallest=std::min(smallest,value);
 	  }
 	  if (largest>1.0e8*smallest||largest>1.0e7||smallest<1.0e-5) {
 #if CGL_DEBUG
@@ -1151,7 +1151,7 @@ CglMixedIntegerRounding2::selectRowToAggregate(
                       VUB.getVal() * xlp[VUB.getVar()] : colUpperBound[indCol];
 
     // Compute distances from current solution to upper and lower bounds
-    double delta = CoinMin(xlp[indCol] - LB, UB - xlp[indCol]);
+    double delta = std::min(xlp[indCol] - LB, UB - xlp[indCol]);
 
     // In case this variable is acceptable look for possible rows
     if (delta > deltaMax) {
@@ -1657,9 +1657,9 @@ CglMixedIntegerRounding2::cMirSeparation(
   for ( j = 0; j < cutLen; ++j) {
     int column = cutInd[j];
     double value = cutCoef[column];
-    largest=CoinMax(largest,fabs(value));
+    largest=std::max(largest,fabs(value));
   }
-  double testValue=CoinMax(1.0e-6*largest,1.0e-12);
+  double testValue=std::max(1.0e-6*largest,1.0e-12);
   int n=0;
   for ( j = 0; j < cutLen; ++j) {
     int column = cutInd[j];

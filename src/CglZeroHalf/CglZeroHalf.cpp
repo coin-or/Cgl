@@ -350,7 +350,7 @@ CglZeroHalf::refreshSolver(OsiSolverInterface * solver)
       }
       rhs=fabs(lo);
       if (up<1.0e20) {
-	rhs=CoinMax(fabs(lo),fabs(up));
+	rhs=std::max(fabs(lo),fabs(up));
 	if (lo!=up)
 	  iType=2; // ranged so make copy
 	if (fabs(up-floor(up+0.5))>1.0e-12) {
@@ -414,7 +414,7 @@ CglZeroHalf::refreshSolver(OsiSolverInterface * solver)
 	}
 	rhs=fabs(lo);
 	if (up<1.0e20) {
-	  rhs=CoinMax(fabs(lo),fabs(up));
+	  rhs=std::max(fabs(lo),fabs(up));
 	  if (lo!=up)
 	    iType=2; // ranged so make copy
 	  if (fabs(up-floor(up+0.5))>1.0e-12) {

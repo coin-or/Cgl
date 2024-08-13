@@ -613,7 +613,7 @@ CglGomory::generateCuts(
   bool globalCuts = (infoOptions&16)!=0;
   double testFixed = (!globalCuts) ? 1.0e-8 : -1.0;
   // get what to look at
-  double away = info.inTree ? away_ : CoinMin(away_,awayAtRoot_);
+  double away = info.inTree ? away_ : std::min(away_,awayAtRoot_);
   int numberRows=columnCopy.getNumRows();
   int numberColumns=columnCopy.getNumCols(); 
   CoinBigIndex numberElements=columnCopy.getNumElements();
@@ -754,7 +754,7 @@ CglGomory::generateCuts(
 	else
 	  rowType[iRow]=1;
 #ifdef CGL_DEBUG
-	assert (CoinMin(rowUpper[iRow]-rowActivity[iRow],
+	assert (std::min(rowUpper[iRow]-rowActivity[iRow],
 		    rowActivity[iRow]-rowUpper[iRow])<1.0e-5);
 	//abort();
         continue;
@@ -830,7 +830,7 @@ CglGomory::generateCuts(
   // get limit on length of cut
   int limit = 0;
   if (!limit_)
-    dynamicLimitInTree_ = CoinMax(50,numberColumns/40);
+    dynamicLimitInTree_ = std::max(50,numberColumns/40);
   if (!info.inTree) {
     limit = limitAtRoot_;
     if (!info.pass) {
@@ -849,7 +849,7 @@ CglGomory::generateCuts(
 	  if(numberElements>8*numberColumns)
 	    limit=numberColumns;
 	  else
-	    limit = CoinMax(1000,numberRows/4);
+	    limit = std::max(1000,numberRows/4);
 	}
       } else {
 	//limit=numberColumns;
@@ -875,7 +875,7 @@ CglGomory::generateCuts(
 	   numberRows,numberColumns,numberElements);
 #endif
 #if CBC_CHECK_CUT_LENGTH
-  limit = CoinMin(limit,CBC_CHECK_CUT_LENGTH*numberRows);
+  limit = std::min(limit,CBC_CHECK_CUT_LENGTH*numberRows);
 #endif
   int nCandidates=0;
   for (iColumn=0;iColumn<numberColumns;iColumn++) {
@@ -902,9 +902,9 @@ CglGomory::generateCuts(
     if (depth<2) {
       nAdd=10000;
       if (info.pass>0)
-	nAdd = CoinMin(nAdd,nElsNow+2*numberRows);
+	nAdd = std::min(nAdd,nElsNow+2*numberRows);
       nAdd2 = 5*numberColumns;
-      nReasonable = CoinMax(nAdd2,nElsNow/8+nAdd);
+      nReasonable = std::max(nAdd2,nElsNow/8+nAdd);
       if (!depth&&!info.pass) {
 	// allow more
 	nAdd += nElsNow/2;
@@ -915,7 +915,7 @@ CglGomory::generateCuts(
     } else {
       nAdd = 200;
       nAdd2 = 2*numberColumns;
-      nReasonable = CoinMax(nAdd2,nElsNow/8+nAdd);
+      nReasonable = std::max(nAdd2,nElsNow/8+nAdd);
     }
     nTotalEls=nReasonable;
   }
@@ -1012,7 +1012,7 @@ CglGomory::generateCuts(
 	for (j=0;j<numberInArray;j++) {
 	  int indexValue=arrayRows[j];
 	  double value=arrayElements[indexValue];
-	  largestFactor = CoinMax(largestFactor,fabs(value));
+	  largestFactor = std::max(largestFactor,fabs(value));
 	}
 	//reducedValue=colsol[iColumn];
 	// coding from pg 130 of Wolsey 
@@ -1034,7 +1034,7 @@ CglGomory::generateCuts(
 	    for (k=columnStart[j];k<columnStart[j]+columnLength[j];k++) {
 	      iRow = row[k];
 	      double value2 = columnElements[k]*arrayElements[iRow];
-	      largestFactor = CoinMax(largestFactor,fabs(value2));
+	      largestFactor = std::max(largestFactor,fabs(value2));
 	      value += value2;
 	    }
 #ifdef CGL_DEBUG_GOMORY
@@ -1234,7 +1234,7 @@ CglGomory::generateCuts(
 	  // use absolute
 	  useTolerance = tolerance;
 	} else {
-	  double rhs2=CoinMax(fabs(rhs),10.0);
+	  double rhs2=std::max(fabs(rhs),10.0);
 	  useTolerance=rhs2*0.1*tolerance1;
 	}
 	bool accurate = (difference<useTolerance);
@@ -1492,8 +1492,8 @@ CglGomory::generateCuts(
 		int iColumn = cutIndex[i];
 		if (colUpper[iColumn]!=colLower[iColumn]||globalCuts) {
 		  value=fabs(value);
-		  largest=CoinMax(largest,value);
-		  smallest=CoinMin(smallest,value);
+		  largest=std::max(largest,value);
+		  smallest=std::min(smallest,value);
 		  cutIndex[number]=cutIndex[i];
 		  packed[number++]=packed[i];
 		} else {
@@ -1612,16 +1612,16 @@ CglGomory::generateCuts(
 	    double nearest=floor(bounds[1]+0.5);
 	    if (bounds[1]<nearest&&bounds[1]>nearest-1.0e-4)
 	      bounds[1]=nearest;
-	    double test = CoinMin(largestFactor*largestFactorMultiplier_,
+	    double test = std::min(largestFactor*largestFactorMultiplier_,
 				  relaxation);
 	    if (number>5&&numberNonInteger&&test>1.0e-20) {
 #ifdef CLP_INVESTIGATE2
 	      printf("relaxing rhs by %g - largestFactor was %g, rel %g\n",
-	         CoinMin(test*fabs(rhs),tolerance9),largestFactor,relaxation);
+	         std::min(test*fabs(rhs),tolerance9),largestFactor,relaxation);
 #endif
-	      //bounds[1] = CoinMax(bounds[1],
-	      //		  rhs+CoinMin(test*fabs(rhs),tolerance9)); // weaken
-	      bounds[1] = bounds[1]+CoinMin(test*fabs(rhs),tolerance9); // weaken
+	      //bounds[1] = std::max(bounds[1],
+	      //		  rhs+std::min(test*fabs(rhs),tolerance9)); // weaken
+	      bounds[1] = bounds[1]+std::min(test*fabs(rhs),tolerance9); // weaken
 	    }
 #ifdef MORE_GOMORY_CUTS
 	    if (accurate) {
@@ -1633,7 +1633,7 @@ CglGomory::generateCuts(
 		double range=0.0;
 		for (int k=0;k<number;k++) {
 		  int iColumn=cutIndex[k];
-		  double thisRange=CoinMin(colUpper[iColumn]-colLower[iColumn],1000.0);
+		  double thisRange=std::min(colUpper[iColumn]-colLower[iColumn],1000.0);
 		  range += thisRange;
 		}
 		// see if close to integer

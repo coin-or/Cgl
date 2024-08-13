@@ -53,7 +53,7 @@ void CglOddHole::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   } else {
     // initialize and extend rows to current size
     memset(checkRow,0,nRows*sizeof(int));
-    memcpy(checkRow,suitableRows_,CoinMin(nRows,numberRows_)*sizeof(int));
+    memcpy(checkRow,suitableRows_,std::min(nRows,numberRows_)*sizeof(int));
   }
   temp.createRowList(si,checkRow);
   // now cut down further by only allowing rows with fractional solution
@@ -322,7 +322,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * /*debugger*/,
   double * hash = reinterpret_cast<double *> (malloc(maxcuts*sizeof(double)));
   // to clean (should not be needed)
   int * clean = new int[nSmall2];
-  int * candidate = new int[CoinMax(nSmall2,nCols)];
+  int * candidate = new int[std::max(nSmall2,nCols)];
   double * element = new double[nCols];
   // in case we want to sort
   double_double_int_triple * sortit = 
@@ -510,7 +510,7 @@ void CglOddHole::generateCuts(const OsiRowCutDebugger * /*debugger*/,
 		}
 		// sort 
 		std::sort(sortit,sortit+nincut,double_double_int_triple_compare());
-		nincut = CoinMin(nincut,maximumEntries_);
+		nincut = std::min(nincut,maximumEntries_);
 		sum=0.0;
 		for (k=0;k<nincut;k++) {
 		  int jcol=sortit[k].sequence;

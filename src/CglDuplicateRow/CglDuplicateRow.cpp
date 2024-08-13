@@ -477,7 +477,7 @@ void CglDuplicateRow::generateCuts12(const OsiSolverInterface & si, OsiCuts & cs
       if ((rowLower[i]<=0.0||rowLower[i]==rowUpper[i])&&
 	  rowUpper[i]==floor(rowUpper[i])) {
 	effectiveRhs[i]= static_cast<int> (rowUpper[i]);
-	effectiveLower[i] = static_cast<int> (CoinMax(0.0,rowLower[i]));
+	effectiveLower[i] = static_cast<int> (std::max(0.0,rowLower[i]));
 	bool goodRow=true;
 	for (CoinBigIndex j=rowStart[i];j<rowStart[i]+rowLength[i];j++) {
 	  int iColumn = column[j];
@@ -1054,7 +1054,7 @@ void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
 	break;
     }
     nRow2=nnRow2;
-    nRowStart=CoinMax(0,nRowStart);
+    nRowStart=std::max(0,nRowStart);
     unsigned char * mark = columnFlag+nCol2;
     memset(mark,0,nCol2);
     /* at most 3 0-1 integers -
@@ -1102,7 +1102,7 @@ void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
 	      if (nInt==2) {
 		double upRhs = effectiveRhs[i];
 		double loRhs = ((rowFlag[i]&1)!=0) ? effectiveRhs[i] : -1.0e30;
-		double tolerance = CoinMax(1.0e-5,fabs(upRhs)*1.0e-10);
+		double tolerance = std::max(1.0e-5,fabs(upRhs)*1.0e-10);
 		for (int j0=0;j0<2;j0++) {
 		  for (int j1=0;j1<2;j1++) {
 		    double value = element0[0]*j0+element0[1]*j1;
@@ -1115,7 +1115,7 @@ void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
 		}
 		upRhs = effectiveRhs[k];
 		loRhs = ((rowFlag[k]&1)!=0) ? effectiveRhs[k] : -1.0e30;
-		tolerance = CoinMax(1.0e-5,fabs(upRhs)*1.0e-10);
+		tolerance = std::max(1.0e-5,fabs(upRhs)*1.0e-10);
 		for (int j0=0;j0<2;j0++) {
 		  for (int j1=0;j1<2;j1++) {
 		    double value = element1[0]*j0+element1[1]*j1;
@@ -1310,7 +1310,7 @@ void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
 		assert (nInt==3);
 		double upRhs = effectiveRhs[i];
 		double loRhs = ((rowFlag[i]&1)!=0) ? effectiveRhs[i] : -1.0e30;
-		double tolerance = CoinMax(1.0e-5,fabs(upRhs)*1.0e-10);
+		double tolerance = std::max(1.0e-5,fabs(upRhs)*1.0e-10);
 		for (int j0=0;j0<2;j0++) {
 		  for (int j1=0;j1<2;j1++) {
 		    for (int j2=0;j2<2;j2++) {
@@ -1326,7 +1326,7 @@ void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
 		}
 		upRhs = effectiveRhs[k];
 		loRhs = ((rowFlag[k]&1)!=0) ? effectiveRhs[k] : -1.0e30;
-		tolerance = CoinMax(1.0e-5,fabs(upRhs)*1.0e-10);
+		tolerance = std::max(1.0e-5,fabs(upRhs)*1.0e-10);
 		for (int j0=0;j0<2;j0++) {
 		  for (int j1=0;j1<2;j1++) {
 		    for (int j2=0;j2<2;j2++) {
@@ -1551,7 +1551,7 @@ void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
 		} else {
 		  el0[2]=element0[j];
 		  col[2]=iColumn;
-		  bound=CoinMin(newBound[iColumn],1.0e30);
+		  bound=std::min(newBound[iColumn],1.0e30);
 		}
 	      }
 	      kk=0;
@@ -1574,7 +1574,7 @@ void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
 	      // crude - should go stack based
 	      double upRhs = effectiveRhs[i];
 	      double loRhs = ((rowFlag[i]&1)!=0) ? effectiveRhs[i] : -1.0e30;
-	      double tolerance = CoinMax(1.0e-5,fabs(upRhs)*1.0e-10);
+	      double tolerance = std::max(1.0e-5,fabs(upRhs)*1.0e-10);
 	      for (int j0=0;j0<2;j0++) {
 		for (int j1=0;j1<2;j1++) {
 		  double value = el0[0]*j0+el0[1]*j1;
@@ -1609,7 +1609,7 @@ void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
 	      }
 	      upRhs = effectiveRhs[k];
 	      loRhs = ((rowFlag[k]&1)!=0) ? effectiveRhs[k] : -1.0e30;
-	      tolerance = CoinMax(1.0e-5,fabs(upRhs)*1.0e-10);
+	      tolerance = std::max(1.0e-5,fabs(upRhs)*1.0e-10);
 	      for (int j0=0;j0<2;j0++) {
 		for (int j1=0;j1<2;j1++) {
 		  double value = el1[0]*j0+el1[1]*j1;
@@ -1701,8 +1701,8 @@ void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
 #ifdef CGL_INVESTIGATE
 		    printf("\n");
 #endif
-		    newLo=CoinMin(newLo,CoinMax(loC0[jj],loC1[jj]));
-		    newUp=CoinMax(newUp,CoinMin(upC0[jj],upC1[jj]));
+		    newLo=std::min(newLo,std::max(loC0[jj],loC1[jj]));
+		    newUp=std::max(newUp,std::min(upC0[jj],upC1[jj]));
 		  } else {
 #ifdef CGL_INVESTIGATE
 		    printf(" INF\n");
@@ -1725,8 +1725,8 @@ void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
 #ifdef CGL_INVESTIGATE
 		      printf("\n");
 #endif
-		      newLo=CoinMin(newLo,CoinMax(loC0[k],loC1[k]));
-		      newUp=CoinMax(newUp,CoinMin(upC0[k],upC1[k]));
+		      newLo=std::min(newLo,std::max(loC0[k],loC1[k]));
+		      newUp=std::max(newUp,std::min(upC0[k],upC1[k]));
 		    } else {
 #ifdef CGL_INVESTIGATE
 		      printf(" INF\n");
@@ -1763,10 +1763,10 @@ void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
 		}
 	      }
 	      for (int jj=0;jj<(1<<nInt);jj++) {
-		loC0[jj]=CoinMax(loC0[jj],newLo);
-		loC1[jj]=CoinMax(loC1[jj],newLo);
-		upC0[jj]=CoinMin(upC0[jj],newUp);
-		upC1[jj]=CoinMin(upC1[jj],newUp);
+		loC0[jj]=std::max(loC0[jj],newLo);
+		loC1[jj]=std::max(loC1[jj],newLo);
+		upC0[jj]=std::min(upC0[jj],newUp);
+		upC1[jj]=std::min(upC1[jj],newUp);
 	      }
 	      for (int jj=0;jj<(1<<nInt);jj++) {
 		if (fabs(loC0[jj]-loC1[jj])>1.0e-8)
@@ -1956,7 +1956,7 @@ void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
 			    if (el0[2]>0.0) 
 			      up0=bound0;
 			    else
-			      lo0=CoinMax(0.0,bound0);
+			      lo0=std::max(0.0,bound0);
 			    double rhs1 =effectiveRhs[k]-el1[0]*value0;
 			    double lo1=0.0;
 			    double up1=1.0e30;
@@ -1964,7 +1964,7 @@ void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
 			    if (el1[2]>0.0) 
 			      up1=bound1;
 			    else
-			      lo1=CoinMax(0.0,bound1);
+			      lo1=std::max(0.0,bound1);
 			    if (fabs(lo0-lo1)>1.0e-8||
 				fabs(up0-up1)>1.0e-8*(1.0+fabs(up1))) {
 			      if (lo0>lo1+1.0e-8) {
@@ -2051,7 +2051,7 @@ void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
 			    if (el0[2]>0.0) 
 			      up0=bound0;
 			    else
-			      lo0=CoinMax(0.0,bound0);
+			      lo0=std::max(0.0,bound0);
 			    double rhs1 =effectiveRhs[k]-el1[0]*value0
 			      -el1[1]*value1;
 			    double lo1=0.0;
@@ -2060,7 +2060,7 @@ void CglDuplicateRow::generateCuts4(const OsiSolverInterface & si, OsiCuts & cs,
 			    if (el1[2]>0.0) 
 			      up1=bound1;
 			    else
-			      lo1=CoinMax(0.0,bound1);
+			      lo1=std::max(0.0,bound1);
 			    if (fabs(lo0-lo1)>1.0e-8||
 				fabs(up0-up1)>1.0e-8*(1.0+fabs(up1))) {
 			      if (lo0>lo1+1.0e-8) {
@@ -2419,10 +2419,10 @@ static int outDupsEtc(int numberIntegers, int numberCliques, int * statusClique,
 	if (iValue<numberIntegers) 
 	  break;
 	if (cliqueType[kClique]=='E') {
-	  iLowest = CoinMin(iLowest,kClique);
+	  iLowest = std::min(iLowest,kClique);
 	  type='E';
 	} else if (type=='S') {
-	  iLowest = CoinMin(iLowest,kClique);
+	  iLowest = std::min(iLowest,kClique);
 	}
       }
       if (jClique>jFirst) {
@@ -2730,10 +2730,10 @@ static int outDupsEtc(int numberIntegers, int numberCliques, int * statusClique,
 	if (iValue<numberIntegers) 
 	  break;
 	if (cliqueType[kClique]=='E') {
-	  iLowest = CoinMin(iLowest,kClique);
+	  iLowest = std::min(iLowest,kClique);
 	  type='E';
 	} else if (type=='S') {
-	  iLowest = CoinMin(iLowest,kClique);
+	  iLowest = std::min(iLowest,kClique);
 	}
       }
       if (jClique>jFirst) {
@@ -2863,8 +2863,8 @@ static int outDupsEtc(int numberIntegers, int numberCliques, int * statusClique,
 	    printf("\n");
 	  }
 	  nOut++;
-	  used[iClique]=CoinMin(used[iClique],kClique);;
-	  used[kClique]=CoinMin(used[kClique],iClique);;
+	  used[iClique]=std::min(used[iClique],kClique);;
+	  used[kClique]=std::min(used[kClique],iClique);;
 	  // But need to look at type
 	  // when might be able to fix variables
 	  if (cliqueType[kClique]=='E') {
@@ -3053,7 +3053,7 @@ void CglDuplicateRow::generateCuts8(const OsiSolverInterface & si, OsiCuts & cs,
   }
   delete[] whichP;
   int * dups = new int [2*numberCliques];
-  int * fixed = new int[CoinMax(numberIntegers,numberCliques)];
+  int * fixed = new int[std::max(numberIntegers,numberCliques)];
   memset(fixed,0,numberIntegers*sizeof(int));
   outDupsEtc(numberIntegers, numberCliques, dups,
 	     cliqueStart, cliqueType, entry, fixed, printit ? 2 : 0);
@@ -3263,7 +3263,7 @@ CglDuplicateRow::refreshSolver(OsiSolverInterface * solver)
         }
       }
       if (good) {
-        lower_[iRow] = static_cast<int> (CoinMax(0.0,ceil(rowLower[iRow])));
+        lower_[iRow] = static_cast<int> (std::max(0.0,ceil(rowLower[iRow])));
         if (iRhs>=lower_[iRow]) {
           rhs_[iRow]=iRhs;
           //numberGood++;
