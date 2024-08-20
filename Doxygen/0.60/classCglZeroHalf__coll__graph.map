@@ -1,8 +1,0 @@
-<map id="CglZeroHalf" name="CglZeroHalf">
-<area shape="rect" id="node1" title="Zero Half Cut Generator Class." alt="" coords="41,184,131,211"/>
-<area shape="rect" id="node2" href="$classCglCutGenerator.html" title="Cut Generator Base Class." alt="" coords="5,95,124,121"/>
-<area shape="rect" id="node3" href="$classCgl012Cut.html" title="012Cut Generator Class" alt="" coords="147,95,230,121"/>
-<area shape="rect" id="node4" href="$structlog__var.html" title=" " alt="" coords="81,5,145,32"/>
-<area shape="rect" id="node5" href="$structilp.html" title=" " alt="" coords="169,5,208,32"/>
-<area shape="rect" id="node6" href="$structparity__ilp.html" title=" " alt="" coords="232,5,305,32"/>
-</map>
