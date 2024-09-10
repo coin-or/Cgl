@@ -781,7 +781,7 @@ bool CglGMI::removeSmallCoefficients(double* cutElem, int* cutIndex,
       } 
       else if ((value < 0.0) && (colUpper[col] < param.getINFINIT())) {
         cutRhs -= value * colUpper[col];      
-      } 
+      }
     }
     else if (absval > param.getEPS_COEFF()) {
       if (currPos < i) {
@@ -1259,6 +1259,15 @@ void CglGMI::generateCuts(OsiCuts &cs)
     }
 #endif
     if (cleanCut(cutElem, cutIndex, cutNz, cutRhs, xlp) && cutNz > 0) {
+      // relax if integer values can be large
+      for (int i=0;i<cutNz;i++) {
+	int j = cutIndex[i];
+	if (isInteger[j]) {
+	  double difference = colUpper[j]-colLower[j];
+	  if (difference > 10.0) 
+	    cutRhs += 1.0e-8*difference;
+	}
+      }
       OsiRowCut rc;
       rc.setRow(cutNz, cutIndex, cutElem);
       rc.setLb(-param.getINFINIT());
