@@ -4,13 +4,13 @@
 
 #include <string>
 #include <cassert>
-#include <cmath>
+#include <cmath> 
 #include <vector>
 #include <algorithm>
 #include <cfloat>
 #include <climits>
 
-#include "CoinPragma.hpp"
+#include "CoinPragma.hpp" 
 #include "CglPreProcess.hpp"
 #include "CglMessage.hpp"
 #include "OsiRowCut.hpp"
@@ -26,6 +26,8 @@
 #include "CoinWarmStartBasis.hpp"
 #ifdef CBC_HAS_CLP
 #include "OsiClpSolverInterface.hpp"
+#else
+#undef CBC_USE_PAPILO
 #endif
 #include "CglProbing.hpp"
 #include "CglDuplicateRow.hpp"
@@ -37,8 +39,27 @@
 static int whichMps = 0;
 char nameMps[50];
 #endif
+#if CBC_USE_PAPILO
+#include "papilo/core/Problem.hpp"
+#include "papilo/core/Presolve.hpp"
+static papilo::PresolveResult<double> presolveResult;
+typedef struct {
+  CglPreProcess * preProcess;  
+  void * papiloProb; 
+  int * mapping;
+  ClpSimplex * presolvedModel;
+  ClpSimplex * originalModel;
+  OsiSolverInterface *beforePapiloEnd;
+  int returnCode; // 0 unchanged, 1 reduced, -1 infeasible or unbounded
+  int presolveType; // 1 beginning, 2 end ? 3 both //
+  int numberThreads;
+} papiloStruct;
+static papiloStruct initialTry={0};
+static papiloStruct papiloPresolve(ClpSimplex * inModel, bool treatAsContinuous);
+static ClpSimplex *postSolvedModel(papiloStruct papilo);
+#endif 
 
-OsiSolverInterface *
+OsiSolverInterface * 
 CglPreProcess::preProcess(OsiSolverInterface &model,
   bool makeEquality, int numberPasses)
 {
@@ -1090,8 +1111,8 @@ static void writeDebugMps(const OsiSolverInterface *solver,
   const char *where,
   OsiPresolve *pinfo)
 {
-  mpsNumber++;
-  char name[20];
+  mpsNumber++; 
+  char name[20];  
   sprintf(name, "presolve%2.2d.mps", mpsNumber);
   printf("saving %s from %s - %d row, %d columns\n", 
     name, where, solver->getNumRows(), solver->getNumCols());
@@ -1494,13 +1515,58 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   int tuning)
 {
   double ppstart = getCurrentCPUTime();
+  OsiSolverInterface * modelIn = &model;
+#if CBC_USE_PAPILO
+  papiloStruct keepPapilo = initialTry;
+  OsiClpSolverInterface * clpSolverIn
+    = dynamic_cast<OsiClpSolverInterface *> (&model);
+  bool doPapiloPresolve = (initialTry.presolveType&1)!=0;
+  if (clpSolverIn && doPapiloPresolve) {
+    initialTry = papiloPresolve(clpSolverIn->getModelPtr(),false);
+    initialTry.presolveType &= ~1;
+    char generalPrint[100];
+    sprintf(generalPrint,
+	    "Papilo presolve took %g seconds",getCurrentCPUTime()-ppstart);
+    handler_->message(CGL_GENERAL, messages_)
+      << generalPrint
+      << CoinMessageEol;
+    if (initialTry.returnCode<0) {
+      // infeasible
+      sprintf(generalPrint,"Papilo says infeasiblen");
+      handler_->message(CGL_GENERAL, messages_)
+	<< generalPrint
+	<< CoinMessageEol;
+      return NULL;
+    } else if (initialTry.returnCode==0) {
+      // no change - look out for memory leaks
+      doPapiloPresolve = false;
+      memset(&initialTry,0,sizeof(papiloStruct));
+    } else {
+      initialTry.preProcess = this;
+      initialTry.presolveType |= 64; // say type 1
+      // swap
+      ClpSimplex * presolved = initialTry.presolvedModel;
+      int numberColumns2 = presolved->numberColumns();
+      assert (numberColumns2<=clpSolverIn->getNumCols());
+      for (int i=0;i<numberColumns2;i++) {
+	if (presolved->isInteger(i))
+	  clpSolverIn->setIntegerType(i,1);
+	else
+	  clpSolverIn->setIntegerType(i,0);
+      }      
+      initialTry.originalModel = clpSolverIn->swapModelPtr(initialTry.presolvedModel);
+      if (makeEquality==-2)
+	makeEquality = 1; // don't do below
+    }
+  }
+#endif
 #define CGL_TRY_MINI_DUAL_STUFF
 #ifdef CGL_TRY_MINI_DUAL_STUFF
   if (makeEquality==-2) {
     OsiPresolve dummy;
     // Just to do dual stuff using existing coding
     //printf("start mini\n");
-    OsiSolverInterface * returnedModel = dummy.miniPresolvedModel(model);
+    OsiSolverInterface * returnedModel = dummy.miniPresolvedModel(*modelIn);
     delete returnedModel; // throw it away
     //printf("end mini\n");
   }
@@ -1508,39 +1574,39 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 #if DEBUG_PREPROCESS > 1
   bool rcdActive = true;
   std::string modelName;
-  model.getStrParam(OsiProbName, modelName);
+  modelIn->getStrParam(OsiProbName, modelName);
   writeDebugMps(&model, "IPP:preProcessNonDefault", 0);
   std::cout
     << "  Attempting to activate row cut debugger for "
     << modelName << " ... ";
   if (!appData_) {
-    model.activateRowCutDebugger(modelName.c_str());
+    modelIn->activateRowCutDebugger(modelName.c_str());
   } else {
     // see if passed in
     double *solution = CoinCopyOfArray(reinterpret_cast< double * >(appData_),
-      model.getNumCols());
-    model.activateRowCutDebugger(solution);
+      modelIn->getNumCols());
+    modelIn->activateRowCutDebugger(solution);
     delete[] solution;
   }
-  debugger = model.getRowCutDebugger();
+  debugger = modelIn->getRowCutDebugger();
   if (debugger)
     std::cout << "on optimal path." << std::endl;
-  else if (model.getRowCutDebuggerAlways())
+  else if (modelIn->getRowCutDebuggerAlways())
     std::cout << "not on optimal path." << std::endl;
   else {
     std::cout << "failure." << std::endl;
     rcdActive = false;
   }
   if (rcdActive) {
-    const OsiRowCutDebugger *debugger = model.getRowCutDebuggerAlways();
+    const OsiRowCutDebugger *debugger = modelIn->getRowCutDebuggerAlways();
     std::cout << "  Optimal solution is:" << std::endl;
-    debugger->printOptimalSolution(model);
+    debugger->printOptimalSolution(*modelIn);
   }
   debugger = NULL;
 #else
   const OsiRowCutDebugger *debugger = NULL;
 #endif
-  originalModel_ = &model;
+  originalModel_ = modelIn;
   // See if SC variables
   double * scBound = NULL;
   if ((options_&128)!=0) {
@@ -1554,10 +1620,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     templot * temp = reinterpret_cast<templot *>(appData_);
     lotStruct * lotsize=temp->lotsize;
     int numberLotSizing=temp->numberLotSizing;
-    int numberColumns = model.getNumCols();
+    int numberColumns = modelIn->getNumCols();
     scBound = new double [numberColumns];
-    const double * lower = model.getColLower();
-    const double * upper = model.getColUpper();
+    const double * lower = modelIn->getColLower();
+    const double * upper = modelIn->getColUpper();
     for (int i=0;i<numberColumns;i++)
       scBound[i]=-COIN_DBL_MAX;
     for (int i=0;i<numberLotSizing;i++) {
@@ -1595,7 +1661,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   // So standalone version can switch off
   double feasibilityTolerance;
   if (((tuning%10000) & 1024) == 0)
-    model.getDblParam(OsiPrimalTolerance, feasibilityTolerance);
+    modelIn->getDblParam(OsiPrimalTolerance, feasibilityTolerance);
    else
      feasibilityTolerance = 1.0e-4;
 #else
@@ -2417,7 +2483,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	for (CoinBigIndex j = kstart; j < kend; j++) {
 	  int iColumn = column[j];
 	  if (allInteger) {
-	    if (model.isInteger(iColumn)) {
+	    if (modelIn->isInteger(iColumn)) {
 	      if (floor(elementByRow[j])!=elementByRow[j])
 		allInteger = false;
 	    } else {
@@ -4315,7 +4381,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   {
     returnModel->setIntParam( OsiNameDiscipline, 1 );
     for ( int i=0 ; (i<returnModel->getNumCols()) ; i++ )
-      returnModel->setColName( i, model.getColName( originalColumns()[i] ) );
+      returnModel->setColName( i, modelIn->getColName( originalColumns()[i] ) );
   }
   // clean model
   if (returnModel) {
@@ -4373,6 +4439,77 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   }
   // end clean model
   delete [] scBound;
+#if CBC_USE_PAPILO
+  if (doPapiloPresolve) {
+    // put back
+    clpSolverIn->swapModelPtr(initialTry.originalModel);
+  }
+  // may be better to do at end ??
+  if (clpSolverIn && (keepPapilo.presolveType&2) !=0) {
+    ppstart = getCurrentCPUTime();
+    OsiClpSolverInterface * clpSolverOut =
+      dynamic_cast<OsiClpSolverInterface *>(returnModel);
+    ClpSimplex * simplexOut = clpSolverOut->getModelPtr();
+    initialTry = papiloPresolve(simplexOut,false);
+    initialTry.presolveType &= ~2;
+    initialTry.presolveType |= 8;
+    initialTry.beforePapiloEnd = clpSolverOut;
+    char generalPrint[100];
+    sprintf(generalPrint,
+	    "Papilo presolve took %g seconds",getCurrentCPUTime()-ppstart);
+    handler_->message(CGL_GENERAL, messages_)
+      << generalPrint
+      << CoinMessageEol;
+    if (initialTry.returnCode<0) {
+      // infeasible
+      sprintf(generalPrint,"Papilo says infeasible");
+      handler_->message(CGL_GENERAL, messages_)
+	<< generalPrint
+	<< CoinMessageEol;
+      return NULL;
+    } else if (initialTry.returnCode==0) {
+      memset(&initialTry,0,sizeof(papiloStruct));// no change
+    } else {
+      initialTry.preProcess = this;
+      initialTry.presolveType |= 128; // say type 2
+      // swap
+      ClpSimplex * presolved = initialTry.presolvedModel;
+      int numberColumns2 = presolved->numberColumns();
+      int nRowsWon = simplexOut->numberRows()-presolved->numberRows();
+      int nColsWon = simplexOut->numberColumns()-numberColumns2;
+      char rwon[10],cwon[10];
+      if (nRowsWon>0)
+	sprintf(rwon,"(-%d)",nRowsWon);
+      else if (nRowsWon<0)
+	sprintf(rwon,"(+%d!!)",-nRowsWon);
+      else
+	rwon[0]='\0';
+      if (nColsWon>0)
+	sprintf(cwon,"(-%d)",nColsWon);
+      else if (nColsWon<0)
+	sprintf(cwon,"(+%d!!)",-nColsWon);
+      else
+	cwon[0]='\0';
+      sprintf(generalPrint,"final problem has %d%s columns, %d%s rows",
+	      numberColumns2,cwon,
+	      presolved->numberRows(),rwon);
+      handler_->message(CGL_GENERAL, messages_)
+	<< generalPrint
+	<< CoinMessageEol;
+      assert (numberColumns2<=clpSolverOut->getNumCols());
+      if (clpSolverOut->integerInformation()) {
+	for (int i=0;i<numberColumns2;i++) {
+	  if (presolved->isInteger(i))
+	    clpSolverOut->setIntegerType(i,1);
+	  else
+	    clpSolverOut->setIntegerType(i,0);
+	}
+      }
+      initialTry.originalModel = clpSolverOut->swapModelPtr(initialTry.presolvedModel);
+      initialTry.beforePapiloEnd = returnModel;
+    }
+  }
+#endif
   return returnModel;
 }
 static int 
@@ -5350,29 +5487,52 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
   OsiHintStrength saveStrength;
   originalModel_->getHintParam(OsiDoPresolveInInitial, saveHint, saveStrength);
   bool saveHint2;
+  OsiSolverInterface *modelM = &modelIn;
   OsiHintStrength saveStrength2;
   originalModel_->getHintParam(OsiDoDualInInitial,
     saveHint2, saveStrength2);
   OsiSolverInterface *clonedCopy = NULL;
-  double saveObjectiveValue = modelIn.getObjValue();
+  double saveObjectiveValue = modelM->getObjValue();
   // Make sure cutoff is ignored
-  modelIn.setDblParam(OsiDualObjectiveLimit, 1.0e50);
-  if (!modelIn.isProvenOptimal()) {
-    CoinWarmStartBasis *slack = dynamic_cast< CoinWarmStartBasis * >(modelIn.getEmptyWarmStart());
-    modelIn.setWarmStart(slack);
+  modelM->setDblParam(OsiDualObjectiveLimit, 1.0e50);
+  if (!modelM->isProvenOptimal()) {
+    CoinWarmStartBasis *slack = dynamic_cast< CoinWarmStartBasis * >(modelM->getEmptyWarmStart());
+    modelM->setWarmStart(slack);
     delete slack;
-    modelIn.resolve();
+    modelM->resolve();
   }
   double * scBound = NULL;
-  if (modelIn.isProvenOptimal()) {
+  if (modelM->isProvenOptimal()) {
 #if COIN_DEVELOP > 1
     whichMps++;
     sprintf(nameMps, "start_%d", whichMps);
-    modelIn.writeMps(nameMps);
+    modelM->writeMps(nameMps);
     printf("Mps file %s saved in %s at line %d\n",
       nameMps, __FILE__, __LINE__);
 #endif
-    OsiSolverInterface *modelM = &modelIn;
+#if CBC_USE_PAPILO
+      if (this==initialTry.preProcess && (initialTry.presolveType&128)!=0) {
+      initialTry.preProcess = NULL;
+      OsiClpSolverInterface * presolvedSolver =
+	dynamic_cast<OsiClpSolverInterface *>(modelM);
+      delete initialTry.presolvedModel;
+      initialTry.presolvedModel = presolvedSolver->getModelPtr();
+      ClpSimplex * original = postSolvedModel(initialTry);
+      OsiClpSolverInterface * originalSolver = 
+	dynamic_cast<OsiClpSolverInterface *>(initialTry.beforePapiloEnd);
+      modelM= originalSolver;
+      if (originalSolver->integerInformation()) {
+	int numberColumns = original->numberColumns();
+	for (int i=0;i<numberColumns;i++) {
+	  if (original->isInteger(i))
+	    originalSolver->setIntegerType(i,1);
+	  else
+	    originalSolver->setIntegerType(i,0);
+	}
+      }
+      ClpSimplex * simplex = originalSolver->swapModelPtr(original);
+    }
+#endif
     // See if SC variables
     if ((options_&128)!=0) {
       assert (appData_);
@@ -5393,32 +5553,32 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
 	int iColumn = lotsize[i].column;
 	scBound[iColumn] = lotsize[i].low;
       }
-      numberColumns = modelIn.getNumCols();
-      const double *solution = modelIn.getColSolution();
+      numberColumns = modelM->getNumCols();
+      const double *solution = modelM->getColSolution();
       for (int i=0;i<numberColumns;i++) {
 	int iColumn = originalColumn_[i];
 	if (scBound[iColumn]!=-COIN_DBL_MAX) {
 	  double lower =scBound[iColumn];
 	  double value = solution[i];
 	  if (value<1.0e-5) {
-	    modelIn.setColUpper(i,0.0);
+	    modelM->setColUpper(i,0.0);
 	  } else {
 	    assert (value>lower-1.0e-3);
-	    modelIn.setColLower(i,lower);
+	    modelM->setColLower(i,lower);
 	  }
 	}
       }
     }
     if ((options_&256)!=0&&false) {
-      int numberColumns = modelIn.getNumCols();
-      const double *solution = modelIn.getColSolution();
-      const double *columnLower = modelIn.getColLower();
-      const double *columnUpper = modelIn.getColUpper();
+      int numberColumns = modelM->getNumCols();
+      const double *solution = modelM->getColSolution();
+      const double *columnLower = modelM->getColLower();
+      const double *columnUpper = modelM->getColUpper();
       //OsiSolverInterface * originalModel = originalModel_->clone();
       OsiSolverInterface * originalModel = originalModel_;
       for (int iColumn = 0; iColumn < numberColumns; iColumn++) {
 	int jColumn = originalColumn_[iColumn];
-	if (modelIn.isInteger(iColumn)) {
+	if (modelM->isInteger(iColumn)) {
 	  double value = solution[iColumn];
 	  double value2 = floor(value + 0.5);
 	  // if test fails then empty integer
@@ -5814,6 +5974,28 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
       modelM = modelM2;
       delete [] original;
     }
+#if CBC_USE_PAPILO
+      if (this==initialTry.preProcess && (initialTry.presolveType&64)!=0) {
+      initialTry.preProcess = NULL;
+      OsiClpSolverInterface * presolvedSolver =
+	dynamic_cast<OsiClpSolverInterface *>(modelM);
+      delete initialTry.presolvedModel;
+      initialTry.presolvedModel = presolvedSolver->getModelPtr();
+      ClpSimplex * original = postSolvedModel(initialTry);
+      OsiClpSolverInterface * originalSolver =
+	dynamic_cast<OsiClpSolverInterface *>(originalModel_);
+      modelM= originalSolver;
+      int numberColumns = original->numberColumns();
+      for (int i=0;i<numberColumns;i++) {
+	if (original->isInteger(i))
+	  originalSolver->setIntegerType(i,1);
+	else
+	  originalSolver->setIntegerType(i,0);
+      }      
+      ClpSimplex * simplex = originalSolver->swapModelPtr(original);
+      //delete simplex;
+    }
+#endif
     // should be back to startModel_;
     OsiSolverInterface *model = originalModel_;
     // Use number of columns in original
@@ -8599,6 +8781,31 @@ void CglPreProcess::createOriginalIndices()
           originalRow_[i] = -1;
       }
     }
+#if CBC_USE_PAPILO
+    if (this==initialTry.preProcess) {
+      int *mapping = initialTry.mapping;
+      int n2=initialTry.presolvedModel->numberColumns();
+      if ((initialTry.presolveType&64)!=0) {
+	for (int i=0;i<nColumns;i++) {
+	  int j = originalColumn_[i];
+	  int iColumn = mapping[j];
+	  originalColumn_[i] = iColumn;
+	}
+      } else {
+	assert (n2<=nColumns);
+	int * orig2 = new int[n2];
+	for (int i=0;i<n2;i++) {
+	  int j = originalColumn_[i];
+	  int iColumn = mapping[i];
+	  orig2[i] = originalColumn_[iColumn];
+	}
+	// move to originalColumn_ (and look at leaks)
+	memcpy(originalColumn_,orig2,n2*sizeof(int));
+	delete [] orig2;
+      }
+    }
+    if (this!=initialTry.preProcess)
+#endif
     std::sort(originalColumn_, originalColumn_ + nColumns);
   } else {
     int i;
@@ -9061,7 +9268,7 @@ void CglPreProcess::makeInteger()
   }
   delete[] which;
   delete[] changeRhs;
-  delete[] ignore;
+  delete[] ignore; 
   //increment=0.0;
   if (numberChanged) {
     handler_->message(CGL_MADE_INTEGER, messages_)
@@ -9992,3 +10199,328 @@ double CglPreProcess::getCurrentCPUTime() const
   else
     return CoinGetTimeOfDay();
 }
+#if CBC_USE_PAPILO
+static papiloStruct papiloPresolve(ClpSimplex * inModel, bool treatAsContinuous)
+{
+  // move to papilo
+  papilo::Problem<double> *papiloProb = new papilo::Problem<double>;
+  papiloStruct pproblem = initialTry;
+  papilo::Presolve<double> presolve;
+  {
+    pproblem.originalModel = inModel;
+    int numberColumns = inModel->numberColumns();
+    int numberRows = inModel->numberRows();
+    const double * objective = inModel->objective();
+    double offset = inModel->objectiveOffset();
+    papiloProb->setObjective(
+			     std::vector <double> (objective,objective+numberColumns),-offset);
+    CoinPackedMatrix rowCopy;
+    rowCopy.reverseOrderedCopyOf(*inModel->matrix());
+    int *column = rowCopy.getMutableIndices();
+    CoinBigIndex *rowStart = rowCopy.getMutableVectorStarts();
+    double *element = rowCopy.getMutableElements();
+    int numberElements = rowCopy.getNumElements();
+    double spareRatio = 2.0; 
+    int gap = 4; 
+    if (numberElements>10000) {
+      spareRatio = 1.2;
+      gap = 2;
+    }
+    papilo::SparseStorage<double> copy(numberRows,
+				       numberColumns,numberElements,
+				       spareRatio,gap);
+    // build storage
+    int * columns = copy.getColumns();
+    //papilo::Vec<int>  rowstart = copy.getRowStarts();
+    papilo::IndexRange * rowranges = copy.getRowRanges();;
+    double * values = copy.getValues();
+    int shift = 0;
+    for( int r = 0; r < numberRows; r++ ) {
+      rowranges[r].start = rowStart[r] + shift;
+      
+      for( int j = rowStart[r]; j < rowStart[r + 1]; j++ ) {
+	assert( j + shift >= 0 );
+	values[j + shift] = element[j];
+	columns[j + shift] = column[j];
+      }
+      rowranges[r].end = rowStart[r + 1] + shift;
+      const int rowsize = rowranges[r].end - rowranges[r].start;
+      const int rowalloc = copy.computeRowAlloc( rowsize );
+      shift += rowalloc - rowsize;
+    }
+    rowranges[numberRows].start = rowStart[numberRows] + shift;
+    rowranges[numberRows].end = rowranges[numberRows].start;
+    const double * rLower = inModel->rowLower();
+    const double * rUpper = inModel->rowUpper();
+    const double * cLower = inModel->columnLower();
+    const double * cUpper = inModel->columnUpper();
+    std::vector <double> rlower(rLower,rLower+numberRows);
+    std::vector <double> rupper(rUpper,rUpper+numberRows);
+    std::vector <papilo::RowFlags> flags(numberRows);
+    for (int i=0;i<numberRows;i++) {
+      if (rLower[i]<-1.0e30) {
+	if (rUpper[i]<1.0e30)
+	  flags[i] = papilo::RowFlag::kLhsInf;
+	else
+	  flags[i] = papilo::RowFlag::kRedundant;
+      } else if (rUpper[i]>1.0e30) {
+	flags[i] = papilo::RowFlag::kRhsInf;
+      } else if (rUpper[i]==rLower[i]) {
+	flags[i] = papilo::RowFlag::kEquation;
+      }
+    }
+    papiloProb->setConstraintMatrix(copy,rlower,rupper,flags);
+    std::vector <papilo::ColFlags> cflags(numberColumns);
+    // may wish to treat as continuous (parameter)
+    bool treatAsContinuous = false;
+    int nInt = 0;
+    int nBinary = 0;
+    for (int i=0;i<numberColumns;i++) {
+      unsigned int flag = static_cast<unsigned int>(papilo::ColFlag::kNone);
+      if (inModel->isInteger(i) && !treatAsContinuous) { 
+	flag |= static_cast<unsigned int>(papilo::ColFlag::kIntegral);
+	nInt++;
+	if (!cLower[i] && cUpper[i] ==1.0)
+	  nBinary++;
+      }
+      if (cLower[i]<-1.0e100)
+	flag |= static_cast<unsigned int>(papilo::ColFlag::kLbInf);
+      else if (cLower[i]<-1.0e20)
+	flag = static_cast<unsigned int>(papilo::ColFlag::kLbHuge);
+      if (cUpper[i]>1.0e100)
+	flag |= static_cast<unsigned int>(papilo::ColFlag::kUbInf);
+      else if (cUpper[i]>1.0e20)
+	flag = static_cast<unsigned int>(papilo::ColFlag::kUbHuge);
+      //if (cLower[i] == cUpper[i])
+      //flag |= static_cast<unsigned int>(papilo::ColFlag::kFixed);
+      cflags[i] = static_cast<papilo::ColFlag>(flag);
+    }
+    unsigned int pflag = 0;
+    if (!nInt) {
+      pflag |= static_cast<unsigned int>(papilo::ProblemFlag::kLinear);
+    } else {
+      if (nInt<numberColumns) {
+	pflag |= static_cast<unsigned int>(papilo::ProblemFlag::kMixedInteger);
+      } else if (nInt==nBinary) {
+	pflag |= static_cast<unsigned int>(papilo::ProblemFlag::kBinary);
+      } else {
+	pflag |= static_cast<unsigned int>(papilo::ProblemFlag::kInteger);
+      }
+    }
+    papiloProb->set_problem_type(static_cast<papilo::ProblemFlag>(pflag));
+    std::vector <double> clower(cLower,cLower+numberColumns); 
+    std::vector <double> cupper(cUpper,cUpper+numberColumns);
+    papiloProb->setVariableDomains(clower,cupper,cflags);
+    presolve.addDefaultPresolvers();
+    presolve.getPresolveOptions().threads = initialTry.numberThreads; // parallel ? bug
+  }
+  presolveResult = presolve.apply( *papiloProb, false );
+  switch (presolveResult.status) {
+  case papilo::PresolveStatus::kUnchanged:
+    delete papiloProb;
+    pproblem.papiloProb = NULL;
+    pproblem.presolvedModel = NULL;
+    pproblem.returnCode = 0;
+    return pproblem;
+  case papilo::PresolveStatus::kReduced:
+    pproblem.papiloProb = papiloProb;
+    pproblem.presolvedModel = new ClpSimplex(*inModel);
+    pproblem.returnCode = 1;
+    break;
+  case papilo::PresolveStatus::kUnbndOrInfeas:
+  case papilo::PresolveStatus::kUnbounded:
+  case papilo::PresolveStatus::kInfeasible:
+    delete papiloProb;
+    pproblem.papiloProb = NULL;
+    pproblem.presolvedModel = NULL;
+    pproblem.returnCode = -1;
+    return pproblem;
+  }
+  ClpSimplex *model2 = pproblem.presolvedModel;
+  {
+    // create model2
+    int numberColumns2 = papiloProb->getNCols();
+    int numberRows2 = papiloProb->getNRows();
+    papilo::ConstraintMatrix<double> matrix2 =
+      papiloProb->getConstraintMatrix();
+    papilo::Objective<double> obj2 = papiloProb->getObjective();
+    papilo::Vec<double> lower2 = papiloProb->getLowerBounds();
+    papilo::Vec<double> upper2 = papiloProb->getUpperBounds();
+    // what about symmetry? - getSymmetries()
+    CoinBigIndex nnz = matrix2.getNnz();
+    CoinBigIndex * starts = new CoinBigIndex [numberColumns2+1];
+    int * row = new int [nnz];
+    double * element = new double [nnz];
+    nnz = 0;
+    starts[0] = 0;
+    for (int i=0;i<numberColumns2;i++) {
+      papilo::SparseVectorView<double> column =
+	matrix2.getColumnCoefficients(i);
+      int n = column.getLength();
+      memcpy(element+nnz,column.getValues(),n*sizeof(double));
+      memcpy(row+nnz,column.getIndices(),n*sizeof(int));
+      nnz += n;
+      starts[i+1] = nnz;
+    }
+    double * cLower = new double[3*numberColumns2];
+    double * cUpper = cLower+numberColumns2;
+    double * obj = cUpper+numberColumns2;
+    const papilo::Vec<double> obj2p = obj2.coefficients;
+    for (int i=0;i<numberColumns2;i++) {
+      cLower[i] = lower2[i];
+      cUpper[i] = upper2[i];
+      assert (!papiloProb->getColFlags()[i].test( papilo::ColFlag::kFixed ));
+      obj[i] = obj2p[i];
+    }
+    double offset = papiloProb->getObjective().offset;
+    double * rLower = new double[2*numberRows2];
+    double * rUpper = rLower+numberRows2;
+    lower2 = matrix2.getLeftHandSides();
+    upper2 = matrix2.getRightHandSides();
+    for (int i=0;i<numberRows2;i++) {
+      rLower[i] = lower2[i];
+      rUpper[i] = upper2[i];
+      if (papiloProb->getRowFlags()[i].test( papilo::RowFlag::kLhsInf ))
+	rLower[i] = -COIN_DBL_MAX;
+      else if (papiloProb->getRowFlags()[i].test( papilo::RowFlag::kRhsInf ))
+	rUpper[i] = COIN_DBL_MAX;
+      else if (papiloProb->getRowFlags()[i].test( papilo::RowFlag::kEquation ))
+	assert (rLower[i] == rUpper[i]);
+      // what do kIntegral (and kRedundant) mean
+    }
+    model2->loadProblem(numberColumns2,numberRows2,starts,row,element,
+		       cLower,cUpper,obj,rLower,rUpper);
+    delete [] starts;
+    delete [] rLower;
+    delete [] row;
+    delete [] element;
+    delete [] cLower;
+    model2->setObjectiveOffset(-papiloProb->getObjective().offset);
+    std::vector <int> mapping = presolveResult.postsolve.origcol_mapping;
+    std::string columnName;
+    int *mapping2 = new int [numberColumns2];
+    pproblem.mapping = mapping2;
+    for (int i=0;i<numberColumns2;i++) {
+      int iColumn = mapping[i]; 
+      mapping2[i] = iColumn;
+      columnName = inModel->columnName(iColumn);
+      model2->setColumnName(i,columnName);
+      if (inModel->isInteger(iColumn))
+	model2->setInteger(i);
+      else
+	model2->setContinuous(i);
+    }
+  }
+  return pproblem;
+}
+static ClpSimplex *postSolvedModel(papiloStruct papilo)
+{
+  ClpSimplex * simplex = papilo.presolvedModel;
+  papilo::Problem<double> *papiloProb =
+    static_cast<papilo::Problem<double> *>(papilo.papiloProb);
+  int numberRows = simplex->numberRows();
+  int numberColumns = simplex->numberColumns();
+  double * rowSol = simplex->primalRowSolution();
+  double * colSol = simplex->primalColumnSolution();
+  double * duals = simplex->dualRowSolution();
+  double * djs = simplex->dualColumnSolution();
+  papilo::Solution<double> solution;
+  for (int i=0;i<numberColumns;i++) {
+    solution.primal.push_back(colSol[i]);
+    solution.reducedCosts.push_back(djs[i]);
+    papilo::VarBasisStatus statusP = papilo::VarBasisStatus::UNDEFINED;
+    ClpSimplex::Status status = simplex->getStatus(i);
+    if (status==ClpSimplex::Status::basic)
+      statusP = papilo::VarBasisStatus::BASIC;
+    else if (status==ClpSimplex::Status::atLowerBound)
+      statusP = papilo::VarBasisStatus::ON_LOWER;
+    else if (status==ClpSimplex::Status::atUpperBound)
+      statusP = papilo::VarBasisStatus::ON_UPPER;
+    solution.varBasisStatus.push_back(statusP);
+  }
+  for (int i=0;i<numberRows;i++) {
+    solution.dual.push_back(duals[i]);
+    solution.slack.push_back(rowSol[i]); // probably not right
+    papilo::VarBasisStatus statusP = papilo::VarBasisStatus::UNDEFINED;
+    ClpSimplex::Status status = simplex->getRowStatus(i);
+    if (status==ClpSimplex::Status::basic)
+      statusP = papilo::VarBasisStatus::BASIC;
+    else if (status==ClpSimplex::Status::atLowerBound)
+      statusP = papilo::VarBasisStatus::ON_LOWER; // maybe wrong way round
+    else if (status==ClpSimplex::Status::atUpperBound)
+      statusP = papilo::VarBasisStatus::ON_UPPER; // maybe wrong way round
+    solution.rowBasisStatus.push_back(statusP);
+  }
+  solution.basisAvailabe = true;
+  solution.type = papilo::SolutionType::kPrimal;
+  ClpSimplex *inModel = papilo.originalModel;
+  int numberColumns2 = inModel->numberColumns();
+  int numberRows2 = inModel->numberRows();
+  const papilo::Message msg{};
+  papilo::Postsolve postsolve(msg,presolveResult.postsolve.getNum());
+  papilo::Solution<double> solutionOut;
+  solutionOut.type = papilo::SolutionType::kPrimal;
+  solutionOut.basisAvailabe = true;
+  postsolve.undo(solution,solutionOut,presolveResult.postsolve);
+  // just fix
+  double * cLower = inModel->columnLower();
+  double * cUpper = inModel->columnUpper();
+  double * solutionClp = inModel->primalColumnSolution();
+  for (int i=0;i<numberColumns2;i++) {
+    double value = solutionOut.primal[i];
+    if (inModel->isInteger(i)) {
+      double value2 = floor(value+0.5);
+      assert (fabs(value-value2)<1.0e-5);
+      value = value2;
+      solutionClp[i] = value;
+      cLower[i] = value;
+      cUpper[i] = value;
+    } else {
+      solutionClp[i] = value;
+    }
+  }
+  inModel->primal();
+  return inModel;
+}
+void zapPapilo(int pOptions,CglPreProcess * process)
+{
+  memset(&initialTry,0,sizeof(papiloStruct));
+  initialTry.numberThreads=pOptions&7;
+  initialTry.presolveType = pOptions/8;
+  if (initialTry.presolveType)
+    initialTry.preProcess = process;
+}
+#endif
+/*
+  PAPILO.
+  This is a free presolver.  Not much work has been done recently in Coin on
+  pre-processing for integer problems and this does well on some problems.
+  It is a bit slow on some problems, but it may be worth trying.
+  To use - download papilo.  You may wish to download the whole SCIP
+  optimization suite.  SCIP has some very good features.  One I like and
+  would be pleased if a student could investigate is that they have developed
+  a reasonable estimate of how long a branch and bound run is going to take.
+  If after some time it looks as if it is going to be very long, it restarts
+  (which may result in a smaller problem) and then uses all the information
+  it had gathered to do a better job on organizing the tree.
+
+  The instructions below are if you have downloaded to scipoptsuite-9.1.0.
+  Simplest is to build everything - look at README.md.  The instructions create 
+  a directory "build".  If you have done this then build Cbc and add 
+  -DCBC_USE_PAPILO=1
+  and 
+  "-I ~/scipoptsuite-9.1.0/papilo/src/ -I ~/scipoptsuite-9.1.0/build/papilo" 
+
+  and point to libraries e.g. (for libclusol an libtbb I have)
+  LDFLAGS="-lopenblas -ltbb -lclusol -lpthread -lz -lrt" 
+  You probably can build without some of this but I have not bothered.
+
+  To use in standalone solver (or one that uses that code) 
+  do -preprocess papilo. For full list -preprocess??
+
+  The default is to do normal Cgl preprocessing and then do papilo. You
+  can also do papiloBegin which does papilo and then rest of Cgl
+  preprocessing.  In the majority of cases you won't get much from
+  using papilo but it is worth seeing what happens and it may prompt some
+  further work.
+*/
