@@ -55,7 +55,9 @@ typedef struct {
   int numberThreads;
 } papiloStruct;
 static papiloStruct initialTry={0};
-static papiloStruct papiloPresolve(ClpSimplex * inModel, bool treatAsContinuous);
+static papiloStruct papiloPresolve(ClpSimplex * inModel,
+				   bool treatAsContinuous,
+				   double timeLimit);
 static ClpSimplex *postSolvedModel(papiloStruct papilo);
 #endif 
 
@@ -1520,19 +1522,22 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   papiloStruct keepPapilo = initialTry;
   OsiClpSolverInterface * clpSolverIn
     = dynamic_cast<OsiClpSolverInterface *> (&model);
+  if ((initialTry.presolveType&3)!=0)
+    makeEquality = -2;
   bool doPapiloPresolve = (initialTry.presolveType&1)!=0;
   if (clpSolverIn && doPapiloPresolve) {
-    initialTry = papiloPresolve(clpSolverIn->getModelPtr(),false);
+    initialTry = papiloPresolve(clpSolverIn->getModelPtr(),false,
+				timeLimit_-ppstart);
     initialTry.presolveType &= ~1;
     char generalPrint[100];
     sprintf(generalPrint,
-	    "Papilo presolve took %g seconds",getCurrentCPUTime()-ppstart);
+	    "papilo presolve took %g seconds",getCurrentCPUTime()-ppstart);
     handler_->message(CGL_GENERAL, messages_)
       << generalPrint
       << CoinMessageEol;
     if (initialTry.returnCode<0) {
       // infeasible
-      sprintf(generalPrint,"Papilo says infeasiblen");
+      sprintf(generalPrint,"papilo says infeasiblen");
       handler_->message(CGL_GENERAL, messages_)
 	<< generalPrint
 	<< CoinMessageEol;
@@ -3812,8 +3817,18 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     }
 #endif
   } else {
-    handler_->message(CGL_INFEASIBLE, messages_)
-      << CoinMessageEol;
+    double timeDone = getCurrentCPUTime()-ppstart;
+    if (timeDone < timeLimit_) {
+      handler_->message(CGL_INFEASIBLE, messages_)
+	<< CoinMessageEol;
+    } else {
+      char generalPrint[100];
+      sprintf(generalPrint,
+	      "Preprocessing exiting on time after %g seconds - ignore infeasibility message",timeDone);
+      handler_->message(CGL_GENERAL, messages_)
+	<< generalPrint
+	<< CoinMessageEol;
+    }
   }
   int numberIntegers = 0;
   if (returnModel) {
@@ -4152,21 +4167,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       delete[] sort;
     }
 #endif // end of sos sub stuff
-    numberIntegers = 0;
-    int numberBinary = 0;
-    int numberColumns = returnModel->getNumCols();
-    for (int i = 0; i < numberColumns; i++) {
-      if (returnModel->isInteger(i)) {
-        numberIntegers++;
-        if (returnModel->isBinary(i)) {
-          numberBinary++;
-        }
-      }
-    }
-    handler_->message(CGL_PROCESS_STATS2, messages_)
-      << returnModel->getNumRows() << numberColumns
-      << numberIntegers << numberBinary << returnModel->getNumElements()
-      << CoinMessageEol;
 #if DEBUG_PREPROCESS > 1
     if (debugger)
       assert(returnModel->getRowCutDebugger());
@@ -4445,30 +4445,34 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     clpSolverIn->swapModelPtr(initialTry.originalModel);
   }
   // may be better to do at end ??
-  if (clpSolverIn && (keepPapilo.presolveType&2) !=0) {
-    ppstart = getCurrentCPUTime();
+  if (clpSolverIn && (keepPapilo.presolveType&2) !=0 && returnModel) {
+    double ppstart2 = getCurrentCPUTime();
     OsiClpSolverInterface * clpSolverOut =
       dynamic_cast<OsiClpSolverInterface *>(returnModel);
     ClpSimplex * simplexOut = clpSolverOut->getModelPtr();
-    initialTry = papiloPresolve(simplexOut,false);
+    initialTry = papiloPresolve(simplexOut,false,timeLimit_-ppstart2);
     initialTry.presolveType &= ~2;
     initialTry.presolveType |= 8;
     initialTry.beforePapiloEnd = clpSolverOut;
     char generalPrint[100];
     sprintf(generalPrint,
-	    "Papilo presolve took %g seconds",getCurrentCPUTime()-ppstart);
+	    "papilo presolve took %g seconds - total %g seconds",
+	    getCurrentCPUTime()-ppstart2,getCurrentCPUTime()-ppstart);
     handler_->message(CGL_GENERAL, messages_)
       << generalPrint
       << CoinMessageEol;
-    if (initialTry.returnCode<0) {
+    if (initialTry.returnCode<0 && getCurrentCPUTime()<timeLimit_) {
       // infeasible
-      sprintf(generalPrint,"Papilo says infeasible");
+      sprintf(generalPrint,"papilo says infeasible");
       handler_->message(CGL_GENERAL, messages_)
 	<< generalPrint
 	<< CoinMessageEol;
       return NULL;
     } else if (initialTry.returnCode==0) {
       memset(&initialTry,0,sizeof(papiloStruct));// no change
+      handler_->message(CGL_GENERAL, messages_)
+	<< "papilo did not reduce size of problem"
+	<< CoinMessageEol;
     } else {
       initialTry.preProcess = this;
       initialTry.presolveType |= 128; // say type 2
@@ -4490,9 +4494,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	sprintf(cwon,"(+%d!!)",-nColsWon);
       else
 	cwon[0]='\0';
-      sprintf(generalPrint,"final problem has %d%s columns, %d%s rows",
-	      numberColumns2,cwon,
-	      presolved->numberRows(),rwon);
+      bool onlyBounds = nRowsWon==0&&nColsWon==0;
+      sprintf(generalPrint,"After papilo - problem has %d%s rows, %d%s columns %s",
+	      presolved->numberRows(),rwon,
+	      numberColumns2,cwon,onlyBounds ? "only bounds tightened" : "");
       handler_->message(CGL_GENERAL, messages_)
 	<< generalPrint
 	<< CoinMessageEol;
@@ -4510,6 +4515,23 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     }
   }
 #endif
+  if (returnModel) {
+    int numberIntegers = 0;
+    int numberBinary = 0;
+    int numberColumns = returnModel->getNumCols();
+    for (int i = 0; i < numberColumns; i++) {
+      if (returnModel->isInteger(i)) {
+        numberIntegers++;
+        if (returnModel->isBinary(i)) {
+          numberBinary++;
+        }
+      }
+    }
+    handler_->message(CGL_PROCESS_STATS2, messages_)
+      << returnModel->getNumRows() << numberColumns
+      << numberIntegers << numberBinary << returnModel->getNumElements()
+      << CoinMessageEol;
+  }
   return returnModel;
 }
 static int 
@@ -10200,7 +10222,9 @@ double CglPreProcess::getCurrentCPUTime() const
     return CoinGetTimeOfDay();
 }
 #if CBC_USE_PAPILO
-static papiloStruct papiloPresolve(ClpSimplex * inModel, bool treatAsContinuous)
+static papiloStruct papiloPresolve(ClpSimplex * inModel,
+				   bool treatAsContinuous,
+				   double timeLimit)
 {
   // move to papilo
   papilo::Problem<double> *papiloProb = new papilo::Problem<double>;
@@ -10305,14 +10329,20 @@ static papiloStruct papiloPresolve(ClpSimplex * inModel, bool treatAsContinuous)
 	pflag |= static_cast<unsigned int>(papilo::ProblemFlag::kBinary);
       } else {
 	pflag |= static_cast<unsigned int>(papilo::ProblemFlag::kInteger);
-      }
+      } 
     }
     papiloProb->set_problem_type(static_cast<papilo::ProblemFlag>(pflag));
     std::vector <double> clower(cLower,cLower+numberColumns); 
     std::vector <double> cupper(cUpper,cUpper+numberColumns);
     papiloProb->setVariableDomains(clower,cupper,cflags);
     presolve.addDefaultPresolvers();
-    presolve.getPresolveOptions().threads = initialTry.numberThreads; // parallel ? bug
+    presolve.getPresolveOptions().threads = initialTry.numberThreads;
+    presolve.setVerbosityLevel(papilo::VerbosityLevel::kWarning);
+    if (inModel->logLevel())
+      presolve.setVerbosityLevel(papilo::VerbosityLevel::kInfo);
+    // keep sparser even if more rows
+    presolve.getPresolveOptions().maxfillinpersubstitution = 3;
+    presolve.getPresolveOptions().tlim = timeLimit;
   }
   presolveResult = presolve.apply( *papiloProb, false );
   switch (presolveResult.status) {
@@ -10480,6 +10510,8 @@ static ClpSimplex *postSolvedModel(papiloStruct papilo)
     }
   }
   inModel->primal();
+  delete [] initialTry.mapping;
+  delete papiloProb;
   return inModel;
 }
 void zapPapilo(int pOptions,CglPreProcess * process)
@@ -10511,11 +10543,12 @@ void zapPapilo(int pOptions,CglPreProcess * process)
   and 
   "-I ~/scipoptsuite-9.1.0/papilo/src/ -I ~/scipoptsuite-9.1.0/build/papilo" 
 
-  and point to libraries e.g. (for libclusol an libtbb I have)
+  You may need to point to extra libraries although I don't need to and I am
+  not at all sure I need clusol at all so e.g.
   LDFLAGS="-lopenblas -ltbb -lclusol -lpthread -lz -lrt" 
   You probably can build without some of this but I have not bothered.
 
-  To use in standalone solver (or one that uses that code) 
+  To use in standalone solver (or one that uses that code)  
   do -preprocess papilo. For full list -preprocess??
 
   The default is to do normal Cgl preprocessing and then do papilo. You
