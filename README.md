@@ -1,4 +1,4 @@
-# Cgl 0.60
+# Cgl 0.60.9
 
 [![A COIN-OR Project](https://coin-or.github.io/coin-or-badge.png)](https://www.coin-or.org)
 
@@ -90,9 +90,9 @@ Code: [![DOI](https://zenodo.org/badge/173502902.svg)](https://zenodo.org/badge/
 
 ## CURRENT BUILD STATUS
 
-[![Windows Builds](https://github.com/coin-or/Cgl/actions/workflows/windows-ci.yml/badge.svg?branch=stable/0.60)](https://github.com/coin-or/Cgl/actions/workflows/windows-ci.yml?query=branch%3Astable/0.60)
+[![Windows Builds](https://github.com/coin-or/Cgl/actions/workflows/windows-ci.yml/badge.svg?branch=releases/0.60.9)](https://github.com/coin-or/Cgl/actions/workflows/windows-ci.yml?query=branch%3Areleases/0.60.9)
 
-[![Linux and MacOS Builds](https://github.com/coin-or/Cgl/actions/workflows/linux-ci.yml/badge.svg?branch=stable/0.60)](https://github.com/coin-or/Cgl/actions/workflows/linux-ci.yml?query=branch%3Astable/0.60)
+[![Linux and MacOS Builds](https://github.com/coin-or/Cgl/actions/workflows/linux-ci.yml/badge.svg?branch=releases/0.60.9)](https://github.com/coin-or/Cgl/actions/workflows/linux-ci.yml?query=branch%3Areleases/0.60.9)
 
 ## DOWNLOAD
 
@@ -183,7 +183,7 @@ following on the command line.
 ```
 wget https://raw.githubusercontent.com/coin-or/coinbrew/master/coinbrew
 chmod u+x coinbrew
-./coinbrew fetch Cgl@0.60
+./coinbrew fetch Cgl@0.60.9
 ./coinbrew build Cgl
 ```
 For more detailed instructions on coinbrew, see https://coin-or.github.io/coinbrew.
@@ -206,10 +206,10 @@ make install
 
 If you have `Doxygen` available, you can build a HTML documentation by typing
 
-`make doxygen-docs` 
+`make doxydoc` 
 
 in the build directory. If Cgl was built via `coinbrew`, then the build
-directory will be `./build/Cgl/0.60` by default. The doxygen documentation main file
+directory will be `./build/Cgl/0.60.9` by default. The doxygen documentation main file
 is found at `<build-dir>/doxydoc/html/index.html`.
 
 If you don't have `doxygen` installed locally, you can use also find the
