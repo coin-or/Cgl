@@ -1183,13 +1183,13 @@ static void writeDebugMps(const OsiSolverInterface *solver,
 #define USE_CGL_RATIONAL 1
 #if USE_CGL_RATIONAL>0
 #include "CoinRational.hpp"
-static long computeGcd(long a, long b) {
+static int64_t computeGcd(int64_t a, int64_t b) {
   // This is the standard Euclidean algorithm for gcd
-  long remainder = 1;
+  int64_t remainder = 1;
   // Make sure a<=b (will always remain so)
   if (a > b) {
     // Swap a and b
-    long temp = a;
+    int64_t temp = a;
     a = b;
     b = temp;
   }
@@ -1212,15 +1212,15 @@ static long computeGcd(long a, long b) {
 } /* computeGcd */
 static bool scaleRowIntegral(double* rowElem, int rowNz)
 {
-  long gcd, lcm;
+  int64_t gcd, lcm;
   double maxdelta = 1.0e-13;
   double maxscale = 1000; 
-  long maxdnom = 1000;
-  //long numerator = 0, denominator = 0;
+  int64_t maxdnom = 1000;
+  //int64_t numerator = 0, denominator = 0;
   // Initialize gcd and lcm
   CoinRational r = CoinRational(rowElem[0], maxdelta, maxdnom);
   if (r.getNumerator() != 0){
-    gcd = labs(r.getNumerator());
+    gcd = llabs(r.getNumerator());
     lcm = r.getDenominator();
   } else {
     return false;
