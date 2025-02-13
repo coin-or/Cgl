@@ -884,15 +884,15 @@ bool CglGMI::scaleCut(double* cutElem, int* cutIndex, int cutNz,
 /************************************************************************/
 bool CglGMI::scaleCutIntegral(double* cutElem, int* cutIndex, int cutNz,
 			      double& cutRhs) {
-  long gcd, lcm;
+  int64_t gcd, lcm;
   double maxdelta = param.getEPS(); 
   double maxscale = 1000; 
-  long maxdnom = 1000; 
-  long numerator = 0, denominator = 0;
+  int64_t maxdnom = 1000;
+  int64_t numerator = 0, denominator = 0;
   // Initialize gcd and lcm
   CoinRational r = CoinRational(cutRhs, maxdelta, maxdnom);
   if (r.getNumerator() != 0){
-     gcd = labs(r.getNumerator());
+     gcd = llabs(r.getNumerator());
      lcm = r.getDenominator();
   }
   else{
@@ -933,13 +933,13 @@ bool CglGMI::scaleCutIntegral(double* cutElem, int* cutIndex, int cutNz,
 } /* scaleCutIntegral */
 
 /************************************************************************/
-long CglGMI::computeGcd(long a, long b) {
+int64_t CglGMI::computeGcd(int64_t a, int64_t b) {
   // This is the standard Euclidean algorithm for gcd
-  long remainder = 1;
+  int64_t remainder = 1;
   // Make sure a<=b (will always remain so)
   if (a > b) {
     // Swap a and b
-    long temp = a;
+    int64_t temp = a;
     a = b;
     b = temp;
   }

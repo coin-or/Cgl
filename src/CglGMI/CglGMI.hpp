@@ -247,11 +247,11 @@ private:
 			  double& cutRhs);
 
   /// Compute the nearest rational number; used by scale_row_integral
-  bool nearestRational(double val, double maxdelta, long maxdnom,
-			long& numerator, long& denominator);
+  bool nearestRational(double val, double maxdelta, int64_t maxdnom,
+			int64_t& numerator, int64_t& denominator);
 
   /// Compute the greatest common divisor
-  long computeGcd(long a, long b);
+  int64_t computeGcd(int64_t a, int64_t b);
 
   /// print a vector of integers
   void printvecINT(const char *vecstr, const int *x, int n) const;
