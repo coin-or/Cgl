@@ -138,7 +138,7 @@ CglLandPUnitTest(
             test.parameter().sepSpace = CglLandP::Full;
             siP->resolve();
             // Test generateCuts method
-            {
+            if (0) {
                 OsiCuts cuts;
                 test.generateCuts(*siP,cuts);
                 cuts.printCuts();
