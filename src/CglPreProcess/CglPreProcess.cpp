@@ -3670,8 +3670,37 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
  #endif
       if (!numberChanges && !numberFixed) {
 	int change = tightenPrimalBounds(*newModel,true,scBound);
-	if (change > 0)
+	if (change > 0) {
+	  if ((change&0x40000000)!=0) {
+	    /** some free rows found!
+		always go round again as more likely to have
+		bugs if free rows in model */
+	    change -= 0x40000000;
+	    numberChanges+=change;
+	    if (iPass==numberSolvers_-1) {
+	      OsiSolverInterface ** modelOld = model_;
+	      OsiSolverInterface ** modifiedModelOld = modifiedModel_;
+	      OsiPresolve ** presolveOld = presolve_;
+	      model_ = new OsiSolverInterface *[numberSolvers_+1];
+	      modifiedModel_ = new OsiSolverInterface *[numberSolvers_+1];
+	      presolve_ = new OsiPresolve *[numberSolvers_+1];
+	      for (int i = 0; i < numberSolvers_; i++) {
+		model_[i] = modelOld[i];
+		modifiedModel_[i] = modifiedModelOld[i];
+		presolve_[i] = presolveOld[i];
+	      }
+	      delete [] modelOld;
+	      delete [] modifiedModelOld;
+	      delete [] presolveOld;
+	      model_[numberSolvers_] = NULL;
+	      modifiedModel_[numberSolvers_] = NULL;
+	      presolve_[numberSolvers_] = NULL;
+	      numberSolvers_++;
+	    }
+	    // round again
+	  }
 	  numberChanges += change;
+	}
 #ifdef CBC_HAS_CLP
 	OsiClpSolverInterface * clpSolver = dynamic_cast<OsiClpSolverInterface *>(newModel);
 	if (clpSolver) {
@@ -4592,6 +4621,7 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
   int numberRows = model.getNumRows();
   const double *rowLower = model.getRowLower();
   const double *rowUpper = model.getRowUpper();
+  int nFreed = 0;
 #if 1
   char * intVar = new char [numberColumns];
   for (int i=0;i<numberColumns;i++) {
@@ -5245,6 +5275,9 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
               }
             }
           }
+	} else {
+	  // free row!
+	  nFreed++;
         }
       }
       if (numberChanges) {
@@ -5267,10 +5300,13 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
   delete[] newUpper;
   delete[] columnLower;
   delete[] columnUpper;
-  if (numberInfeasible)
+  if (numberInfeasible) {
     return -numberInfeasible;
-  else
+  } else {
+    if (nFreed) 
+      totalTightened += 0x40000000+nFreed;
     return (totalTightened);
+  }
 }
 #define CGL_REASONABLE_INTEGER_BOUND 1.23456789e10
 // This tightens column bounds (and can declare infeasibility)

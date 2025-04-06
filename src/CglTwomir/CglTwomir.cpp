@@ -401,7 +401,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	    }
 	  }
 	}
-	if (largest<1.0e8*smallest&&goodCut) {
+	if (largest<1.0e8*smallest&&smallest>1.0e-5&&goodCut) {
 	  if (number > 1) {
 	    rowcut.setRow(number, cutIndex, packed);
 	    rowcut.setUb(si.getInfinity());

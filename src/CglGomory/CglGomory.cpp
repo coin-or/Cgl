@@ -1693,6 +1693,17 @@ CglGomory::generateCuts(
 	      }
 #endif
 	      if (number>1) {
+		// check cut still does something after relaxing
+		double total=0.0;
+		for (j=0;j<number;j++) {
+		  int jColumn =cutIndex[j];
+		  double value=packed[j];
+		  total += value*colsol[jColumn];
+		}
+		if (total<rc.ub()+tolerance&&
+		    total>rc.lb()-tolerance) {
+		  continue;
+		}
 #if MORE_GOMORY_CUTS<2
 		nTotalEls -= number;
 		cs.insertIfNotDuplicateAndClean(rc,11);

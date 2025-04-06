@@ -1013,14 +1013,25 @@ CglMixedIntegerRounding2::generateMirCuts(
 	  const double * elements = row.getElements();
 	  double largest = 0.0;
 	  double smallest = COIN_DBL_MAX;
+	  const int * columns = row.getIndices();
+	  //const double* xlp        = si.getColSolution();  // LP solution
+	  double total=0.0;
 	  for (int i=0;i<n;i++) {
-	    double value = fabs(elements[i]);
+	    double value = elements[i];
+	    int jColumn =columns[i];
+	    total += value*xlp[jColumn];
+	    value = fabs(value);
 	    largest=std::max(largest,value);
 	    smallest=std::min(smallest,value);
 	  }
 	  if (largest>1.0e8*smallest||largest>1.0e7||smallest<1.0e-5) {
 #if CGL_DEBUG
-	    printf("Unstable Mixed cut %g <= ",cMirCut.lb());
+	    printf("Unstable Mixed cut %g <= ",cMirCut.ub());
+#endif
+	  } else if (total<cMirCut.ub()+1.0e-6) {
+	    assert (cMirCut.lb()<-1.0e20);
+#if CGL_DEBUG
+	    printf("Useless Mixed cut %g <= ",cMirCut.ub());
 #endif
 	  } else {
 #if CGL_DEBUG
