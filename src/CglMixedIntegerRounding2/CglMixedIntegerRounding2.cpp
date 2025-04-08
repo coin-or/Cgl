@@ -296,7 +296,7 @@ CglMixedIntegerRounding2::gutsOfConstruct (const int maxaggr,
     MAXAGGR_ = maxaggr;
   }
   else {
-    throw CoinError("Unallowable value. maxaggr must be > 0",
+    throw CoinError("Unallowable value. maxaggr must not be 0",
                       "gutsOfConstruct","CglMixedIntegerRounding2");
   }
   MULTIPLY_ = multiply;
