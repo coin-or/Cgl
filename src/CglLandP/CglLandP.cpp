@@ -429,8 +429,8 @@ CglLandP::CachedData::~CachedData()
 
 CglLandP::CglLandP(const CglLandP::Parameters &params,
                    const LAP::Validator &validator):
-        params_(params), cached_(), validator_(validator), numcols_(-1),
-        originalColLower_(NULL), originalColUpper_(NULL),
+        params_(params), cached_(), validator_(validator), numrows_(-1),
+        numcols_(-1),originalColLower_(NULL), originalColUpper_(NULL),
         canLift_(false),
         extraCuts_()
 {
@@ -452,7 +452,7 @@ CglLandP::~CglLandP()
 CglLandP::CglLandP(const CglLandP & source):
         CglCutGenerator(source),
         params_(source.params_), cached_(source.cached_),
-        validator_(source.validator_), numcols_(source.numcols_),
+        validator_(source.validator_), numrows_(source.numrows_),numcols_(source.numcols_),
         originalColLower_(NULL), originalColUpper_(NULL),
         canLift_(source.canLift_),
         extraCuts_(source.extraCuts_)
@@ -532,7 +532,7 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
                        const CglTreeInfo info )
 {
     int numberRanges = 0;
-    if ((info.pass == 0) && !info.inTree)
+    if (numrows_<0)
     {
       numrows_ = si.getNumRows();
       // but switch off? if ranges
