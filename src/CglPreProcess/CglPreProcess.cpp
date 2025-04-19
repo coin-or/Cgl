@@ -3700,6 +3700,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	    // round again
 	  }
 	  numberChanges += change;
+	} else if (change<0) {
+	  // infeasible
+	  newModel = NULL;
+	  returnModel=NULL;
+	  break;
 	}
 #ifdef CBC_HAS_CLP
 	OsiClpSolverInterface * clpSolver = dynamic_cast<OsiClpSolverInterface *>(newModel);
