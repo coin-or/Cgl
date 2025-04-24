@@ -584,8 +584,8 @@ CglTwomir::CglTwomir (const CglTwomir & source) :
   form_nrows_(source.form_nrows_)
 {
   probname_ = source.probname_ ;
-  if (source.originalSolver_)
-    originalSolver_ = source.originalSolver_->clone();
+  // already done by CglCutGenerator if (source.originalSolver_)
+  //originalSolver_ = source.originalSolver_->clone();
 }
 
 //-------------------------------------------------------------------
@@ -628,6 +628,11 @@ CglTwomir::operator=(const CglTwomir& rhs)
     max_elements_=rhs.max_elements_;
     max_elements_root_ = rhs.max_elements_root_;
     form_nrows_=rhs.form_nrows_;
+    delete originalSolver_;
+    if (rhs.originalSolver_)
+      originalSolver_ = rhs.originalSolver_->clone();
+    else
+      originalSolver_=NULL;
   }
   return *this;
 }
