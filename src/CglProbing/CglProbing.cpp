@@ -2255,6 +2255,11 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
   double * maxR = new double [nRows];
   minR_ = minR;
   maxR_ = maxR;
+  if (nRows>nRowsSafe) {
+    // objective added
+    maxR[nRowsSafe]=COIN_DBL_MAX;
+    minR[nRowsSafe] = -COIN_DBL_MAX;
+  }
   if (mode) {
     ninfeas= tighten(colLower, colUpper, column, rowElements,
 		     rowStart, rowStartPos ,rowLength,

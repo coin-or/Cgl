@@ -3721,7 +3721,15 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
        if (debugger)
          assert(newModel->getRowCutDebugger());
 #endif
-      newModel->resolve();
+       {
+	 bool saveTakeHint;
+	 OsiHintStrength saveStrength;
+	 newModel->getHintParam(OsiDoDualInResolve,
+				saveTakeHint, saveStrength);
+	 newModel->setHintParam(OsiDoDualInResolve, true, OsiHintTry);
+	 newModel->resolve();
+	 newModel->setHintParam(OsiDoDualInResolve, saveTakeHint, saveStrength);
+       }
       if (!newModel->isProvenOptimal()) {
 	numberSolvers_ = iPass + 1;
 	break;
@@ -5547,6 +5555,7 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
 {
   // Do presolves
   bool saveHint;
+  bool solveWithDual = false;
   OsiHintStrength saveStrength;
   originalModel_->getHintParam(OsiDoPresolveInInitial, saveHint, saveStrength);
   bool saveHint2;
@@ -5951,20 +5960,31 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
           break;
         case CoinWarmStartBasis::atLowerBound:
           if (solutionM[iColumn] > columnLower2[jColumn] + primalTolerance) {
-            presolvedBasis->setStructStatus(iColumn, CoinWarmStartBasis::isFree);
+	    if (columnLower2[jColumn]<-1.0e50&&
+		columnUpper2[iColumn]>1.0e50)
+	      presolvedBasis->setStructStatus(iColumn, CoinWarmStartBasis::isFree);
+	    else
+	      presolvedBasis->setStructStatus(iColumn, CoinWarmStartBasis::superBasic);
             numberChanged++;
           }
           break;
         case CoinWarmStartBasis::atUpperBound:
           if (solutionM[iColumn] < columnUpper2[jColumn] - primalTolerance) {
-            presolvedBasis->setStructStatus(iColumn, CoinWarmStartBasis::isFree);
+	    if (columnLower2[jColumn]<-1.0e50&&
+		columnUpper2[iColumn]>1.0e50)
+	      presolvedBasis->setStructStatus(iColumn, CoinWarmStartBasis::isFree);
+	    else
+	      presolvedBasis->setStructStatus(iColumn, CoinWarmStartBasis::superBasic);
             numberChanged++;
           }
           break;
         }
       }
-      if (numberChanged)
+      if (numberChanged) {
+	// say do primal
+	solveWithDual = false;
         model->setWarmStart(presolvedBasis);
+      }
       delete presolvedBasis;
       presolve_[iPass]->postsolve(true);
       // and fix values
@@ -6357,6 +6377,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
   int numberRows = newModel->getNumRows();
   CglUniqueRowCuts twoCuts(numberRows);
   int numberColumns = newModel->getNumCols();
+  bool solveWithDual = true;
   //int number01Integers = 0;
   //int iColumn;
   //for (iColumn = 0; iColumn < numberColumns; iColumn++) {
@@ -7524,7 +7545,16 @@ CglPreProcess::modified(OsiSolverInterface *model,
             // may be able to delete some added cliques
             newModel->applyCuts(cs);
             numberRows = newModel->getNumRows();
-            newModel->resolve();
+	    {
+	      bool saveTakeHint;
+	      OsiHintStrength saveStrength;
+	      newModel->getHintParam(OsiDoDualInResolve,
+				     saveTakeHint, saveStrength);
+	      newModel->setHintParam(OsiDoDualInResolve, solveWithDual, OsiHintTry);
+	      newModel->resolve();
+	      newModel->setHintParam(OsiDoDualInResolve, saveTakeHint, saveStrength);
+	      solveWithDual = true;
+	    }
 #if 0
 	    int numberRows2=copySolver->getNumRows();
 	    const double * rowLower = copySolver->getRowLower();
@@ -8384,7 +8414,14 @@ CglPreProcess::modified(OsiSolverInterface *model,
           newModel->initialSolve();
           newModel->setHintParam(OsiDoPresolveInInitial, saveHint, saveStrength);
         } else {
-          newModel->resolve();
+	  bool saveTakeHint;
+	  OsiHintStrength saveStrength;
+	  newModel->getHintParam(OsiDoDualInResolve,
+				 saveTakeHint, saveStrength);
+	  newModel->setHintParam(OsiDoDualInResolve, solveWithDual, OsiHintTry);
+	  newModel->resolve();
+	  newModel->setHintParam(OsiDoDualInResolve, saveTakeHint, saveStrength);
+	  solveWithDual = true;
         }
         numberIterationsPre_ += newModel->getIterationCount();
         feasible = newModel->isProvenOptimal();
