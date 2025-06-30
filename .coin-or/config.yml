@@ -1,7 +1,7 @@
 Description:
   Slug: Cgl
   ShortName: Cgl
-  LongName:
+  LongName: The Cut Generator Library
   ShortDescription: A library of cutting-plane generators.
   LongDescription: |2
     "The COIN-OR Cut Generation Library (Cgl) is an open collection
