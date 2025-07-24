@@ -35,6 +35,7 @@ CglResidualCapacity::generateCuts(const OsiSolverInterface& si,
   bool preReso = false;
   si.getHintParam(OsiDoPresolveInInitial, preInit);
   si.getHintParam(OsiDoPresolveInResolve, preReso);
+  si.getColType(true);
   if (preInit == false &&  preReso == false &&
       doPreproc_ == -1 ) { // Do once
     if (doneInitPre_ == false) {   
@@ -425,11 +426,11 @@ CglResidualCapacity::treatAsLessThan(const OsiSolverInterface& si,
     bool contFound=false;
     bool goodIneq=true;
     double intCoef=-1;
-    
+    const char * intVar = si.getColType();
     // look for a_1 c_1 +   + a_k c_k  - d z_1 -   - d z_p <= b
     // where c_i continuous, z_j integer
     for ( int i = 0; i < rowLen; ++i ) {
-	if ( coef[i]  > EPSILON_ || !si.isInteger(ind[i]) ) {
+	if ( coef[i]  > EPSILON_ || !intVar[ind[i]] ) {
 	    if ( colLowerBound[ind[i]] < -EPSILON_ || colUpperBound[ind[i]] > 1.e10 ){
 		// cont var with too big bounds
 		goodIneq=false;
@@ -437,12 +438,12 @@ CglResidualCapacity::treatAsLessThan(const OsiSolverInterface& si,
 	    } else
 		contFound=true;
 	} else
-	    if ( !intFound &&  coef[i] < -EPSILON_  && si.isInteger(ind[i]) ){
+	    if ( !intFound &&  coef[i] < -EPSILON_  && intVar[ind[i]] ){
 		intFound=true;
 		intCoef=coef[i];
 		continue;
 	    } else
-		if ( intFound && coef[i] < -EPSILON_  && si.isInteger(ind[i]) &&
+		if ( intFound && coef[i] < -EPSILON_  && intVar[ind[i]] &&
 		     fabs( coef[i] - intCoef ) > EPSILON_ ){
 		    goodIneq=false;
 		    break;
@@ -550,33 +551,33 @@ CglResidualCapacity::resCapSeparation(const OsiSolverInterface& si,
     int *positionContVar;
     double newRowRHS;
     int contCount=0;
-
+    const char * intVar = si.getColType();
     for ( int i = 0; i < rowLen; ++i ) {
-	if ( coef[i] < -EPSILON_ && si.isInteger(ind[i]) ){
-	    intCoef=-coef[i];
-	    ybar+=xlp[ind[i]];
-	    positionIntVar.push_back(i);
-	}
-	else 
-	    ++contCount;
+      if ( coef[i] < -EPSILON_ && intVar[ind[i]] ){
+	intCoef=-coef[i];
+	ybar+=xlp[ind[i]];
+	positionIntVar.push_back(i);
+      }
+      else 
+	++contCount;
     }
     xbar = new double [contCount];
     newRowCoef = new double [contCount];
     positionContVar = new int [contCount];
     contCount=0;
     newRowRHS=rhs;
-    for ( int i = 0; i < rowLen; ++i ) 
-	if ( coef[i] > EPSILON_ || !si.isInteger(ind[i]) ){
-	    newRowCoef[contCount]=coef[i]*colUpperBound[ind[i]];
-	    xbar[contCount]=xlp[ind[i]]/colUpperBound[ind[i]];
-	    if ( newRowCoef[contCount] < -EPSILON_ ){ // complement
-		newRowCoef[contCount] = -newRowCoef[contCount];
-		xbar[contCount] = 1.0 - xbar[contCount];
-		newRowRHS+= newRowCoef[contCount];
-	    }
-	    positionContVar[contCount++]=i;
+    for ( int i = 0; i < rowLen; ++i ) {
+      if ( coef[i] > EPSILON_ || !intVar[ind[i]] ){
+	newRowCoef[contCount]=coef[i]*colUpperBound[ind[i]];
+	xbar[contCount]=xlp[ind[i]]/colUpperBound[ind[i]];
+	if ( newRowCoef[contCount] < -EPSILON_ ){ // complement
+	  newRowCoef[contCount] = -newRowCoef[contCount];
+	  xbar[contCount] = 1.0 - xbar[contCount];
+	  newRowRHS+= newRowCoef[contCount];
 	}
-    
+	positionContVar[contCount++]=i;
+      }
+    } 
     // now separate
     std::vector<int> setSbar;
     const double lambda = ybar - floor(ybar);

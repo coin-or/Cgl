@@ -327,7 +327,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   else
     {if(talk) printf ("2mir_test: debug success\n");}
 #endif
-  
+  const char * intVar = si.getColType();
   int i;
   for ( i=0; i<cut_list.n; i++){
     DGG_constraint_t *cut = cut_list.c[i];
@@ -415,7 +415,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	    int iColumn = cutIndex[0];
 	    double lbCol = colLower[iColumn];
 	    double ubCol = colUpper[iColumn];
-	    bool isInteger =  si.isInteger(iColumn);
+	    bool isInteger =  intVar[iColumn]!=0;
 	    // turn lb,ub into new bounds on column
 	    if (value>0) {
 	      lb = lb/value;
@@ -747,6 +747,7 @@ DGG_data_t* DGG_getData(const void *osi_ptr )
   data->constrainttemp1_ = DGG_newConstraint(total);
   data->vector0_ = new CoinIndexedVector(data->nrow);
   data->vector1_ = new CoinIndexedVector(data->nrow);
+  const char * intVar = si->getColType();
   //data->spareArray0_ = reinterpret_cast<double*> (malloc( sizeof(double)*total));
   //memset(data->spareArray0_,0,sizeof(double)*total);
 #endif
@@ -787,7 +788,7 @@ DGG_data_t* DGG_getData(const void *osi_ptr )
 
 
     /* is variable integer */
-    if ( si->isInteger(i) ){
+    if ( intVar[i] ){
       data->ninteger++;
       DGG_setIsInteger(data,i);
       /* tighten variable bounds*/
@@ -2178,11 +2179,6 @@ int DGG_is_even(double vht, double bht, int tau, int q)
   return 0;
 }
 
-double frac_part(double value) 
-{
-  return value-floor(value);
-}
-
 int DGG_is_a_multiple_of_b(double a, double b)
 {
   double c = b/a;
@@ -2258,6 +2254,8 @@ CglTwomir::refreshSolver(OsiSolverInterface * solver)
     delete originalSolver_;
     originalSolver_ = solver->clone();
   }
+  // Get integer information
+  solver->getColType(true);
 }
 // Create C++ lines to get to current state
 std::string

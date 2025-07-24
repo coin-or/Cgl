@@ -64,6 +64,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   
   // get integer variables and basis
   char * intVar = new char[numberColumns];
+  const char * intInfo = si.getColType();
   int i;
   CoinWarmStart * warmstart = si.getWarmStart();
   CoinWarmStartBasis* warm =
@@ -76,7 +77,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 #endif
      printf("%d %d %d\n",info.inTree,info.options,info.pass);
   for (i=0;i<numberColumns;i++) {
-    if (si.isInteger(i)) {
+    if (intInfo[i]) {
       if (colUpper[i]>colLower[i]+0.5) {
 	if (fabs(colUpper[i]-1.0)<1.0e-12&&fabs(colLower[i])<1.0e-12) {
 	  intVar[i]=1; //0-1
@@ -2078,8 +2079,10 @@ CglGomory::refreshSolver(OsiSolverInterface * solver)
     delete originalSolver_;
     originalSolver_ = solver->clone();
   }
+  // Get integer information
+  const char * intInfo = solver->getColType(true);
   for (int i=0;i<numberColumns;i++) {
-    if (solver->isInteger(i)) {
+    if (intInfo[i]) {
       if (colUpper[i]>colLower[i]+1.0) {
 	canDoGlobalCuts_ = false;
 	break;

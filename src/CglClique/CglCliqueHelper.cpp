@@ -21,13 +21,13 @@ CglClique::selectFractionalBinaries(const OsiSolverInterface& si)
    // extract the primal tolerance from the solver
    double lclPetol = 0.0;
    si.getDblParam(OsiPrimalTolerance, lclPetol);
-
    const int numcols = si.getNumCols();
+   const char * intVar = si.getColType();
    if (petol<0.0) {
      // do all if not too many
      int n=0;
      for (int i = 0; i < numcols; ++i) {
-       if (si.isBinary(i))
+       if (intVar[i]==1)
 	 n++;
      }
      if (n<maxNumber_)
@@ -37,7 +37,7 @@ CglClique::selectFractionalBinaries(const OsiSolverInterface& si)
    std::vector<int> fracind;
    int i;
    for (i = 0; i < numcols; ++i) {
-      if (si.isBinary(i) && x[i] > lclPetol && x[i] < 1-petol)
+      if (intVar[i]==1 && x[i] > lclPetol && x[i] < 1-petol)
 	 fracind.push_back(i);
    }
    sp_numcols = static_cast<int>(fracind.size());

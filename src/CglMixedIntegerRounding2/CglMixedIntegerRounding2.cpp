@@ -68,6 +68,7 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
     }
   }
   int numberColumns = si.getNumCols();
+  const char * intVar = si.getColType();
 #ifdef CBC_HAS_CLP
 #define MODIFY_LP 2
 #endif
@@ -87,7 +88,7 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
       for (int i=0;i<numberColumns;i++) {
 	if (obj[i]) {
 	  nVar++;
-	  if (!si.isInteger(i))
+	  if (!intVar[i])
 	    nContVar++;
 	}
       }
@@ -466,14 +467,8 @@ mixIntRoundPreprocess(const OsiSolverInterface& si)
   // Save integer type for speed
   if (integerType_) 
     delete [] integerType_;
-  integerType_ = new char [numCols_];
+  integerType_ = CoinCopyOfArray(si.getColType(),numCols_);
   int iColumn;
-  for (iColumn=0;iColumn<numCols_;iColumn++) {
-    if (si.isInteger(iColumn))
-      integerType_[iColumn]=1;
-    else
-      integerType_[iColumn]=0;
-  }
 
   if (rowTypes_ != 0) {
     delete [] rowTypes_; rowTypes_ = 0;
@@ -1933,6 +1928,8 @@ void
 CglMixedIntegerRounding2::refreshSolver(OsiSolverInterface * solver)
 {
   if (solver->getNumRows()) {
+    // Get integer information
+    solver->getColType(true);
     mixIntRoundPreprocess(*solver);
     doneInitPre_ = true;
   } else {

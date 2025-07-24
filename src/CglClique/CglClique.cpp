@@ -91,7 +91,7 @@ CglClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
 {
    int i;
    bool has_petol_set = petol != -1.0;
-
+   si.getColType(true); // update integer information
    if (! has_petol_set)
       si.getDblParam(OsiPrimalTolerance, petol);
    int numberOriginalRows = si.getNumRows();

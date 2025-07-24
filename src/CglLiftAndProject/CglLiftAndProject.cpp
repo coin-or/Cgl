@@ -241,9 +241,10 @@ void CglLiftAndProject::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
 
   double* alpha = new double[n];
   CoinFillN(alpha, n, 0.0);
+  const char * intVar = si.getColType();
 
   for (j=0;j<n;j++){
-    if (!si.isBinary(j)) continue; // Better to ask coneSi? No! 
+    if (intVar[i]!=1) continue; // Better to ask coneSi? No! 
                                    // coneSi has no binInfo.
     equalObj1=eq(x[j],0);
     equalObj2=eq(x[j],1);

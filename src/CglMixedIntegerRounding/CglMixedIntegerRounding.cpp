@@ -459,7 +459,7 @@ mixIntRoundPreprocess(const OsiSolverInterface& si)
     vubs_[iCol].setVar(UNDEFINED_);
     vlbs_[iCol].setVar(UNDEFINED_);
   }
-  
+  const char * intVar = si.getColType();
   int countM = 0;
   int countC = 0;
   int countI = 0;
@@ -497,7 +497,7 @@ mixIntRoundPreprocess(const OsiSolverInterface& si)
 
       for (CoinBigIndex i = startPos; i < stopPos; ++i) {
 	if ( fabs(coefByRow[i]) > EPSILON_ ) {
-	  if( si.isInteger(colInds[i]) ) {
+	  if( intVar[colInds[i]] ) {
 	    yInd  = colInds[i];
 	    yCoef = coefByRow[i];
 	  }
@@ -584,17 +584,17 @@ CglMixedIntegerRounding::determineRowType(const OsiSolverInterface& si,
   int  numNegCon = 0;      // num of negative continuous variables
   int  numCon    = 0;      // num of continuous variables
 
-
+  const char * intVar = si.getColType();
   // Summarize the variable types of the given row.
   for ( int i = 0; i < rowLen; ++i ) {
     if ( coef[i] < -EPSILON_ ) {
-      if( si.isInteger(ind[i]) )
+      if( intVar[ind[i]] )
 	++numNegInt;
       else
 	++numNegCon;
     }
     else if ( coef[i] > EPSILON_ ) {
-      if( si.isInteger(ind[i]) )
+      if( intVar[ind[i]] )
 	++numPosInt;
       else
 	++numPosCon;
@@ -1685,9 +1685,11 @@ CglMixedIntegerRounding::printStats(
 }
 // This can be used to refresh any inforamtion
 void 
-CglMixedIntegerRounding::refreshSolver(OsiSolverInterface * )
+CglMixedIntegerRounding::refreshSolver(OsiSolverInterface * solver)
 {
   doneInitPre_ = false;
+  // Get integer information
+  solver->getColType(true);
 }
 // Create C++ lines to get to current state
 std::string

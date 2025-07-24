@@ -82,6 +82,8 @@ CglOddWheel::~CglOddWheel() {
 
 void CglOddWheel::refreshSolver(OsiSolverInterface *solver) {
     solver->checkCGraph();
+  // Get integer information
+    solver->getColType(true);
 }
 
 CglCutGenerator * CglOddWheel::clone() const {

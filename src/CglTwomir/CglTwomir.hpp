@@ -424,9 +424,11 @@ private:
 #define V2I(bht,tau,i) ( ((i+1)*bht / tau) )
 
 int DGG_is_even(double vht, double bht, int tau, int q);
-double frac_part(double value);
+inline double frac_part(double value)
+{
+  return value-floor(value);
+}
 int DGG_is_a_multiple_of_b(double a, double b);
-
 
 /* free function for DGG_data_t. Frees internal arrays and data structure */
 int DGG_freeData( DGG_data_t *data );

@@ -109,6 +109,8 @@ CglBKClique::~CglBKClique() {
 
 void CglBKClique::refreshSolver(OsiSolverInterface *solver) {
 	solver->checkCGraph();
+  // Get integer information
+	solver->getColType(true);
 }
 
 CglCutGenerator * CglBKClique::clone() const {
@@ -116,9 +118,9 @@ CglCutGenerator * CglBKClique::clone() const {
 }
 
 void CglBKClique::generateCuts(const OsiSolverInterface &si, OsiCuts &cs, const CglTreeInfo info) {
-	if (si.getNumCols() == 0 || si.getNumRows() == 0) {
-        return;
-    }
+  if (si.getNumCols() == 0 || si.getNumRows() == 0) {
+    return;
+  }
     
     double startSep = CoinCpuTime();
     const CoinConflictGraph *cgraph = si.getCGraph();

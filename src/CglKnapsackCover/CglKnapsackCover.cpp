@@ -28,7 +28,8 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
 {
   // Get basic problem information
   int nRows=si.getNumRows(); 
-  int nCols=si.getNumCols(); 
+  int nCols=si.getNumCols();
+  const char * intVar = si.getColType(true);
 
   // Create working space for "canonical" knapsack inequality
   // - krow will contain the coefficients and indices of the 
@@ -97,8 +98,8 @@ void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
     complement[k]=0;
     vubRow[k]=-1;
     vlbRow[k]=-1;
-    if (si.isBinary(k)) {
-      if (si.isFreeBinary(k)) {
+    if (intVar[k]==1) {
+      if (colUpper[k]!=colLower[k]) {
 	vubRow[k]=-2;
 	vlbRow[k]=-2;
       } else {
@@ -3824,6 +3825,8 @@ CglKnapsackCover::refreshSolver(OsiSolverInterface * solver)
   if (solver->getMatrixByCol())
     createCliques( *solver,2,200,false);
 #endif
+  // Get integer information
+  solver->getColType(true);
 }
 /* Creates cliques for use by probing.
    Can also try and extend cliques as a result of probing (root node).
@@ -3841,14 +3844,14 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
   CoinPackedMatrix matrixByRow(*si.getMatrixByRow());
   int numberRows = si.getNumRows();
   numberColumns_ = si.getNumCols();
-
+  const char * intVar = si.getColType(true);
   numberCliques_=0;
   int numberEntries=0;
   int numberIntegers=0;
   int * lookup = new int[numberColumns_];
   int i;
   for (i=0;i<numberColumns_;i++) {
-    if (si.isBinary(i))
+    if (intVar[i]==1)
       lookup[i]=numberIntegers++;
     else
       lookup[i]=-1;
@@ -3903,8 +3906,9 @@ CglKnapsackCover::createCliques( OsiSolverInterface & si,
 	which[numberIntegers-numberM1]=iColumn;
       }
     }
-    int iUpper = upperValue > INT_MAX ? INT_MAX : static_cast<int> (floor(upperValue+1.0e-5));
-    int iLower = lowerValue < -INT_MIN ? -INT_MIN : static_cast<int> (ceil(lowerValue-1.0e-5));
+    int iUpper = upperValue > 2.0e9 ? INT_MAX : static_cast<int> (floor(upperValue+1.0e-5));
+    int iLower = lowerValue < -2.0e9 ? -2147483647 : static_cast<int> (ceil(lowerValue-1.0e-5));
+
     int state=0;
     if (upperValue<1.0e6) {
       if (iUpper==1-numberM1)

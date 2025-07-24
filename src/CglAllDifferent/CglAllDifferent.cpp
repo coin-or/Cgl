@@ -554,8 +554,10 @@ CglAllDifferent::operator=(
 
 /// This can be used to refresh any inforamtion
 void 
-CglAllDifferent::refreshSolver(OsiSolverInterface * )
+CglAllDifferent::refreshSolver(OsiSolverInterface * solver)
 {
+  // Get integer information
+  solver->getColType(true);
 }
 // Create C++ lines to get to current state
 std::string

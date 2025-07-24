@@ -68,9 +68,9 @@ void CglOddHole::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 
   // At present I am using new and delete as easier to see arrays in debugger
   int * fixed = new int[nCols]; // mark fixed columns 
-
+  const char * intVar = si.getColType();
   for (i=0;i<nCols;i++) {
-    if (si.isBinary(i) ) {
+    if (intVar[i]==1) {
       fixed[i]=0;
       if (colupper[i]-collower[i]<epsilon_) {
 	solution[i]=0.0;
@@ -621,6 +621,7 @@ void CglOddHole::createRowList( const OsiSolverInterface & si,
       suitableRows_[i]=1;
     }
   }
+  const char * intVar = si.getColType();
   for (rowIndex=0; rowIndex<nRows; rowIndex++){
     double rhs1=rowupper[rowIndex];
     double rhs2=rowlower[rowIndex];
@@ -632,7 +633,7 @@ void CglOddHole::createRowList( const OsiSolverInterface & si,
 	int thisCol=column[i];
 	if (colupper[thisCol]-collower[thisCol]>epsilon_) {
 	  // could allow general integer variables but unlikely
-	  if (!si.isBinary(thisCol) ) {
+	  if (intVar[thisCol] !=1) {
 	    goodRow=false;
 	    break;
 	  }
@@ -837,6 +838,8 @@ CglOddHole::setMaximumEntries(int value)
 
 // This can be used to refresh any inforamtion
 void 
-CglOddHole::refreshSolver(OsiSolverInterface * )
+CglOddHole::refreshSolver(OsiSolverInterface * solver)
 {
+  // Get integer information
+  solver->getColType(true);
 }

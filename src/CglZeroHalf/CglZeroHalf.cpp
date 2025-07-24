@@ -18,6 +18,7 @@ void
 CglZeroHalf::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 				const CglTreeInfo info)
 {
+  si.getColType(true);
   if (mnz_) {
     int cnum=0,cnzcnt=0;
     int *cbeg=NULL, *ccnt=NULL,*cind=NULL,*cval=NULL,*crhs=NULL;
@@ -296,6 +297,8 @@ CglZeroHalf::refreshSolver(OsiSolverInterface * solver)
   const double * columnUpper = solver->getColUpper();
   const double * rowLower = solver->getRowLower();
   const double * rowUpper = solver->getRowUpper();
+  // Get integer information
+  const char * intVar = solver->getColType();
   int iColumn,iRow;
   // count number of possible
   int numberColumns = solver->getNumCols();
@@ -304,7 +307,7 @@ CglZeroHalf::refreshSolver(OsiSolverInterface * solver)
   vub_ = new int [numberColumns];
   for (iColumn=0;iColumn<numberColumns;iColumn++) {
     int ilo,iup;
-    if (solver->isInteger(iColumn)) {
+    if (intVar[iColumn]) {
       double lo = columnLower[iColumn];
       if (lo<-COIN_INT_MAX)
 	lo=-COIN_INT_MAX;

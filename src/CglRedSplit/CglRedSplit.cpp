@@ -1639,7 +1639,6 @@ void CglRedSplit::compute_is_lub() {
 void CglRedSplit::compute_is_integer() {
 
   int i;
-
   if(colType != NULL) {
     for(i=0; i<ncol; i++) {
       if(colType[i] != 'C') {
@@ -1659,8 +1658,9 @@ void CglRedSplit::compute_is_integer() {
     }
   }
   else {
+    const char * intVar = solver->getColType();
     for(i=0; i<ncol; i++) {
-      if(solver->isInteger(i)) {
+      if(intVar[i]) {
 	is_integer[i] = 1;
       }
       else {

@@ -1325,6 +1325,7 @@ static int nPath=0;
 void CglProbing::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 			      const CglTreeInfo info2)
 {
+  si.getColType(true);
 
 #ifdef CGL_DEBUG
   const OsiRowCutDebugger * debugger = si.getRowCutDebugger();
@@ -1874,7 +1875,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
       if (colUpper[i]-colLower[i]>1.0e-8) {
         if (colsol[i]<colLower[i]+primalTolerance_) {
           if (djValue>gap) {
-            if (si.isInteger(i)) {
+            if (intVar[i]) {
               printf("why int %d not fixed at lb\n",i);
               colUpper[i]= colLower[i];
             } else {
@@ -1887,7 +1888,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
           }
         } else if (colsol[i]>colUpper[i]-primalTolerance_) {
           if (-djValue>gap) {
-            if (si.isInteger(i)) {
+            if (intVar[i]) {
               printf("why int %d not fixed at ub\n",i);
               colLower[i]= colUpper[i];
             } else {
@@ -2443,7 +2444,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	      if (lower[i]!=colLower[i]) {
 		assert (lower[i]<colLower[i]);
 		nLo++;
-		if (!si.isInteger(i))
+		if (!intVar[i])
 		  nLoC++;
 		if (colLower[i]==colUpper[i])
 		  nFix++;
@@ -2451,7 +2452,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface & si,
 	      if (upper[i]!=colUpper[i]) {
 		assert (upper[i]>colUpper[i]);
 		nUp++;
-		if (!si.isInteger(i))
+		if (!intVar[i])
 		  nUpC++;
 	      }
 	    }
@@ -3248,8 +3249,6 @@ static void writeMps(int j, int iway, const OsiSolverInterface * solver,
 		    solver->getObjCoefficients(),
 		    intVar, //(const char *)NULL /*integrality*/,  
 		    rowLower, rowUpper,NULL,NULL);
-  // Pass in array saying if each variable integer
-  //writer.copyInIntegerInformation(intVar);
   double objectiveOffset;
   solver->getDblParam(OsiObjOffset, objectiveOffset);
   writer.setObjectiveOffset(objectiveOffset);
@@ -5889,7 +5888,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			for ( k=0;k<n;k++) {
 			  int iColumn = index[k];
 			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -5899,7 +5898,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			for (k=rowStart[irow];k<rowStart[irow+1];k++) {
 			  int iColumn = column[k];
 			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -6036,7 +6035,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			for ( k=0;k<n;k++) {
 			  int iColumn = index[k];
 			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -6046,7 +6045,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			for (k=rowStart[irow];k<rowStart[irow+1];k++) {
 			  int iColumn = column[k];
 			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -6616,7 +6615,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			for ( k=0;k<n;k++) {
 			  int iColumn = index[k];
 			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -6626,7 +6625,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			for (k=rowStart[irow];k<rowStart[irow+1];k++) {
 			  int iColumn = column[k];
 			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -6724,7 +6723,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			for ( k=0;k<n;k++) {
 			  int iColumn = index[k];
 			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -6734,7 +6733,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 			for (k=rowStart[irow];k<rowStart[irow+1];k++) {
 			  int iColumn = column[k];
 			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -6945,7 +6944,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		    for ( k=0;k<n;k++) {
 		      int iColumn = index[k];
 		      printf("%g*",element[k]);
-		      if (si.isInteger(iColumn))
+		      if (intVar[iColumn])
 			printf("i%d ",iColumn);
 		      else
 			printf("x%d ",iColumn);
@@ -6955,7 +6954,7 @@ int CglProbing::probe( const OsiSolverInterface & si,
 		    for (k=rowStart[irow];k<rowStart[irow+1];k++) {
 		      int iColumn = column[k];
 		      printf("%g*",rowElements[k]);
-		      if (si.isInteger(iColumn))
+		      if (intVar[iColumn])
 			printf("i%d ",iColumn);
 		      else
 			printf("x%d ",iColumn);
@@ -8132,7 +8131,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			for ( k=0;k<n;k++) {
 			  int iColumn = index[k];
 			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -8142,7 +8141,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
 			  int iColumn = column[k];
 			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -8211,7 +8210,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			for ( k=0;k<n;k++) {
 			  int iColumn = index[k];
 			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -8221,7 +8220,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
 			  int iColumn = column[k];
 			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -8502,7 +8501,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			  for ( k=0;k<n;k++) {
 			    int iColumn = index[k];
 			    printf("%g*",element[k]);
-			    if (si.isInteger(iColumn))
+			    if (intVar[iColumn])
 			      printf("i%d ",iColumn);
 			    else
 			      printf("x%d ",iColumn);
@@ -8512,7 +8511,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			  for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
 			    int iColumn = column[k];
 			    printf("%g*",rowElements[k]);
-			    if (si.isInteger(iColumn))
+			    if (intVar[iColumn])
 			      printf("i%d ",iColumn);
 			    else
 			      printf("x%d ",iColumn);
@@ -8581,7 +8580,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			  for ( k=0;k<n;k++) {
 			    int iColumn = index[k];
 			    printf("%g*",element[k]);
-			    if (si.isInteger(iColumn))
+			    if (intVar[iColumn])
 			      printf("i%d ",iColumn);
 			    else
 			      printf("x%d ",iColumn);
@@ -8591,7 +8590,7 @@ int CglProbing::probeCliques( const OsiSolverInterface & si,
 			  for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
 			    int iColumn = column[k];
 			    printf("%g*",rowElements[k]);
-			    if (si.isInteger(iColumn))
+			    if (intVar[iColumn])
 			      printf("i%d ",iColumn);
 			    else
 			      printf("x%d ",iColumn);
@@ -9554,7 +9553,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 			for ( k=0;k<n;k++) {
 			  int iColumn = index[k];
 			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -9564,7 +9563,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
 			  int iColumn = column[k];
 			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -9630,7 +9629,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 			for ( k=0;k<n;k++) {
 			  int iColumn = index[k];
 			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -9640,7 +9639,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
 			  int iColumn = column[k];
 			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -9800,7 +9799,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 			for ( k=0;k<n;k++) {
 			  int iColumn = index[k];
 			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -9810,7 +9809,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
 			  int iColumn = column[k];
 			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -9876,7 +9875,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 			for ( k=0;k<n;k++) {
 			  int iColumn = index[k];
 			  printf("%g*",element[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -9886,7 +9885,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 			for (k=rowStart[irow];k<rowStart[irow]+rowLength[irow];k++) {
 			  int iColumn = column[k];
 			  printf("%g*",rowElements[k]);
-			  if (si.isInteger(iColumn))
+			  if (intVar[iColumn])
 			    printf("i%d ",iColumn);
 			  else
 			    printf("x%d ",iColumn);
@@ -10643,6 +10642,8 @@ CglProbing::refreshSolver(OsiSolverInterface * solver)
     // snapshot existed - redo
     snapshot(*solver,NULL);
   }
+  // Get integer information
+  solver->getColType(true);
 }
 /* Creates cliques for use by probing.
    Can also try and extend cliques as a result of probing (root node).
@@ -10659,14 +10660,17 @@ CglProbing::createCliques( OsiSolverInterface & si,
   if (!rowCopy_)
     numberRows_=numberRows;
   numberColumns_ = si.getNumCols();
-
+  const char * intVar = si.getColType();
+  const double * lower = si.getColLower();
+  const double * upper = si.getColUpper();
+  
   numberCliques_=0;
   int numberEntries=0;
   int numberIntegers=0;
   int * lookup = new int[numberColumns_];
   int i;
   for (i=0;i<numberColumns_;i++) {
-    if (si.isBinary(i))
+    if (intVar[i]==1)
       lookup[i]=numberIntegers++;
     else
       lookup[i]=-1;
@@ -10685,8 +10689,6 @@ CglProbing::createCliques( OsiSolverInterface & si,
   const CoinBigIndex * rowStart = matrixByRow.getVectorStarts();
   const int * rowLength = matrixByRow.getVectorLengths();
 
-  const double * lower = si.getColLower();
-  const double * upper = si.getColUpper();
   const double * rowLower = si.getRowLower();
   const double * rowUpper = si.getRowUpper();
   int iRow;

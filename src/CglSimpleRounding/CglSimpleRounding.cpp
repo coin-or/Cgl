@@ -245,10 +245,10 @@ CglSimpleRounding::deriveAnIntegerRow(
 
   const double * colupper = si.getColUpper();
   const double * collower = si.getColLower();
-
+  const char * intVar = si.getColType();
   for (i=0; i<sizeOfRow; i++){
     // if the variable is continuous
-    if ( !si.isInteger( matrixRow.getIndices()[i] ) ) {
+    if ( !intVar[matrixRow.getIndices()[i]] ) {
       // and the coefficient is strictly negative
       if((sign*matrixRow.getElements()[i])<-epsilon_){
         // and the continuous variable has a fintite upper bound

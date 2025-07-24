@@ -1586,7 +1586,7 @@ void CglRedSplit2::generateCuts(const OsiSolverInterface &si, OsiCuts & cs,
     printf("### WARNING: CglRedSplit2::generateCuts(): no optimal basis available.\n");
     return;
   }
-
+  solver->getColType(true);
   // Reset some members of CglRedSplit2
   card_intBasicVar = 0;
   card_intBasicVar_frac = 0;
@@ -2194,9 +2194,9 @@ void CglRedSplit2::setParam(const CglRedSplit2Param &source) {
 void CglRedSplit2::compute_is_integer() {
 
   int i;
-
+  const char * intVar = solver->getColType();
   for(i=0; i<ncol; i++) {
-    if(solver->isInteger(i)) {
+    if(intVar[i]) {
       is_integer[i] = 1;
     }
     else {
@@ -2971,11 +2971,12 @@ void CglRedSplit2::fill_workNonBasicTab(const int* newnonbasics,
   }
   i = 0;
 #endif
+  const char * intVar = solver->getColType();
   // In workNonBasicTab, we write the new nonbasic columns given by the
   // Lift & Project algorithm, scaled by the value of the fractional solution.
   while (newnonbasics[i] >= 0){
     currvar = newnonbasics[i];
-    if (currvar < ncol && solver->isInteger(currvar)){
+    if (currvar < ncol && intVar[currvar]){
       for (colpos = 0; colpos < card_intNonBasicVar; ++colpos){
 	if (intNonBasicVar[colpos] == currvar){
 #ifdef RS2_TRACE
