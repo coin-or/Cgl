@@ -3172,7 +3172,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       int nAdd = ((tuning & (64 + USECGLCLIQUE)) == 64 + USECGLCLIQUE && allPlusOnes) ? 2 : 1;
       CglCutGenerator **temp = generator_;
       generator_ = new CglCutGenerator *[numberCutGenerators_ + nAdd];
-      memcpy(generator_ + nAdd, temp, numberCutGenerators_ * sizeof(CglCutGenerator *));
+      if (temp)
+        memcpy(generator_ + nAdd, temp, numberCutGenerators_ * sizeof(CglCutGenerator *));
       delete[] temp;
       numberCutGenerators_ += nAdd;
       if (nAdd == 2 || (tuning & USECGLCLIQUE) != 0) {
