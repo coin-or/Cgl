@@ -1249,11 +1249,13 @@ bool CglTreeProbingInfo::fixes(int variable, int toValue, int fixedVariable, boo
       return false;
     maximumEntries_ += 100 + maximumEntries_ / 2;
     CliqueEntry *temp1 = new CliqueEntry[maximumEntries_];
-    memcpy(temp1, fixEntry_, numberEntries_ * sizeof(CliqueEntry));
+    if (fixEntry_)
+      memcpy(temp1, fixEntry_, numberEntries_ * sizeof(CliqueEntry));
     delete[] fixEntry_;
     fixEntry_ = temp1;
     int *temp2 = new int[maximumEntries_];
-    memcpy(temp2, fixingEntry_, numberEntries_ * sizeof(int));
+    if (fixingEntry_)
+      memcpy(temp2, fixingEntry_, numberEntries_ * sizeof(int));
     delete[] fixingEntry_;
     fixingEntry_ = temp2;
   }
