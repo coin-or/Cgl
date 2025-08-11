@@ -265,8 +265,8 @@ void CglRedSplit::find_step(int r1, int r2, int *step,
    int f_step= static_cast<int> (floor(opt_step));
    int c_step = f_step + 1;
 
-   double val_f = norm[r1] + f_step * f_step * norm[r2] - 2 * btb_val * f_step;
-   double val_c = norm[r1] + c_step * c_step * norm[r2] - 2 * btb_val * c_step;
+   double val_f = norm[r1] + double(f_step) * double(f_step) * norm[r2] - 2 * btb_val * double(f_step);
+   double val_c = norm[r1] + double(c_step) * double(c_step) * norm[r2] - 2 * btb_val * double(c_step);
 
    if(val_f <= val_c ) {
      (*step) = f_step;
