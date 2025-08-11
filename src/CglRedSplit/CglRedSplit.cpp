@@ -262,18 +262,18 @@ void CglRedSplit::find_step(int r1, int r2, int *step,
    double btb_val = rs_dotProd(contNonBasicTab[r1], contNonBasicTab[r2], nTab);
    double opt_step = btb_val/norm[r2];
 
-   int f_step= static_cast<int> (floor(opt_step));
-   int c_step = f_step + 1;
+   double f_step= floor(opt_step);
+   double c_step = f_step + 1;
 
    double val_f = norm[r1] + f_step * f_step * norm[r2] - 2 * btb_val * f_step;
    double val_c = norm[r1] + c_step * c_step * norm[r2] - 2 * btb_val * c_step;
 
    if(val_f <= val_c ) {
-     (*step) = f_step;
+     (*step) = static_cast<int>(f_step);
      (*reduc) = norm[r1] - val_f;
    }
    else {
-     (*step) = c_step;
+     (*step) = static_cast<int>(c_step);
      (*reduc) = norm[r1] - val_c;
    }
 } /* find_step */
