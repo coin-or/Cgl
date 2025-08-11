@@ -1319,16 +1319,21 @@ CglGomory::generateCuts(
 	      for (j=0; j<number+1;j++) {
 		double value = fabs(packed[j]);
 		double dxInt = value*multiplier;
-		xInt[j]= static_cast<int> (dxInt+0.5); 
 #if CGL_DEBUG>1
 		printf("%g => %g   \n",value,dxInt);
 #endif
-		if (dxInt>1.0e9||fabs(dxInt-xInt[j])> 1.0e-8) {
+		if (dxInt>1.0e9) {
+		  nOverflow++;
+		  break;
+		}
+
+		xInt[j]= static_cast<int> (dxInt+0.5);
+		if (fabs(dxInt-xInt[j])> 1.0e-8) {
 		  nOverflow++;
 		  break;
 		}
 	      }
-	      
+
 	      if (nOverflow){
 #ifdef CGL_DEBUG
 		printf("Gomory Scaling: Warning: Overflow detected \n");
