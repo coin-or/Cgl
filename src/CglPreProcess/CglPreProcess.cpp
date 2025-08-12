@@ -2373,20 +2373,25 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     }
     if (allPlus)
       nPossible++;
-    int iUpper = upperValue > INT_MAX ? INT_MAX : static_cast< int >(floor(upperValue + 1.0e-5));
-    int iLower = lowerValue < INT_MIN ? INT_MIN : static_cast< int >(ceil(lowerValue - 1.0e-5));
+
+    // avoid that we overflow in the int conversions below
+    if (upperValue >= 1.0e6 || lowerValue <= -1.0e6)
+      continue;
+
+    int iUpper = static_cast<int>(floor(upperValue + 1.0e-5));
+    int iLower = static_cast<int>(ceil(lowerValue - 1.0e-5));
     int state = 0;
-    if (upperValue < 1.0e6) {
-      if (iUpper == 1 - numberM1)
-        state = 1;
-      else if (iUpper == -numberM1)
-        state = 2;
-      else if (iUpper < -numberM1)
-        state = 3;
-      if (fabs((static_cast< double >(iUpper)) - upperValue) > 1.0e-9)
-        state = -1;
-    }
-    if (!state && lowerValue > -1.0e6) {
+
+    if (iUpper == 1 - numberM1)
+      state = 1;
+    else if (iUpper == -numberM1)
+      state = 2;
+    else if (iUpper < -numberM1)
+      state = 3;
+    if (fabs((static_cast< double >(iUpper)) - upperValue) > 1.0e-9)
+      state = -1;
+
+    if (!state) {
       if (-iLower == 1 - numberP1)
         state = -1;
       else if (-iLower == -numberP1)
@@ -2396,6 +2401,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       if (fabs((static_cast< double >(iLower)) - lowerValue) > 1.0e-9)
         state = -1;
     }
+
     if (good && state > 0) {
       if (abs(state) == 3) {
         // infeasible
