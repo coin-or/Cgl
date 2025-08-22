@@ -801,6 +801,7 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
             {
                 cut.setGloballyValid(true);
             }
+#ifdef CHECK_KNOWN_SOLUTION
 	    const OsiRowCutDebugger *debugger = si.getRowCutDebugger();
 	    if (debugger) {
 	      if (debugger->invalidCut(cut)) {
@@ -809,6 +810,7 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	      }
 	    }
 	    //CoinAssert (!debugger->invalidCut(*cut));
+#endif
             cs.insertIfNotDuplicate(cut, eq);
             //cs.insertIfNotDuplicate(cut);
             {
