@@ -1532,10 +1532,10 @@ int CglRedSplit2::generate_packed_row(const double *lclXlp,
       }
     } else {
       if (value > 0.0) {
-        rhs -= value * colLower[i];
+        rhs -= value * std::max(colLower[i],-1.0e20);
       } 
       else {
-        rhs -= value * colUpper[i];      
+        rhs -= value * std::min(colUpper[i],1.0e20);      
       } 
     }
   }
