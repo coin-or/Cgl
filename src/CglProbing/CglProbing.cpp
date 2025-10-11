@@ -5681,7 +5681,8 @@ int CglProbing::probe( const OsiSolverInterface & si,
               double oldU=saveU[istackC];
               double oldL=saveL[istackC];
 #if FIXED_BOTH_WAYS
-	      if (doFixedBothWays && intVar[icol]) {
+	      if (doFixedBothWays && intVar[icol]
+		  && colLower[icol] != colUpper[icol]) {
 		assert (newLo[icol]==COIN_DBL_MAX);
 		fixedBoth[nFixedBoth++] = icol;
 		newLo[icol] = colLower[icol];
