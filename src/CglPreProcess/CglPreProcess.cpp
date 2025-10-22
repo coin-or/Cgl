@@ -3117,6 +3117,25 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     // double check
     if (!startModel2->isProvenOptimal()) {
       if (!startModel2->isProvenDualInfeasible()) {
+	// relax any fixed (or almost fixed) continuous variables
+	if (numberColumns==startModel2->getNumCols()) {
+	  const double * originalLower = model.getColLower();
+	  const double * originalUpper = model.getColUpper();
+	  const double * lower = startModel2->getColLower();
+	  const double * upper = startModel2->getColUpper();
+	  int numberColumns = model.getNumCols();
+	  // will need different coding on later infeas?
+	  for (int i=0;i<numberColumns;i++) {
+	    if (!startModel2->isInteger(i)&&
+		upper[i]-lower[i]<feasibilityTolerance) {
+	      // relax bounds
+	      double lo = std::max(originalLower[i],lower[i]-feasibilityTolerance);
+	      double up = std::min(originalUpper[i],upper[i]+feasibilityTolerance);
+	      startModel2->setColLower(i,lo);
+	      startModel2->setColUpper(i,up);
+	    }
+	  }
+	}
         // Do presolves
         bool saveHint;
         OsiHintStrength saveStrength;
