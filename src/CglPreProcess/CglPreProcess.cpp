@@ -8791,6 +8791,23 @@ void CglPreProcess::gutsOfDestructor()
   rowType_ = NULL;
   numberRowType_ = 0;
 }
+// Clears models
+void CglPreProcess::clean()
+{
+  for (int i = 0; i < numberSolvers_; i++) {
+    delete model_[i];
+    delete modifiedModel_[i];
+    delete presolve_[i];
+  }
+  delete[] model_;
+  delete[] modifiedModel_;
+  delete[] presolve_;
+  model_ = NULL;
+  modifiedModel_ = NULL;
+  presolve_ = NULL;
+  delete startModel_;
+  startModel_ = NULL;
+ }
 // Add one generator
 void CglPreProcess::addCutGenerator(CglCutGenerator *generator)
 {

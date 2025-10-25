@@ -339,6 +339,9 @@ public:
   /// Clears out as much as possible
   void gutsOfDestructor();
 
+  /// Gets rid of models
+  void clean();
+
   /// Set time limit
   void setTimeLimit(const double timeLimit, const bool useElapsedTime);
 
