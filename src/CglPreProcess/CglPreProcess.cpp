@@ -1736,6 +1736,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     for (int iRow=0;iRow<numberRows;iRow++) {
       int n = 0;
       // make majority positive (unless upper rhs +1)
+      if (!rowLength[iRow])
+	continue;
       CoinBigIndex start = rowStart[iRow];
       CoinBigIndex end = start+rowLength[iRow];
       double multiplier = 1.0;
@@ -1782,7 +1784,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	    if (value) {
 	      double vint = floor(value+0.01);
 	      largestError = std::max(largestError,fabs(value-vint));
-	      assert (fabs(vint)>0.9);
 	    }
 	  }
 	  if (largestError<1.0e-9) {
