@@ -8,7 +8,7 @@
  * @file CglBKClique.hpp
  * @brief Clique cut separator
  * @author Samuel Souza Brito and Haroldo Gambini Santos
- * Contact: samuelbrito@ufop.edu.br and haroldo@ufop.edu.br
+ * Contact: samuelbrito@ufop.edu.br and haroldo.santos@gmail.com
  * @date 03/27/2020
  *
  * \copyright{Copyright 2020 Brito, S.S. and Santos, H.G.}
@@ -48,11 +48,11 @@ public:
 
   /**
    * Generate clique cuts for the model data contained
-   * in si. The generated cuts are inserted into and returned 
-   * in the collection of cuts cs. 
+   * in si. The generated cuts are inserted into and returned
+   * in the collection of cuts cs.
    **/
   virtual void generateCuts(const OsiSolverInterface &si, OsiCuts &cs, const CglTreeInfo info = CglTreeInfo());
-  
+
   /**
    * Destructor
    **/
@@ -147,13 +147,13 @@ private:
    * Return a list of violated cliques.
    **/
   CoinCliqueList* separateCliques(const OsiSolverInterface &si);
-  
+
   /**
    * Execute the clique extension procedure.
    * Return a list of violated cliques.
    **/
   CoinCliqueList* extendCliques(const OsiSolverInterface &si, const CoinCliqueList *initialCliques);
-  
+
   /**
    * Insert the violated cuts in OsiCuts cs.
    **/

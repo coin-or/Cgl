@@ -9,7 +9,7 @@
  * @file CglCliqueStrengthening.hpp
  * @brief Conflict-based preprocessing
  * @author Samuel Souza Brito and Haroldo Gambini Santos
- * Contact: samuelbrito@ufop.edu.br and haroldo@ufop.edu.br
+ * Contact: samuelbrito@ufop.edu.br and haroldo.santos@gmail.com
  * @date 03/27/2020
  *
  * \copyright{Copyright 2020 Brito, S.S. and Santos, H.G.}
@@ -95,7 +95,7 @@ private:
   size_t *elements_;
 
   /**
-   * Original indexes of the clique constraints. 
+   * Original indexes of the clique constraints.
    **/
   size_t *rowIdx_;
 
@@ -169,12 +169,12 @@ public:
    * Pass in Message handler (not deleted at end)
    **/
   void passInMessageHandler(CoinMessageHandler * handler);
-  
+
   /**
    * Set language
    **/
   void newLanguage(CoinMessages::Language language);
-  
+
   /**
    * New language
    **/

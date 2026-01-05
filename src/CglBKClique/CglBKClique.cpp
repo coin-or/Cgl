@@ -8,7 +8,7 @@
  * @file CglBKClique.hpp
  * @brief Clique cut separator
  * @author Samuel Souza Brito and Haroldo Gambini Santos
- * Contact: samuelbrito@ufop.edu.br and haroldo@ufop.edu.br
+ * Contact: samuelbrito@ufop.edu.br and haroldo.santos@gmail.com
  * @date 03/27/2020
  *
  * \copyright{Copyright 2020 Brito, S.S. and Santos, H.G.}
@@ -121,7 +121,7 @@ void CglBKClique::generateCuts(const OsiSolverInterface &si, OsiCuts &cs, const 
   if (si.getNumCols() == 0 || si.getNumRows() == 0) {
     return;
   }
-    
+
     double startSep = CoinCpuTime();
     const CoinConflictGraph *cgraph = si.getCGraph();
 

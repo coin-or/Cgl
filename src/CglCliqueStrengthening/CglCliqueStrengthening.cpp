@@ -9,7 +9,7 @@
  * @file CglCliqueStrengthening.cpp
  * @brief Conflict-based preprocessing
  * @author Samuel Souza Brito and Haroldo Gambini Santos
- * Contact: samuelbrito@ufop.edu.br and haroldo@ufop.edu.br
+ * Contact: samuelbrito@ufop.edu.br and haroldo.santos@gmail.com
  * @date 03/27/2020
  *
  * \copyright{Copyright 2020 Brito, S.S. and Santos, H.G.}
@@ -226,17 +226,17 @@ void CglCliqueStrengthening::fillCliquesByColumn() {
       nElements++;
     }
   }
-  
+
   colClqs_ = (size_t **) xmalloc(sizeof(size_t *) * numCols * 2);
   colClqs_[0] = (size_t *) xmalloc(sizeof(size_t) * nElements);
-  
+
   for (size_t i = 1; i < numCols * 2; i++) {
     colClqs_[i] = colClqs_[i - 1] + nColClqs_[i - 1];
     nColClqs_[i - 1] = 0;
   }
 
   nColClqs_[(2 * numCols) - 1] = 0;
-  
+
   for (size_t i = 0; i < cliqueRows_->rows(); i++) {
     const size_t *clqEl = cliqueRows_->row(i);
 
@@ -335,7 +335,7 @@ void CglCliqueStrengthening::cliqueExtension(size_t extMethod, CoinCliqueSet *ne
 #endif
     if (!goodClique)
       continue;
-    
+
 
     if (cliqueRows_->status(i) == Dominated) {
         continue;
@@ -346,7 +346,7 @@ void CglCliqueStrengthening::cliqueExtension(size_t extMethod, CoinCliqueSet *ne
     if (extended) {
       cliqueRows_->setStatus(i, Dominated);
       nExtended_++;
-      
+
       const size_t lastClq = clqe.nCliques() - 1;
       const bool inserted = newCliques->insertIfNotDuplicate(clqe.getCliqueSize(lastClq), clqe.getClique(lastClq));
 
@@ -403,7 +403,7 @@ void CglCliqueStrengthening::cliqueExtension(size_t extMethod, CoinCliqueSet *ne
     if (extended) {
       cliqueRows_->setStatus(rowIdx, Dominated);
       nExtended_++;
-      
+
       const size_t lastClq = clqe.nCliques() - 1;
       const bool inserted = newCliques->insertIfNotDuplicate(clqe.getCliqueSize(lastClq), clqe.getClique(lastClq));
 
@@ -436,7 +436,7 @@ double* CglCliqueStrengthening::getReducedCost() {
         rc[i + numCols] = -rc[i];
       }
   }
-  
+
   return rc;
 }
 
@@ -595,7 +595,7 @@ void CglCliqueStrengthening::addStrongerCliques(const CoinCliqueSet *newCliques)
     // adding rows
     const int lastOrigIdx = model_->getNumRows();
     model_->addRows(nCliques, nrStart, nrIdx, nrCoef, nrLB, nrUB);
-    
+
     // setting names
     for (int i = 0; i < (int)nCliques; i++) {
       model_->setRowName(lastOrigIdx + i, rowClqNames_[i]);
