@@ -4446,11 +4446,14 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 #endif
 
 
-  if (returnModel != &model && keepColumnNames_)
+  if (returnModel && returnModel != &model && keepColumnNames_)
   {
     returnModel->setIntParam( OsiNameDiscipline, 1 );
-    for ( int i=0 ; (i<returnModel->getNumCols()) ; i++ )
-      returnModel->setColName( i, modelIn->getColName( originalColumns()[i] ) );
+    for ( int i=0 ; (i<returnModel->getNumCols()) ; i++ ) {
+      int iColumn = originalColumns()[i];
+      if (iColumn<modelIn->getNumCols())
+	returnModel->setColName( i, modelIn->getColName(iColumn) );
+    }
   }
   // clean model
   if (returnModel) {
