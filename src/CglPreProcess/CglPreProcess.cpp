@@ -4231,6 +4231,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	    << generalPrint
 	    << CoinMessageEol;
 	  returnModel->deleteRows(numberOut,delrows);
+	  returnModel->resolve();
 	}
       }
       delete[] sort;
