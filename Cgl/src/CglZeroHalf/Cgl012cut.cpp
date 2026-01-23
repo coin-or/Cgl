@@ -606,7 +606,8 @@ printf("sense %c and rhs %d and slack %.5e\n",inp_ilp->msense[i],inp_ilp->mrhs[i
 
 separation_graph *Cgl012Cut::initialize_sep_graph()
 {
-  int maxnodes, maxedges, nnodes, j, jk; 
+  int maxnodes, nnodes, j, jk; 
+  long long maxedges;
   int *nodes, *ind;
   separation_graph *s_graph;
 
@@ -642,7 +643,7 @@ separation_graph *Cgl012Cut::initialize_sep_graph()
   if ( s_graph->ind == NULL ) alloc_error(const_cast<char*>("s_graph->ind"));
   for ( j = 0; j < maxnodes; j++ ) s_graph->ind[j] = ind[j];
   free(ind);
-  maxedges = (nnodes * (nnodes - 1)) / 2;
+  maxedges = ((long long)nnodes * ((long long)nnodes - 1)) / 2;
   s_graph->even_adj_list = reinterpret_cast<edge **> (malloc(maxedges*sizeof(edge *)));
   if ( s_graph->even_adj_list == NULL ) alloc_error(const_cast<char*>("s_graph->even_adj_list"));
   s_graph->odd_adj_list = reinterpret_cast<edge **> (malloc(maxedges*sizeof(edge *)));
