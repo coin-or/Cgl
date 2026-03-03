@@ -21,6 +21,7 @@
 
 #include <CglCutGenerator.hpp>
 #include "CoinBronKerbosch.hpp"
+#include <atomic>
 
 class CoinCliqueList;
 class CoinConflictGraph;
@@ -127,13 +128,13 @@ public:
   /**
    * Number of cuts separated.
    **/
-  static size_t sepCuts_;
+  static std::atomic<size_t> sepCuts_;
 
   /**
    * Execution time spent for the clique
    * cut separator.
    **/
-  static double sepTime_;
+  static std::atomic<double> sepTime_;
 
 private:
   /**

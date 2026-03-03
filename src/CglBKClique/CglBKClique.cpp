@@ -16,6 +16,7 @@
  *
  **/
 
+#include <atomic>
 #include <cstdio>
 #include <cassert>
 #include <OsiCuts.hpp>
@@ -32,8 +33,8 @@
 #define BKCLQ_MULTIPLIER 1000.0
 #define BKCLQ_EPS 1e-6
 
-size_t CglBKClique::sepCuts_ = 0;
-double CglBKClique::sepTime_ = 0.0;
+std::atomic<size_t> CglBKClique::sepCuts_(0);
+std::atomic<double> CglBKClique::sepTime_(0.0);
 
 static void *xmalloc( const size_t size );
 
@@ -146,7 +147,12 @@ void CglBKClique::generateCuts(const OsiSolverInterface &si, OsiCuts &cs, const 
     }
 
     delete initialCliques;
-    CglBKClique::sepTime_ += (CoinCpuTime() - startSep);
+    {
+        const double delta = CoinCpuTime() - startSep;
+        double old = CglBKClique::sepTime_.load(std::memory_order_relaxed);
+        while (!CglBKClique::sepTime_.compare_exchange_weak(old, old + delta, std::memory_order_relaxed))
+            ;
+    }
 }
 
 void CglBKClique::checkMemory(const size_t newNumCols) {
@@ -363,7 +369,7 @@ void CglBKClique::insertCuts(const OsiSolverInterface &si, const CglTreeInfo &in
     }
 
     size_t numberRowCutsAfter = cs.sizeRowCuts();
-    CglBKClique::sepCuts_ += numberRowCutsAfter - numberRowCutsBefore;
+    CglBKClique::sepCuts_.fetch_add(numberRowCutsAfter - numberRowCutsBefore, std::memory_order_relaxed);
 
     if(!info.inTree && ((info.options & 4) == 4 || ((info.options & 8) && !info.pass))) {
         numberRowCutsAfter = cs.sizeRowCuts();
