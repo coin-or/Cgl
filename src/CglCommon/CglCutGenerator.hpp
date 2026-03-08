@@ -97,6 +97,19 @@ public:
   {
     return canDoGlobalCuts_;
   }
+  /** Set a wall-clock time limit (seconds) for a single generateCuts() call.
+      A value of 0.0 (default) means no limit.  Generators that support this
+      hint will make a best-effort attempt to return before the deadline;
+      they may still exceed it by one internal iteration. */
+  inline void setMaxSeconds(double maxSeconds)
+  {
+    maxSeconds_ = maxSeconds;
+  }
+  /// Return the current wall-clock time limit for generateCuts().
+  inline double getMaxSeconds() const
+  {
+    return maxSeconds_;
+  }
   /// Returns original solver
   inline OsiSolverInterface * originalSolver() const
   { return originalSolver_;}
@@ -140,6 +153,9 @@ public:
   int aggressive_;
   /// True if can do global cuts i.e. no general integers
   bool canDoGlobalCuts_;
+  /** Wall-clock time budget (seconds) for a single generateCuts() call.
+      0.0 = unlimited (default). */
+  double maxSeconds_;
 };
 
 #endif

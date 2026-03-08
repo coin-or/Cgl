@@ -19,6 +19,7 @@
 #include <atomic>
 #include <cstdio>
 #include <cassert>
+#include <limits>
 #include <OsiCuts.hpp>
 #include <OsiRowCut.hpp>
 #include <CoinTime.hpp>
@@ -134,10 +135,23 @@ void CglBKClique::generateCuts(const OsiSolverInterface &si, OsiCuts &cs, const 
 
     checkMemory(si.getNumCols());
 
+    // When a wall-clock deadline is set, adaptively reduce the BK call limit
+    // if time is already tight before we start.  This prevents the recursive
+    // BK algorithm from running for hundreds of seconds on dense graphs.
+    const double wallDeadline = (maxSeconds_ > 0.0)
+        ? CoinGetTimeOfDay() + maxSeconds_
+        : std::numeric_limits<double>::max();
+    if (maxSeconds_ > 0.0 && maxSeconds_ < 30.0) {
+        // Very little time left: drastically limit BK recursion depth.
+        const size_t cappedCalls = std::max(size_t(10),
+            size_t(maxCallsBK_ * maxSeconds_ / 30.0));
+        maxCallsBK_ = std::min(maxCallsBK_, cappedCalls);
+    }
+
     CoinCliqueList *initialCliques = separateCliques(si);
 
     if (initialCliques->nCliques() > 0) {
-        if (!extMethod_) {
+        if (!extMethod_ || CoinGetTimeOfDay() >= wallDeadline) {
             insertCuts(si, info, initialCliques, cs);
         } else {
             CoinCliqueList *extCliques = extendCliques(si, initialCliques);

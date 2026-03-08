@@ -116,6 +116,8 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
     }
 
     CoinOddWheelSeparator oddH(cgraph, x_, rc_, extMethod_);
+    if (maxSeconds_ > 0.0)
+        oddH.setMaxSeconds(maxSeconds_);
     CoinCutPool cutPool(x_, numCols);
 
     oddH.searchOddWheels();

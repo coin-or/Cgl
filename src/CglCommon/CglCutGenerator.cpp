@@ -18,6 +18,7 @@ CglCutGenerator::CglCutGenerator()
   : originalSolver_(NULL)
   , aggressive_(0)
   , canDoGlobalCuts_(false)
+  , maxSeconds_(0.0)
 {
   // nothing to do here
 }
@@ -29,6 +30,7 @@ CglCutGenerator::CglCutGenerator(
   const CglCutGenerator &source)
   : aggressive_(source.aggressive_)
   , canDoGlobalCuts_(source.canDoGlobalCuts_)
+  , maxSeconds_(source.maxSeconds_)
 {
    if (source.originalSolver_)
      originalSolver_ = source.originalSolver_->clone();
@@ -54,6 +56,7 @@ CglCutGenerator::operator=(
   if (this != &rhs) {
     aggressive_ = rhs.aggressive_;
     canDoGlobalCuts_ = rhs.canDoGlobalCuts_;
+    maxSeconds_ = rhs.maxSeconds_;
     delete originalSolver_;
     if (rhs.originalSolver_)
       originalSolver_ = rhs.originalSolver_->clone();
