@@ -1114,15 +1114,15 @@ static void writeDebugMps(const OsiSolverInterface *solver,
   OsiPresolve *pinfo)
 {
   mpsNumber++; 
-  char name[20];  
-  sprintf(name, "presolve%2.2d.mps", mpsNumber);
+  char name[30];  
+  sprintf(name, "/tmp/presolve%2.2d.mps", mpsNumber);
   printf("saving %s from %s - %d row, %d columns\n", 
     name, where, solver->getNumRows(), solver->getNumCols());
   if (mpsNumber>20) {
     printf("Not saving\n");
   } else {
     solver->writeMpsNative(name, NULL, NULL, 0, 1, 0);
-    sprintf(name, "presolve%2.2d.bas", mpsNumber);
+    sprintf(name, "/tmp/presolve%2.2d.bas", mpsNumber);
     solver->writeBasisNative(name);
   }
 #if DEBUG_PREPROCESS > 1
@@ -5743,6 +5743,10 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
     }
     for (int iPass = numberSolvers_ - 1; iPass >= 0; iPass--) {
       OsiSolverInterface *model = model_[iPass];
+      OsiClpSolverInterface * postsolvedSolver =
+	dynamic_cast<OsiClpSolverInterface *>(model);
+      if (postsolvedSolver) // make sure can't stop
+	postsolvedSolver->getModelPtr()->setMaximumSeconds(-1.0);
       int * original = NULL;
       if (model->getNumCols()) {
         CoinWarmStartBasis *basis = dynamic_cast< CoinWarmStartBasis * >(modelM->getWarmStart());
@@ -6302,6 +6306,10 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
   }
   delete [] scBound;
   //double time1 = CoinCpuTime();
+  OsiClpSolverInterface * originalSolver =
+    dynamic_cast<OsiClpSolverInterface *>(originalModel_);
+  if (originalSolver) // make sure can't stop
+    originalSolver->getModelPtr()->setMaximumSeconds(-1.0);
   originalModel_->initialSolve();
   numberIterationsPost_ += originalModel_->getIterationCount();
   //printf("Time without basis %g seconds, %d iterations\n",CoinCpuTime()-time1,originalModel_->getIterationCount());
