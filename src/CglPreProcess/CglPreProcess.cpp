@@ -5743,10 +5743,12 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
     }
     for (int iPass = numberSolvers_ - 1; iPass >= 0; iPass--) {
       OsiSolverInterface *model = model_[iPass];
+#ifdef CBC_HAS_CLP
       OsiClpSolverInterface * postsolvedSolver =
 	dynamic_cast<OsiClpSolverInterface *>(model);
       if (postsolvedSolver) // make sure can't stop
 	postsolvedSolver->getModelPtr()->setMaximumSeconds(-1.0);
+#endif
       int * original = NULL;
       if (model->getNumCols()) {
         CoinWarmStartBasis *basis = dynamic_cast< CoinWarmStartBasis * >(modelM->getWarmStart());
