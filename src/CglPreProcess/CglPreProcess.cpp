@@ -6308,10 +6308,12 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
   }
   delete [] scBound;
   //double time1 = CoinCpuTime();
+#ifdef CBC_HAS_CLP
   OsiClpSolverInterface * originalSolver =
     dynamic_cast<OsiClpSolverInterface *>(originalModel_);
   if (originalSolver) // make sure can't stop
     originalSolver->getModelPtr()->setMaximumSeconds(-1.0);
+#endif
   originalModel_->initialSolve();
   numberIterationsPost_ += originalModel_->getIterationCount();
   //printf("Time without basis %g seconds, %d iterations\n",CoinCpuTime()-time1,originalModel_->getIterationCount());
