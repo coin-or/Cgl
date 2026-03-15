@@ -285,6 +285,10 @@ void free_parity_ilp();
 /* free_log_var */
   void free_log_var();
 private:
+  bool checkTimeLimit(const char *phase, const char *detail = NULL);
+  bool timeLimitReached() const;
+  void ensureBestWeakeningBufferCapacity(int requiredSize);
+  void ensureVarsToWeakBufferCapacity(int requiredSize);
 /* best_weakening: find the best upper/lower bound weakening of a set
    of variables */
 
@@ -386,6 +390,10 @@ void modify_current(
    to contain the information associated with a separation graph */
  
   separation_graph *initialize_sep_graph();
+  cycle_list *get_shortest_odd_cycle_list(
+    int j,
+    separation_graph *s_graph,
+    auxiliary_graph *a_graph);
   void print_cut(cut *v_cut);
 /* get_ori_cut_coef: get the coefficients of a cut, before dividing by 2 and
    rounding, starting from the list of the constraints combined to get 
@@ -428,6 +436,8 @@ double cut_score(
   void print_cut_list(cut_list *cuts);
   //@}
 public:
+  void setMaxSeconds(double value);
+  double getMaxSeconds() const;
   void setSepGraphSparseThreshold(int value);
   int getSepGraphSparseThreshold() const;
   /**@name Constructors and destructors */
@@ -473,6 +483,14 @@ int errorNo;
 				  > 0 in a cut to be added */ 
   bool aggr; /* flag saying whether as many cuts as possible are required
 		   from the separation procedure (TRUE) or not (FALSE) */
+  double maxSeconds_; /* best-effort wall-clock budget for one separation call */
+  double profileStartSeconds_;
+  bool timeLimitReached_;
+  std::vector<short int> typeEvenWeakBuffer_;
+  std::vector<short int> switchEvenWeakBuffer_;
+  std::vector<short int> typeOddWeakBuffer_;
+  std::vector<short int> switchOddWeakBuffer_;
+  std::vector<int> varsToWeakBuffer_;
   int sepGraphSparseThreshold_; /* active-node threshold for sparse separation graph */
   //@}
 };

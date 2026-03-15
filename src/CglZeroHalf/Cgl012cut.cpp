@@ -118,6 +118,35 @@ cglZeroHalfGetAuxiliaryArcEdge(const auxiliary_graph *a_graph, int from, int to)
   return NULL;
 }
 
+bool Cgl012Cut::checkTimeLimit(const char *, const char *)
+{
+  if (!timeLimitReached_ && maxSeconds_ > 0.0 &&
+      CoinGetTimeOfDay() - profileStartSeconds_ >= maxSeconds_)
+    timeLimitReached_ = true;
+  return timeLimitReached_;
+}
+
+bool Cgl012Cut::timeLimitReached() const
+{
+  return timeLimitReached_;
+}
+
+void Cgl012Cut::ensureBestWeakeningBufferCapacity(int requiredSize)
+{
+  if (static_cast<int>(typeEvenWeakBuffer_.size()) < requiredSize) {
+    typeEvenWeakBuffer_.resize(requiredSize);
+    switchEvenWeakBuffer_.resize(requiredSize);
+    typeOddWeakBuffer_.resize(requiredSize);
+    switchOddWeakBuffer_.resize(requiredSize);
+  }
+}
+
+void Cgl012Cut::ensureVarsToWeakBufferCapacity(int requiredSize)
+{
+  if (static_cast<int>(varsToWeakBuffer_.size()) < requiredSize)
+    varsToWeakBuffer_.resize(requiredSize);
+}
+
 
 #ifdef TIME
 
@@ -417,6 +446,12 @@ void Cgl012Cut::get_parity_ilp()
 
   parity_col_removed = 0;
   for ( j = 0; j < inp_ilp->mc; j++ ) {
+    if ((j & 1023) == 0 && maxSeconds_ > 0.0 &&
+        CoinGetTimeOfDay() - profileStartSeconds_ >= maxSeconds_) {
+      timeLimitReached_ = true;
+      p_ilp->mnz = 0;
+      return;
+    }
     xstarj = p_ilp->xstar[j] = inp_ilp->xstar[j];
     ubj = inp_ilp->vub[j]; lbj = inp_ilp->vlb[j];
     if ( xstarj > static_cast<double> (ubj - ZERO) ) {
@@ -542,6 +577,14 @@ void Cgl012Cut::get_parity_ilp()
 
   cnttot = 0;
   for ( i = 0; i < inp_ilp->mr; i++ ) {
+    if ((i & 255) == 0) {
+      const double now = CoinGetTimeOfDay();
+      if (maxSeconds_ > 0.0 && now - profileStartSeconds_ >= maxSeconds_) {
+        timeLimitReached_ = true;
+        p_ilp->mnz = 0;
+        return;
+      }
+    }
     begi = inp_ilp->mtbeg[i];
     
     /* compute the row slack and the GCD of the entries of the row */
@@ -1344,7 +1387,7 @@ void print_cycle_list(cycle_list *s_cycle_list)
    for the shortest path computation - all the cycles in the list are
    different from each other */
 
-cycle_list *get_shortest_odd_cycle_list(
+cycle_list *Cgl012Cut::get_shortest_odd_cycle_list(
 					int j, /* first node to be visited by the odd cycle */
 					separation_graph *s_graph, /* current separation graph */
 					auxiliary_graph *a_graph /* auxiliary graph for the shortest path computation */
@@ -1367,6 +1410,8 @@ cycle_list *get_shortest_odd_cycle_list(
 #endif
  
   s_cycle_list = initialize_cycle_list((a_graph->nnodes)-2);
+  if (checkTimeLimit("shortest_odd_cycle timeout", "before shortest path"))
+    return(s_cycle_list);
 
   source = AG_TWIN1(j); sink = AG_TWIN2(j);
   //source_ptr = &(a_graph->nodes[source]);
@@ -1419,6 +1464,8 @@ cycle_list *get_shortest_odd_cycle_list(
 #else
   cglShortestPath(a_graph,source,ISCALE);
 #endif
+  if (checkTimeLimit("shortest_odd_cycle timeout", "after shortest path"))
+    return(s_cycle_list);
 #ifdef TIME
   second_(&tf);
   path_time += tf - ti;
@@ -1427,6 +1474,12 @@ cycle_list *get_shortest_odd_cycle_list(
     reinterpret_cast<short_path_node *> (calloc(a_graph->nnodes,sizeof(short_path_node)));
   if ( forw_arb == NULL ) alloc_error(const_cast<char*>("forw_arb"));
   for ( k = 0; k < a_graph->nnodes; k++ ) { 
+    if ((k & 255) == 0 &&
+        checkTimeLimit("shortest_odd_cycle timeout", "while copying shortest-path trees")) {
+      free(forw_arb);
+      free_cycle_list(s_cycle_list);
+      return(initialize_cycle_list(1));
+    }
 #ifndef CGL_NEW_SHORT
     if ( a_graph->nodes[k].parent != NULL ) {
       forw_arb[k].dist = a_graph->nodes[k].dist;
@@ -1447,6 +1500,13 @@ cycle_list *get_shortest_odd_cycle_list(
     reinterpret_cast<short_path_node *> (calloc(a_graph->nnodes,sizeof(short_path_node)));
   if ( backw_arb == NULL ) alloc_error(const_cast<char*>("backw_arb"));
   for ( k = 0; k < a_graph->nnodes; k++ ) { 
+    if ((k & 255) == 0 &&
+        checkTimeLimit("shortest_odd_cycle timeout", "while copying reverse shortest-path tree")) {
+      free(forw_arb);
+      free(backw_arb);
+      free_cycle_list(s_cycle_list);
+      return(initialize_cycle_list(1));
+    }
 #ifndef CGL_NEW_SHORT
     if ( a_graph->nodes[k].parent != NULL ) {
       backw_arb[AG_MATE(k)].dist = a_graph->nodes[k].dist;
@@ -1489,6 +1549,12 @@ cycle_list *get_shortest_odd_cycle_list(
   /* consider each possible intermediate node in aux_graph */
 
   for ( k = 0; k < s_graph->nnodes; k++ ) {
+    if ((k & 63) == 0 &&
+        checkTimeLimit("shortest_odd_cycle timeout", "while enumerating intermediate nodes")) {
+      free(forw_arb);
+      free(backw_arb);
+      return(s_cycle_list);
+    }
     if ( k != j ) {
       for ( t = 1; t <= 2; t++ ) {
 	if ( t == 1 ) kt = AG_TWIN1(k); 
@@ -1712,12 +1778,16 @@ short int Cgl012Cut::best_cut(
      is not odd - this hopefully produces a stronger cut than that
      associated with the weakened inequalities to define the edges */
 
-  vars_to_weak = reinterpret_cast<int *> (calloc(inp_ilp->mc,sizeof(int)));
-  if ( vars_to_weak == NULL ) alloc_error(const_cast<char*>("vars_to_weak"));
+  ensureVarsToWeakBufferCapacity(inp_ilp->mc);
+  vars_to_weak = varsToWeakBuffer_.data();
   
   n_to_weak = 0;
   original_slack = 0.0;
   for ( j = 0; j < inp_ilp->mc; j++ ) {
+    if ((j & 1023) == 0 &&
+        checkTimeLimit("best_cut timeout", "while scanning cut coefficients")) {
+      return(FALSE);
+    }
     if ( ccoef[j] != 0 ) {
       if ( mod2(ccoef[j]) == ODD ) {
 	vars_to_weak[n_to_weak] = j;
@@ -1728,7 +1798,6 @@ short int Cgl012Cut::best_cut(
   }
   original_slack += static_cast<double> (*crhs);
   if ( original_slack > MAX_SLACK - EPS ) {
-    free(vars_to_weak);
     return(FALSE);
   }
   original_parity = mod2(*crhs);
@@ -1741,22 +1810,36 @@ short int Cgl012Cut::best_cut(
     *violation = ( 1.0 - best_odd_slack ) / 2.0;
     if ( ! update ) { 
       /* new ccoef and rhs are not required on output */
-      free(vars_to_weak);
       free_info_weak(info_odd_weak);
       return(TRUE);
     }
     /* update ccoef and crhs according to the best odd weakening */
     for ( j = 0; j < n_to_weak; j++ )
       if ( info_odd_weak->type[j] == LOWER_BOUND ) {
+        if ((j & 255) == 0 &&
+            checkTimeLimit("best_cut timeout", "while applying weakening")) {
+          free_info_weak(info_odd_weak);
+          return(FALSE);
+        }
 	ccoef[vars_to_weak[j]]--;
 	*crhs -= inp_ilp->vlb[vars_to_weak[j]];
       }
       else {
+        if ((j & 255) == 0 &&
+            checkTimeLimit("best_cut timeout", "while applying weakening")) {
+          free_info_weak(info_odd_weak);
+          return(FALSE);
+        }
 	ccoef[vars_to_weak[j]]++;
 	*crhs += inp_ilp->vub[vars_to_weak[j]];
       }
     /* compute and check the correctness of the cut coefficients */
     for ( j = 0; j < inp_ilp->mc; j++ ) {
+      if ((j & 1023) == 0 &&
+          checkTimeLimit("best_cut timeout", "while normalizing coefficients")) {
+        free_info_weak(info_odd_weak);
+        return(FALSE);
+      }
       if ( mod2(ccoef[j]) == ODD ) {
 	printf("!!! Error 2 in weakening a cut !!!\n");
 	exit(0);
@@ -1768,12 +1851,10 @@ short int Cgl012Cut::best_cut(
       exit(0);
     }
     *crhs = (*crhs - 1) / 2;
-    free(vars_to_weak);
     free_info_weak(info_odd_weak);
     return(TRUE);
   }
   else {
-    free(vars_to_weak);
     return(FALSE);
   }
 }
@@ -1793,8 +1874,14 @@ cut *Cgl012Cut::define_cut(
   if ( v_cut == NULL ) alloc_error(const_cast<char*>("v_cut"));
   v_cut->crhs = crhs;
   cnzcnt = 0;
-  for ( j = 0; j < inp_ilp->mc; j++ )
+  for ( j = 0; j < inp_ilp->mc; j++ ) {
+    if ((j & 1023) == 0 &&
+        checkTimeLimit("define_cut timeout", "while counting coefficients")) {
+      free(v_cut);
+      return(NULL);
+    }
     if ( ccoef[j] != 0 ) cnzcnt++;
+  }
   v_cut->cnzcnt = cnzcnt;
   v_cut->csense = 'L';
   v_cut->cind = reinterpret_cast<int *> (calloc(cnzcnt,sizeof(int)));
@@ -1802,13 +1889,19 @@ cut *Cgl012Cut::define_cut(
   v_cut->cval = reinterpret_cast<int *> (calloc(cnzcnt,sizeof(int)));
   if ( v_cut->cval == NULL ) alloc_error(const_cast<char*>("v_cut->cval"));
   cnzcnt = 0; v_cut->violation = 0.0;
-  for ( j = 0; j < inp_ilp->mc; j++ )
+  for ( j = 0; j < inp_ilp->mc; j++ ) {
+    if ((j & 1023) == 0 &&
+        checkTimeLimit("define_cut timeout", "while materializing coefficients")) {
+      free_cut(v_cut);
+      return(NULL);
+    }
     if ( ccoef[j] != 0 ) {
       v_cut->cind[cnzcnt] = j;
       v_cut->cval[cnzcnt] = ccoef[j];
       v_cut->violation += inp_ilp->xstar[j] * static_cast<double> (ccoef[j]);
       cnzcnt++;
     }
+  }
   v_cut->violation -= static_cast<double> (crhs); 
   return(v_cut);
 }
@@ -1864,6 +1957,13 @@ cut *Cgl012Cut::get_cut(
 #endif
   crhs = 0;
   for ( e = 0; e < s_cyc->length; e++ ) {
+    if ((e & 63) == 0 &&
+        checkTimeLimit("get_cut timeout", "while gathering cycle constraints")) {
+      free(ccoef);
+      free(comb);
+      free(flag_comb);
+      return(NULL);
+    }
     i = (s_cyc->edge_list[e])->constr; 
     if ( i >= 0 && flag_comb[i] != IN) {
       /* the edge is not associated with a bound constraint */
@@ -1891,6 +1991,12 @@ cut *Cgl012Cut::get_cut(
   }
 
   v_cut = define_cut(ccoef,crhs);
+  if ( v_cut == NULL ) {
+    free(ccoef);
+    free(comb);
+    free(flag_comb);
+    return(NULL);
+  }
 iter++;
   if ( v_cut->violation > violation + EPS || 
        v_cut->violation < violation - EPS ) {
@@ -2080,14 +2186,11 @@ short int only_viol /* flag which tells whether only an inequality of
   second_(&tii);
 #endif
 
-  type_even_weak = reinterpret_cast<short int *> (calloc(p_ilp->mc,sizeof(short int)));
-  if (type_even_weak == NULL ) alloc_error(const_cast<char*>("type_even_weak"));
-  switch_even_weak = reinterpret_cast<short int *> (calloc(p_ilp->mc,sizeof(short int)));
-  if (switch_even_weak == NULL ) alloc_error(const_cast<char*>("switch_even_weak"));
-  type_odd_weak = reinterpret_cast<short int *> (calloc(p_ilp->mc,sizeof(short int)));
-  if (type_odd_weak == NULL ) alloc_error(const_cast<char*>("type_odd_weak"));
-  switch_odd_weak = reinterpret_cast<short int *> (calloc(p_ilp->mc,sizeof(short int)));
-  if (switch_odd_weak == NULL ) alloc_error(const_cast<char*>("switch_odd_weak"));
+  ensureBestWeakeningBufferCapacity(p_ilp->mc);
+  type_even_weak = typeEvenWeakBuffer_.data();
+  switch_even_weak = switchEvenWeakBuffer_.data();
+  type_odd_weak = typeOddWeakBuffer_.data();
+  switch_odd_weak = switchOddWeakBuffer_.data();
 
   if ( original_parity == EVEN ) {
     (*best_even_slack) = original_slack;
@@ -2099,10 +2202,12 @@ short int only_viol /* flag which tells whether only an inequality of
   }
   nweak = 0;
   for ( ofsl = 0; ofsl < n_to_weak; ofsl++ ) {
+    if ((ofsl & 255) == 0 &&
+        checkTimeLimit("best_weakening timeout", "while evaluating weakening options")) {
+      return(NONE);
+    }
     l = vars_to_weak[nweak];
     if ( p_ilp->possible_weak[l] == NONE ) {
-      free(type_even_weak); free(type_odd_weak);
-      free(switch_even_weak); free(switch_odd_weak);
 #ifdef TIME
       second_(&tff);
       bw_time += tff - tii;
@@ -2159,8 +2264,6 @@ short int only_viol /* flag which tells whether only an inequality of
     if ( ( only_viol ) &&
 	 ( (*best_even_slack) > MAX_SLACK - EPS ) &&
 	 ( (*best_odd_slack) > MAX_SLACK - EPS ) ) {
-      free(type_even_weak); free(type_odd_weak);
-      free(switch_even_weak); free(switch_odd_weak);
 #ifdef TIME
       second_(&tff);
       bw_time += tff - tii;
@@ -2182,6 +2285,12 @@ short int only_viol /* flag which tells whether only an inequality of
     flag_even = EVEN;
     cntweak = nweak; 
     for ( ofsl = n_to_weak - 1; ofsl >= 0; ofsl-- ) {
+      if (((n_to_weak - 1 - ofsl) & 255) == 0 &&
+          checkTimeLimit("best_weakening timeout", "while building even weakening")) {
+        free_info_weak(*info_even_weak);
+        *info_even_weak = NULL;
+        return(NONE);
+      }
       cntweak--;
       (*info_even_weak)->var[cntweak] = vars_to_weak[ofsl];
       if ( flag_even == EVEN ) {
@@ -2204,6 +2313,15 @@ short int only_viol /* flag which tells whether only an inequality of
     flag_odd = ODD;
     cntweak = nweak; 
     for ( ofsl = n_to_weak - 1; ofsl >= 0; ofsl-- ) {
+      if (((n_to_weak - 1 - ofsl) & 255) == 0 &&
+          checkTimeLimit("best_weakening timeout", "while building odd weakening")) {
+        if (ok_even)
+          free_info_weak(*info_even_weak);
+        *info_even_weak = NULL;
+        free_info_weak(*info_odd_weak);
+        *info_odd_weak = NULL;
+        return(NONE);
+      }
       cntweak--;
       (*info_odd_weak)->var[cntweak] = vars_to_weak[ofsl];
       if ( flag_odd == EVEN ) {
@@ -2218,8 +2336,6 @@ short int only_viol /* flag which tells whether only an inequality of
   }
   else ok_odd = FALSE;
 
-  free(type_even_weak); free(type_odd_weak);
-  free(switch_even_weak); free(switch_odd_weak);
 #ifdef TIME
   second_(&tff);        
   bw_time += tff - tii;
@@ -2262,9 +2378,9 @@ cut_list *Cgl012Cut::basic_separation()
 #ifdef TIME
   second_(&td);
 #endif
-#ifdef PRINT_TIME
+  #ifdef PRINT_TIME
   printf("... time elapsed before initialize_sep_graph: %f\n",td - tti);
-#endif
+  #endif
   sep_graph = initialize_sep_graph();
   if ( sep_graph == NULL ) return(initialize_cut_list(1));
   special = p_ilp->mc;
@@ -2278,6 +2394,14 @@ cut_list *Cgl012Cut::basic_separation()
   /* edges associated with actual constraints in the ILP */
 
   for ( i = 0; i < p_ilp->mr; i++ ) {
+    if ((i & 63) == 0) {
+      const double now = CoinGetTimeOfDay();
+      if (maxSeconds_ > 0.0 && now - profileStartSeconds_ >= maxSeconds_) {
+        timeLimitReached_ = true;
+        free_sep_graph(sep_graph);
+        return(initialize_cut_list(1));
+      }
+    }
     if ( ! p_ilp->row_to_delete[i] ) {
       begi = p_ilp->mtbeg[i];
       if ( p_ilp->mtcnt[i] == 1 ) {
@@ -2307,14 +2431,21 @@ cut_list *Cgl012Cut::basic_separation()
 	/* row with three or more odd entries: weakening for all 1's pairs */
 	for ( ofsj = 0; ofsj < p_ilp->mtcnt[i]; ofsj++ ) {
 	  for ( ofsk = ofsj + 1; ofsk < p_ilp->mtcnt[i]; ofsk++ ) {
+            if (((ofsj * p_ilp->mtcnt[i]) + ofsk) % 4096 == 0 &&
+                maxSeconds_ > 0.0 &&
+                CoinGetTimeOfDay() - profileStartSeconds_ >= maxSeconds_) {
+              timeLimitReached_ = true;
+              free_sep_graph(sep_graph);
+              return(initialize_cut_list(1));
+            }
 	    /* edge(s) j -- k */
 	    j = p_ilp->mtind[begi+ofsj];
 	    k = p_ilp->mtind[begi+ofsk];
 	    original_slack = p_ilp->slack[i];
 	    original_parity = p_ilp->mrhs[i];
 	    n_to_weak = 0;
-	    vars_to_weak = reinterpret_cast<int *> (calloc(inp_ilp->mc,sizeof(int)));
-	    if ( vars_to_weak == NULL ) alloc_error(const_cast<char*>("vars_to_weak")); 
+	    ensureVarsToWeakBufferCapacity(inp_ilp->mc);
+	    vars_to_weak = varsToWeakBuffer_.data();
 	    for ( ofsl = 0; ofsl < p_ilp->mtcnt[i]; ofsl++ ) 
 	      if ( ofsl != ofsj && ofsl != ofsk ) {
 		l = p_ilp->mtind[begi+ofsl];
@@ -2326,7 +2457,10 @@ cut_list *Cgl012Cut::basic_separation()
 				     &best_even_slack,&best_odd_slack,
 				     &info_even_weak,&info_odd_weak,
 				     FALSE,TRUE); 
-	    free(vars_to_weak); 
+            if ( timeLimitReached() ) {
+              free_sep_graph(sep_graph);
+              return(initialize_cut_list(1));
+            }
 	    if ( ok_weak == NONE ) goto EXITJK;
 	    if ( ok_weak == BOTH || ok_weak == EVEN ) {
 	      if ( best_even_slack < MAX_SLACK - EPS ) {
@@ -2389,9 +2523,9 @@ EXITJK:;  }
 #ifdef TIME
   second_(&td);
 #endif
-#ifdef PRINT_TIME
+  #ifdef PRINT_TIME
   printf("... time elapsed before define_aux_graph: %f\n",td - tti);
-#endif
+  #endif
   aux_graph = define_aux_graph(sep_graph);
 #ifdef TIME
   second_(&tf);
@@ -2406,19 +2540,34 @@ EXITJK:;  }
 #ifdef TIME
   second_(&td);
 #endif
-#ifdef PRINT_TIME
+  #ifdef PRINT_TIME
   printf("... time elapsed before cycles and cuts: %f\n",td - tti);
   printf("%d nodes on list\n",sep_graph->nnodes);
-#endif
+  #endif
   out_cuts = initialize_cut_list(MAX_CUTS);
   for ( j = 0; j < sep_graph->nnodes; j++ ) {
+    if ((j & 31) == 0) {
+      const double now = CoinGetTimeOfDay();
+      if (maxSeconds_ > 0.0 && now - profileStartSeconds_ >= maxSeconds_) {
+        timeLimitReached_ = true;
+        goto EXIT_CUTS;
+      }
+    }
     short_cycle_list = get_shortest_odd_cycle_list(j,sep_graph,aux_graph);
+    if ( timeLimitReached() ) {
+      free_cycle_list(short_cycle_list);
+      goto EXIT_CUTS;
+    }
     if ( short_cycle_list == NULL ) goto EXIT_NODE;
 #ifdef PRINT
     print_cycle_list(short_cycle_list);
 #endif
     for ( c = 0; c < short_cycle_list->cnum; c++ ) {
       violated_cut = get_cut(short_cycle_list->list[c]);
+      if ( timeLimitReached() ) {
+        free_cycle_list(short_cycle_list);
+        goto EXIT_CUTS;
+      }
       if ( violated_cut == NULL ) {
 	if (!errorNo)
 	  continue;
@@ -2454,9 +2603,9 @@ EXIT_CUTS:
 #ifdef TIME
   second_(&td);
 #endif
-#ifdef PRINT_TIME
+  #ifdef PRINT_TIME
   printf("... time elapsed at the end of basic_separation: %f\n",td - tti);
-#endif
+  #endif
 
   return(out_cuts);
 }
@@ -3729,6 +3878,8 @@ char **csense /* senses of the cuts: 'L', 'G' or 'E' */
 #endif
 
   aggr = aggressive; 
+  profileStartSeconds_ = CoinGetTimeOfDay();
+  timeLimitReached_ = false;
 
   /* load the input ILP into an internal data structure */
   
@@ -3811,7 +3962,7 @@ print_parity_ilp();
   second_(&tbasi);
 #endif
   
-  out_cuts = basic_separation(); 
+  out_cuts = basic_separation();
 
 #ifdef TIME
   second_(&tbasf);
@@ -3915,6 +4066,9 @@ Cgl012Cut::Cgl012Cut () :
   sep_iter(0),
   vlog(NULL),
   aggr(true),
+  maxSeconds_(0.0),
+  profileStartSeconds_(0.0),
+  timeLimitReached_(false),
   sepGraphSparseThreshold_(MAX_SEP_GRAPH_ACTIVE_NODES)
 {
   // nothing to do here
@@ -3932,6 +4086,9 @@ Cgl012Cut::Cgl012Cut (const Cgl012Cut & rhs) :
   sep_iter(rhs.sep_iter),
   vlog(NULL),
   aggr(rhs.aggr),
+  maxSeconds_(rhs.maxSeconds_),
+  profileStartSeconds_(0.0),
+  timeLimitReached_(false),
   sepGraphSparseThreshold_(rhs.sepGraphSparseThreshold_)
 {
   if (rhs.p_ilp||rhs.vlog||inp_ilp)
@@ -3978,9 +4135,22 @@ Cgl012Cut::operator=(
     errorNo = rhs.errorNo;
     sep_iter = rhs.sep_iter;
     aggr = rhs.aggr;
+    maxSeconds_ = rhs.maxSeconds_;
+    profileStartSeconds_ = 0.0;
+    timeLimitReached_ = false;
     sepGraphSparseThreshold_ = rhs.sepGraphSparseThreshold_;
   }
   return *this;
+}
+
+void Cgl012Cut::setMaxSeconds(double value)
+{
+  maxSeconds_ = value;
+}
+
+double Cgl012Cut::getMaxSeconds() const
+{
+  return maxSeconds_;
 }
 
 void Cgl012Cut::setSepGraphSparseThreshold(int value)

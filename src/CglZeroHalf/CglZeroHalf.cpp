@@ -46,6 +46,7 @@ CglZeroHalf::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       }
     }
     if (true) {
+    cutInfo_.setMaxSeconds(getMaxSeconds());
     cutInfo_.sep_012_cut(mr_,mc_,mnz_,
 				 mtbeg_,mtcnt_, mtind_, mtval_,
 				 vlb_, vub_,
