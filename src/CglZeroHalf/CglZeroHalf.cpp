@@ -189,6 +189,7 @@ CglZeroHalf::CglZeroHalf (
   }
   //cutInfo_ = Cgl012Cut(source.cutInfo_);
   cutInfo_ = Cgl012Cut();
+  cutInfo_.setSepGraphSparseThreshold(source.cutInfo_.getSepGraphSparseThreshold());
 }
 
 
@@ -258,6 +259,7 @@ CglZeroHalf::operator=(
     }
     //cutInfo_=Cgl012Cut(rhs.cutInfo_);
     cutInfo_=Cgl012Cut();
+    cutInfo_.setSepGraphSparseThreshold(rhs.cutInfo_.getSepGraphSparseThreshold());
   }
   return *this;
 }
@@ -501,6 +503,8 @@ CglZeroHalf::generateCpp( FILE * fp)
     fprintf(fp,"3  zeroHalf.setAggressiveness(%d);\n",getAggressiveness());
   else
     fprintf(fp,"4  zeroHalf.setAggressiveness(%d);\n",getAggressiveness());
+  if (getSepGraphSparseThreshold()!=other.getSepGraphSparseThreshold())
+    fprintf(fp,"3  zeroHalf.setSepGraphSparseThreshold(%d);\n",getSepGraphSparseThreshold());
   return "zeroHalf";
 }
 #include <vector>

@@ -6,6 +6,9 @@
 #include "CoinTime.hpp"
 #include "Cgl012cut.hpp"
 #include "CglZeroHalf.hpp"
+#include <algorithm>
+#include <cstdint>
+#include <climits>
 static const int MAX_CUTS = 10000000;
 //#define PRINT_TABU
 //#define PRINT_CUTS
@@ -57,6 +60,63 @@ static const int MAX_CUTS = 10000000;
 #define MANY_IT_ZERO 10
 
 #define mod2(I) ( I % 2 == 0 ? 0 : 1 )
+
+static const int MAX_SEP_GRAPH_ACTIVE_NODES = 8000;
+
+static long long
+cglZeroHalfSepGraphMaxEdges(int nnodes)
+{
+  return nnodes > 1 ? (static_cast<long long>(nnodes) * (static_cast<long long>(nnodes) - 1)) / 2 : 0;
+}
+
+static bool
+cglZeroHalfSepGraphTooLarge(int nnodes, long long maxedges, double *estimatedGiB)
+{
+  const double bytes = static_cast<double>(maxedges) * 2.0 * static_cast<double>(sizeof(edge *));
+  if (estimatedGiB)
+    *estimatedGiB = bytes / (1024.0 * 1024.0 * 1024.0);
+
+  if (nnodes > MAX_SEP_GRAPH_ACTIVE_NODES)
+    return true;
+  if (maxedges > static_cast<long long>(INT_MAX))
+    return true;
+  return false;
+}
+
+static bool
+cglZeroHalfUseSparseSepGraph(int nnodes, long long maxedges, int sparseThreshold, double *estimatedGiB)
+{
+  if (cglZeroHalfSepGraphTooLarge(nnodes, maxedges, estimatedGiB))
+    return true;
+  if (sparseThreshold == 0)
+    return true;
+  if (sparseThreshold > 0 && nnodes > sparseThreshold)
+    return true;
+  return false;
+}
+
+static std::uint64_t
+cglZeroHalfSparseEdgeKey(int j, int k, short int parity)
+{
+  const std::uint64_t endpoint1 = static_cast<std::uint64_t>(j < k ? j : k);
+  const std::uint64_t endpoint2 = static_cast<std::uint64_t>(j < k ? k : j);
+  return (endpoint1 << 33) | (endpoint2 << 1) | static_cast<std::uint64_t>(parity == ODD ? 1 : 0);
+}
+
+static edge *
+cglZeroHalfGetAuxiliaryArcEdge(const auxiliary_graph *a_graph, int from, int to)
+{
+#ifndef CGL_NEW_SHORT
+  for (arc *arcPtr = a_graph->nodes[from].first; arcPtr < a_graph->nodes[from + 1].first; ++arcPtr)
+    if (arcPtr->head->index == to)
+      return arcPtr->backEdge;
+#else
+  for (cgl_arc *arcPtr = a_graph->nodes[from].firstArc; arcPtr < a_graph->nodes[from + 1].firstArc; ++arcPtr)
+    if (arcPtr->to == to)
+      return arcPtr->backEdge;
+#endif
+  return NULL;
+}
 
 
 #ifdef TIME
@@ -601,10 +661,12 @@ printf("sense %c and rhs %d and slack %.5e\n",inp_ilp->msense[i],inp_ilp->mrhs[i
 
 separation_graph *Cgl012Cut::initialize_sep_graph()
 {
-  int maxnodes, nnodes, j, jk; 
+  int maxnodes, nnodes, j;
+  long long jk;
   long long maxedges;
   int *nodes, *ind;
   separation_graph *s_graph;
+  double estimatedGiB;
 
   s_graph = reinterpret_cast<separation_graph *> (calloc(1,sizeof(separation_graph)));
   if ( s_graph == NULL ) alloc_error(const_cast<char*>("s_graph"));
@@ -639,6 +701,17 @@ separation_graph *Cgl012Cut::initialize_sep_graph()
   for ( j = 0; j < maxnodes; j++ ) s_graph->ind[j] = ind[j];
   free(ind);
   maxedges = ((long long)nnodes * ((long long)nnodes - 1)) / 2;
+  if ( cglZeroHalfUseSparseSepGraph(nnodes,maxedges,sepGraphSparseThreshold_,&estimatedGiB) ) {
+    s_graph->sparseMode = true;
+    s_graph->sparseEdges = new std::unordered_map<std::uint64_t, edge *>();
+    s_graph->sparseAdj = new std::vector<edge *>[nnodes];
+    if ( cglZeroHalfSepGraphTooLarge(nnodes,maxedges,&estimatedGiB) ) {
+      printf("Warning: using sparse 0-1/2 cut separation due to dense graph with %d active nodes\n", nnodes);
+      printf("         dense graph would need %lld edge slots (about %.2f GiB for even/odd adjacency tables)\n",
+        maxedges, estimatedGiB);
+    }
+    return(s_graph);
+  }
   s_graph->even_adj_list = reinterpret_cast<edge **> (malloc(maxedges*sizeof(edge *)));
   if ( s_graph->even_adj_list == NULL ) alloc_error(const_cast<char*>("s_graph->even_adj_list"));
   s_graph->odd_adj_list = reinterpret_cast<edge **> (malloc(maxedges*sizeof(edge *)));
@@ -665,6 +738,33 @@ separation_graph *update_weight_sep_graph(
   edge *old_edge, *new_edge;
   
   indj = s_graph->ind[j]; indk = s_graph->ind[k]; 
+  if ( s_graph->sparseMode ) {
+    const std::uint64_t key = cglZeroHalfSparseEdgeKey(indj,indk,parity);
+    std::unordered_map<std::uint64_t, edge *>::iterator it = s_graph->sparseEdges->find(key);
+    old_edge = (it == s_graph->sparseEdges->end()) ? NULL : it->second;
+    if ( old_edge == NULL ) {
+      new_edge = reinterpret_cast<edge *> (calloc(1,sizeof(edge)));
+      if ( new_edge == NULL ) alloc_error(const_cast<char*>("new_edge"));
+      new_edge->endpoint1 = indj; new_edge->endpoint2 = indk;
+      new_edge->weight = weight; new_edge->parity = parity;
+      new_edge->constr = i; new_edge->weak = i_weak;
+      (*s_graph->sparseEdges)[key] = new_edge;
+      s_graph->sparseAdj[indj].push_back(new_edge);
+      s_graph->sparseAdj[indk].push_back(new_edge);
+      (s_graph->nedges)++;
+    }
+    else {
+      if ( old_edge->weight > weight ) {
+        old_edge->weight = weight; old_edge->constr = i;
+        free_info_weak(old_edge->weak);
+        old_edge->weak = i_weak;
+      }
+      else {
+        free_info_weak(i_weak);
+      }
+    }
+    return(s_graph);
+  }
   indjk = SG_EDGE_INDEX(s_graph,indj,indk);
   if ( parity == EVEN ) old_edge = s_graph->even_adj_list[indjk];
   else old_edge = s_graph->odd_adj_list[indjk];
@@ -715,14 +815,21 @@ void free_edge(edge *e)
 #ifdef PRINT_CUTS
 void print_sep_graph(separation_graph *s_graph)
 {
-  int nnodes, maxedges, jk;
+  int nnodes;
+  long long maxedges, jk;
   
   nnodes = s_graph->nnodes;
-  maxedges = (nnodes * (nnodes - 1)) / 2;
   printf("\n content of separation_graph: nnodes = %d, nedges = %d\n",
     nnodes, s_graph->nedges);
   print_int_vect(const_cast<char*>("nodes"),s_graph->nodes,nnodes);
   print_int_vect(const_cast<char*>("ind"),s_graph->ind,nnodes);
+  if ( s_graph->sparseMode ) {
+    for (std::unordered_map<std::uint64_t, edge *>::const_iterator it = s_graph->sparseEdges->begin();
+         it != s_graph->sparseEdges->end(); ++it)
+      print_edge(it->second);
+    return;
+  }
+  maxedges = (nnodes * (nnodes - 1)) / 2;
   for ( jk = 0; jk < maxedges; jk++ ) {
     if ( s_graph->even_adj_list[jk] != NULL )
       print_edge(s_graph->even_adj_list[jk]);
@@ -734,8 +841,23 @@ void print_sep_graph(separation_graph *s_graph)
 
 void free_sep_graph(separation_graph *s_graph)
 {
-  int nnodes, maxedges, jk;
-  
+  int nnodes;
+  long long maxedges, jk;
+
+  if ( s_graph->sparseMode ) {
+    if ( s_graph->sparseEdges != NULL ) {
+      for (std::unordered_map<std::uint64_t, edge *>::const_iterator it = s_graph->sparseEdges->begin();
+           it != s_graph->sparseEdges->end(); ++it)
+        free_edge(it->second);
+      delete s_graph->sparseEdges;
+    }
+    delete [] s_graph->sparseAdj;
+    free(s_graph->nodes);
+    free(s_graph->ind);
+    free(s_graph);
+    return;
+  }
+
   nnodes = s_graph->nnodes;
   maxedges = (nnodes * (nnodes - 1)) / 2;
   for ( jk = 0; jk < maxedges; jk++ ) {
@@ -796,13 +918,31 @@ auxiliary_graph *define_aux_graph(separation_graph *s_graph /* input separation 
   narcs = 0; 
   for ( j = 0; j < s_graph->nnodes; j++ ) {
     /* count the number of edges incident with j in the separation graph */
-    totoutj = 0;
-    for ( k = 0; k < s_graph->nnodes; k++ ) 
-      if ( k != j ) {
-	indjk = SG_EDGE_INDEX(s_graph,j,k);
-	if ( s_graph->even_adj_list[indjk] != NULL ) totoutj++;
-	if ( s_graph->odd_adj_list[indjk] != NULL ) totoutj++;
-      }
+    if ( s_graph->sparseMode ) {
+      std::vector<edge *> &incident = s_graph->sparseAdj[j];
+      std::sort(incident.begin(), incident.end(),
+        [j](const edge *lhs, const edge *rhs) {
+          const int lhsOther = lhs->endpoint1 == j ? lhs->endpoint2 : lhs->endpoint1;
+          const int rhsOther = rhs->endpoint1 == j ? rhs->endpoint2 : rhs->endpoint1;
+          if (lhsOther != rhsOther)
+            return lhsOther < rhsOther;
+          if (lhs->parity != rhs->parity)
+            return lhs->parity < rhs->parity;
+          if (lhs->constr != rhs->constr)
+            return lhs->constr < rhs->constr;
+          return lhs < rhs;
+        });
+      totoutj = static_cast<int>(incident.size());
+    }
+    else {
+      totoutj = 0;
+      for ( k = 0; k < s_graph->nnodes; k++ ) 
+        if ( k != j ) {
+	  indjk = SG_EDGE_INDEX(s_graph,j,k);
+	  if ( s_graph->even_adj_list[indjk] != NULL ) totoutj++;
+	  if ( s_graph->odd_adj_list[indjk] != NULL ) totoutj++;
+        }
+    }
     auxj1 = AG_TWIN1(j); auxj2 = AG_TWIN2(j);
     a_graph->nodes[auxj1].index = auxj1;
     a_graph->nodes[auxj2].index = auxj2;
@@ -815,48 +955,96 @@ auxiliary_graph *define_aux_graph(separation_graph *s_graph /* input separation 
 #endif
     /* add the edges as arcs outgoing from j to the auxiliary graph */
     //noutj = 0;
-    for ( k = 0; k < s_graph->nnodes; k++ ) {
-      if ( k != j ) {
-	auxk1 = AG_TWIN1(k); auxk2 = AG_TWIN2(k);
-	indjk = SG_EDGE_INDEX(s_graph,j,k);
-	s_edge = s_graph->even_adj_list[indjk];
-	if ( s_edge != NULL ) {
-	  /* there is an even edge between j and k */        
+    if ( s_graph->sparseMode ) {
+      const std::vector<edge *> &incident = s_graph->sparseAdj[j];
+      for (std::vector<edge *>::const_iterator edgeIt = incident.begin(); edgeIt != incident.end(); ++edgeIt) {
+        s_edge = *edgeIt;
+        k = s_edge->endpoint1 == j ? s_edge->endpoint2 : s_edge->endpoint1;
+        auxk1 = AG_TWIN1(k); auxk2 = AG_TWIN2(k);
+        if ( s_edge->parity == EVEN ) {
 #ifndef CGL_NEW_SHORT
 	  a_graph->arcs[narcs].len = a_graph->arcs[narcs+totoutj].len = 
 	    (int) (s_edge->weight * ISCALE); 
 	  a_graph->arcs[narcs].head = &(a_graph->nodes[auxk1]);
 	  a_graph->arcs[narcs+totoutj].head = &(a_graph->nodes[auxk2]);
+          a_graph->arcs[narcs].backEdge = s_edge;
+          a_graph->arcs[narcs+totoutj].backEdge = s_edge;
 #else
 	  a_graph->arcs[narcs].length = a_graph->arcs[narcs+totoutj].length = 
 	    static_cast<int> (s_edge->weight * ISCALE); 
 	  a_graph->arcs[narcs].to = auxk1;
 	  a_graph->arcs[narcs+totoutj].to = auxk2;
+          a_graph->arcs[narcs].backEdge = s_edge;
+          a_graph->arcs[narcs+totoutj].backEdge = s_edge;
 #endif
 	  narcs++; //noutj++;
 	}
-	s_edge = s_graph->odd_adj_list[indjk];
-	if ( s_edge != NULL ) {
-	  /* there is an odd edge between j and k */        
+        else {
 #ifndef CGL_NEW_SHORT
 	  a_graph->arcs[narcs].len = a_graph->arcs[narcs+totoutj].len = 
 	    (int) (s_edge->weight * ISCALE); 
 	  a_graph->arcs[narcs].head = &(a_graph->nodes[auxk2]);
 	  a_graph->arcs[narcs+totoutj].head = &(a_graph->nodes[auxk1]);
+          a_graph->arcs[narcs].backEdge = s_edge;
+          a_graph->arcs[narcs+totoutj].backEdge = s_edge;
 #else
 	  a_graph->arcs[narcs].length = a_graph->arcs[narcs+totoutj].length = 
 	    static_cast<int> (s_edge->weight * ISCALE); 
 	  a_graph->arcs[narcs].to = auxk2;
 	  a_graph->arcs[narcs+totoutj].to = auxk1;
+          a_graph->arcs[narcs].backEdge = s_edge;
+          a_graph->arcs[narcs+totoutj].backEdge = s_edge;
 #endif
-	  /* this looks really useless - to be removed ...
-	  if ( noutj == 0 ) {
-	    a_graph->nodes[auxj1].first = &(a_graph->arcs[narcs]);
-	    a_graph->nodes[auxj2].first = &(a_graph->arcs[narcs+totoutj]);
-	  } 
-	  ... */
 	  narcs++; //noutj++;
 	}
+      }
+    }
+    else {
+      for ( k = 0; k < s_graph->nnodes; k++ ) {
+        if ( k != j ) {
+	  auxk1 = AG_TWIN1(k); auxk2 = AG_TWIN2(k);
+	  indjk = SG_EDGE_INDEX(s_graph,j,k);
+	  s_edge = s_graph->even_adj_list[indjk];
+	  if ( s_edge != NULL ) {
+	    /* there is an even edge between j and k */        
+#ifndef CGL_NEW_SHORT
+	    a_graph->arcs[narcs].len = a_graph->arcs[narcs+totoutj].len = 
+	      (int) (s_edge->weight * ISCALE); 
+	    a_graph->arcs[narcs].head = &(a_graph->nodes[auxk1]);
+	    a_graph->arcs[narcs+totoutj].head = &(a_graph->nodes[auxk2]);
+            a_graph->arcs[narcs].backEdge = s_edge;
+            a_graph->arcs[narcs+totoutj].backEdge = s_edge;
+#else
+	    a_graph->arcs[narcs].length = a_graph->arcs[narcs+totoutj].length = 
+	      static_cast<int> (s_edge->weight * ISCALE); 
+	    a_graph->arcs[narcs].to = auxk1;
+	    a_graph->arcs[narcs+totoutj].to = auxk2;
+            a_graph->arcs[narcs].backEdge = s_edge;
+            a_graph->arcs[narcs+totoutj].backEdge = s_edge;
+#endif
+	    narcs++; //noutj++;
+	  }
+	  s_edge = s_graph->odd_adj_list[indjk];
+	  if ( s_edge != NULL ) {
+	    /* there is an odd edge between j and k */        
+#ifndef CGL_NEW_SHORT
+	    a_graph->arcs[narcs].len = a_graph->arcs[narcs+totoutj].len = 
+	      (int) (s_edge->weight * ISCALE); 
+	    a_graph->arcs[narcs].head = &(a_graph->nodes[auxk2]);
+	    a_graph->arcs[narcs+totoutj].head = &(a_graph->nodes[auxk1]);
+            a_graph->arcs[narcs].backEdge = s_edge;
+            a_graph->arcs[narcs+totoutj].backEdge = s_edge;
+#else
+	    a_graph->arcs[narcs].length = a_graph->arcs[narcs+totoutj].length = 
+	      static_cast<int> (s_edge->weight * ISCALE); 
+	    a_graph->arcs[narcs].to = auxk2;
+	    a_graph->arcs[narcs+totoutj].to = auxk1;
+            a_graph->arcs[narcs].backEdge = s_edge;
+            a_graph->arcs[narcs+totoutj].backEdge = s_edge;
+#endif
+	    narcs++; //noutj++;
+	  }
+        }
       }
     }
     narcs += totoutj;
@@ -1343,12 +1531,8 @@ cycle_list *get_shortest_odd_cycle_list(
 	    curr = kt;
 	    do {
 	      pred = forw_arb[curr].pred;
-	      if ( AG_TYPE(pred,curr) == EVEN ) 
-		curr_edge = s_graph->even_adj_list
-		  [SG_EDGE_INDEX(s_graph,SG_ORIG(curr),SG_ORIG(pred))]; 
-	      else
-		curr_edge = s_graph->odd_adj_list
-		  [SG_EDGE_INDEX(s_graph,SG_ORIG(curr),SG_ORIG(pred))]; 
+	      curr_edge = cglZeroHalfGetAuxiliaryArcEdge(a_graph,pred,curr);
+              if ( curr_edge == NULL ) abort();
 	      s_cycle->edge_list[totedges] = curr_edge;
 	      curr = pred; 
 	      totedges++;
@@ -1357,12 +1541,8 @@ cycle_list *get_shortest_odd_cycle_list(
 	    curr = kt;
 	    do {
 	      pred = backw_arb[curr].pred;
-	      if ( AG_TYPE(pred,curr) == EVEN ) 
-		curr_edge = s_graph->even_adj_list
-		  [SG_EDGE_INDEX(s_graph,SG_ORIG(curr),SG_ORIG(pred))]; 
-	      else
-		curr_edge = s_graph->odd_adj_list
-		  [SG_EDGE_INDEX(s_graph,SG_ORIG(curr),SG_ORIG(pred))]; 
+	      curr_edge = cglZeroHalfGetAuxiliaryArcEdge(a_graph,pred,curr);
+              if ( curr_edge == NULL ) abort();
 	      s_cycle->edge_list[totedges] = curr_edge;
 	      curr = pred; 
 	      totedges++;
@@ -2086,6 +2266,7 @@ cut_list *Cgl012Cut::basic_separation()
   printf("... time elapsed before initialize_sep_graph: %f\n",td - tti);
 #endif
   sep_graph = initialize_sep_graph();
+  if ( sep_graph == NULL ) return(initialize_cut_list(1));
   special = p_ilp->mc;
 #ifdef TIME
   second_(&td);
@@ -3733,7 +3914,8 @@ Cgl012Cut::Cgl012Cut () :
   errorNo(0),
   sep_iter(0),
   vlog(NULL),
-  aggr(true)
+  aggr(true),
+  sepGraphSparseThreshold_(MAX_SEP_GRAPH_ACTIVE_NODES)
 {
   // nothing to do here
 }
@@ -3749,7 +3931,8 @@ Cgl012Cut::Cgl012Cut (const Cgl012Cut & rhs) :
   errorNo(rhs.errorNo),
   sep_iter(rhs.sep_iter),
   vlog(NULL),
-  aggr(rhs.aggr)
+  aggr(rhs.aggr),
+  sepGraphSparseThreshold_(rhs.sepGraphSparseThreshold_)
 {
   if (rhs.p_ilp||rhs.vlog||inp_ilp)
     abort();  
@@ -3795,6 +3978,17 @@ Cgl012Cut::operator=(
     errorNo = rhs.errorNo;
     sep_iter = rhs.sep_iter;
     aggr = rhs.aggr;
+    sepGraphSparseThreshold_ = rhs.sepGraphSparseThreshold_;
   }
   return *this;
+}
+
+void Cgl012Cut::setSepGraphSparseThreshold(int value)
+{
+  sepGraphSparseThreshold_ = value;
+}
+
+int Cgl012Cut::getSepGraphSparseThreshold() const
+{
+  return sepGraphSparseThreshold_;
 }

@@ -45,6 +45,12 @@ public:
   /// Set flags
   inline void setFlags(int value)
   { flags_ = value;}
+  /// Get active-node threshold for sparse separation graph use (0 means always sparse)
+  inline int getSepGraphSparseThreshold() const
+  { return cutInfo_.getSepGraphSparseThreshold(); }
+  /// Set active-node threshold for sparse separation graph use (0 means always sparse)
+  inline void setSepGraphSparseThreshold(int value)
+  { cutInfo_.setSepGraphSparseThreshold(value); }
   //@}
 
   /**@name Constructors and destructors */

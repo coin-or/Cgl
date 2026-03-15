@@ -7,8 +7,14 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
+#include <cstdint>
+#include <unordered_map>
+#include <vector>
 
 #include "CglConfig.h"
+
+struct edge_st;
+typedef struct edge_st edge;
 
 #define CGL_NEW_SHORT
 #ifndef CGL_NEW_SHORT
@@ -17,6 +23,7 @@ typedef  /* arc */
 {
    int              len;            /* length of the arc */
    struct node_st   *head;           /* head node */
+   edge             *backEdge;       /* originating separation-graph edge */
 }
   arc;
 
@@ -37,6 +44,7 @@ typedef struct
 {
   int length; // Length of arc
   int to; // To node
+  edge * backEdge; // Originating separation-graph edge
 } cgl_arc;
 
 typedef struct
@@ -102,21 +110,24 @@ int *var; /* list of variables weakened */
 short int *type; /* type of weakening (lower or upper bound weakening) */
 } info_weak;
 
-typedef struct {
-int endpoint1, endpoint2; /* endpoints of the edge */
-double weight; /* edge weight */
-short int parity; /* edge parity (even or odd) */
-int constr; /* constraint associated with the edge */
-info_weak *weak; /* weakening information */
+typedef struct edge_st {
+  int endpoint1, endpoint2; /* endpoints of the edge */
+  double weight; /* edge weight */
+  short int parity; /* edge parity (even or odd) */
+  int constr; /* constraint associated with the edge */
+  info_weak *weak; /* weakening information */
 } edge;
 
 typedef struct {
-int nnodes; /* number of nodes */
-int nedges; /* number of edges */
-int *nodes; /* indexes of the ILP columns corresponding to the nodes */
-int *ind; /* indexes of the nodes corresponding to the ILP columns */
-edge **even_adj_list; /* pointers to the even edges */ 
-edge **odd_adj_list; /* pointers to the odd edges */ 
+  int nnodes; /* number of nodes */
+  int nedges; /* number of edges */
+  int *nodes; /* indexes of the ILP columns corresponding to the nodes */
+  int *ind; /* indexes of the nodes corresponding to the ILP columns */
+  bool sparseMode; /* storage mode for separation graph */
+  edge **even_adj_list; /* pointers to the even edges */ 
+  edge **odd_adj_list; /* pointers to the odd edges */ 
+  std::unordered_map<std::uint64_t, edge *> *sparseEdges; /* sparse edge lookup */
+  std::vector<edge *> *sparseAdj; /* sparse incident-edge lists per node */
 } separation_graph;
 
 #ifndef CGL_NEW_SHORT
@@ -373,7 +384,7 @@ void modify_current(
   void get_parity_ilp();
 /* initialize_sep_graph: allocate and initialize the data structure
    to contain the information associated with a separation graph */
-
+ 
   separation_graph *initialize_sep_graph();
   void print_cut(cut *v_cut);
 /* get_ori_cut_coef: get the coefficients of a cut, before dividing by 2 and
@@ -417,6 +428,8 @@ double cut_score(
   void print_cut_list(cut_list *cuts);
   //@}
 public:
+  void setSepGraphSparseThreshold(int value);
+  int getSepGraphSparseThreshold() const;
   /**@name Constructors and destructors */
   //@{
   /// Default constructor 
@@ -453,13 +466,14 @@ int iter;
 double gap;
 double maxgap;
 int errorNo;
-int sep_iter; /* number of the current separation iteration */
-log_var **vlog; /* information about the value attained
+  int sep_iter; /* number of the current separation iteration */
+  log_var **vlog; /* information about the value attained
 				  by the variables in the last iterations,
 				  used to possibly set to 0 some coefficient
 				  > 0 in a cut to be added */ 
-bool aggr; /* flag saying whether as many cuts as possible are required
+  bool aggr; /* flag saying whether as many cuts as possible are required
 		   from the separation procedure (TRUE) or not (FALSE) */
+  int sepGraphSparseThreshold_; /* active-node threshold for sparse separation graph */
   //@}
 };
 #endif

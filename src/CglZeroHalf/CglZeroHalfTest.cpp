@@ -6,11 +6,53 @@
 #endif
 
 #include <cassert>
+#include <algorithm>
+#include <cmath>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #include "CoinPragma.hpp"
 #include "CglZeroHalf.hpp" 
 //#include "CglKnapsackCover.hpp" 
 #include <stdio.h>
+
+namespace {
+
+std::string canonicalCut(const OsiRowCut &cut)
+{
+  const CoinPackedVector &row = cut.row();
+  std::vector< std::pair<int, int> > entries;
+  entries.reserve(row.getNumElements());
+  for (int i = 0; i < row.getNumElements(); ++i)
+    entries.push_back(std::make_pair(row.getIndices()[i], static_cast<int>(std::lround(row.getElements()[i]))));
+  std::sort(entries.begin(), entries.end());
+
+  std::ostringstream out;
+  if (cut.lb() <= -1.0e20)
+    out << "lb=-inf;";
+  else
+    out << "lb=" << static_cast<int>(std::lround(cut.lb())) << ';';
+  if (cut.ub() >= 1.0e20)
+    out << "ub=inf;";
+  else
+    out << "ub=" << static_cast<int>(std::lround(cut.ub())) << ';';
+  for (std::vector< std::pair<int, int> >::const_iterator it = entries.begin(); it != entries.end(); ++it)
+    out << it->first << ':' << it->second << ',';
+  return out.str();
+}
+
+std::vector<std::string> canonicalCuts(const OsiCuts &cuts)
+{
+  std::vector<std::string> result;
+  result.reserve(cuts.sizeRowCuts());
+  for (int i = 0; i < cuts.sizeRowCuts(); ++i)
+    result.push_back(canonicalCut(cuts.rowCut(i)));
+  std::sort(result.begin(), result.end());
+  return result;
+}
+
+}
 
 //--------------------------------------------------------------------------
 // test the zero half cut generators methods.
@@ -54,6 +96,12 @@ CglZeroHalfUnitTest(
     cg.refreshSolver(siP);
     OsiCuts cuts;
     cg.generateCuts(*siP,cuts);
+    CglZeroHalf sparseCg;
+    sparseCg.setSepGraphSparseThreshold(0);
+    sparseCg.refreshSolver(siP);
+    OsiCuts sparseCuts;
+    sparseCg.generateCuts(*siP,sparseCuts);
+    assert(canonicalCuts(cuts) == canonicalCuts(sparseCuts));
 
     // lseu is the optimal solution to lseu
     // Optimal IP solution to lseu    
@@ -97,4 +145,3 @@ CglZeroHalfUnitTest(
   }
 
 }
-
