@@ -89,7 +89,7 @@ int *mtbeg; /* starting position of each row in arrays mtind and mtval */
 int *mtcnt; /* number of entries of each row in arrays mtind and mtval */
 int *mtind; /* column indices of the 1's of the parity ILP matrix */
 short int *mrhs; /* right hand side parity of the constraints */
-double *xstar; /* current optimal solution of the LP relaxation */
+ const double *xstar; /* current optimal solution of the LP relaxation */
 double *slack; /* slack of the constraints w.r.t. xstar */
 short int *row_to_delete; /* flag for marking rows not to be considered */
 short int *col_to_delete; /* flag for marking columns not to be considered */
@@ -287,6 +287,7 @@ void free_parity_ilp();
 private:
   bool checkTimeLimit(const char *phase, const char *detail = NULL);
   bool timeLimitReached() const;
+  void resetTimeCheckState();
   void ensureBestWeakeningBufferCapacity(int requiredSize);
   void ensureVarsToWeakBufferCapacity(int requiredSize);
 /* best_weakening: find the best upper/lower bound weakening of a set
@@ -486,6 +487,7 @@ int errorNo;
   double maxSeconds_; /* best-effort wall-clock budget for one separation call */
   double profileStartSeconds_;
   bool timeLimitReached_;
+  int timeCheckCountdown_;
   std::vector<short int> typeEvenWeakBuffer_;
   std::vector<short int> switchEvenWeakBuffer_;
   std::vector<short int> typeOddWeakBuffer_;
