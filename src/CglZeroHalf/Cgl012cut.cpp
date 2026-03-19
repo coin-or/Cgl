@@ -9,14 +9,15 @@
 #include <algorithm>
 #include <cstdint>
 #include <climits>
+#include <cmath>
 static const int MAX_CUTS = 10000000;
-//#define PRINT_TABU
-//#define PRINT_CUTS
-//#define PRINT_TIME
-//#define TIME
+//#define CGL_ZH_ADVANCED_DEBUG_PRINT_TABU
+//#define CGL_ZH_ADVANCED_DEBUG_PRINT_CUTS
+//#define CGL_ZH_ADVANCED_DEBUG_PRINT_TIMING
+//#define CGL_ZH_ADVANCED_DEBUG_TIMING
 
-/* #define TIME  */
-#undef TIME
+/* #define CGL_ZH_ADVANCED_DEBUG_TIMING  */
+#undef CGL_ZH_ADVANCED_DEBUG_TIMING
 
 #define TRUE 1
 #define FALSE 0
@@ -158,8 +159,324 @@ void Cgl012Cut::ensureVarsToWeakBufferCapacity(int requiredSize)
     varsToWeakBuffer_.resize(requiredSize);
 }
 
+static void
+cglZeroHalfCollectFractionality(const ilp *problem, int row, int histogram[10],
+  int *fractionalCount, double *fractionalSum, int *veryFractionalCount)
+{
+  const int begin = problem->mtbeg[row];
+  const int nz = problem->mtcnt[row];
 
-#ifdef TIME
+  *fractionalCount = 0;
+  *fractionalSum = 0.0;
+  *veryFractionalCount = 0;
+  for (int bucket = 0; bucket < 10; ++bucket)
+    histogram[bucket] = 0;
+
+  for (int offset = 0; offset < nz; ++offset) {
+    const int column = problem->mtind[begin + offset];
+    const double value = problem->xstar[column];
+    double fractional = value - std::floor(value);
+    if (fractional < ZERO || 1.0 - fractional < ZERO)
+      continue;
+    int bucket = static_cast<int>(std::floor(fractional * 10.0));
+    if (bucket < 0)
+      bucket = 0;
+    else if (bucket > 9)
+      bucket = 9;
+    histogram[bucket]++;
+    (*fractionalCount)++;
+    *fractionalSum += fractional;
+    if (fractional >= 0.3 - ZERO && fractional <= 0.7 + ZERO)
+      (*veryFractionalCount)++;
+  }
+}
+
+#ifdef CGL_ZH_ADVANCED_DEBUG_CONSTRAINT_PROFILING
+struct CglZeroHalfConstraintProfileState {
+  std::vector<double> rowElapsedSeconds;
+  std::vector<int> rowPairCounts;
+  std::vector<int> usefulCutCounts;
+  std::vector<double> usefulViolationSums;
+};
+
+static std::unordered_map<const Cgl012Cut *, CglZeroHalfConstraintProfileState> &
+cglZeroHalfConstraintProfileStates()
+{
+  static std::unordered_map<const Cgl012Cut *, CglZeroHalfConstraintProfileState> states;
+  return states;
+}
+
+static int
+cglZeroHalfProfileAbsInt(int value)
+{
+  return value < 0 ? -value : value;
+}
+
+static int
+cglZeroHalfProfileGcd(int a, int b)
+{
+  a = cglZeroHalfProfileAbsInt(a);
+  b = cglZeroHalfProfileAbsInt(b);
+  while (b != 0) {
+    const int next = a % b;
+    a = b;
+    b = next;
+  }
+  return a;
+}
+
+static bool
+cglZeroHalfProfileIsBinaryVar(const ilp *problem, int column)
+{
+  return problem->vlb[column] == 0 && problem->vub[column] == 1;
+}
+
+static const char *
+cglZeroHalfProfileRowType(const ilp *problem, int row)
+{
+  const int begin = problem->mtbeg[row];
+  const int nz = problem->mtcnt[row];
+  const char sense = problem->msense[row];
+  const int rhs = problem->mrhs[row];
+
+  int nBinary = 0;
+  int nNegative = 0;
+  int nPositive = 0;
+  int minValue = 0;
+  int maxValue = 0;
+  bool allOnes = true;
+  bool allIntegers = true;
+
+  for (int offset = 0; offset < nz; ++offset) {
+    const int column = problem->mtind[begin + offset];
+    const int value = problem->mtval[begin + offset];
+    if (offset == 0 || value < minValue)
+      minValue = value;
+    if (offset == 0 || value > maxValue)
+      maxValue = value;
+    if (value < 0)
+      ++nNegative;
+    else if (value > 0)
+      ++nPositive;
+    if (value != 1)
+      allOnes = false;
+    if (!cglZeroHalfProfileIsBinaryVar(problem, column))
+      allIntegers = false;
+    else
+      ++nBinary;
+  }
+
+  if (nz == 1)
+    return "singleton";
+  if (nz == 2) {
+    if (sense == 'E')
+      return "aggregate";
+    if (nBinary == 1)
+      return "variable_bound";
+    if ((nBinary % 2 == 0) && nNegative == 1 && nPositive == 1 && minValue == -maxValue)
+      return "precedence";
+  }
+
+  if (nBinary == nz) {
+    if (allOnes) {
+      if (rhs == 1) {
+        if (sense == 'E')
+          return "partitioning";
+        if (sense == 'L')
+          return "packing";
+        if (sense == 'G')
+          return "covering";
+      } else if (rhs >= 2) {
+        if (sense == 'E')
+          return "cardinality";
+        if (sense == 'L')
+          return "invariant_knapsack";
+      }
+    } else if (rhs >= 2) {
+      if ((maxValue > minValue) && nNegative == 0)
+        return allIntegers ? "integer_knapsack" : "knapsack";
+      if (nNegative == 1 && nz >= 2)
+        return "bin_packing";
+    }
+
+    if (nNegative >= 2 && nPositive >= 2 && sense == 'E')
+      return "flow_binary";
+  } else {
+    if (nNegative >= 2 && nPositive >= 2 && sense == 'E')
+      return "flow_mixed";
+  }
+
+  return "general";
+}
+
+static void
+cglZeroHalfProfileWriteHeader(FILE *file)
+{
+  fprintf(file,
+    "round,role,row,row_type,sense,rhs,row_nz,odd_nz,row_deleted,slack,row_elapsed_seconds,row_pair_count,"
+    "useful_cut_count,useful_total_violation,positive_coeffs,negative_coeffs,min_coeff,max_coeff,coeff_gcd,"
+    "fractional_count,fractional_mean,very_fractional_count,very_fractional_share,hist_0_0.1,hist_0.1_0.2,hist_0.2_0.3,hist_0.3_0.4,hist_0.4_0.5,"
+    "hist_0.5_0.6,hist_0.6_0.7,hist_0.7_0.8,hist_0.8_0.9,hist_0.9_1.0,generated_cuts\n");
+}
+
+void Cgl012Cut::zhProfileStartRound()
+{
+  CglZeroHalfConstraintProfileState &state = cglZeroHalfConstraintProfileStates()[this];
+  state.rowElapsedSeconds.assign(inp_ilp->mr, 0.0);
+  state.rowPairCounts.assign(inp_ilp->mr, 0);
+  state.usefulCutCounts.assign(inp_ilp->mr, 0);
+  state.usefulViolationSums.assign(inp_ilp->mr, 0.0);
+}
+
+void Cgl012Cut::zhProfileRecordRow(int row, double elapsedSeconds, int pairCount)
+{
+  if (row < 0 || row >= inp_ilp->mr)
+    return;
+  CglZeroHalfConstraintProfileState &state = cglZeroHalfConstraintProfileStates()[this];
+  state.rowElapsedSeconds[row] += elapsedSeconds;
+  state.rowPairCounts[row] = pairCount;
+}
+
+void Cgl012Cut::zhProfileRecordCut(const cut *v_cut)
+{
+  if (v_cut == NULL)
+    return;
+  CglZeroHalfConstraintProfileState &state = cglZeroHalfConstraintProfileStates()[this];
+  for (int i = 0; i < v_cut->n_of_constr; ++i) {
+    const int row = v_cut->constr_list[i];
+    if (row < 0 || row >= inp_ilp->mr)
+      continue;
+    state.usefulCutCounts[row]++;
+    state.usefulViolationSums[row] += v_cut->violation;
+  }
+}
+
+static void
+cglZeroHalfProfileEmitRow(FILE *file, const ilp *problem, const parity_ilp *parity,
+  const std::vector<double> &rowElapsedSeconds, const std::vector<int> &rowPairCounts,
+  const std::vector<int> &usefulCutCounts, const std::vector<double> &usefulViolationSums,
+  int round, const char *role, int row, int generatedCuts)
+{
+  const int begin = problem->mtbeg[row];
+  const int nz = problem->mtcnt[row];
+
+  int positiveCount = 0;
+  int negativeCount = 0;
+  int minCoeff = 0;
+  int maxCoeff = 0;
+  int coeffGcd = 0;
+  for (int offset = 0; offset < nz; ++offset) {
+    const int coeff = problem->mtval[begin + offset];
+    if (offset == 0 || coeff < minCoeff)
+      minCoeff = coeff;
+    if (offset == 0 || coeff > maxCoeff)
+      maxCoeff = coeff;
+    if (coeff > 0)
+      ++positiveCount;
+    else if (coeff < 0)
+      ++negativeCount;
+    coeffGcd = (offset == 0) ? cglZeroHalfProfileAbsInt(coeff) : cglZeroHalfProfileGcd(coeffGcd, coeff);
+  }
+
+  int histogram[10];
+  int fractionalCount = 0;
+  int veryFractionalCount = 0;
+  double fractionalSum = 0.0;
+  cglZeroHalfCollectFractionality(problem, row, histogram, &fractionalCount, &fractionalSum,
+    &veryFractionalCount);
+  const double fractionalMean = fractionalCount ? fractionalSum / static_cast<double>(fractionalCount) : 0.0;
+  const double veryFractionalShare = nz ? static_cast<double>(veryFractionalCount) / static_cast<double>(nz) : 0.0;
+
+  fprintf(file,
+    "%d,%s,%d,%s,%c,%d,%d,%d,%d,%.10g,%.10g,%d,%d,%.10g,%d,%d,%d,%d,%d,%d,%.10g,%d,%.10g,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d\n",
+    round,
+    role,
+    row,
+    cglZeroHalfProfileRowType(problem, row),
+    problem->msense[row],
+    problem->mrhs[row],
+    nz,
+    parity ? parity->mtcnt[row] : 0,
+    parity ? parity->row_to_delete[row] : 0,
+    parity ? parity->slack[row] : 0.0,
+    rowElapsedSeconds[row],
+    rowPairCounts[row],
+    usefulCutCounts[row],
+    usefulViolationSums[row],
+    positiveCount,
+    negativeCount,
+    minCoeff,
+    maxCoeff,
+    coeffGcd,
+    fractionalCount,
+    fractionalMean,
+    veryFractionalCount,
+    veryFractionalShare,
+    histogram[0],
+    histogram[1],
+    histogram[2],
+    histogram[3],
+    histogram[4],
+    histogram[5],
+    histogram[6],
+    histogram[7],
+    histogram[8],
+    histogram[9],
+    generatedCuts);
+}
+
+void Cgl012Cut::zhProfileFlushRound(int round, int generatedCuts)
+{
+  const char *path = std::getenv("CGL_ZH_CONSTRAINT_PROFILE_FILE");
+  if (path == NULL || !path[0])
+    return;
+
+  const std::unordered_map<const Cgl012Cut *, CglZeroHalfConstraintProfileState>::const_iterator found =
+    cglZeroHalfConstraintProfileStates().find(this);
+  if (found == cglZeroHalfConstraintProfileStates().end())
+    return;
+  const CglZeroHalfConstraintProfileState &state = found->second;
+
+  int expensiveRow = -1;
+  int usefulRow = -1;
+  for (int row = 0; row < inp_ilp->mr; ++row) {
+    if (state.rowElapsedSeconds[row] > 0.0 &&
+        (expensiveRow < 0 || state.rowElapsedSeconds[row] > state.rowElapsedSeconds[expensiveRow]))
+      expensiveRow = row;
+
+    if (state.usefulCutCounts[row] > 0 &&
+        (usefulRow < 0 ||
+         state.usefulCutCounts[row] > state.usefulCutCounts[usefulRow] ||
+         (state.usefulCutCounts[row] == state.usefulCutCounts[usefulRow] &&
+           state.usefulViolationSums[row] > state.usefulViolationSums[usefulRow])))
+      usefulRow = row;
+  }
+
+  if (expensiveRow < 0 && usefulRow < 0)
+    return;
+
+  FILE *file = fopen(path, "a+");
+  if (file == NULL)
+    return;
+
+  if (fseek(file, 0, SEEK_END) == 0 && ftell(file) == 0)
+    cglZeroHalfProfileWriteHeader(file);
+
+  if (expensiveRow >= 0)
+    cglZeroHalfProfileEmitRow(file, inp_ilp, p_ilp, state.rowElapsedSeconds,
+      state.rowPairCounts, state.usefulCutCounts, state.usefulViolationSums,
+      round, "most_expensive", expensiveRow, generatedCuts);
+  if (usefulRow >= 0)
+    cglZeroHalfProfileEmitRow(file, inp_ilp, p_ilp, state.rowElapsedSeconds,
+      state.rowPairCounts, state.usefulCutCounts, state.usefulViolationSums,
+      round, "most_useful", usefulRow, generatedCuts);
+
+  fclose(file);
+}
+#endif
+
+
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
 
 static float tot_basic_sep_time = 0.0; /* total time spent for basic 
 					  separation */
@@ -200,7 +517,7 @@ static ilp *inp_ilp; /* input ILP data structure */
 static parity_ilp *p_ilp; /* parity ILP data structure */
 #endif
 
-#ifdef PRINT_CUTS
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_CUTS
 /* utility subroutines */
 
 void print_int_vect(char *s,int *v,int n)
@@ -296,7 +613,7 @@ void Cgl012Cut::free_ilp()
   inp_ilp=NULL;
 }
 
-#ifdef PRINT_CUTS
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_CUTS
 void Cgl012Cut::print_constr(int i /* constraint to be printed */)
 {
 
@@ -351,7 +668,7 @@ void Cgl012Cut::alloc_parity_ilp(
   p_ilp->mnz=mnz;
 }
 
-#ifdef PRINT_CUTS
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_CUTS
 void Cgl012Cut::print_parity_ilp()
 {
   printf("\n content of parity_ilp data structure: mc = %d, mr = %d, mnz = %d\n",
@@ -414,7 +731,7 @@ info_weak *alloc_info_weak(int nweak /* number of variables to be weakened */)
   return(i_weak);
 }
 
-#ifdef PRINT_CUTS
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_CUTS
 void print_info_weak(info_weak *i_weak)
 {
   printf("\n content of info_weak: nweak = %d\n",i_weak->nweak); 
@@ -836,7 +1153,7 @@ separation_graph *update_weight_sep_graph(
   return(s_graph);
 }
 
-#ifdef PRINT_CUTS
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_CUTS
 void print_edge(edge *e)
 {
   printf("\n content of edge: endpoint1 = %d, endpoint2 = %d, weight = %f, parity = %d, constr = %d\n",
@@ -852,7 +1169,7 @@ void free_edge(edge *e)
   free(e);
 }
 
-#ifdef PRINT_CUTS
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_CUTS
 void print_sep_graph(separation_graph *s_graph)
 {
   int nnodes;
@@ -1138,7 +1455,7 @@ auxiliary_graph *cancel_node_aux_graph(
   return(a_graph);
 }
   
-#ifdef PRINT_CUTS
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_CUTS
 #ifndef CGL_NEW_SHORT
 void print_node(node *n)
 {
@@ -1298,7 +1615,7 @@ short int same_cycle(cycle *s_cyc1, cycle *s_cyc2 /* cycles to be compared */)
   return(FALSE);
 }
 
-#ifdef PRINT_CUTS
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_CUTS
 void print_cycle(cycle *s_cycle)
 {
   int e;
@@ -1367,7 +1684,7 @@ void free_cycle_list(cycle_list *s_cycle_list)
   free(s_cycle_list);
 }
 
-#ifdef PRINT_CUTS
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_CUTS
 void print_cycle_list(cycle_list *s_cycle_list)
 {
   int c;
@@ -1402,7 +1719,7 @@ cycle_list *Cgl012Cut::get_shortest_odd_cycle_list(
   cycle *s_cycle;
   cycle_list *s_cycle_list;
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tsi);
 #endif
  
@@ -1420,7 +1737,7 @@ cycle_list *Cgl012Cut::get_shortest_odd_cycle_list(
      free due to symmetry) and store them (the path information is 
      hidden into aux_graph) */
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&ti);
 #endif
 #ifndef CGL_NEW_SHORT
@@ -1463,7 +1780,7 @@ cycle_list *Cgl012Cut::get_shortest_odd_cycle_list(
 #endif
   if (checkTimeLimit("shortest_odd_cycle timeout", "after shortest path"))
     return(s_cycle_list);
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tf);
   path_time += tf - ti;
 #endif
@@ -1526,11 +1843,11 @@ cycle_list *Cgl012Cut::get_shortest_odd_cycle_list(
      (which coincides with the arborescence since aux_graph is 
      symmetrical) and store it */
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&ti);
 #endif
   cc = dikbd(a_graph->nnodes,first_ptr,sink_ptr,ISCALE);
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tf);
   path_time += tf - ti;
 #endif
@@ -1620,7 +1937,7 @@ cycle_list *Cgl012Cut::get_shortest_odd_cycle_list(
   free(forw_arb);
   free(backw_arb);
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tsf);
   cycle_time += tsf - tsi;
 #endif
@@ -1644,7 +1961,7 @@ cut_list *initialize_cut_list(int max_cut /* maximum number of cuts in the list 
   return(cuts);
 }
 
-#ifdef PRINT_CUTS
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_CUTS
 void Cgl012Cut::print_cut(cut *v_cut)
 {
   printf("\n content of cut: n_of_constr = %d, cnzcnt = %d, crhs = %d, csense = %c, violation = %f\n",
@@ -1926,7 +2243,7 @@ cut *Cgl012Cut::get_cut(
   static double gap, maxgap = 0.0;
 #endif
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tsi);
   cut_ncalls++;
 #endif
@@ -1934,7 +2251,7 @@ cut *Cgl012Cut::get_cut(
   /* compute the cut obtained by adding-up all the constraints 
      corresponding to edges in the cycle, in their non-weak form */
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tii);
 #endif
   
@@ -1970,7 +2287,7 @@ cut *Cgl012Cut::get_cut(
   }
   ok = get_ori_cut_coef(ncomb,comb,ccoef,&crhs,TRUE);
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tff);
   coef_time += tff - tii;
 #endif
@@ -1980,7 +2297,7 @@ cut *Cgl012Cut::get_cut(
     free(ccoef);
     free(comb);
     free(flag_comb);
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
     second_(&tsf);
     cut_time += tsf - tsi;
 #endif
@@ -2018,7 +2335,7 @@ if ( gap > maxgap ) maxgap = gap;
 
   free(ccoef);
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tsf);
   cut_time += tsf - tsi;
 #endif
@@ -2179,7 +2496,7 @@ short int only_viol /* flag which tells whether only an inequality of
   short int *type_even_weak, *type_odd_weak,   
 	    *switch_even_weak, *switch_odd_weak;
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tii);
 #endif
 
@@ -2205,7 +2522,7 @@ short int only_viol /* flag which tells whether only an inequality of
     }
     l = vars_to_weak[nweak];
     if ( p_ilp->possible_weak[l] == NONE ) {
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
       second_(&tff);
       bw_time += tff - tii;
 #endif
@@ -2261,7 +2578,7 @@ short int only_viol /* flag which tells whether only an inequality of
     if ( ( only_viol ) &&
 	 ( (*best_even_slack) > MAX_SLACK - EPS ) &&
 	 ( (*best_odd_slack) > MAX_SLACK - EPS ) ) {
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
       second_(&tff);
       bw_time += tff - tii;
 #endif
@@ -2333,7 +2650,7 @@ short int only_viol /* flag which tells whether only an inequality of
   }
   else ok_odd = FALSE;
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tff);        
   bw_time += tff - tii;
 #endif
@@ -2366,25 +2683,25 @@ cut_list *Cgl012Cut::basic_separation()
   print_parity_ilp();
 #endif
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&td);
 #endif
-#ifdef PRINT_TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_TIMING
   printf("... time elapsed at the beginning of basic_separation: %f\n",td - tti);
 #endif
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&td);
 #endif
-  #ifdef PRINT_TIME
+  #ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_TIMING
   printf("... time elapsed before initialize_sep_graph: %f\n",td - tti);
   #endif
   sep_graph = initialize_sep_graph();
   if ( sep_graph == NULL ) return(initialize_cut_list(1));
   special = p_ilp->mc;
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&td);
 #endif
-#ifdef PRINT_TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_TIMING
   printf("... time elapsed before weakening: %f\n",td - tti);
 #endif
 
@@ -2397,7 +2714,27 @@ cut_list *Cgl012Cut::basic_separation()
       return(initialize_cut_list(1));
     }
     if ( ! p_ilp->row_to_delete[i] ) {
+#ifdef CGL_ZH_ADVANCED_DEBUG_CONSTRAINT_PROFILING
+      const double zhRowStartSeconds = CoinGetTimeOfDay();
+#endif
       begi = p_ilp->mtbeg[i];
+      int zhRowPairCount = 0;
+      if ( p_ilp->mtcnt[i] <= 2 )
+        zhRowPairCount = (p_ilp->mtcnt[i] >= 1) ? 1 : 0;
+      else
+        zhRowPairCount = (p_ilp->mtcnt[i] * (p_ilp->mtcnt[i] - 1)) / 2;
+      if ( rowMaxPairCount_ >= 0 && zhRowPairCount > rowMaxPairCount_ )
+        continue;
+      if ( rowMaxFractionalCount_ >= 0 ) {
+        int zhFractionalHistogram[10];
+        int zhFractionalCount = 0;
+        int zhVeryFractionalCount = 0;
+        double zhFractionalSum = 0.0;
+        cglZeroHalfCollectFractionality(inp_ilp, i, zhFractionalHistogram,
+          &zhFractionalCount, &zhFractionalSum, &zhVeryFractionalCount);
+        if ( zhFractionalCount > rowMaxFractionalCount_ )
+          continue;
+      }
       if ( p_ilp->mtcnt[i] == 1 ) {
 	/* row with one odd entry only: edge j -- special */
 	weight = p_ilp->slack[i];
@@ -2427,6 +2764,9 @@ cut_list *Cgl012Cut::basic_separation()
 	  for ( ofsk = ofsj + 1; ofsk < p_ilp->mtcnt[i]; ofsk++ ) {
             if (((ofsj * p_ilp->mtcnt[i]) + ofsk) % 16384 == 0 &&
                 checkTimeLimit("basic_separation timeout", "during row weakening")) {
+#ifdef CGL_ZH_ADVANCED_DEBUG_CONSTRAINT_PROFILING
+              zhProfileRecordRow(i, CoinGetTimeOfDay() - zhRowStartSeconds, zhRowPairCount);
+#endif
               free_sep_graph(sep_graph);
               return(initialize_cut_list(1));
             }
@@ -2450,6 +2790,9 @@ cut_list *Cgl012Cut::basic_separation()
 				     &info_even_weak,&info_odd_weak,
 				     FALSE,TRUE); 
             if ( timeLimitReached() ) {
+#ifdef CGL_ZH_ADVANCED_DEBUG_CONSTRAINT_PROFILING
+              zhProfileRecordRow(i, CoinGetTimeOfDay() - zhRowStartSeconds, zhRowPairCount);
+#endif
               free_sep_graph(sep_graph);
               return(initialize_cut_list(1));
             }
@@ -2471,6 +2814,9 @@ cut_list *Cgl012Cut::basic_separation()
  EXITJK:;  }
 	}
       }
+#ifdef CGL_ZH_ADVANCED_DEBUG_CONSTRAINT_PROFILING
+      zhProfileRecordRow(i, CoinGetTimeOfDay() - zhRowStartSeconds, zhRowPairCount);
+#endif
     }
   }
 
@@ -2495,7 +2841,7 @@ cut_list *Cgl012Cut::basic_separation()
       }
     }
   }   
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tf);
   weak_time += tf - ti;
 #endif
@@ -2509,17 +2855,17 @@ cut_list *Cgl012Cut::basic_separation()
   print_sep_graph(sep_graph);
 #endif
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&ti);
 #endif
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&td);
 #endif
-  #ifdef PRINT_TIME
+  #ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_TIMING
   printf("... time elapsed before define_aux_graph: %f\n",td - tti);
   #endif
   aux_graph = define_aux_graph(sep_graph);
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tf);
   aux_time += tf - ti;
 #endif
@@ -2529,10 +2875,10 @@ cut_list *Cgl012Cut::basic_separation()
   
 /* exit(1); */
   
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&td);
 #endif
-  #ifdef PRINT_TIME
+  #ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_TIMING
   printf("... time elapsed before cycles and cuts: %f\n",td - tti);
   printf("%d nodes on list\n",sep_graph->nnodes);
   #endif
@@ -2567,7 +2913,14 @@ cut_list *Cgl012Cut::basic_separation()
 #endif
       if ( violated_cut->violation > MIN_VIOLATION + EPS ) {
 	/* violated 0-1/2 cut found */  
+#ifdef CGL_ZH_ADVANCED_DEBUG_CONSTRAINT_PROFILING
+        const int previousCutCount = out_cuts->cnum;
+#endif
 	out_cuts = add_cut_to_list(violated_cut,out_cuts);  
+#ifdef CGL_ZH_ADVANCED_DEBUG_CONSTRAINT_PROFILING
+        if (out_cuts->cnum > previousCutCount)
+          zhProfileRecordCut(violated_cut);
+#endif
 	if ( out_cuts->cnum >= MAX_CUTS ) {
 	  free_cycle_list(short_cycle_list);
 	  goto EXIT_CUTS; 
@@ -2585,13 +2938,13 @@ EXIT_CUTS:
   free_sep_graph(sep_graph);
   free_aux_graph(aux_graph);
 
-#ifdef PRINT_CUTS
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_CUTS
   print_cut_list(out_cuts);
 #endif
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&td);
 #endif
-  #ifdef PRINT_TIME
+  #ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_TIMING
   printf("... time elapsed at the end of basic_separation: %f\n",td - tti);
   #endif
 
@@ -2731,7 +3084,7 @@ void free_cur_cut()
   free(cur_cut);
 }
 
-#ifdef PRINT_TABU
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_TABU
 /* print_cur_cut: display cur_cut on output */
 
 void Cgl012Cut::print_cur_cut()
@@ -3248,14 +3601,14 @@ short int Cgl012Cut::best_neighbour(cut_list *out_cuts /* list of the violated c
   } /* for ( i = 0; i < m; i++ ) */
   
   if ( ibest == NONE ) {
-#ifdef PRINT_TABU
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_TABU
     printf("No move could be performed by best_neighbour\n");
 #endif
     return(TRUE);
   }
   modify_current(ibest,itypebest);  
   if ( cur_cut->violation > MIN_VIOLATION + EPS ) {
-#ifdef PRINT_TABU
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_TABU
     printf("... adding the current cut to the output list - it = %d viol = %f\n",it, cur_cut->violation);
 #endif
     new_cut = get_current_cut();
@@ -3387,7 +3740,7 @@ cut_list *Cgl012Cut::tabu_012()
   do {
     memory_reaction();
     failure = best_neighbour(out_cuts);
-#ifdef PRINT_TABU
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_TABU
     print_cur_cut();
 #endif
     it++;
@@ -3396,7 +3749,7 @@ cut_list *Cgl012Cut::tabu_012()
   }
   while ( out_cuts->cnum < MAX_CUTS && it < MAX_TABU_ITER );
   free_memory();
-#ifdef PRINT_TABU
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_TABU
     printf("Number of violated cuts found by Tabu Search %d\n",out_cuts->cnum);
     printf("Tabu Search timings: best_neighbour %f  score_by_moving %f coefficient %f  best_cut %f\n",
 	   time_best_neigh, time_scor_by_mov, time_coef, time_best_cut);
@@ -3856,12 +4209,12 @@ char **csense /* senses of the cuts: 'L', 'G' or 'E' */
 */
 		)
 {
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   float tbasi, tbasf;
 #endif
   errorNo=0;
   cut_list *out_cuts, *add_cuts;
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tti);
 #endif
 
@@ -3882,7 +4235,7 @@ char **csense /* senses of the cuts: 'L', 'G' or 'E' */
      which can be useful for 0-1/2 cut separation  - this may in fact be
      done only at the first call of the separation procedure */
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&ti);
 #endif
 
@@ -3893,7 +4246,7 @@ print_double_vect("xstar",p_ilp->xstar,p_ilp->mc);
 print_parity_ilp();
 */
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tf);
   prep_time += tf - ti;
 #endif
@@ -3905,7 +4258,7 @@ print_parity_ilp();
 #endif
     //free_ilp();
     //free_parity_ilp();
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&ttf);
   total_time += ttf - tti;
 #endif 
@@ -3916,19 +4269,22 @@ print_parity_ilp();
 
   sep_iter++;
   update_log_var();
+#ifdef CGL_ZH_ADVANCED_DEBUG_CONSTRAINT_PROFILING
+  zhProfileStartRound();
+#endif
 
 #ifdef POOL
 
   /* search for possible violated cuts in the pool */
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tpi);
 #endif
   add_cuts = get_cuts_from_pool(FALSE);
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tpf);
   pool_time += tpf - tpi;
-#ifdef PRINT_TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_TIMING
   printf("... time elapsed at the end of get_cuts_from_pool: %f\n",tpf - tti);
 #endif
 #endif
@@ -3946,13 +4302,16 @@ print_parity_ilp();
   /* try to identify violated 0-1/2 cuts by using the original procedure 
      described in Caprara and Fischetti's MP paper */
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tbasi);
 #endif
   
   out_cuts = basic_separation();
+#ifdef CGL_ZH_ADVANCED_DEBUG_CONSTRAINT_PROFILING
+  zhProfileFlushRound(sep_iter, out_cuts ? out_cuts->cnum : 0);
+#endif
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tbasf);
   tot_basic_sep_time += tbasf - tbasi;
   avg_basic_sep_time = tot_basic_sep_time / (float) sep_iter;
@@ -3966,13 +4325,13 @@ print_parity_ilp();
   if ( out_cuts->cnum == 0 ) {
     free_cut_list(out_cuts); 
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&ttabi);
 #endif
 
     out_cuts = tabu_012(); 
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&ttabf);
   tabu_time += ttabf - ttabi;
 #endif
@@ -3985,7 +4344,7 @@ print_parity_ilp();
 
   /* add the cuts separated to the pool */
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tpi);
 #endif
   add_cuts_to_pool(out_cuts);
@@ -3995,10 +4354,10 @@ print_parity_ilp();
      to be added to the current LP */
 
   add_cuts = get_cuts_from_pool(TRUE);
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&tpf);
   pool_time += tpf - tpi;
-#ifdef PRINT_TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_PRINT_TIMING
   printf("... time elapsed at the end of get_cuts_from_pool: %f\n",tpf - tti);
 #endif
 #endif
@@ -4014,7 +4373,7 @@ print_parity_ilp();
   //free_ilp();
   //free_parity_ilp();
   
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
   second_(&ttf);
   total_time += ttf - tti;
 #endif 
@@ -4031,7 +4390,7 @@ print_parity_ilp();
   }
 }
 
-#ifdef TIME
+#ifdef CGL_ZH_ADVANCED_DEBUG_TIMING
 /* print_times: print the timings of the separation procedure */
 
 void print_times()
@@ -4058,7 +4417,9 @@ Cgl012Cut::Cgl012Cut () :
   profileStartSeconds_(0.0),
   timeLimitReached_(false),
   timeCheckCountdown_(1),
-  sepGraphSparseThreshold_(MAX_SEP_GRAPH_ACTIVE_NODES)
+  sepGraphSparseThreshold_(MAX_SEP_GRAPH_ACTIVE_NODES),
+  rowMaxPairCount_(-1),
+  rowMaxFractionalCount_(-1)
 {
   // nothing to do here
 }
@@ -4079,7 +4440,9 @@ Cgl012Cut::Cgl012Cut (const Cgl012Cut & rhs) :
   profileStartSeconds_(0.0),
   timeLimitReached_(false),
   timeCheckCountdown_(1),
-  sepGraphSparseThreshold_(rhs.sepGraphSparseThreshold_)
+  sepGraphSparseThreshold_(rhs.sepGraphSparseThreshold_),
+  rowMaxPairCount_(rhs.rowMaxPairCount_),
+  rowMaxFractionalCount_(rhs.rowMaxFractionalCount_)
 {
   if (rhs.p_ilp||rhs.vlog||inp_ilp)
     abort();  
@@ -4090,6 +4453,9 @@ Cgl012Cut::Cgl012Cut (const Cgl012Cut & rhs) :
 //-------------------------------------------------------------------
 Cgl012Cut::~Cgl012Cut ()
 {
+#ifdef CGL_ZH_ADVANCED_DEBUG_CONSTRAINT_PROFILING
+  cglZeroHalfConstraintProfileStates().erase(this);
+#endif
   free_log_var();
   free_parity_ilp();
   free_ilp();
@@ -4103,6 +4469,9 @@ Cgl012Cut::operator=(
                    const Cgl012Cut& rhs)
 {
   if (this != &rhs) {
+#ifdef CGL_ZH_ADVANCED_DEBUG_CONSTRAINT_PROFILING
+    cglZeroHalfConstraintProfileStates().erase(this);
+#endif
     if (rhs.p_ilp||rhs.vlog||inp_ilp)
       abort();  
     free_log_var();
@@ -4129,6 +4498,8 @@ Cgl012Cut::operator=(
     profileStartSeconds_ = 0.0;
     resetTimeCheckState();
     sepGraphSparseThreshold_ = rhs.sepGraphSparseThreshold_;
+    rowMaxPairCount_ = rhs.rowMaxPairCount_;
+    rowMaxFractionalCount_ = rhs.rowMaxFractionalCount_;
   }
   return *this;
 }
@@ -4151,4 +4522,24 @@ void Cgl012Cut::setSepGraphSparseThreshold(int value)
 int Cgl012Cut::getSepGraphSparseThreshold() const
 {
   return sepGraphSparseThreshold_;
+}
+
+void Cgl012Cut::setRowMaxPairCount(int value)
+{
+  rowMaxPairCount_ = value;
+}
+
+int Cgl012Cut::getRowMaxPairCount() const
+{
+  return rowMaxPairCount_;
+}
+
+void Cgl012Cut::setRowMaxFractionalCount(int value)
+{
+  rowMaxFractionalCount_ = value;
+}
+
+int Cgl012Cut::getRowMaxFractionalCount() const
+{
+  return rowMaxFractionalCount_;
 }

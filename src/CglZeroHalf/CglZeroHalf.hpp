@@ -51,6 +51,18 @@ public:
   /// Set active-node threshold for sparse separation graph use (0 means always sparse)
   inline void setSepGraphSparseThreshold(int value)
   { cutInfo_.setSepGraphSparseThreshold(value); }
+  /// Get maximum row pair count allowed before skipping the row (-1 disables)
+  inline int getRowMaxPairCount() const
+  { return cutInfo_.getRowMaxPairCount(); }
+  /// Set maximum row pair count allowed before skipping the row (-1 disables)
+  inline void setRowMaxPairCount(int value)
+  { cutInfo_.setRowMaxPairCount(value); }
+  /// Get maximum row fractional count allowed before skipping the row (-1 disables)
+  inline int getRowMaxFractionalCount() const
+  { return cutInfo_.getRowMaxFractionalCount(); }
+  /// Set maximum row fractional count allowed before skipping the row (-1 disables)
+  inline void setRowMaxFractionalCount(int value)
+  { cutInfo_.setRowMaxFractionalCount(value); }
   //@}
 
   /**@name Constructors and destructors */

@@ -63,7 +63,7 @@ typedef struct
   cgl_arc * arcs;
 } cgl_graph;
 /* #define PRINT */
-/* #define PRINT_CUTS */
+/* #define CGL_ZH_ADVANCED_DEBUG_PRINT_CUTS */
 #define REDUCTION
 
 typedef struct {
@@ -290,6 +290,12 @@ private:
   void resetTimeCheckState();
   void ensureBestWeakeningBufferCapacity(int requiredSize);
   void ensureVarsToWeakBufferCapacity(int requiredSize);
+#ifdef CGL_ZH_ADVANCED_DEBUG_CONSTRAINT_PROFILING
+  void zhProfileStartRound();
+  void zhProfileRecordRow(int row, double elapsedSeconds, int pairCount);
+  void zhProfileRecordCut(const cut *v_cut);
+  void zhProfileFlushRound(int round, int generatedCuts);
+#endif
 /* best_weakening: find the best upper/lower bound weakening of a set
    of variables */
 
@@ -441,6 +447,10 @@ public:
   double getMaxSeconds() const;
   void setSepGraphSparseThreshold(int value);
   int getSepGraphSparseThreshold() const;
+  void setRowMaxPairCount(int value);
+  int getRowMaxPairCount() const;
+  void setRowMaxFractionalCount(int value);
+  int getRowMaxFractionalCount() const;
   /**@name Constructors and destructors */
   //@{
   /// Default constructor 
@@ -494,6 +504,8 @@ int errorNo;
   std::vector<short int> switchOddWeakBuffer_;
   std::vector<int> varsToWeakBuffer_;
   int sepGraphSparseThreshold_; /* active-node threshold for sparse separation graph */
+  int rowMaxPairCount_; /* skip rows whose pair count exceeds this threshold; negative disables */
+  int rowMaxFractionalCount_; /* skip rows whose fractional count exceeds this threshold; negative disables */
   //@}
 };
 #endif

@@ -191,6 +191,8 @@ CglZeroHalf::CglZeroHalf (
   //cutInfo_ = Cgl012Cut(source.cutInfo_);
   cutInfo_ = Cgl012Cut();
   cutInfo_.setSepGraphSparseThreshold(source.cutInfo_.getSepGraphSparseThreshold());
+  cutInfo_.setRowMaxPairCount(source.cutInfo_.getRowMaxPairCount());
+  cutInfo_.setRowMaxFractionalCount(source.cutInfo_.getRowMaxFractionalCount());
 }
 
 
@@ -261,6 +263,8 @@ CglZeroHalf::operator=(
     //cutInfo_=Cgl012Cut(rhs.cutInfo_);
     cutInfo_=Cgl012Cut();
     cutInfo_.setSepGraphSparseThreshold(rhs.cutInfo_.getSepGraphSparseThreshold());
+    cutInfo_.setRowMaxPairCount(rhs.cutInfo_.getRowMaxPairCount());
+    cutInfo_.setRowMaxFractionalCount(rhs.cutInfo_.getRowMaxFractionalCount());
   }
   return *this;
 }
@@ -506,6 +510,10 @@ CglZeroHalf::generateCpp( FILE * fp)
     fprintf(fp,"4  zeroHalf.setAggressiveness(%d);\n",getAggressiveness());
   if (getSepGraphSparseThreshold()!=other.getSepGraphSparseThreshold())
     fprintf(fp,"3  zeroHalf.setSepGraphSparseThreshold(%d);\n",getSepGraphSparseThreshold());
+  if (getRowMaxPairCount()!=other.getRowMaxPairCount())
+    fprintf(fp,"3  zeroHalf.setRowMaxPairCount(%d);\n",getRowMaxPairCount());
+  if (getRowMaxFractionalCount()!=other.getRowMaxFractionalCount())
+    fprintf(fp,"3  zeroHalf.setRowMaxFractionalCount(%d);\n",getRowMaxFractionalCount());
   return "zeroHalf";
 }
 #include <vector>
