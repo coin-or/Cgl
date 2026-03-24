@@ -1521,7 +1521,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 #if CBC_USE_PAPILO
   papiloStruct keepPapilo = initialTry;
   OsiClpSolverInterface * clpSolverIn
-    = dynamic_cast<OsiClpSolverInterface *> (&model);
+    = getClpSolverInterface(&model);
   if ((initialTry.presolveType&3)!=0)
     makeEquality = -2;
   bool doPapiloPresolve = (initialTry.presolveType&1)!=0;
@@ -3734,7 +3734,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	  break;
 	}
 #ifdef CBC_HAS_CLP
-	OsiClpSolverInterface * clpSolver = dynamic_cast<OsiClpSolverInterface *>(newModel);
+	OsiClpSolverInterface * clpSolver = getClpSolver(newModel);
 	if (clpSolver) {
 	  change = clpSolver->tightenBounds();
 	  if (change > 0) {
@@ -4521,7 +4521,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   if (clpSolverIn && (keepPapilo.presolveType&2) !=0 && returnModel) {
     double ppstart2 = getCurrentCPUTime();
     OsiClpSolverInterface * clpSolverOut =
-      dynamic_cast<OsiClpSolverInterface *>(returnModel);
+      getClpSolver(returnModel);
     ClpSimplex * simplexOut = clpSolverOut->getModelPtr();
     initialTry = papiloPresolve(simplexOut,false,timeLimit_-ppstart2);
     initialTry.presolveType &= ~2;
@@ -5617,12 +5617,12 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
       if (this==initialTry.preProcess && (initialTry.presolveType&128)!=0) {
       initialTry.preProcess = NULL;
       OsiClpSolverInterface * presolvedSolver =
-	dynamic_cast<OsiClpSolverInterface *>(modelM);
+	getClpSolver(modelM);
       delete initialTry.presolvedModel;
       initialTry.presolvedModel = presolvedSolver->getModelPtr();
       ClpSimplex * original = postSolvedModel(initialTry);
       OsiClpSolverInterface * originalSolver = 
-	dynamic_cast<OsiClpSolverInterface *>(initialTry.beforePapiloEnd);
+	getClpSolver(initialTry.beforePapiloEnd);
       modelM= originalSolver;
       if (originalSolver->integerInformation()) {
 	int numberColumns = original->numberColumns();
@@ -5745,7 +5745,7 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
       OsiSolverInterface *model = model_[iPass];
 #ifdef CBC_HAS_CLP
       OsiClpSolverInterface * postsolvedSolver =
-	dynamic_cast<OsiClpSolverInterface *>(model);
+	getClpSolver(model);
       if (postsolvedSolver) // make sure can't stop
 	postsolvedSolver->getModelPtr()->setMaximumSeconds(-1.0);
 #endif
@@ -6098,12 +6098,12 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
       if (this==initialTry.preProcess && (initialTry.presolveType&64)!=0) {
       initialTry.preProcess = NULL;
       OsiClpSolverInterface * presolvedSolver =
-	dynamic_cast<OsiClpSolverInterface *>(modelM);
+	getClpSolver(modelM);
       delete initialTry.presolvedModel;
       initialTry.presolvedModel = presolvedSolver->getModelPtr();
       ClpSimplex * original = postSolvedModel(initialTry);
       OsiClpSolverInterface * originalSolver =
-	dynamic_cast<OsiClpSolverInterface *>(originalModel_);
+	getClpSolver(originalModel_);
       modelM= originalSolver;
       int numberColumns = original->numberColumns();
       for (int i=0;i<numberColumns;i++) {
@@ -6310,8 +6310,10 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
   //double time1 = CoinCpuTime();
 #ifdef CBC_HAS_CLP
   OsiClpSolverInterface * originalSolver =
-    dynamic_cast<OsiClpSolverInterface *>(originalModel_);
+    getClpSolver(originalModel_);
+#ifndef CBC_SKIP_CLP_TEST
   if (originalSolver) // make sure can't stop
+#endif
     originalSolver->getModelPtr()->setMaximumSeconds(-1.0);
 #endif
   originalModel_->initialSolve();

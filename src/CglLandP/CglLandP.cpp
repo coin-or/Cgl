@@ -354,9 +354,9 @@ CglLandP::CachedData::getData(const OsiSolverInterface &si)
 	// Save enabled solver
 	solver_ = si.clone();
 #ifdef CGL_HAS_OSICLP
-	OsiClpSolverInterface * clpSi = dynamic_cast<OsiClpSolverInterface *>(solver_);
-	const OsiClpSolverInterface * clpSiRhs = dynamic_cast<const OsiClpSolverInterface *>(&si);
-	if (clpSi)
+	OsiClpSolverInterface * clpSi = getClpSolver(solver_);
+	const OsiClpSolverInterface * clpSiRhs = getConstClpSolver(&si);
+	if (CBC_SKIP_CLP_TEST||clpSi)
 	  clpSi->getModelPtr()->copyEnabledStuff(clpSiRhs->getModelPtr());;
 #endif
         ncSi->disableSimplexInterface();

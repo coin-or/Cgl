@@ -97,7 +97,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   const OsiSolverInterface * useSolver=&si;
 #ifdef CGL_HAS_CLP_GOMORY
   double * objective = NULL;
-  OsiClpSolverInterface * clpSolver = dynamic_cast<OsiClpSolverInterface *>(originalSolver_);
+  OsiClpSolverInterface * clpSolver = originalSolver_ ? getClpSolver(originalSolver_) : NULL;
   int numberOriginalRows = -1;
   if (clpSolver) {
     useSolver = originalSolver_;
@@ -106,7 +106,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     if (!clpSolver->getNumRows()||numberColumns!=clpSolver->getNumCols()) {
       delete originalSolver_;
       originalSolver_=si.clone();
-      clpSolver = dynamic_cast<OsiClpSolverInterface *>(originalSolver_);
+      clpSolver = getClpSolver(originalSolver_);
       assert (clpSolver);
       useSolver = originalSolver_;
     }

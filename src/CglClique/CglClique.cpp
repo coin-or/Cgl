@@ -881,8 +881,8 @@ CglFakeClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
     fakeSolver_->setDblParam(OsiDualObjectiveLimit,COIN_DBL_MAX);
 #ifdef CGL_HAS_CLP
     OsiClpSolverInterface * clpSolver
-      = dynamic_cast<OsiClpSolverInterface *> (fakeSolver_);
-    if (clpSolver) {
+      = getClpSolver(fakeSolver_);
+    if (CBC_SKIP_CLP_TEST||clpSolver) {
       // fix up fake solver
       const ClpSimplex * siSimplex = clpSolver->getModelPtr();
       // need to set djs

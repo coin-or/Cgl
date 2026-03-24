@@ -75,7 +75,7 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
 #if MODIFY_LP //def CBC_HAS_CLP
   // need Clp to set row solution for new row
   const OsiClpSolverInterface * clpSolver =
-    dynamic_cast<const OsiClpSolverInterface *>(&si);
+    getConstClpSolver(&si);
   if (!info.inTree && clpSolver && clpSolver->getObjSense()==1.0) {
     if (info.level>=0) {
 #if MODIFY_LP==1

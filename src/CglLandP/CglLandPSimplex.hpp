@@ -79,11 +79,15 @@ public:
     {
         si_ = si;
 #ifdef CGL_HAS_OSICLP
-        OsiClpSolverInterface * clpSi = dynamic_cast<OsiClpSolverInterface *>(si_);
+#ifndef CBC_OTHER_SOLVER
+        clp_ = getClpSolver(si);
+#else
+        OsiClpSolverInterface * clpSi = getClpSolver(si_);
         if (clpSi)
         {
             clp_ = clpSi;
         }
+#endif
 #endif
     }
     void freeSi()

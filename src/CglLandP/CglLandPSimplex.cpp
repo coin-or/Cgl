@@ -234,8 +234,8 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
     si_ = const_cast<OsiSolverInterface *>(&si);
 
 #ifdef CGL_HAS_OSICLP
-    OsiClpSolverInterface * clpSi = dynamic_cast<OsiClpSolverInterface *>(si_);
-    if (clpSi)
+    OsiClpSolverInterface * clpSi = getClpSolver(si_);
+    if (CBC_SKIP_CLP_TEST||clpSi)
     {
         clp_ = clpSi;
     }
@@ -645,9 +645,9 @@ CglLandPSimplex::optimize
     delete si_;
     si_ = cached.solver_->clone();
 #ifdef CGL_HAS_OSICLP
-    OsiClpSolverInterface * clpSi = dynamic_cast<OsiClpSolverInterface *>(si_);
-    OsiClpSolverInterface * clpSiRhs = dynamic_cast<OsiClpSolverInterface *>(cached.solver_);
-    if (clpSi)
+    OsiClpSolverInterface * clpSi = getClpSolver(si_);
+    OsiClpSolverInterface * clpSiRhs = getClpSolver(cached.solver_);
+    if (CBC_SKIP_CLP_TEST||clpSi)
     {
         clp_ = clpSi;
 	clpSi->getModelPtr()->copyEnabledStuff(clpSiRhs->getModelPtr());;
