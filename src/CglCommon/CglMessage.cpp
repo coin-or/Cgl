@@ -20,7 +20,7 @@ static Cgl_message us_english[] = {
   { CGL_SLACKS, 8, 1, "%d inequality constraints converted to equality constraints" },
   { CGL_PROCESS_STATS2, 4, 1, "processed model has %d rows, %d columns (%d integer (%d of which binary)) and %d elements" },
   { CGL_PROCESS_SOS1, 5, 1, "%d SOS with %d members" },
-  { CGL_PROCESS_SOS2, 6, 2, "%d SOS (%d members out of %d) with %d overlaps - too much overlap or too many others" },
+  { CGL_PROCESS_SOS2, 6, 1, "%d SOS (%d members out of %d) with %d overlaps - too much overlap or too many others" },
   { CGL_UNBOUNDED, 7, 1, "Continuous relaxation is unbounded!" },
   { CGL_ELEMENTS_CHANGED1, 9, 2, "%d elements changed" },
   { CGL_ELEMENTS_CHANGED2, 10, 3, "element in row %d for column %d changed from %g to %g" },
@@ -28,7 +28,7 @@ static Cgl_message us_english[] = {
   { CGL_ADDED_INTEGERS, 12, 1, "Added %d variables (from %d rows) with %d elements" },
   { CGL_POST_INFEASIBLE, 13, 1, "Postprocessed model is infeasible - possible tolerance issue - try without preprocessing" },
   { CGL_POST_CHANGED, 14, 1, "Postprocessing changed objective from %g to %g - possible tolerance issue - try without preprocessing" },
-  { CGL_PROCESS_CLQSTR, 15, 1,"Clique Strengthening extended %ld cliques, %ld were dominated" },
+  { CGL_PROCESS_CLQSTR, 15, 2,"Clique Strengthening extended %ld cliques, %ld were dominated" },
   { CGL_WARNING_CLQSTR, 16, 1, "Warning: reduced costs not available in clique strengthening - changing the extension method to 'max degree'" },
   { CGL_GENERAL, 1000, 1, "%s" },
   { CGL_DUMMY_END, 999999, 0, "" }
