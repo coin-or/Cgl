@@ -33,6 +33,7 @@
 #include "CglDuplicateRow.hpp"
 #include "CoinPresolveDupcol.hpp"
 #include "CglClique.hpp"
+#include "CglBKClique.hpp"
 //#define PRINT_DEBUG 1
 //#define COIN_DEVELOP 1
 #ifdef COIN_DEVELOP
@@ -3203,14 +3204,21 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       delete[] temp;
       numberCutGenerators_ += nAdd;
       if (nAdd == 2 || (tuning & USECGLCLIQUE) != 0) {
-        CglClique *cliqueGen = new CglClique(false, true);
-        cliqueGen->setStarCliqueReport(false);
-        cliqueGen->setRowCliqueReport(false);
-        if ((tuning & USECGLCLIQUE) == 0)
-          cliqueGen->setMinViolation(-2.0);
-        else
-          cliqueGen->setMinViolation(-3.0);
-        generator_[0] = cliqueGen;
+        if ((options_ & 1024) == 0) {
+          // Modern cgraph-based clique separator (default)
+          CglBKClique *bkGen = new CglBKClique();
+          generator_[0] = bkGen;
+        } else {
+          // Legacy CglClique (options_ & 1024 to force old behavior)
+          CglClique *cliqueGen = new CglClique(false, true);
+          cliqueGen->setStarCliqueReport(false);
+          cliqueGen->setRowCliqueReport(false);
+          if ((tuning & USECGLCLIQUE) == 0)
+            cliqueGen->setMinViolation(-2.0);
+          else
+            cliqueGen->setMinViolation(-3.0);
+          generator_[0] = cliqueGen;
+        }
       }
       if ((allPlusOnes || (tuning & 256) != 0) && (options_ & 4) == 0) {
         CglDuplicateRow *dupCuts = new CglDuplicateRow(oldModel);
@@ -7432,6 +7440,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
       const int *duplicate = NULL;
       CglDuplicateRow *dupRow = NULL;
       CglClique *cliqueGen = NULL;
+      CglBKClique *bkCliqueGen = NULL;
       if (iGenerator >= 0) {
         //char name[20];
         //sprintf(name,"prex%2.2d.mps",iGenerator);
@@ -7441,7 +7450,8 @@ CglPreProcess::modified(OsiSolverInterface *model,
         // skip duplicate rows except once
         dupRow = dynamic_cast< CglDuplicateRow * >(generator_[iGenerator]);
         cliqueGen = dynamic_cast< CglClique * >(generator_[iGenerator]);
-        if (cliqueGen && iPass)
+        bkCliqueGen = dynamic_cast< CglBKClique * >(generator_[iGenerator]);
+        if ((cliqueGen || bkCliqueGen) && iPass)
           continue;
         if (dupRow && (iPass || iBigPass))
           continue;
