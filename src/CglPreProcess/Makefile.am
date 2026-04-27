@@ -22,7 +22,8 @@ AM_LDFLAGS = $(LT_LDFLAGS)
 AM_CPPFLAGS = $(CGLLIB_CFLAGS) \
 	-I$(srcdir)/../CglProbing \
 	-I$(srcdir)/../CglDuplicateRow \
-	-I$(srcdir)/../CglClique
+	-I$(srcdir)/../CglClique \
+	-I$(srcdir)/../CglBKClique
 
 ########################################################################
 #                Headers that need to be installed                     #
