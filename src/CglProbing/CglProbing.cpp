@@ -102,10 +102,6 @@ public:
         hashSize_ = 4 * size_;
       else
         hashSize_ = 2 * size_;
-#ifdef COIN_DEVELOP
-      printf("increaing size from %d to %d (hash size %d)\n",
-        numberCuts_, size_, hashSize_);
-#endif
       OsiRowCut2 **temp = new OsiRowCut2 *[size_];
       delete[] hash_;
       hash_ = new CoinHashLink[hashSize_];
@@ -113,14 +109,14 @@ public:
         hash_[i].index = -1;
         hash_[i].next = -1;
       }
+      lastHash_ = -1;
       for (int i = 0; i < numberCuts_; i++) {
         temp[i] = rowCut_[i];
         int ipos = hashCut(*temp[i], hashSize_);
-        int found = -1;
         int jpos = ipos;
+        int found = -1;
         while (true) {
           int j1 = hash_[ipos].index;
-
           if (j1 >= 0) {
             if (!same(*temp[i], *temp[j1])) {
               int k = hash_[ipos].next;
@@ -139,10 +135,8 @@ public:
         if (found < 0) {
           assert(hash_[ipos].next == -1);
           if (ipos == jpos) {
-            // first
             hash_[ipos].index = i;
           } else {
-            // find next space
             while (true) {
               ++lastHash_;
               assert(lastHash_ < hashSize_);
@@ -160,37 +154,31 @@ public:
     if (numberCuts_ < size_) {
       double newLb = cut.lb();
       double newUb = cut.ub();
-      CoinPackedVector vector = cut.row();
-      int numberElements = vector.getNumElements();
-      int *newIndices = vector.getIndices();
-      double *newElements = vector.getElements();
-      CoinSort_2(newIndices, newIndices + numberElements, newElements);
-      int i;
+      // Sort the input cut's row in place (avoid copy)
+      cut.mutableRow().sortIncrIndex();
+      int numberElements = cut.row().getNumElements();
+      const int *newIndices = cut.row().getIndices();
+      const double *newElements = cut.row().getElements();
       bool bad = false;
-      for (i = 0; i < numberElements; i++) {
+      for (int i = 0; i < numberElements; i++) {
         double value = fabs(newElements[i]);
         if (value < 1.0e-12 || value > 1.0e12)
           bad = true;
       }
-      // take out if bounds dubious
       if (newLb < -1.0e12 && newLb > -1.0e40)
         bad = true;
       if (newUb > 1.0e12 && newUb < 1.0e40)
         bad = true;
       if (bad)
         return 1;
-      OsiRowCut2 newCut(whichRow);
-      newCut.setLb(newLb);
-      newCut.setUb(newUb);
-      newCut.setRow(vector);
-      int ipos = hashCut(newCut, hashSize_);
+      // Hash directly from the cut (no copy needed)
+      int ipos = hashCut(cut, hashSize_);
       int found = -1;
       int jpos = ipos;
       while (true) {
         int j1 = hash_[ipos].index;
-
         if (j1 >= 0) {
-          if (!same(newCut, *rowCut_[j1])) {
+          if (!same(cut, *rowCut_[j1])) {
             int k = hash_[ipos].next;
             if (k != -1)
               ipos = k;
@@ -207,10 +195,8 @@ public:
       if (found < 0) {
         assert(hash_[ipos].next == -1);
         if (ipos == jpos) {
-          // first
           hash_[ipos].index = numberCuts_;
         } else {
-          // find next space
           while (true) {
             ++lastHash_;
             assert(lastHash_ < hashSize_);
@@ -220,10 +206,11 @@ public:
           hash_[ipos].next = lastHash_;
           hash_[lastHash_].index = numberCuts_;
         }
+        // Only allocate and copy when actually storing
         OsiRowCut2 *newCutPtr = new OsiRowCut2(whichRow);
         newCutPtr->setLb(newLb);
         newCutPtr->setUb(newUb);
-        newCutPtr->setRow(vector);
+        newCutPtr->setRow(cut.row());
         rowCut_[numberCuts_++] = newCutPtr;
         return 0;
       } else {
