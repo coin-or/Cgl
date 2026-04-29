@@ -210,7 +210,7 @@ public:
         OsiRowCut2 *newCutPtr = new OsiRowCut2(whichRow);
         newCutPtr->setLb(newLb);
         newCutPtr->setUb(newUb);
-        newCutPtr->setRow(cut.row());
+        newCutPtr->setRow(std::move(cut.mutableRow()));
         rowCut_[numberCuts_++] = newCutPtr;
         return 0;
       } else {
@@ -2107,7 +2107,7 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface &si,
             }
             rc.setEffectiveness(effectiveness);
             assert(!info->strengthenRow[i]);
-            info->strengthenRow[i] = rc.clone();
+            info->strengthenRow[i] = new OsiRowCut(std::move(rc));
           }
         }
         rowLower[nKeep] = rowLower[i];
@@ -5925,7 +5925,7 @@ int CglProbing::probe(const OsiSolverInterface &si,
                         if (!info->strengthenRow[realRow] || info->strengthenRow[realRow]->effectiveness() > effectiveness) {
                           delete info->strengthenRow[realRow];
                           rc.setEffectiveness(effectiveness);
-                          info->strengthenRow[realRow] = rc.clone();
+                          info->strengthenRow[realRow] = new OsiRowCut(std::move(rc));
                         }
                       }
                     }
@@ -6072,7 +6072,7 @@ int CglProbing::probe(const OsiSolverInterface &si,
                         if (!info->strengthenRow[realRow] || info->strengthenRow[realRow]->effectiveness() > effectiveness) {
                           delete info->strengthenRow[realRow];
                           rc.setEffectiveness(effectiveness);
-                          info->strengthenRow[realRow] = rc.clone();
+                          info->strengthenRow[realRow] = new OsiRowCut(std::move(rc));
                         }
                       }
                     }
@@ -6652,7 +6652,7 @@ int CglProbing::probe(const OsiSolverInterface &si,
                         if (!info->strengthenRow[realRow] || info->strengthenRow[realRow]->effectiveness() > effectiveness) {
                           delete info->strengthenRow[realRow];
                           rc.setEffectiveness(effectiveness);
-                          info->strengthenRow[realRow] = rc.clone();
+                          info->strengthenRow[realRow] = new OsiRowCut(std::move(rc));
                         }
                       }
                     }
@@ -6759,7 +6759,7 @@ int CglProbing::probe(const OsiSolverInterface &si,
                         if (!info->strengthenRow[realRow] || info->strengthenRow[realRow]->effectiveness() > effectiveness) {
                           delete info->strengthenRow[realRow];
                           rc.setEffectiveness(effectiveness);
-                          info->strengthenRow[realRow] = rc.clone();
+                          info->strengthenRow[realRow] = new OsiRowCut(std::move(rc));
                         }
                       }
                     }
