@@ -3904,9 +3904,9 @@ int CglProbing::probe(const OsiSolverInterface &si,
   } else {
     saveFixingInfo = (info->initializeFixing(&si) > 0);
   }
-  const double probingDeadline = (maxSeconds_ > 0.0) ? (CoinWallclockTime() + maxSeconds_) : 1.0e100;
+  const double probingDeadline = (maxSeconds_ > 0.0) ? (CoinWallclockTime() + maxSeconds_) : 0.0;
   while (ipass < maxPass && nfixed) {
-    if (CoinWallclockTime() > probingDeadline)
+    if (probingDeadline && CoinWallclockTime() > probingDeadline)
       break;
     int iLook;
     ipass++;
@@ -3976,7 +3976,7 @@ int CglProbing::probe(const OsiSolverInterface &si,
     // printf("maxStack %d maxPass %d numberThisTime %d info pass %d\n",
     //    maxStack,maxPass,numberThisTime_,info->pass);
     for (iLook = 0; iLook < numberThisTime_; iLook++) {
-      if ((iLook & 127) == 0 && CoinWallclockTime() > probingDeadline) {
+      if (probingDeadline && (iLook & 127) == 0 && CoinWallclockTime() > probingDeadline) {
         ipass = maxPass;
         break;
       }
@@ -7194,16 +7194,16 @@ int CglProbing::probeCliques(const OsiSolverInterface &si,
   int maxPass = info->inTree ? maxPass_ : maxPassRoot_;
   // If we are going to replace coefficient then we don't need to be effective
   double needEffectiveness = info->strengthenRow ? -1.0e10 : 1.0e-3;
-  const double probingDeadline = (maxSeconds_ > 0.0) ? (CoinWallclockTime() + maxSeconds_) : 1.0e100;
+  const double probingDeadline = (maxSeconds_ > 0.0) ? (CoinWallclockTime() + maxSeconds_) : 0.0;
   while (ipass < maxPass && nfixed) {
     int iLook;
-    if (CoinWallclockTime() > probingDeadline)
+    if (probingDeadline && CoinWallclockTime() > probingDeadline)
       break;
     ipass++;
     nfixed = 0;
     for (iLook = 0; iLook < numberThisTime_; iLook++) {
       double solval;
-      if ((iLook & 127) == 0 && CoinWallclockTime() > probingDeadline) {
+      if (probingDeadline && (iLook & 127) == 0 && CoinWallclockTime() > probingDeadline) {
         ipass = maxPass;
         break;
       }
@@ -11565,7 +11565,7 @@ int CglProbing::probeFast(const OsiSolverInterface &si,
   const double probingDeadline = (maxSeconds_ > 0.0) ? (CoinWallclockTime() + maxSeconds_) : 1.0e100;
   while (ipass < maxPass && nfixed) {
     int iLook;
-    if (CoinWallclockTime() > probingDeadline)
+    if (probingDeadline && CoinWallclockTime() > probingDeadline)
       break;
     ipass++;
     // printf("pass %d\n",ipass);
@@ -11634,7 +11634,7 @@ int CglProbing::probeFast(const OsiSolverInterface &si,
     // printf("maxStack %d maxPass %d numberThisTime %d info pass %d\n",
     //    maxStack,maxPass,numberThisTime_,info->pass);
     for (iLook = 0; iLook < numberThisTime_; iLook++) {
-      if ((iLook & 127) == 0 && CoinWallclockTime() > probingDeadline) {
+      if (probingDeadline && (iLook & 127) == 0 && CoinWallclockTime() > probingDeadline) {
         ipass = maxPass;
         break;
       }
