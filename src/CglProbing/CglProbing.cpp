@@ -3863,18 +3863,20 @@ int CglProbing::probe(const OsiSolverInterface &si,
               double upper = colUpper[jColumn];
               if (colsol[jColumn] > intSol * upper + 1.0e-4) {
                 nCut++;
-                OsiRowCut rc;
-                rc.setLb(-COIN_DBL_MAX);
-                rc.setUb(0.0);
-                rc.setEffectiveness(1.0e-5);
-                int index[2];
-                double element[2];
-                index[0] = jColumn;
-                index[1] = whichInt;
-                element[0] = 1.0;
-                element[1] = -upper;
-                rc.setRow(2, index, element, false);
-                cs.insert(rc);
+                {
+                  OsiRowCut *rc = new OsiRowCut;
+                  rc->setLb(-COIN_DBL_MAX);
+                  rc->setUb(0.0);
+                  rc->setEffectiveness(1.0e-5);
+                  int index[2];
+                  double element[2];
+                  index[0] = jColumn;
+                  index[1] = whichInt;
+                  element[0] = 1.0;
+                  element[1] = -upper;
+                  rc->setRow(2, index, element, false);
+                  cs.insert(rc);
+                }
               }
             }
           }
@@ -5593,7 +5595,7 @@ int CglProbing::probe(const OsiSolverInterface &si,
           /* keep */
           iway = 3;
           nfixed++;
-          OsiColCut cc;
+          OsiColCut *cc = new OsiColCut;
           int /*nTot=0,*/ nFix = 0, nInt = 0;
           bool ifCut = false;
           for (istackC = 0; istackC < nstackC; istackC++) {
@@ -5613,7 +5615,7 @@ int CglProbing::probe(const OsiSolverInterface &si,
           if (nFix) {
             // nTot=nFix;
             cleanBounds(1, nFix, index, element);
-            cc.setUbs(nFix, index, element);
+            cc->setUbs(nFix, index, element);
             nFix = 0;
           }
           for (istackC = 0; istackC < nstackC; istackC++) {
@@ -5633,19 +5635,21 @@ int CglProbing::probe(const OsiSolverInterface &si,
           if (nFix) {
             // nTot+=nFix;
             cleanBounds(-1, nFix, index, element);
-            cc.setLbs(nFix, index, element);
+            cc->setLbs(nFix, index, element);
           }
           // could tighten continuous as well
           if (nInt) {
             if (ifCut) {
-              cc.setEffectiveness(100.0);
+              cc->setEffectiveness(100.0);
             } else {
-              cc.setEffectiveness(1.0e-5);
+              cc->setEffectiveness(1.0e-5);
             }
 #ifdef CGL_DEBUG
-            checkBounds(debugger, cc);
+            checkBounds(debugger, *cc);
 #endif
             cs.insert(cc);
+          } else {
+            delete cc;
           }
           for (istackC = 0; istackC < nstackC; istackC++) {
             int icol = stackC[istackC];
@@ -6195,7 +6199,7 @@ int CglProbing::probe(const OsiSolverInterface &si,
                 int icol = stackC[istackC];
                 markC[icol] = istackC + 100000;
               }
-              OsiColCut cc;
+              OsiColCut *cc = new OsiColCut;
               int /*nTot=0,*/ nFix = 0, nInt = 0;
               bool ifCut = false;
               for (istackC = 1; istackC < nstackC0; istackC++) {
@@ -6231,7 +6235,7 @@ int CglProbing::probe(const OsiSolverInterface &si,
               if (nFix) {
                 // nTot=nFix;
                 cleanBounds(-1, nFix, index, element);
-                cc.setLbs(nFix, index, element);
+                cc->setLbs(nFix, index, element);
                 nFix = 0;
               }
               for (istackC = 1; istackC < nstackC0; istackC++) {
@@ -6267,10 +6271,10 @@ int CglProbing::probe(const OsiSolverInterface &si,
                     double upperOriginal = saveU[istackC1];
                     double lowerOriginal = saveL[istackC1];
                     if (upperWhenDown < lowerOriginal + 1.0e-12 && lowerWhenUp > upperOriginal - 1.0e-12) {
-                      OsiRowCut rc;
-                      rc.setLb(lowerOriginal);
-                      rc.setUb(lowerOriginal);
-                      rc.setEffectiveness(1.0e-5);
+                      OsiRowCut *rc = new OsiRowCut;
+                      rc->setLb(lowerOriginal);
+                      rc->setUb(lowerOriginal);
+                      rc->setEffectiveness(1.0e-5);
                       int index[2];
                       double element[2];
                       index[0] = j;
@@ -6279,21 +6283,23 @@ int CglProbing::probe(const OsiSolverInterface &si,
                       // If zero then - must have been fixed without noticing!
                       if (fabs(element[0]) > 1.0e-8) {
                         element[1] = 1.0;
-                        rc.setRow(2, index, element, false);
+                        rc->setRow(2, index, element, false);
                         cs.insert(rc);
+                      } else {
+                        delete rc;
                       }
                     } else if (upperWhenUp < lowerOriginal + 1.0e-12 && lowerWhenDown > upperOriginal - 1.0e-12) {
-                      OsiRowCut rc;
-                      rc.setLb(upperOriginal);
-                      rc.setUb(upperOriginal);
-                      rc.setEffectiveness(1.0e-5);
+                      OsiRowCut *rc = new OsiRowCut;
+                      rc->setLb(upperOriginal);
+                      rc->setUb(upperOriginal);
+                      rc->setEffectiveness(1.0e-5);
                       int index[2];
                       double element[2];
                       index[0] = j;
                       index[1] = icol;
                       element[0] = upperOriginal - lowerOriginal;
                       element[1] = 1.0;
-                      rc.setRow(2, index, element, false);
+                      rc->setRow(2, index, element, false);
                       cs.insert(rc);
                     }
                   }
@@ -6302,19 +6308,21 @@ int CglProbing::probe(const OsiSolverInterface &si,
               if (nFix) {
                 // nTot+=nFix;
                 cleanBounds(1, nFix, index, element);
-                cc.setUbs(nFix, index, element);
+                cc->setUbs(nFix, index, element);
               }
               // could tighten continuous as well
               if (nInt) {
                 if (ifCut) {
-                  cc.setEffectiveness(100.0);
+                  cc->setEffectiveness(100.0);
                 } else {
-                  cc.setEffectiveness(1.0e-5);
+                  cc->setEffectiveness(1.0e-5);
                 }
 #ifdef CGL_DEBUG
-                checkBounds(debugger, cc);
+                checkBounds(debugger, *cc);
 #endif
                 cs.insert(cc);
+              } else {
+                delete cc;
               }
             } else {
               goingToTrueBound = 0;
@@ -6394,17 +6402,17 @@ int CglProbing::probe(const OsiSolverInterface &si,
                       j, loDown);
                     printit = true;
 #endif
-                    OsiRowCut rc;
-                    rc.setLb(loDown);
-                    rc.setUb(loDown);
-                    rc.setEffectiveness(1.0e-5);
+                    OsiRowCut *rc = new OsiRowCut;
+                    rc->setLb(loDown);
+                    rc->setUb(loDown);
+                    rc->setEffectiveness(1.0e-5);
                     int index[2];
                     double element[2];
                     index[0] = j;
                     index[1] = icol;
                     element[0] = loDown - loUp;
                     element[1] = 1.0;
-                    rc.setRow(2, index, element, false);
+                    rc->setRow(2, index, element, false);
                     cs.insert(rc);
                   }
                 }
@@ -6430,13 +6438,13 @@ int CglProbing::probe(const OsiSolverInterface &si,
 #ifndef JUST_ONE_CC
                 // temp to check
                 if (oldL < newLower || oldU > newUpper) {
-                  OsiColCut cc;
+                  OsiColCut *cc = new OsiColCut;
                   CoinPackedVector lbs;
                   CoinPackedVector ubs;
                   lbs.insert(icol, newLower);
                   ubs.insert(icol, newUpper);
-                  cc.setLbs(lbs);
-                  cc.setUbs(ubs);
+                  cc->setLbs(lbs);
+                  cc->setUbs(ubs);
                   cs.insert(cc);
                 }
 #endif
@@ -6519,11 +6527,11 @@ int CglProbing::probe(const OsiSolverInterface &si,
 #if FIXED_BOTH_WAYS
 #ifdef JUST_ONE_CC
             if (lbsBoth.getNumElements() || ubsBoth.getNumElements()) {
-              OsiColCut cc;
+              OsiColCut *cc = new OsiColCut;
               if (lbsBoth.getNumElements())
-                cc.setLbs(lbsBoth);
+                cc->setLbs(lbsBoth);
               if (ubsBoth.getNumElements())
-                cc.setUbs(ubsBoth);
+                cc->setUbs(ubsBoth);
               cs.insert(cc);
             }
 #endif
