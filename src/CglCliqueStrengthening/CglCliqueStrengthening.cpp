@@ -325,20 +325,9 @@ void CglCliqueStrengthening::cliqueExtension(size_t extMethod, CoinCliqueSet *ne
 
 #ifdef DEBUGCG
     bool goodClique = CoinCliqueList::validateClique(cgraph_, clqIdx, clqSize);
-#else
-    bool goodClique = true;
-    for (size_t k = 0; k < clqSize - 1; k++) {
-      for (size_t j = k + 1; j < clqSize; j++) {
-	if ((!cgraph_->conflicting(clqIdx[k], clqIdx[j])) || (clqIdx[k] == clqIdx[j])) {
-	  //fprintf(stderr, "ERROR: Nodes %ld and %ld are not in conflict.\n", clqIdx[k], clqIdx[j]);
-	  goodClique = false;
-	}
-      }
-    }
-#endif
     if (!goodClique)
       continue;
-
+#endif
 
     if (cliqueRows_->status(i) == Dominated) {
         continue;
