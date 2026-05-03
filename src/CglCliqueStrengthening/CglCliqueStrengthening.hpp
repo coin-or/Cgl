@@ -289,6 +289,11 @@ private:
   int nDominated_;
 
   /**
+   * Scratch space for tracking dirty row indices in checkDominance.
+   **/
+  size_t *dirtyRows_;
+
+  /**
    * Message handler
    **/
   CoinMessageHandler * handler_;

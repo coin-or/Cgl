@@ -110,10 +110,12 @@ nExtended_(0), nDominated_(0), handler_(NULL), defaultHandler_(true) {
   posInClqRows_ = NULL;
   nColClqs_ = NULL;
   colClqs_ = NULL;
+  dirtyRows_ = NULL;
 
   if (model_->getNumElements() > 0) {
     cliqueRows_ = new CliqueRows(model_->getNumRows(), model_->getNumElements());
     posInClqRows_ = (size_t*)xmalloc(sizeof(size_t) * model_->getNumRows());
+    dirtyRows_ = (size_t*)xmalloc(sizeof(size_t) * model_->getNumRows());
 
     detectCliqueRows();
     fillCliquesByColumn();
@@ -132,6 +134,7 @@ CglCliqueStrengthening::~CglCliqueStrengthening() {
     free(colClqs_[0]);
     free(colClqs_);
     free(posInClqRows_);
+    free(dirtyRows_);
   }
 }
 
@@ -454,6 +457,7 @@ void CglCliqueStrengthening::checkDominance(const size_t *extClqEl, size_t extCl
     ivCol[extClqEl[i]] = true;
   }
 
+  size_t nDirty = 0;
   for (size_t i = 0; i < extClqSize; i++) {
     size_t col = extClqEl[i];
 
@@ -467,6 +471,7 @@ void CglCliqueStrengthening::checkDominance(const size_t *extClqEl, size_t extCl
       }
 
       ivRow[clqRowIdx] = true;
+      dirtyRows_[nDirty++] = clqRowIdx;
 
       const size_t *clqEl = cliqueRows_->row(clqRowIdx);
       const size_t clqNZ = cliqueRows_->nz(clqRowIdx);
@@ -490,9 +495,9 @@ void CglCliqueStrengthening::checkDominance(const size_t *extClqEl, size_t extCl
     ivCol[extClqEl[i]] = false;
   }
 
-  //clearing ivRow
-  for (size_t i = 0; i < cliqueRows_->rows(); i++) {
-    ivRow[i] = false;
+  //clearing ivRow — only entries that were touched
+  for (size_t i = 0; i < nDirty; i++) {
+    ivRow[dirtyRows_[i]] = false;
   }
 }
 
