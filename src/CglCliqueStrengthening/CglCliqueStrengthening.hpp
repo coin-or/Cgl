@@ -166,6 +166,11 @@ public:
   int constraintsDominated() const { return nDominated_; }
 
   /**
+   * Set maximum wall-clock seconds for strengthening (0 = no limit).
+   **/
+  void setMaximumSeconds(double seconds) { maxSeconds_ = seconds; }
+
+  /**
    * Pass in Message handler (not deleted at end)
    **/
   void passInMessageHandler(CoinMessageHandler * handler);
@@ -287,6 +292,16 @@ private:
    * Number of dominated constraints.
    **/
   int nDominated_;
+
+  /**
+   * Maximum wall-clock seconds allowed for strengthening (0 = no limit).
+   **/
+  double maxSeconds_;
+
+  /**
+   * Wall-clock time at the start of strengthenCliques().
+   **/
+  double startTime_;
 
   /**
    * Scratch space for tracking dirty row indices in checkDominance.

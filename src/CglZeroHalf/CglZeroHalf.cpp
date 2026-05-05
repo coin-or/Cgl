@@ -559,6 +559,9 @@ void cglShortestPath(auxiliary_graph * graph, int source, int maximumLength)
   nodes_.pop_back();
   if (nodes[iNode].distanceBack==COIN_INT_MAX)
     break;
+  // Prune: no useful odd cycle can have weight > maximumLength
+  if (nodes[iNode].distanceBack >= maximumLength)
+    break;
   numberCandidates--;
 #else
     int best=-1;

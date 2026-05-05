@@ -2884,7 +2884,7 @@ cut_list *Cgl012Cut::basic_separation()
   #endif
   out_cuts = initialize_cut_list(MAX_CUTS);
   for ( j = 0; j < sep_graph->nnodes; j++ ) {
-    if ((j & 127) == 0 &&
+    if ((j & 15) == 0 &&
         checkTimeLimit("basic_separation timeout", "during odd-cycle search"))
       goto EXIT_CUTS;
     short_cycle_list = get_shortest_odd_cycle_list(j,sep_graph,aux_graph);

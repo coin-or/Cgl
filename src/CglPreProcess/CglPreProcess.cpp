@@ -10366,10 +10366,7 @@ void CglPreProcess::setKeepColumnNames(const bool keep)
 
 double CglPreProcess::getCurrentCPUTime() const
 {
-  if (!useElapsedTime_)
-    return CoinCpuTime();
-  else
-    return CoinGetTimeOfDay();
+  return CoinGetTimeOfDay();
 }
 #if CBC_USE_PAPILO
 static papiloStruct papiloPresolve(ClpSimplex * inModel,

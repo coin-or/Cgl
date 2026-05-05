@@ -24,6 +24,7 @@
 #include "CoinStaticConflictGraph.hpp"
 #include "CoinCliqueExtender.hpp"
 #include "CglMessage.hpp"
+#include "CoinTime.hpp"
 
 #define CLQ_STR_EPS 1e-6
 #define MAX_SIZE_CLIQUE_TO_BE_EXTENDED 256
@@ -95,7 +96,7 @@ size_t CliqueRows::rows() const {
 }
 
 CglCliqueStrengthening::CglCliqueStrengthening(OsiSolverInterface *model, CoinMessageHandler *dhandler) :
-nExtended_(0), nDominated_(0), handler_(NULL), defaultHandler_(true) {
+nExtended_(0), nDominated_(0), maxSeconds_(0.0), startTime_(0.0), handler_(NULL), defaultHandler_(true) {
 
   if (dhandler)
     this->passInMessageHandler(dhandler);
@@ -252,6 +253,7 @@ void CglCliqueStrengthening::fillCliquesByColumn() {
 
 void CglCliqueStrengthening::strengthenCliques(size_t extMethod) {
   nExtended_ = nDominated_ = 0;
+  startTime_ = CoinWallclockTime();
 
   if (model_->getNumCols() == 0 || model_->getNumRows() == 0 || cliqueRows_->rows() == 0) {
     if (handler_->logLevel())
@@ -277,6 +279,7 @@ void CglCliqueStrengthening::strengthenCliques(size_t extMethod) {
 
 void CglCliqueStrengthening::strengthenCliques(size_t n, const size_t rows[], size_t extMethod) {
   nExtended_ = nDominated_ = 0;
+  startTime_ = CoinWallclockTime();
 
   if (model_->getNumCols() == 0 || model_->getNumRows() == 0 || cliqueRows_->rows() == 0) {
     if (handler_->logLevel())
@@ -319,6 +322,10 @@ void CglCliqueStrengthening::cliqueExtension(size_t extMethod, CoinCliqueSet *ne
   clqe.setMaxCandidates(512);
 
   for (size_t i = 0; i < cliqueRows_->rows(); i++) {
+    if (maxSeconds_ > 0.0 && (i & 63) == 0) {
+      if (CoinWallclockTime() - startTime_ >= maxSeconds_)
+        break;
+    }
     const size_t clqOrigRowIdx = cliqueRows_->origIdxRow(i);
     const size_t *clqIdx = cliqueRows_->row(i);
     const size_t clqSize = cliqueRows_->nz(i);
@@ -377,6 +384,10 @@ void CglCliqueStrengthening::cliqueExtension(size_t extMethod, CoinCliqueSet *ne
   clqe.setMaxCandidates(512);
 
   for (size_t i = 0; i < n; i++) {
+    if (maxSeconds_ > 0.0 && (i & 63) == 0) {
+      if (CoinWallclockTime() - startTime_ >= maxSeconds_)
+        break;
+    }
     const size_t rowIdx = posInClqRows_[rows[i]];
     const size_t clqOrigRowIdx = cliqueRows_->origIdxRow(rowIdx);
     const size_t *clqIdx = cliqueRows_->row(rowIdx);
