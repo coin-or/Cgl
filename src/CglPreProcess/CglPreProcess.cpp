@@ -8613,8 +8613,6 @@ CglPreProcess::CglPreProcess()
   messages_ = CglMessage();
 }
 
-// Copy constructor.
-
 CglPreProcess::CglPreProcess(const CglPreProcess &rhs)
   : numberSolvers_(rhs.numberSolvers_)
   , defaultHandler_(rhs.defaultHandler_)
@@ -8716,6 +8714,8 @@ CglPreProcess::operator=(const CglPreProcess &rhs)
       for (int i = 0; i < numberCutGenerators_; i++) {
         generator_[i] = rhs.generator_[i]->clone();
       }
+    } else {
+      generator_ = NULL;
     }
     if (rhs.originalModel_) {
       originalModel_ = rhs.originalModel_;
