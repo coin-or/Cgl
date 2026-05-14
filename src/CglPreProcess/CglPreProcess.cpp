@@ -2510,9 +2510,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   }
   if (numberSlacks && ((makeEquality == 2 && !justOnesWithObj)
 		       || makeEquality == -2)) {
+#ifdef CBC_KEEP_OLD_MESSAGES
     handler_->message(CGL_SLACKS, messages_)
       << numberSlacks
       << CoinMessageEol;
+#endif
     // add variables to make equality rows
     // Get new model
     if (!startModel_) {
@@ -3471,6 +3473,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	  compEls[iRow]=0.0;
 	}
       }
+#ifdef CBC_KEEP_OLD_MESSAGES
       if (nDominated) {
 	char generalPrint[100];
 	sprintf(generalPrint, "%d variables fixed as dominated",
@@ -3479,6 +3482,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	  << generalPrint
 	  << CoinMessageEol;
       }
+#endif
       delete [] compEls;
       delete [] test;
       delete [] rowSet;
@@ -3827,6 +3831,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	    }
 	  }
 	  goRoundAgain = nMadeContinuous > 0;
+#ifdef CBC_KEEP_OLD_MESSAGES
 	  if (nMadeContinuous) {
 	    char generalPrint[100];
 	    sprintf(generalPrint,"%d integer variables made continuous",nMadeContinuous);
@@ -3834,6 +3839,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	      << generalPrint
 	      << CoinMessageEol;
 	  }
+#endif
 	  if (!goRoundAgain) {
 	    numberSolvers_ = iPass + 1;
 	    break;
@@ -4232,12 +4238,14 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	delete[] workcol;
 	
 	if (numberOut) {
+#ifdef CBC_KEEP_OLD_MESSAGES
 	  char generalPrint[100];
 	  sprintf(generalPrint, "%d more redundant rows found",
 		  numberOut);
 	  handler_->message(CGL_GENERAL, messages_)
 	    << generalPrint
 	    << CoinMessageEol;
+#endif
 	  returnModel->deleteRows(numberOut,delrows);
 	  returnModel->resolve();
 	}
