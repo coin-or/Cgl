@@ -2258,8 +2258,7 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
 #ifndef NDEBUG
     int best_l = 0;
 #endif
-    int notImproved = 0;
-    for (int l = 0; l < k && l < 10  ; l++, notImproved++)
+    for (int l = 0; l < k && l < 10  ; l++)
     {
         if (!rowFlags_[rc[l].row]) continue;//this row has been marked to be skipped
         //     if(bestLeaving != -1 && rc[l].value > -1e-02) break;
@@ -2288,7 +2287,6 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
             bestLeaving = rc[l].row;
             bestDirection = rc[l].direction > 0 ? 1 : -1;
             bestRc = rc[l].value;
-            notImproved = 0;
         }
 
         //Now evenutally compute f+ or f- for the other negative rc (if if exists)
@@ -2314,7 +2312,6 @@ int CglLandPSimplex::findBestPivot(int &leaving, int & direction,
                 bestLeaving = rc[l].row;
                 bestDirection = rc[l].direction;
                 bestRc = rc[l].value2;
-                notImproved = 0;
             }
         }
     }
