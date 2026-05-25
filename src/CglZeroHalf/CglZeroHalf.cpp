@@ -122,7 +122,7 @@ CglZeroHalf::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	  rc.setGloballyValid();
 	//double violation = rc.violated(solution);
 	//if (violation>1.0e-6)
-	  cs.insertIfNotDuplicate(rc);
+	cs.insertIfNotDuplicate(rc);
 	  //else
 	  //printf("violation of %g\n",violation);
       }
