@@ -17,3 +17,6 @@
 aclocal.m4*
 acinclude.m4
 autom4te*
+*.swp
+.vs/
+build/
