@@ -8827,6 +8827,8 @@ void CglPreProcess::gutsOfDestructor()
   delete[] rowType_;
   rowType_ = NULL;
   numberRowType_ = 0;
+  // get rid of SC stuff
+  setApplicationData(NULL);
 }
 // Clears models
 void CglPreProcess::clean()
@@ -8863,7 +8865,36 @@ void CglPreProcess::addCutGenerator(CglCutGenerator *generator)
 
 void CglPreProcess::setApplicationData(void *appData)
 {
+#if 0 //was   
   appData_ = appData;
+#else
+  // At present only use is SC variables
+  // If more then need to have flag to say which
+    typedef struct {
+      double low;
+      double high;
+      int column;
+    } lotStruct;
+    typedef struct {lotStruct * lotsize;int numberLotSizing;} templot;
+    if (appData) {
+      appData_ = new templot;
+      templot * tempIn = reinterpret_cast<templot *>(appData);
+      lotStruct * lotsizeIn=tempIn->lotsize;
+      int numberLotSizing=tempIn->numberLotSizing;
+      templot * temp = reinterpret_cast<templot *>(appData_);
+      temp->numberLotSizing=numberLotSizing;
+      // may be memory leak - but forget about it for now
+      temp->lotsize=new lotStruct[numberLotSizing];
+      memcpy(temp->lotsize,lotsizeIn,numberLotSizing*sizeof(lotStruct));
+    } else if (appData_) {
+      // just delete existing
+      templot * temp = reinterpret_cast<templot *>(appData_);
+      lotStruct * lotsize=temp->lotsize;
+      delete temp;
+      delete [] lotsize;
+      appData_ = NULL;
+    }
+#endif
 }
 //-----------------------------------------------------------------------------
 void *CglPreProcess::getApplicationData() const
