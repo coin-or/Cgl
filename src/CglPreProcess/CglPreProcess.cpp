@@ -5837,6 +5837,54 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
 	    }
           }
         }
+        // IMPORTANT: Copy solution from modelM to model.
+        // The loop above only fixed bounds for integers, but model still has the old
+        // LP relaxation solution. We must copy the values from modelM (which has the
+        // correct integer solution) to model.
+        {
+          int nc = model->getNumCols();
+          double *newSol = new double[nc];
+          const double *oldSol = model->getColSolution();
+          const double *solM = modelM->getColSolution();
+          const double *lo = model->getColLower();
+          const double *hi = model->getColUpper();
+          for (int i = 0; i < nc; i++) {
+            if (i < numberColumns) {
+              // This column exists in modelM, use its value
+              newSol[i] = solM[i];
+            } else {
+              // This column doesn't exist in modelM (modelM has fewer columns),
+              // use the old value but clip to bounds
+              newSol[i] = oldSol[i];
+            }
+            // Clip to bounds
+            newSol[i] = std::max(newSol[i], lo[i]);
+            newSol[i] = std::min(newSol[i], hi[i]);
+          }
+          model->setColSolution(newSol);
+          delete[] newSol;
+        }
+      }
+      // After the fix loop has tightened bounds (fixing integers), the warm-start
+      // basis stored on model may be stale: variables that are now fixed (lo==hi)
+      // could be BASIC in the warm start at fractional LP-relaxation values. CLP's
+      // dual simplex would then declare the basis "optimal" in 0 iterations without
+      // checking primal feasibility, returning the old LP relaxation solution.
+      // Fix: mark all fixed (lo==hi) variables as non-basic (atLowerBound) in the
+      // warm start so CLP will re-solve from a primal-feasible point.
+      {
+        CoinWarmStartBasis *wsb = dynamic_cast<CoinWarmStartBasis*>(model->getWarmStart());
+        if (wsb) {
+          const double *lo2 = model->getColLower(), *hi2 = model->getColUpper();
+          int nc = model->getNumCols();
+          for (int k = 0; k < nc; k++) {
+            if (lo2[k] >= hi2[k] - 1e-10) {
+              wsb->setStructStatus(k, CoinWarmStartBasis::atLowerBound);
+            }
+          }
+          model->setWarmStart(wsb);
+          delete wsb;
+        }
       }
       int numberColumns = modelM->getNumCols();
       const double *solutionM = modelM->getColSolution();
@@ -5950,6 +5998,7 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
         }
       }
       model->setHintParam(OsiDoDualInInitial, true, OsiHintTry);
+      model->setHintParam(OsiDoPresolveInInitial, false, OsiHintTry);
       model->initialSolve();
       numberIterationsPost_ += model->getIterationCount();
       if (!model->isProvenOptimal()) {
@@ -6106,6 +6155,100 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
         modifiedModel_[iPass] = NULL;
         model_[iPass] = NULL;
         presolve_[iPass] = NULL;
+      }
+      // After postsolve, presolve back-substitution may have computed fractional
+      // values for eliminated integer variables via equations like
+      //   x_elim = (rhs - a*x_surv) / b  with non-unit b.
+      // These fractional values cascade: the next pass sees them as "unknown"
+      // integers, the LP returns fractional solutions, and the bad values
+      // propagate all the way to startModel_.
+      //
+      // Fix: for each fractional integer in modelM2 try rounding down then
+      // rounding up, checking row activities to ensure feasibility.  Only
+      // commit a rounding if at least one direction is row-feasible; update
+      // row activities after each committed rounding so subsequent roundings
+      // see the correct state (same greedy strategy as numberBadValues code).
+      // Variables for which neither direction is feasible are left fractional
+      // and handled by the outer numberBadValues repair pass.
+      {
+        int nM2Cols = modelM2->getNumCols();
+        int nM2Rows = modelM2->getNumRows();
+        const double *sM2 = modelM2->getColSolution();
+        const double *loM2 = modelM2->getColLower();
+        const double *hiM2 = modelM2->getColUpper();
+        bool anyFrac = false;
+        for (int k = 0; k < nM2Cols && !anyFrac; k++) {
+          if (modelM2->isInteger(k) && fabs(sM2[k] - floor(sM2[k] + 0.5)) > 1e-5)
+            anyFrac = true;
+        }
+        if (anyFrac) {
+          const double *rowLoM2 = modelM2->getRowLower();
+          const double *rowHiM2 = modelM2->getRowUpper();
+          const CoinPackedMatrix *colMtx2 = modelM2->getMatrixByCol();
+          const double *elems2 = colMtx2->getElements();
+          const int *rowIdx2 = colMtx2->getIndices();
+          const CoinBigIndex *colStarts2 = colMtx2->getVectorStarts();
+          const int *colLens2 = colMtx2->getVectorLengths();
+          // Compute initial row activities.
+          std::vector<double> rowAct(nM2Rows, 0.0);
+          for (int k = 0; k < nM2Cols; k++) {
+            double val = sM2[k];
+            if (val == 0.0) continue;
+            for (CoinBigIndex j = colStarts2[k]; j < colStarts2[k] + colLens2[k]; j++)
+              rowAct[rowIdx2[j]] += val * elems2[j];
+          }
+          std::vector<double> newSol(sM2, sM2 + nM2Cols);
+          const double rowTol = 1e-5;
+          for (int k = 0; k < nM2Cols; k++) {
+            if (!modelM2->isInteger(k)) continue;
+            double v = newSol[k];
+            double vr = floor(v + 0.5);
+            if (fabs(v - vr) <= 1e-5) continue; // already close to integer
+            double vDown = std::max(loM2[k], floor(v));
+            double vUp   = std::min(hiM2[k], ceil(v));
+            // Check round-down feasibility against current row activities.
+            bool canDown = (vDown >= loM2[k] - 1e-10);
+            if (canDown) {
+              double delta = vDown - v;
+              for (CoinBigIndex j = colStarts2[k]; j < colStarts2[k] + colLens2[k]; j++) {
+                int r = rowIdx2[j];
+                double newA = rowAct[r] + delta * elems2[j];
+                if (newA < rowLoM2[r] - rowTol || newA > rowHiM2[r] + rowTol) {
+                  canDown = false;
+                  break;
+                }
+              }
+            }
+            // Check round-up feasibility against current row activities.
+            bool canUp = (vUp <= hiM2[k] + 1e-10);
+            if (canUp) {
+              double delta = vUp - v;
+              for (CoinBigIndex j = colStarts2[k]; j < colStarts2[k] + colLens2[k]; j++) {
+                int r = rowIdx2[j];
+                double newA = rowAct[r] + delta * elems2[j];
+                if (newA < rowLoM2[r] - rowTol || newA > rowHiM2[r] + rowTol) {
+                  canUp = false;
+                  break;
+                }
+              }
+            }
+            double chosen;
+            if (canDown && canUp)
+              chosen = (fabs(v - vDown) <= fabs(v - vUp)) ? vDown : vUp;
+            else if (canDown)
+              chosen = vDown;
+            else if (canUp)
+              chosen = vUp;
+            else
+              continue; // neither direction feasible: leave fractional
+            // Commit the rounding: update row activities.
+            double delta = chosen - v;
+            for (CoinBigIndex j = colStarts2[k]; j < colStarts2[k] + colLens2[k]; j++)
+              rowAct[rowIdx2[j]] += delta * elems2[j];
+            newSol[k] = chosen;
+          }
+          modelM2->setColSolution(newSol.data());
+        }
       }
       modelM = modelM2;
       delete [] original;
@@ -6275,7 +6418,11 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
           }
         }
       }
-      assert(numberCheck == numberBadValues);
+      // numberBadValues counts fractional integers in startModel_ (which can
+      // include CGL-discovered implicit-integer variables not present in
+      // originalModel_).  numberCheck counts only those in originalModel_.
+      // Since startModel_ is a superset, numberCheck <= numberBadValues always.
+      assert(numberCheck <= numberBadValues);
       model->setColSolution(solution);
       delete[] rowActivity;
       delete[] solution;
@@ -6294,7 +6441,7 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
     }
   }
   delete clonedCopy;
-  originalModel_->setHintParam(OsiDoPresolveInInitial, true, OsiHintTry);
+  originalModel_->setHintParam(OsiDoPresolveInInitial, false, OsiHintTry);
   originalModel_->setHintParam(OsiDoDualInInitial, false, OsiHintTry);
   {
     int numberFixed = 0;
@@ -6362,9 +6509,15 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
     }
   } else if (fabs(saveObjectiveValue - objectiveValue) > testObj
     && deleteStuff) {
-    handler_->message(CGL_POST_CHANGED, messages_)
-      << saveObjectiveValue << objectiveValue
-      << CoinMessageEol;
+    // Only warn when postprocessing makes the solution worse; an improvement
+    // is expected when the MIP solution was found by a heuristic (e.g.
+    // Feasibility Jump) that does not re-optimise continuous variables.
+    double direction = originalModel_->getObjSense(); // +1 min, -1 max
+    if (direction * (objectiveValue - saveObjectiveValue) > testObj) {
+      handler_->message(CGL_POST_CHANGED, messages_)
+        << saveObjectiveValue << objectiveValue
+        << CoinMessageEol;
+    }
   }
   originalModel_->setHintParam(OsiDoDualInInitial, saveHint2, saveStrength2);
   originalModel_->setHintParam(OsiDoPresolveInInitial, saveHint, saveStrength);
