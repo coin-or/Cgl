@@ -345,6 +345,12 @@ public:
   /// Set time limit
   void setTimeLimit(const double timeLimit, const bool useElapsedTime);
 
+  /** Set an absolute wallclock deadline for postProcess() LP solves.
+      LP solvers inside postProcess() will be given at most
+      \c max(0, deadline - CoinWallclockTime()) seconds.  Pass -1.0 (the
+      default) to keep the historic behaviour of unlimited LP solves. */
+  inline void setPostProcDeadline(double deadline) { postProcDeadline_ = deadline; }
+
   /// Keeps original column names
   void setKeepColumnNames(const bool keep);
 
@@ -457,6 +463,17 @@ private:
 
   /// time limit (default COIN_DBL_MAX)
   double timeLimit_;
+
+  /// Absolute wallclock deadline for postProcess() LP solves (-1.0 = unlimited)
+  double postProcDeadline_;
+
+  /** Absolute wallclock deadline (CoinGetTimeOfDay()) for preprocessing LP
+      solves (1e100 = unlimited).  Set automatically by setTimeLimit(); used
+      by modified() and preProcessNonDefault() to time-cap per-pass LP
+      re-solves and CglProbing cut generation, and to abort preprocessing
+      cleanly (falling back to the caller's simple-presolve retry path)
+      rather than silently overrunning the caller's time budget. */
+  double preDeadline_;
 
   /// keep column names
   bool keepColumnNames_;
