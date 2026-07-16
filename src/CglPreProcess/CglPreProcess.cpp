@@ -7183,6 +7183,17 @@ CglPreProcess::modified(OsiSolverInterface *model,
                       if (stronger) {
                         int strongerEl = 2;
                         for (int k3 = 1; k3 < nBits; k3++) {
+                          // A magnitude-only comparison of el[k3][k1] vs el[k3][k2] is only
+                          // meaningful when the two rows use the same-signed coefficient for
+                          // this shared variable (i.e. the same literal sense). If the signs
+                          // disagree (e.g. +1 in one row, -1 in the other, both nonzero), the
+                          // rows are not comparable for domination purposes -- treat as "not
+                          // stronger" rather than letting the raw numeric compare silently
+                          // fall through and wrongly conclude domination.
+                          if (el[k3][k1] * el[k3][k2] < 0.0) {
+                            stronger = 0;
+                            break;
+                          }
                           if (scaleFactor[k1] * el[k3][k1] < scaleFactor[k2] * el[k3][k2] - 1.0e-9) {
                             stronger = 0;
                             break;
