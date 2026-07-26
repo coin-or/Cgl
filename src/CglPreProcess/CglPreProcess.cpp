@@ -24,7 +24,7 @@
 #include "CoinBuild.hpp"
 #include "CoinHelperFunctions.hpp"
 #include "CoinWarmStartBasis.hpp"
-#ifdef CBC_HAS_CLP
+#ifdef CGL_HAS_CLP
 #include "OsiClpSolverInterface.hpp"
 #else
 #undef CBC_USE_PAPILO
@@ -3122,7 +3122,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     // returns NULL so the caller retries with simple presolve rather than
     // silently overrunning the time budget.
     bool initialLpTimeLimitHit = false;
-#ifdef CBC_HAS_CLP
+#ifdef CGL_HAS_CLP
     {
       OsiClpSolverInterface *clpOsi = dynamic_cast< OsiClpSolverInterface * >(startModel2);
       if (clpOsi && preDeadline_ < 1.0e99) {
@@ -3168,7 +3168,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
         startModel2->getHintParam(OsiDoPresolveInInitial, saveHint, saveStrength);
         startModel2->setHintParam(OsiDoPresolveInInitial, true, OsiHintTry);
         startModel2->setHintParam(OsiDoDualInInitial, false, OsiHintTry);
-#ifdef CBC_HAS_CLP
+#ifdef CGL_HAS_CLP
         {
           OsiClpSolverInterface *clpOsi = dynamic_cast< OsiClpSolverInterface * >(startModel2);
           if (clpOsi && preDeadline_ < 1.0e99)
@@ -3186,7 +3186,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
           startModel2->setWarmStart(empty);
           delete empty;
           startModel2->setHintParam(OsiDoDualInInitial, true, OsiHintTry);
-#ifdef CBC_HAS_CLP
+#ifdef CGL_HAS_CLP
           {
             OsiClpSolverInterface *clpOsi = dynamic_cast< OsiClpSolverInterface * >(startModel2);
             if (clpOsi && preDeadline_ < 1.0e99)
@@ -3705,23 +3705,68 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
         saveTakeHint, saveStrength);
       //if (iPass)
       presolvedModel->setHintParam(OsiDoDualInInitial, false, OsiHintTry);
+      // Cap this per-pass LP (re)solve to the remaining preprocessing time
+      // budget: an unbounded initialSolve()/resolve() here (e.g. primal
+      // steepest-edge cycling/stalling on a degenerate warm start) can by
+      // itself blow through the entire time limit with no other time check
+      // anywhere in this loop iteration.
+#ifdef CGL_HAS_CLP
+      OsiClpSolverInterface *clpOsiPass = dynamic_cast< OsiClpSolverInterface * >(presolvedModel);
+      bool passTimeLimitHit = false;
+      if (clpOsiPass && preDeadline_ < 1.0e99)
+        clpOsiPass->getModelPtr()->setMaximumWallSeconds(std::max(preDeadline_ - CoinGetTimeOfDay(), 0.0));
+#endif
       presolvedModel->initialSolve();
       numberIterationsPre_ += presolvedModel->getIterationCount();
       presolvedModel->setHintParam(OsiDoDualInInitial, saveTakeHint, saveStrength);
+#ifdef CGL_HAS_CLP
+      if (clpOsiPass && preDeadline_ < 1.0e99)
+        passTimeLimitHit = (clpOsiPass->getModelPtr()->problemStatus() == 3);
+#endif
       if (!presolvedModel->isProvenOptimal()) {
         writeDebugMps(presolvedModel, "bad2", NULL);
         CoinWarmStartBasis *slack = dynamic_cast< CoinWarmStartBasis * >(presolvedModel->getEmptyWarmStart());
         presolvedModel->setWarmStart(slack);
         delete slack;
-        presolvedModel->resolve();
+#ifdef CGL_HAS_CLP
+        // No point spending more of an already-exhausted time budget on a
+        // second resolve attempt -- and skip it entirely so problemStatus()
+        // still reflects the time-out below, not some later dual-infeasible
+        // read on a solve we never ran.
+        if (!passTimeLimitHit) {
+          if (clpOsiPass && preDeadline_ < 1.0e99)
+            clpOsiPass->getModelPtr()->setMaximumWallSeconds(std::max(preDeadline_ - CoinGetTimeOfDay(), 0.0));
+#endif
+          presolvedModel->resolve();
+#ifdef CGL_HAS_CLP
+          if (clpOsiPass && preDeadline_ < 1.0e99)
+            passTimeLimitHit = (clpOsiPass->getModelPtr()->problemStatus() == 3);
+        }
+#endif
         if (!presolvedModel->isProvenOptimal()) {
-          returnModel = NULL;
-          //printf("infeasible\n");
+          // Distinguish "genuinely infeasible" from "ran out of the
+          // preprocessing time budget mid-resolve": the latter must NOT be
+          // reported as infeasible -- that would discard all the good work
+          // from earlier passes (returnModel already holds the last
+          // successful pass's result) and misreport a merely-slow model as
+          // infeasible/unbounded to the caller.
+          if (!passTimeLimitHit) {
+            returnModel = NULL;
+            //printf("infeasible\n");
+          }
+#ifdef CGL_HAS_CLP
+          if (clpOsiPass && preDeadline_ < 1.0e99)
+            clpOsiPass->getModelPtr()->setMaximumWallSeconds(1.0e100);
+#endif
           break;
         } else {
           //printf("feasible on second try\n");
         }
       }
+#ifdef CGL_HAS_CLP
+      if (clpOsiPass && preDeadline_ < 1.0e99)
+        clpOsiPass->getModelPtr()->setMaximumWallSeconds(1.0e100);
+#endif
       // maybe we can fix some
       int numberFixed = reducedCostFix(*presolvedModel);
 #if CBC_USEFUL_PRINTING > 1
@@ -3789,7 +3834,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	  returnModel=NULL;
 	  break;
 	}
-#ifdef CBC_HAS_CLP
+#ifdef CGL_HAS_CLP
 	OsiClpSolverInterface * clpSolver = getClpSolver(newModel);
 	if (clpSolver) {
 	  change = clpSolver->tightenBounds();
@@ -3810,7 +3855,20 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	 newModel->getHintParam(OsiDoDualInResolve,
 				saveTakeHint, saveStrength);
 	 newModel->setHintParam(OsiDoDualInResolve, true, OsiHintTry);
+	 // Cap this per-pass resolve to the remaining preprocessing time
+	 // budget -- same rationale as the initialSolve()/resolve() cap
+	 // earlier in this loop: an unbounded resolve() here can by itself
+	 // exceed the whole time limit with no other check in this iteration.
+#ifdef CGL_HAS_CLP
+	 OsiClpSolverInterface *clpOsiResolve = dynamic_cast< OsiClpSolverInterface * >(newModel);
+	 if (clpOsiResolve && preDeadline_ < 1.0e99)
+	   clpOsiResolve->getModelPtr()->setMaximumWallSeconds(std::max(preDeadline_ - CoinGetTimeOfDay(), 0.0));
+#endif
 	 newModel->resolve();
+#ifdef CGL_HAS_CLP
+	 if (clpOsiResolve && preDeadline_ < 1.0e99)
+	   clpOsiResolve->getModelPtr()->setMaximumWallSeconds(1.0e100);
+#endif
 	 newModel->setHintParam(OsiDoDualInResolve, saveTakeHint, saveStrength);
        }
       if (!newModel->isProvenOptimal()) {
@@ -5803,7 +5861,7 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
     }
     for (int iPass = numberSolvers_ - 1; iPass >= 0; iPass--) {
       OsiSolverInterface *model = model_[iPass];
-#ifdef CBC_HAS_CLP
+#ifdef CGL_HAS_CLP
       OsiClpSolverInterface * postsolvedSolver =
 	getClpSolver(model);
       if (postsolvedSolver) {
@@ -6523,7 +6581,7 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
   }
   delete [] scBound;
   //double time1 = CoinCpuTime();
-#ifdef CBC_HAS_CLP
+#ifdef CGL_HAS_CLP
   OsiClpSolverInterface * originalSolver =
     getClpSolver(originalModel_);
 #ifndef CBC_SKIP_CLP_TEST
@@ -8707,7 +8765,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
 	If solution needs to be refreshed, do resolve or initialSolve as appropriate.
       */
       if (needResolve) {
-#ifdef CBC_HAS_CLP
+#ifdef CGL_HAS_CLP
         // Helper: apply the preprocessing deadline to this LP solve so a
         // single expensive re-solve cannot outlast the overall time budget,
         // and detect whether it stopped on time (rather than converging).
