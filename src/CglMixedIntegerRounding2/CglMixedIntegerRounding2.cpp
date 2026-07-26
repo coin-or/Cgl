@@ -15,8 +15,13 @@
 #include "CoinHelperFunctions.hpp"
 #include "CoinPackedMatrix.hpp"
 #include "CoinPackedVector.hpp"
-#ifdef CBC_HAS_CLP
+// Must be included before the CGL_HAS_CLP check below so the macro
+// (defined in CglConfig.h/config.h) is actually visible at this point.
+#include "CglConfig.h"
+#ifdef CGL_HAS_CLP
 #include "OsiClpSolverInterface.hpp"
+#include "ClpModel.hpp"
+#include "ClpPackedMatrix.hpp"
 #endif
 //#define CGL_DEBUG 1
 #include "CglMixedIntegerRounding2.hpp"
@@ -69,10 +74,10 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
   }
   int numberColumns = si.getNumCols();
   const char * intVar = si.getColType();
-#ifdef CBC_HAS_CLP
+#ifdef CGL_HAS_CLP
 #define MODIFY_LP 2
 #endif
-#if MODIFY_LP //def CBC_HAS_CLP
+#if MODIFY_LP //def CGL_HAS_CLP
   // need Clp to set row solution for new row
   const OsiClpSolverInterface * clpSolver =
     getConstClpSolver(&si);

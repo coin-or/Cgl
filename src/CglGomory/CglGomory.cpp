@@ -18,6 +18,9 @@
 #include "CoinPackedMatrix.hpp"
 #include "CoinIndexedVector.hpp"
 #include "OsiRowCutDebugger.hpp"
+// Must be included before the CGL_HAS_CLP check below so the macro
+// (defined in CglConfig.h/config.h) is actually visible at this point.
+#include "CglConfig.h"
 #ifndef USE_CGL_RATIONAL
 #define USE_CGL_RATIONAL 0
 #endif
@@ -28,7 +31,7 @@
 #endif
 #include "CoinRational.hpp"
 #endif
-#ifdef CBC_HAS_CLP
+#ifdef CGL_HAS_CLP
 #define CGL_HAS_CLP_GOMORY
 #endif
 #ifdef CGL_HAS_CLP_GOMORY

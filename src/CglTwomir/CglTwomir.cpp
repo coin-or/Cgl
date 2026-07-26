@@ -22,7 +22,7 @@
 #include "CoinWarmStartBasis.hpp"
 #include "CglTwomir.hpp"
 class CoinWarmStartBasis;
-#ifdef CBC_HAS_CLP
+#ifdef CGL_HAS_CLP
 #define CGL_HAS_CLP_TWOMIR
 #endif
 #ifdef CGL_HAS_CLP_TWOMIR
