@@ -1557,7 +1557,10 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
   const CoinPackedMatrix *colMatrixPtr = si->getMatrixByCol();
   rval = factorization.factorize(*colMatrixPtr, rowIsBasic, colIsBasic); 
   /* 0 = okay. -1 = singular. -2 = too many in basis. -99 = memory. */
-  DGG_TEST2(rval, 1, "factorization error = %d", rval);
+  if (rval) {
+    if (talk) printf ("2mir_test: factorization error = %d\n", rval);
+    DGG_CHECKRVAL1(rval, 1);
+  }
 
   for(k=0; k<data->ncol; k++){
     if (!(DGG_isBasic(data, k) && DGG_isInteger(data,k))) continue;
@@ -1568,7 +1571,7 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
     base->nz = 0;
     rval = DGG_getTableauConstraint(k, solver_ptr, data, base, 
                                     colIsBasic,rowIsBasic,factorization,0);
-    DGG_CHECKRVAL(rval, rval);
+    DGG_CHECKRVAL1(rval, rval);
 
     if (base->nz == 0){
       printf ("2mir_test: why does constraint not exist ?\n");
@@ -1577,9 +1580,10 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
 
     if (base->nz > 500) continue;
     rval = DGG_generateCutsFromBase(base, cut_list, data, solver_ptr);
-    DGG_CHECKRVAL(rval, rval);
+    DGG_CHECKRVAL1(rval, rval);
   }
 
+ CLEANUP:
 #ifndef TWOMIR_LESS_MALLOC
    free(rowIsBasic);
   free(colIsBasic);
