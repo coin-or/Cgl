@@ -411,6 +411,18 @@ private:
   int *originalColumn_;
   /// Original row numbers
   int *originalRow_;
+  /** Number of columns in the model actually returned by
+      preProcessNonDefault()/process().  This can exceed the number of
+      columns tracked by the last OsiPresolve pass recorded in model_/
+      presolve_ (see createOriginalIndices()), since later stages (e.g.
+      clique-detection) can append extra columns via modified() without
+      ever registering an associated OsiPresolve object.  -1 if not yet
+      known. */
+  int numberFinalColumns_;
+  /** Number of rows in the model actually returned by
+      preProcessNonDefault()/process(), analogous to numberFinalColumns_.
+      -1 if not yet known. */
+  int numberFinalRows_;
   /// Number of cut generators
   int numberCutGenerators_;
   /// Cut generators

@@ -1662,6 +1662,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   delete[] originalRow_;
   originalColumn_ = NULL;
   originalRow_ = NULL;
+  numberFinalColumns_ = -1;
+  numberFinalRows_ = -1;
   // Should not be hardwired tolerance
 #ifndef CGL_PREPROCESS_TOLERANCE
   // So standalone version can switch off
@@ -4564,13 +4566,28 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     assert(returnModel->getRowCutDebugger());
 #endif
 
+  // Record the true final row/column counts of the model actually being
+  // returned.  This can be larger than what the last recorded OsiPresolve
+  // pass (see createOriginalIndices()) tracked, since later stages (e.g.
+  // clique-detection) can append extra columns/rows via modified() without
+  // registering an associated OsiPresolve object -- those extra columns/
+  // rows have no "original" counterpart and createOriginalIndices() needs
+  // to know the true final size in order to size its output arrays
+  // correctly and avoid out-of-bounds reads by callers that index
+  // originalColumns()/originalRows() using the final model's actual
+  // number of columns/rows (e.g. the loop right below).
+  if (returnModel) {
+    numberFinalColumns_ = returnModel->getNumCols();
+    numberFinalRows_ = returnModel->getNumRows();
+  }
 
   if (returnModel && returnModel != &model && keepColumnNames_)
   {
     returnModel->setIntParam( OsiNameDiscipline, 1 );
+    const int *originalColumnsForNames = originalColumns();
     for ( int i=0 ; (i<returnModel->getNumCols()) ; i++ ) {
-      int iColumn = originalColumns()[i];
-      if (iColumn<modelIn->getNumCols())
+      int iColumn = originalColumnsForNames[i];
+      if (iColumn>=0 && iColumn<modelIn->getNumCols())
 	returnModel->setColName( i, modelIn->getColName(iColumn) );
     }
   }
@@ -8946,6 +8963,8 @@ CglPreProcess::CglPreProcess()
   , appData_(NULL)
   , originalColumn_(NULL)
   , originalRow_(NULL)
+  , numberFinalColumns_(-1)
+  , numberFinalRows_(-1)
   , numberCutGenerators_(0)
   , generator_(NULL)
   , numberSOS_(0)
@@ -8977,6 +8996,8 @@ CglPreProcess::CglPreProcess(const CglPreProcess &rhs)
   , appData_(rhs.appData_)
   , originalColumn_(NULL)
   , originalRow_(NULL)
+  , numberFinalColumns_(rhs.numberFinalColumns_)
+  , numberFinalRows_(rhs.numberFinalRows_)
   , numberCutGenerators_(rhs.numberCutGenerators_)
   , numberProhibited_(rhs.numberProhibited_)
   , numberIterationsPre_(rhs.numberIterationsPre_)
@@ -9122,6 +9143,8 @@ CglPreProcess::operator=(const CglPreProcess &rhs)
     postProcDeadline_ = rhs.postProcDeadline_;
     preDeadline_ = rhs.preDeadline_;
     keepColumnNames_ = rhs.keepColumnNames_;
+    numberFinalColumns_ = rhs.numberFinalColumns_;
+    numberFinalRows_ = rhs.numberFinalRows_;
   }
   return *this;
 }
@@ -9165,6 +9188,8 @@ void CglPreProcess::gutsOfDestructor()
   delete[] originalRow_;
   originalColumn_ = NULL;
   originalRow_ = NULL;
+  numberFinalColumns_ = -1;
+  numberFinalRows_ = -1;
   delete[] typeSOS_;
   delete[] startSOS_;
   delete[] whichSOS_;
@@ -9321,10 +9346,26 @@ void CglPreProcess::createOriginalIndices()
     nRows = originalModel_->getNumRows();
     nColumns = originalModel_->getNumCols();
   }
+  // The model actually returned by preProcessNonDefault() (see
+  // numberFinalColumns_/numberFinalRows_) can have more rows/columns than
+  // what the last OsiPresolve pass found above tracked -- e.g. clique
+  // detection can append extra "slack" rows/columns via modified() without
+  // ever registering an associated OsiPresolve object for that step. Size
+  // the arrays we return to the true final model so that callers indexing
+  // originalColumns()/originalRows() with the final model's actual number
+  // of columns/rows don't read out of bounds; the extra, untracked
+  // columns/rows are marked unmapped (-1), same convention already used
+  // below for rows that fall outside a presolve pass's range.
+  int nColumnsOut = nColumns;
+  int nRowsOut = nRows;
+  if (numberFinalColumns_ > nColumnsOut)
+    nColumnsOut = numberFinalColumns_;
+  if (numberFinalRows_ > nRowsOut)
+    nRowsOut = numberFinalRows_;
   delete[] originalColumn_;
-  originalColumn_ = new int[nColumns];
+  originalColumn_ = new int[nColumnsOut];
   delete[] originalRow_;
-  originalRow_ = new int[nRows];
+  originalRow_ = new int[nRowsOut];
   if (iPass >= 0) {
     memcpy(originalColumn_, presolve_[iPass]->originalColumns(),
       nColumns * sizeof(int));
@@ -9333,9 +9374,15 @@ void CglPreProcess::createOriginalIndices()
     iPass--;
     for (; iPass >= 0; iPass--) {
       const int *originalColumns = presolve_[iPass]->originalColumns();
+      int nColumnsNow = model_[iPass]->getNumCols();
       int i;
-      for (i = 0; i < nColumns; i++)
-        originalColumn_[i] = originalColumns[originalColumn_[i]];
+      for (i = 0; i < nColumns; i++) {
+        int iColumn = originalColumn_[i];
+        if (iColumn >= 0 && iColumn < nColumnsNow)
+          originalColumn_[i] = originalColumns[iColumn];
+        else
+          originalColumn_[i] = -1;
+      }
       const int *originalRows = presolve_[iPass]->originalRows();
       int nRowsNow = model_[iPass]->getNumRows();
       for (i = 0; i < nRows; i++) {
@@ -9346,6 +9393,12 @@ void CglPreProcess::createOriginalIndices()
           originalRow_[i] = -1;
       }
     }
+    // Any columns/rows beyond what the last presolve pass tracked were
+    // appended later without an original mapping -- mark them unmapped.
+    for (int i = nColumns; i < nColumnsOut; i++)
+      originalColumn_[i] = -1;
+    for (int i = nRows; i < nRowsOut; i++)
+      originalRow_[i] = -1;
 #if CBC_USE_PAPILO
     if (this==initialTry.preProcess) {
       int *mapping = initialTry.mapping;
@@ -9378,6 +9431,10 @@ void CglPreProcess::createOriginalIndices()
       originalColumn_[i] = i;
     for (i = 0; i < nRows; i++)
       originalRow_[i] = i;
+    for (i = nColumns; i < nColumnsOut; i++)
+      originalColumn_[i] = -1;
+    for (i = nRows; i < nRowsOut; i++)
+      originalRow_[i] = -1;
   }
 }
 // Update prohibited and rowType
