@@ -3794,8 +3794,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       writeDebugMps(newModel, "ordinary3", NULL);
       // tighten bounds
  #if DEBUG_PREPROCESS > 1
-      const OsiRowCutDebugger *debugger = newModel->getRowCutDebugger();
-      if (debugger)
+      const OsiRowCutDebugger *debugger2 = newModel->getRowCutDebugger();
+      if (debugger2)
  	printf("Contains optimal before tightenA\n");
  #endif
       if (!numberChanges && !numberFixed) {
@@ -3848,7 +3848,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 #endif
       }
  #if DEBUG_PREPROCESS > 1
-       if (debugger)
+       if (debugger2)
          assert(newModel->getRowCutDebugger());
 #endif
        {

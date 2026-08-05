@@ -1759,9 +1759,21 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface &si,
   // when LP-presolve fixes y=0). tighten() then wrongly derives UB(n)=0
   // for general integer variables. Binary-variable tightenings are sound
   // and must be kept (they are required for correct B&B convergence).
-  // Skip column-cut generation for general integers during preprocessing.
-  // info.options bit 64 is set exclusively by CglPreProcess (all passes).
-  const bool skipGenIntColCuts = ((info->options & 64) != 0);
+  // Skip column-cut generation for general integers whose bounds were
+  // (possibly wrongly) tightened by this internal tighten() call.
+  //
+  // This was originally gated on "info->options bit 64" (set exclusively by
+  // CglPreProcess), on the assumption that only CglPreProcess's LP-presolve
+  // integration could trigger the unsound cascade. However, the same
+  // mismatch between the row bounds fed to tighten() and the true LP
+  // relaxation state can also occur during ordinary (non-preprocessing)
+  // in-tree/root cut generation -- confirmed via mip-debug-cuts on
+  // nu25-pr12 (MIPLIB2017), where CglProbing produced invalid column and
+  // row cuts for a general-integer variable during the very first root
+  // cut-generation pass (no CglPreProcess involved at that point), leading
+  // Cbc to report a wrong (too-good) optimal objective. So this protection
+  // is now applied unconditionally rather than only when info->options&64.
+  const bool skipGenIntColCuts = true;
   const char *intVarOriginal = si.getColType(true);
   char *intVar = CoinCopyOfArray(intVarOriginal, nCols);
   int i;
@@ -2454,10 +2466,18 @@ int CglProbing::gutsOfGenerateCuts(const OsiSolverInterface &si,
                 // probe() are always safe to apply.
                 if (skipGenIntColCuts && intVar[iColumn] == 2)
                   continue;
+                // Also skip in-tree: these bounds may depend on other columns'
+                // node-local (branching-restricted) bounds (see the matching
+                // !info->inTree guards on the "fixed both ways" OsiColCut sites
+                // earlier in probe()), so they are not necessarily globally valid.
+                if (info->inTree)
+                  continue;
                 lbs.insert(iColumn, colLower[iColumn]);
               }
               if (colUpper[iColumn] < upper[iColumn] && intVar[iColumn]) {
                 if (skipGenIntColCuts && intVar[iColumn] == 2)
+                  continue;
+                if (info->inTree)
                   continue;
                 ubs.insert(iColumn, colUpper[iColumn]);
               }
@@ -5675,7 +5695,19 @@ int CglProbing::probe(const OsiSolverInterface &si,
             cc->setLbs(nFix, index, element);
           }
           // could tighten continuous as well
-          if (nInt) {
+          // NOTE: this "fixed both ways" deduction can depend on OTHER
+          // columns' CURRENT node-local (branching-restricted) bounds via
+          // the row-activity (minR/maxR) propagation used during the DFS
+          // exploration above, not just on column j's own two branches.
+          // When info->inTree is true, such a deduction may only be valid
+          // at the current node, not globally -- confirmed via
+          // mip-debug-cuts on MIPLIB2017 nu25-pr12, where an in-tree
+          // instance of exactly this cut wrongly fixed a binary variable
+          // to a value that contradicted the certified optimal solution.
+          // Restrict to the root (mirrors the existing !info->inTree guard
+          // already used for the analogous in-tree big-M row-cut case
+          // below in probe()).
+          if (nInt && !info->inTree) {
             if (ifCut) {
               cc->setEffectiveness(100.0);
             } else {
@@ -6348,7 +6380,10 @@ int CglProbing::probe(const OsiSolverInterface &si,
                 cc->setUbs(nFix, index, element);
               }
               // could tighten continuous as well
-              if (nInt) {
+              // See the matching comment above (the analogous "stackC"
+              // variant of this same fixed-both-ways deduction) for why
+              // this must also be restricted to the root.
+              if (nInt && !info->inTree) {
                 if (ifCut) {
                   cc->setEffectiveness(100.0);
                 } else {
