@@ -405,7 +405,18 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	  if (number > 1) {
 	    rowcut.setRow(number, cutIndex, packed);
 	    rowcut.setUb(si.getInfinity());
-	    rowcut.setLb(rhs);
+	    // Relax the RHS a tiny bit to absorb floating-point roundoff
+	    // accumulated upstream (row scaling, DGG_nicefyConstraint's
+	    // near-integer coefficient rounding/padding -- see
+	    // DGG_NICEFY_MAX_PADDING in CglTwomir.hpp, which alone can
+	    // already shift the RHS by up to 1e-6, and can compound across
+	    // multiple adjusted coefficients in the same cut). Without this,
+	    // a cut that is correct only up to roundoff can be marginally
+	    // too tight and exclude the true optimum (observed: a TwoMirCuts
+	    // cut on MIPLIB2017 instance nu25-pr12 that excluded the
+	    // certified-optimal solution by ~1.14e-6, well above
+	    // DGG_NICEFY_MIN_FIX/DGG_MIN_RHO's 1e-7 scale).
+	    rowcut.setLb(rhs - 1.0e-5*(1.0 + fabs(rhs)));
 	    cs.insertIfNotDuplicateAndClean(rowcut,61);
 	  } else {
 	    // singleton row cut!
@@ -2028,6 +2039,11 @@ int DGG_build2step( double alpha,
   DGG_TEST( DGG_is_a_multiple_of_b(alpha, bht), 1, "can't generate simple 2mir in limiting case");
   /* ensure that rho is not zero */
   DGG_TEST2( rho < DGG_MIN_RHO, 1, "rho (%f) too small", rho);
+  /* cap tau: it multiplies rho (and every coefficient below), so an
+     unbounded tau can amplify residual floating-point noise in rho into a
+     visibly wrong cut RHS/coefficients, even with DGG_MIN_RHO/DGG_MIN_ALPHA
+     enforced above. See DGG_MAX_TAU's comment in CglTwomir.hpp. */
+  DGG_TEST2( tau > DGG_MAX_TAU, 1, "tau (%f) too large" , tau);
 
   /* initialize constraint */
   tmir = DGG_newConstraint( base->nz );

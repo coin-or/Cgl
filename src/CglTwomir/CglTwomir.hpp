@@ -346,9 +346,38 @@ private:
 #endif
 
 /* smallest value rho is allowed to have for a simple 2-step MIR
-   (ie: not an extended two-step MIR) */
-#define DGG_MIN_RHO 1.0e-7
-#define DGG_MIN_ALPHA 1.0e-7
+   (ie: not an extended two-step MIR).
+   rho = bht - alpha*floor(bht/alpha) is a subtraction of two close
+   floating-point values whenever alpha nearly divides bht evenly, so its
+   absolute error can be well above double-precision roundoff (~1e-16).
+   The old 1.0e-7 threshold was only ~1 order of magnitude above that noise
+   floor and, critically, is not scaled by tau (see DGG_MAX_TAU below), so a
+   rho that just barely passed this check could still be amplified by a
+   large tau into a visibly wrong cut RHS (observed: a 2-step MIR cut on
+   MIPLIB2017 instance nu25-pr12 that excluded the certified-optimal
+   solution by ~1.144e-6). Raised to match DGG_NULL_SLACK's order of
+   magnitude, which is already the tolerance used elsewhere in this file to
+   decide whether a cut is numerically meaningful. */
+#define DGG_MIN_RHO 1.0e-5
+/* smallest value alpha is allowed to have. alpha appears as a denominator
+   in tau = ceil(bht/alpha) (and elsewhere), so a degenerately small alpha
+   directly inflates tau, the amplification factor applied to rho's noise
+   above. See DGG_MIN_RHO for the paired reasoning; both were 1.0e-7 and are
+   now aligned with DGG_NULL_SLACK. */
+#define DGG_MIN_ALPHA 1.0e-5
+
+/* Hard cap on tau = ceil(bht/alpha), the multiplier applied to rho (and to
+   every cut coefficient) when building a 2-step MIR cut. Even with
+   DGG_MIN_RHO/DGG_MIN_ALPHA raised above, a rho of just-above-threshold
+   magnitude multiplied by an unbounded tau can still produce a visible RHS
+   error. Bounding tau caps this amplification at the source, independent of
+   how small rho/alpha are allowed to be. a_max_ (default 2) is meant to be
+   the intended bound on bht/alpha, but the alpha-search loop in
+   DGG_add2stepToList can escape via its `kk>1000` fallback with an alpha
+   that still passes DGG_is2stepValid while giving tau far more headroom
+   than a_max intended -- this cap is enforced directly in DGG_build2step
+   regardless of how alpha was chosen. */
+#define DGG_MAX_TAU 1000
 
 /* when a slack is null: used to check if a cut is satisfied or not. */
 #define DGG_NULL_SLACK 1.0e-5
