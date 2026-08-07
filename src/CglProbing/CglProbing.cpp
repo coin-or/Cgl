@@ -5655,9 +5655,19 @@ int CglProbing::probe(const OsiSolverInterface &si,
           OsiColCut *cc = new OsiColCut;
           int /*nTot=0,*/ nFix = 0, nInt = 0;
           bool ifCut = false;
+          // Skip general-integer columns (intVar[icol]==2) here: colLower/
+          // colUpper at this point come from probe()'s own row-propagation
+          // bookkeeping (via tighten()-style bound cascades), which can be
+          // unsound for general integers - only binaries (intVar[icol]==1)
+          // are safe to fix from this local propagation. Confirmed via
+          // mip-debug-cuts on nu25-pr12 (MIPLIB2017): this exact site
+          // (unguarded) produced an invalid global column-bound cut on a
+          // general-integer variable at the very first root cut pass,
+          // permanently excluding the true optimum and making Cbc report a
+          // wrong (too-good) objective.
           for (istackC = 0; istackC < nstackC; istackC++) {
             int icol = stackC[istackC];
-            if (intVar[icol]) {
+            if (intVar[icol] && intVar[icol] != 2) {
               if (colUpper[icol] < currentColUpper[icol] - 1.0e-4) {
                 element[nFix] = colUpper[icol];
                 index[nFix++] = icol;
@@ -5677,7 +5687,7 @@ int CglProbing::probe(const OsiSolverInterface &si,
           }
           for (istackC = 0; istackC < nstackC; istackC++) {
             int icol = stackC[istackC];
-            if (intVar[icol]) {
+            if (intVar[icol] && intVar[icol] != 2) {
               if (colLower[icol] > currentColLower[icol] + 1.0e-4) {
                 element[nFix] = colLower[icol];
                 index[nFix++] = icol;
@@ -5769,8 +5779,19 @@ int CglProbing::probe(const OsiSolverInterface &si,
               if (goingToTrueBound == 2 && istackC && !justReplace) {
                 // upper disaggregation cut would be
                 // xval < upper + (old_upper-upper) (jval-down)
+                // Skip general-integer icol (intVar[icol]==2) here and at the
+                // seven analogous sites in this file: "boundChange" is derived
+                // from the local probing bound-propagation on icol
+                // (colUpper[icol]/colLower[icol] at this point reflect
+                // in-probe row-implication tightening, not a globally sound
+                // fact), which is only safe to turn into a disaggregation cut
+                // for binary icol. Confirmed via mip-debug-cuts on nu25-pr12
+                // (MIPLIB2017): several of these unguarded sites produced
+                // invalid 2-variable row cuts on a general-integer variable
+                // during the very first root cut-generation pass, permanently
+                // excluding the true optimum.
                 boundChange = oldU - colUpper[icol];
-                if (boundChange > 0.0 && oldU < 1.0e10 && (colsol[icol] > colUpper[icol] + boundChange * solMove + primalTolerance_)) {
+                if (intVar[icol] != 2 && boundChange > 0.0 && oldU < 1.0e10 && (colsol[icol] > colUpper[icol] + boundChange * solMove + primalTolerance_)) {
                   // create cut
                   OsiRowCut rc;
                   rc.setLb(-COIN_DBL_MAX);
@@ -5798,7 +5819,7 @@ int CglProbing::probe(const OsiSolverInterface &si,
                 // lower disaggregation cut would be
                 // xval > lower + (old_lower-lower) (jval-down)
                 boundChange = oldL - colLower[icol];
-                if (boundChange < 0.0 && oldL > -1.0e10 && (colsol[icol] < colLower[icol] + boundChange * solMove - primalTolerance_)) {
+                if (intVar[icol] != 2 && boundChange < 0.0 && oldL > -1.0e10 && (colsol[icol] < colLower[icol] + boundChange * solMove - primalTolerance_)) {
                   // create cut
                   OsiRowCut rc;
                   double newLb = colLower[icol] - down * boundChange;
@@ -6529,7 +6550,7 @@ int CglProbing::probe(const OsiSolverInterface &si,
                 // upper disaggregation cut would be
                 // xval < upper + (old_upper-upper) (up-jval)
                 boundChange = oldU - colUpper[icol];
-                if (boundChange > 0.0 && oldU < 1.0e10 && (colsol[icol] > colUpper[icol] + boundChange * solMove + primalTolerance_)) {
+                if (intVar[icol] != 2 && boundChange > 0.0 && oldU < 1.0e10 && (colsol[icol] > colUpper[icol] + boundChange * solMove + primalTolerance_)) {
                   // create cut
                   OsiRowCut rc;
                   rc.setLb(-COIN_DBL_MAX);
@@ -6557,7 +6578,7 @@ int CglProbing::probe(const OsiSolverInterface &si,
                 // lower disaggregation cut would be
                 // xval > lower + (old_lower-lower) (up-jval)
                 boundChange = oldL - colLower[icol];
-                if (boundChange < 0.0 && oldL > -1.0e10 && (colsol[icol] < colLower[icol] + boundChange * solMove - primalTolerance_)) {
+                if (intVar[icol] != 2 && boundChange < 0.0 && oldL > -1.0e10 && (colsol[icol] < colLower[icol] + boundChange * solMove - primalTolerance_)) {
                   // create cut
                   OsiRowCut rc;
                   double newLb = colLower[icol] + up * boundChange;
@@ -7933,9 +7954,12 @@ int CglProbing::probeCliques(const OsiSolverInterface &si,
               OsiColCut cc;
               int /*nTot=0,*/ nFix = 0, nInt = 0;
               bool ifCut = false;
+              // See matching comment in probe() above: skip general-integer
+              // columns here too - this is the site that was confirmed to
+              // produce an unsound global column cut for nu25-pr12.
               for (istackC = 0; istackC < nstackC; istackC++) {
                 int icol = stackC[istackC];
-                if (intVar[icol]) {
+                if (intVar[icol] && intVar[icol] != 2) {
                   if (colUpper[icol] < currentColUpper[icol] - 1.0e-4) {
                     element[nFix] = colUpper[icol];
                     index[nFix++] = icol;
@@ -7955,7 +7979,7 @@ int CglProbing::probeCliques(const OsiSolverInterface &si,
               }
               for (istackC = 0; istackC < nstackC; istackC++) {
                 int icol = stackC[istackC];
-                if (intVar[icol]) {
+                if (intVar[icol] && intVar[icol] != 2) {
                   if (colLower[icol] > currentColLower[icol] + 1.0e-4) {
                     element[nFix] = colLower[icol];
                     index[nFix++] = icol;
@@ -8055,7 +8079,7 @@ int CglProbing::probeCliques(const OsiSolverInterface &si,
                   // upper disaggregation cut would be
                   // xval < upper + (old_upper-upper) (jval-down)
                   boundChange = oldU - colUpper[icol];
-                  if (boundChange > 0.0 && oldU < 1.0e10 && (!mode_ || colsol[icol] > colUpper[icol] + boundChange * solMove + primalTolerance_)) {
+                  if (intVar[icol] != 2 && boundChange > 0.0 && oldU < 1.0e10 && (!mode_ || colsol[icol] > colUpper[icol] + boundChange * solMove + primalTolerance_)) {
                     // create cut
                     OsiRowCut rc;
                     rc.setLb(-COIN_DBL_MAX);
@@ -8084,7 +8108,7 @@ int CglProbing::probeCliques(const OsiSolverInterface &si,
                   // lower disaggregation cut would be
                   // xval > lower + (old_lower-lower) (jval-down)
                   boundChange = oldL - colLower[icol];
-                  if (boundChange < 0.0 && oldL > -1.0e10 && (!mode_ || colsol[icol] < colLower[icol] + boundChange * solMove - primalTolerance_)) {
+                  if (intVar[icol] != 2 && boundChange < 0.0 && oldL > -1.0e10 && (!mode_ || colsol[icol] < colLower[icol] + boundChange * solMove - primalTolerance_)) {
                     // create cut
                     OsiRowCut rc;
                     double newLb = colLower[icol] - down * boundChange;
@@ -8328,7 +8352,7 @@ int CglProbing::probeCliques(const OsiSolverInterface &si,
                       markC[icol] -= 100000;
                       if (std::min(lo0[istackC], colLower[icol]) > saveL[istackC1] + 1.0e-4) {
                         saveL[istackC1] = std::min(lo0[istackC], colLower[icol]);
-                        if (intVar[icol]) {
+                        if (intVar[icol] && intVar[icol] != 2) {
                           element[nFix] = saveL[istackC1];
                           index[nFix++] = icol;
                           nInt++;
@@ -8352,7 +8376,7 @@ int CglProbing::probeCliques(const OsiSolverInterface &si,
                       markC[icol] -= 100000;
                       if (std::max(up0[istackC], colUpper[icol]) < saveU[istackC1] - 1.0e-4) {
                         saveU[istackC1] = std::max(up0[istackC], colUpper[icol]);
-                        if (intVar[icol]) {
+                        if (intVar[icol] && intVar[icol] != 2) {
                           element[nFix] = saveU[istackC1];
                           index[nFix++] = icol;
                           nInt++;
@@ -8426,7 +8450,7 @@ int CglProbing::probeCliques(const OsiSolverInterface &si,
                   // upper disaggregation cut would be
                   // xval < upper + (old_upper-upper) (up-jval)
                   boundChange = oldU - colUpper[icol];
-                  if (boundChange > 0.0 && oldU < 1.0e10 && (!mode_ || colsol[icol] > colUpper[icol] + boundChange * solMove + primalTolerance_)) {
+                  if (intVar[icol] != 2 && boundChange > 0.0 && oldU < 1.0e10 && (!mode_ || colsol[icol] > colUpper[icol] + boundChange * solMove + primalTolerance_)) {
                     // create cut
                     OsiRowCut rc;
                     rc.setLb(-COIN_DBL_MAX);
@@ -8455,7 +8479,7 @@ int CglProbing::probeCliques(const OsiSolverInterface &si,
                   // lower disaggregation cut would be
                   // xval > lower + (old_lower-lower) (up-jval)
                   boundChange = oldL - colLower[icol];
-                  if (boundChange < 0.0 && oldL > -1.0e10 && (!mode_ || colsol[icol] < colLower[icol] + boundChange * solMove - primalTolerance_)) {
+                  if (intVar[icol] != 2 && boundChange < 0.0 && oldL > -1.0e10 && (!mode_ || colsol[icol] < colLower[icol] + boundChange * solMove - primalTolerance_)) {
                     // create cut
                     OsiRowCut rc;
                     double newLb = colLower[icol] + up * boundChange;
@@ -9474,7 +9498,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
             bool ifCut=false;
             for (istackC=0;istackC<nstackC;istackC++) {
               int icol=stackC[istackC];
-              if (intVar[icol]) {
+              if (intVar[icol] && intVar[icol] != 2) {
                 if (colUpper[icol]<currentColUpper[icol]-1.0e-4) {
                   element[nFix]=colUpper[icol];
                   index[nFix++]=icol;
@@ -9494,7 +9518,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
             }
             for (istackC=0;istackC<nstackC;istackC++) {
               int icol=stackC[istackC];
-              if (intVar[icol]) {
+              if (intVar[icol] && intVar[icol] != 2) {
                 if (colLower[icol]>currentColLower[icol]+1.0e-4) {
                   element[nFix]=colLower[icol];
                   index[nFix++]=icol;
@@ -9742,7 +9766,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 		    markC[icol] -= 100000;
                     if (std::min(lo0[istackC],colLower[icol])>saveL[istackC1]+1.0e-4) {
                       saveL[istackC1]=std::min(lo0[istackC],colLower[icol]);
-                      if (intVar[icol]) {
+                      if (intVar[icol] && intVar[icol] != 2) {
                         element[nFix]=saveL[istackC1];
                         index[nFix++]=icol;
                         nInt++;
@@ -9766,7 +9790,7 @@ CglProbing::probeSlacks( const OsiSolverInterface & si,
 		  markC[icol] -= 100000;
 		  if (std::max(up0[istackC],colUpper[icol])<saveU[istackC1]-1.0e-4) {
                       saveU[istackC1]=std::max(up0[istackC],colUpper[icol]);
-                      if (intVar[icol]) {
+                      if (intVar[icol] && intVar[icol] != 2) {
                         element[nFix]=saveU[istackC1];
                         index[nFix++]=icol;
                         nInt++;
@@ -12961,7 +12985,7 @@ int CglProbing::probeFast(const OsiSolverInterface &si,
           int /*nTot=0,*/ nFix = 0, nInt = 0;
           for (istackC = 0; istackC < nstackC; istackC++) {
             int icol = stackC[istackC];
-            if (intVar[icol]) {
+            if (intVar[icol] && intVar[icol] != 2) {
               if (colUpper[icol] < currentColUpper[icol] - 1.0e-4) {
                 element[nFix] = colUpper[icol];
                 index[nFix++] = icol;
@@ -12977,7 +13001,7 @@ int CglProbing::probeFast(const OsiSolverInterface &si,
           }
           for (istackC = 0; istackC < nstackC; istackC++) {
             int icol = stackC[istackC];
-            if (intVar[icol]) {
+            if (intVar[icol] && intVar[icol] != 2) {
               if (colLower[icol] > currentColLower[icol] + 1.0e-4) {
                 element[nFix] = colLower[icol];
                 index[nFix++] = icol;
