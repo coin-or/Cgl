@@ -302,7 +302,16 @@ CoinCliqueList *CglBKClique::separateCliques(const OsiSolverInterface &si)
   completeBK_ = true;
 
   if (ppcg->size() >= 2) {
-    ppcg->computeModifiedDegree();
+    // Only the ModifiedDegree and ModifiedDegreeWeight pivoting strategies read
+    // modifiedDegree(); Cbc's default is Weight, which does not. The computation
+    // walks every node's direct conflicts and clique elements summing degrees, so
+    // it was an O(sum of degrees) pass paid unconditionally on every separation
+    // call and then discarded. Note the clique *extender* reads modifiedDegree of
+    // the full conflict graph, not of this induced subgraph, so it is unaffected.
+    if (pivotingStrategy_ == CoinBronKerbosch::PivotingStrategy::ModifiedDegree
+      || pivotingStrategy_ == CoinBronKerbosch::PivotingStrategy::ModifiedDegreeWeight) {
+      ppcg->computeModifiedDegree();
+    }
     CoinBronKerbosch *bk = new CoinBronKerbosch(ppcg, vertexWeight_, pivotingStrategy_);
     bk->setMaxCalls(maxCallsBK_);
     bk->setMinWeight(minWeight_);
