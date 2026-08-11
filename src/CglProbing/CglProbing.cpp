@@ -3629,7 +3629,8 @@ int CglProbing::probe(const OsiSolverInterface &si,
 #ifdef ONE_ARRAY
   unsigned int DIratio = sizeof(double) / sizeof(int);
   assert(DIratio == 1 || DIratio == 2);
-  int nSpace = 10 * nCols + 4 * nRows + 2 * maxStack;
+  /* 5*nRows not 4: +nRows for rowActivity below. */
+  int nSpace = 10 * nCols + 5 * nRows + 2 * maxStack;
   nSpace += (6 * nCols + nRows + DIratio - 1) >> (DIratio - 1);
   // #define UPDATE_MINR_MAXR
 #ifdef UPDATE_MINR_MAXR
@@ -3650,7 +3651,11 @@ int CglProbing::probe(const OsiSolverInterface &si,
   double *COIN_RESTRICT saveMax = saveMin + nRows;
   double *COIN_RESTRICT largestPositiveInRow = saveMax + nRows;
   double *COIN_RESTRICT largestNegativeInRow = largestPositiveInRow + nRows;
-  double *COIN_RESTRICT element = largestNegativeInRow + nRows;
+  /* Row activity at colsol, cached lazily -- see the comment at its
+     initialization below. Carved out of the same block as everything
+     else so the "use existing arrays" path stays one allocation. */
+  double *COIN_RESTRICT rowActivity = largestNegativeInRow + nRows;
+  double *COIN_RESTRICT element = rowActivity + nRows;
   double *COIN_RESTRICT lo0 = element + nCols;
   double *COIN_RESTRICT up0 = lo0 + maxStack;
   double *COIN_RESTRICT newLo = up0 + maxStack;
@@ -3725,6 +3730,7 @@ int CglProbing::probe(const OsiSolverInterface &si,
   double *COIN_RESTRICT saveMax = new double[nRows];
   double *COIN_RESTRICT largestPositiveInRow = new double[nRows];
   double *COIN_RESTRICT largestNegativeInRow = new double[nRows];
+  double *COIN_RESTRICT rowActivity = new double[nRows];
   double *COIN_RESTRICT element = new double[nCols];
   double *COIN_RESTRICT lo0 = new double[maxStack];
   double *COIN_RESTRICT up0 = new double[maxStack];
@@ -3878,6 +3884,31 @@ int CglProbing::probe(const OsiSolverInterface &si,
     }
   }
   // printf("PROBE %d fixed out of %d\n",nFix,nCols);
+  /* Row activity at colsol. colsol is written for the last time in the clamp
+     loop above, and every reference to it from here to the end of the probe
+     loop is a read -- so a row's activity at colsol is a constant for the whole
+     of probing, and the gap tests below, which recompute it once per stacked
+     row per probed column, are repeating the same O(row length) sum.
+     Filled lazily rather than up front, keyed on a sentinel: only rows that
+     reach a gap test are ever asked, and on instances where probing bails out
+     early that is a small fraction of nRows -- an eager pass would make those
+     slower in order to speed up the slow ones.
+     Accumulates in rowStart order, exactly as the loops it replaces did, so a
+     cached sum is bit-identical to a recomputed one and no cut can change on
+     floating-point grounds. */
+  const double activityUnset = -COIN_DBL_MAX;
+  for (int i = 0; i < nRows; i++)
+    rowActivity[i] = activityUnset;
+  auto activityOf = [&](int irow) -> double {
+    double value = rowActivity[irow];
+    if (value == activityUnset) {
+      value = 0.0;
+      for (CoinBigIndex kk = rowStart[irow]; kk < rowStart[irow + 1]; kk++)
+        value += rowElements[kk] * colsol[column[kk]];
+      rowActivity[irow] = value;
+    }
+    return value;
+  };
   double tolerance = 1.0e1 * primalTolerance_;
   // If we are going to replace coefficient then we don't need to be effective
   // double needEffectiveness = info->strengthenRow ? -1.0e10 : 1.0e-3;
@@ -5873,13 +5904,11 @@ int CglProbing::probe(const OsiSolverInterface &si,
                   // and has to be original column length
 #ifdef MOVE_SINGLETONS
                   bool moveSingletons = (irow < moveSingletonRows);
-#endif
+                  /* Kept only for its moveSingletons bookkeeping; the activity
+                     it used to accumulate now comes from the cache below. */
                   for (CoinBigIndex kk = rowStart[irow]; kk < rowStart[irow + 1];
                     kk++) {
                     int iColumn = column[kk];
-                    double value = rowElements[kk];
-                    sum += value * colsol[iColumn];
-#ifdef MOVE_SINGLETONS
                     if (moveSingletons && j != iColumn) {
                       if (colUpper[iColumn] > colLower[iColumn]) {
                         if (columnLength2[iColumn] != 1) {
@@ -5887,8 +5916,9 @@ int CglProbing::probe(const OsiSolverInterface &si,
                         }
                       }
                     }
-#endif
                   }
+#endif
+                  sum = activityOf(irow);
 #ifdef MOVE_SINGLETONS
                   if (moveSingletons) {
                     // can fix any with good costs
@@ -6028,13 +6058,11 @@ int CglProbing::probe(const OsiSolverInterface &si,
                   // also see if singletons can go to good objective
 #ifdef MOVE_SINGLETONS
                   bool moveSingletons = (irow < moveSingletonRows);
-#endif
+                  /* Kept only for its moveSingletons bookkeeping; the activity
+                     it used to accumulate now comes from the cache below. */
                   for (CoinBigIndex kk = rowStart[irow]; kk < rowStart[irow + 1];
                     kk++) {
                     int iColumn = column[kk];
-                    double value = rowElements[kk];
-                    sum += value * colsol[iColumn];
-#ifdef MOVE_SINGLETONS
                     if (moveSingletons && j != iColumn) {
                       if (colUpper[iColumn] > colLower[iColumn]) {
                         if (columnLength2[iColumn] != 1) {
@@ -6042,8 +6070,9 @@ int CglProbing::probe(const OsiSolverInterface &si,
                         }
                       }
                     }
-#endif
                   }
+#endif
+                  sum = activityOf(irow);
 #ifdef MOVE_SINGLETONS
                   if (moveSingletons) {
                     // can fix any with good costs
@@ -6653,10 +6682,7 @@ int CglProbing::probe(const OsiSolverInterface &si,
                 double sum = 0.0;
                 if (!ifCut && (gap > primalTolerance_ && gap < 1.0e8)) {
                   // see if the strengthened row is a cut
-                  for (CoinBigIndex kk = rowStart[irow]; kk < rowStart[irow + 1];
-                    kk++) {
-                    sum += rowElements[kk] * colsol[column[kk]];
-                  }
+                  sum = activityOf(irow);
                   if (sum + gap * colsol[j] > rowUpper[irow] + primalTolerance_ || (canReplace && rowLower[irow] < -1.e20)) {
                     // can be a cut
                     // add gap to integer coefficient
@@ -6754,12 +6780,11 @@ int CglProbing::probe(const OsiSolverInterface &si,
                 gap = minR[irow] - rowLower[irow];
                 if (!ifCut && (gap > primalTolerance_ && gap < 1.0e8)) {
                   // see if the strengthened row is a cut
-                  if (!sum) {
-                    for (CoinBigIndex kk = rowStart[irow]; kk < rowStart[irow + 1];
-                      kk++) {
-                      sum += rowElements[kk] * colsol[column[kk]];
-                    }
-                  }
+                  /* Unconditional where the original guarded on !sum: the cache
+                     returns the same activity the upper branch would have
+                     computed, so this reproduces both the sum-already-set and
+                     the sum-still-zero cases. */
+                  sum = activityOf(irow);
                   if (sum - gap * colsol[j] < rowLower[irow] - primalTolerance_ || (canReplace && rowUpper[irow] > 1.0e20)) {
                     // can be a cut
                     // subtract gap from integer coefficient
@@ -7083,6 +7108,7 @@ int CglProbing::probe(const OsiSolverInterface &si,
   delete[] djs;
   delete[] largestPositiveInRow;
   delete[] largestNegativeInRow;
+  delete[] rowActivity;
 #endif
 #if FIXED_BOTH_WAYS || MANY_TIGHTEN
   delete[] saveFColLower;
