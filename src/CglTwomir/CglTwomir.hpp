@@ -76,6 +76,17 @@ typedef struct
   void * spare2;
 #endif
 
+  /* Scratch for the gated sparse scatter in DGG_getTableauConstraint.  Kept
+     outside TWOMIR_LESS_MALLOC because the scatter is unconditional, and
+     per-call rather than static so the generator stays reentrant. */
+  int *tabColStamp_;    /* size ncol; stamped with tabStamp_, never cleared */
+  int tabStamp_;        /* stamp for the current candidate (0 = none yet) */
+  double tabDenseWork_; /* sum of colCnt[j] over nonbasic structural j; the
+                           dense cost of one tableau row, minus the pivot
+                           column.  Depends only on the basis, so it is
+                           invariant for the whole generateCuts call.
+                           Negative means "not computed yet". */
+
   cutParams cparams;
 } DGG_data_t;
 

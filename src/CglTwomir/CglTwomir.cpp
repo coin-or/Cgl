@@ -694,6 +694,7 @@ int DGG_freeData( DGG_data_t *data )
   delete data->vector1_;
   //free (data->spareArray0_);
 #endif
+  free(data->tabColStamp_);
 
   free(data);
   return 0;
@@ -762,6 +763,11 @@ DGG_data_t* DGG_getData(const void *osi_ptr )
   //data->spareArray0_ = reinterpret_cast<double*> (malloc( sizeof(double)*total));
   //memset(data->spareArray0_,0,sizeof(double)*total);
 #endif
+  /* scratch for the gated sparse scatter in DGG_getTableauConstraint */
+  data->tabColStamp_ = reinterpret_cast<int*> (calloc( data->ncol ? data->ncol : 1,
+                                                       sizeof(int)));
+  data->tabStamp_ = 0;
+  data->tabDenseWork_ = -1.0;
 
   memset(data->info, 0, sizeof(int)*total);
 
@@ -1052,7 +1058,87 @@ DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
     //coeff[0] = 1.0;
     //indices[0] = index;
     int ncol = data->ncol;
-    /* compute column (structural) variable coefficients */
+    /* Compute column (structural) variable coefficients.
+
+       The BTRAN result above is nonzero on exactly cnt rows, listed in
+       arrayRows[0..cnt-1].  alpha_j is a dot product of column j against that
+       vector, so it can only be nonzero where column j touches one of those
+       rows.  Marking the columns reached through the row copy therefore lets
+       the inner element loop be skipped for every unmarked column: each
+       arrayElements[] such a column reads is exactly 0.0, so value is exactly
+       0.0 and the DGG_MIN_TABLEAU_COEFFICIENT test rejects it -- the same
+       decision the dense loop reaches, at no cost.
+
+       The outer sweep deliberately stays dense and in increasing j.  The
+       CoinSort_2 below sorts only the slack tail (tabrow->index+nz1 onward),
+       so the order of the structural head is whatever this loop emits, and
+       DGG_transformConstraint, DGG_nicefyConstraint and the emit loop consume
+       it in that order.  The win here is on elements, not on the ncol sweep.
+
+       Both sides of the gate are known before either is paid: the scatter
+       costs sum(rowCnt) over the cnt marked rows, while the dense loop costs
+       tabDenseWork_ + colCnt[index] -- the pivot column is basic, so only the
+       j==index clause admits it.  tabDenseWork_ depends on the basis alone and
+       is therefore invariant across every candidate in this generateCuts call.
+
+       Build with -DCGL_TWOMIR_DENSE_COLLOOP to force the original loop
+       unconditionally.  */
+    bool useScatter = false;
+    const CoinBigIndex *rowBeg = 0;
+    const int *rowCnt = 0, *rowInd = 0;
+#ifndef CGL_TWOMIR_DENSE_COLLOOP
+    if (cnt > 0) {
+      if (data->tabDenseWork_ < 0.0) {
+        double denseWork = 0.0;
+        for (int jj = 0; jj < ncol; jj++)
+          if (!DGG_isBasic(data, jj))
+            denseWork += static_cast<double>(colCnt[jj]);
+        data->tabDenseWork_ = denseWork;
+      }
+      const CoinPackedMatrix *rowMatrixPtr = si->getMatrixByRow();
+      rowBeg = rowMatrixPtr->getVectorStarts();
+      rowCnt = rowMatrixPtr->getVectorLengths();
+      rowInd = rowMatrixPtr->getIndices();
+      double scatter = 0.0;
+      for (int k = 0; k < cnt; k++)
+        scatter += static_cast<double>(rowCnt[arrayRows[k]]);
+      useScatter = (4.0*scatter <
+                    data->tabDenseWork_ + static_cast<double>(colCnt[index]));
+    }
+#endif
+    if (useScatter) {
+      /* The mark array is stamped rather than cleared, so marking costs
+         nothing per candidate beyond the scatter itself.  It lives in data
+         (per generateCuts call), not in a static, so the generator stays
+         reentrant. */
+      int *mark = data->tabColStamp_;
+      const int stamp = ++data->tabStamp_;
+      for (int k = 0; k < cnt; k++) {
+        const int iRow = arrayRows[k];
+        const CoinBigIndex end = rowBeg[iRow] + rowCnt[iRow];
+        for (CoinBigIndex i = rowBeg[iRow]; i < end; i++)
+          mark[rowInd[i]] = stamp;
+      }
+      /* Mark the pivot column unconditionally.  In exact arithmetic the
+         scatter always reaches it, but nothing here should depend on that. */
+      mark[index] = stamp;
+      for(j = 0; j < ncol; j++) {
+        if (mark[j] != stamp) continue;
+        if ( !DGG_isBasic(data, j) || j==index) {
+          /* A marked column is summed over ALL of its elements, not just
+             those in marked rows, so the floating-point summation set and
+             order are bit-identical to the dense loop. */
+          double value = 0.0;
+          for(CoinBigIndex i=colBeg[j]; i < colBeg[j]+colCnt[j]; i++)
+            value += colMat[i]*arrayElements[ colInd[i] ];
+          if ( fabs(value) > DGG_MIN_TABLEAU_COEFFICIENT ) {
+            coeff[nz] = value;
+            indices[nz] = j;
+            nz++;
+          }
+        }
+      }
+    } else {
     for(j = 0; j < ncol; j++) {
       if ( !DGG_isBasic(data, j) || j==index) {
 	double value = 0.0;
@@ -1064,6 +1150,7 @@ DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
 	  nz++;
 	}
       }
+    }
     }
     /* compute row variable (slack/logical) variable coefficients */
     /* and compute rhs */
