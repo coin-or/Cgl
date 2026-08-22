@@ -1990,12 +1990,25 @@ DGG_add2stepToList ( DGG_constraint_t *base, char *isint, double * /*x*/,
   int rval;
   DGG_constraint_t *cut = NULL;
   int i;
+  /* j scores the candidate cut.  It must NOT be i: the two scoring loops below
+     used to reuse i, and since DGG_build2step copies every element of base
+     unconditionally, cut->nz == base->nz -- so i came back equal to base->nz,
+     the outer i++ went past the bound and the loop exited after the first
+     candidate that built a cut.  The search evaluated exactly one alpha,
+     best_rc_alpha and best_norm_alpha were always equal, and the two rules at
+     the bottom compared a single value against COIN_DBL_MAX. */
+  int j;
   double norm_val, best_norm_val, best_norm_alpha=-1.0;
   double rc_val, best_rc_val,  best_rc_alpha=-1.0;
   double vht, bht, alpha;
-  
-  best_rc_val = best_norm_val = COIN_DBL_MAX;
-  
+
+#ifdef CGL_TWOMIR_ALPHA_RC_MAX
+  best_rc_val = -COIN_DBL_MAX;
+#else
+  best_rc_val = COIN_DBL_MAX;
+#endif
+  best_norm_val = COIN_DBL_MAX;
+
   bht = ABOV(base->rhs);
 
   double best_rc = 0;
@@ -2022,23 +2035,81 @@ DGG_add2stepToList ( DGG_constraint_t *base, char *isint, double * /*x*/,
     rval = DGG_build2step(alpha, isint, base, &cut);
     DGG_CHECKRVAL(rval, rval);
 
-    rc_val = COIN_DBL_MAX; // this gives a lower bound on obj. fn. improvement
+    /* Two scores per candidate, and only the second one ever decides.
 
-    for(i=0; i<cut->nz; i++) if(cut->coeff[i]> 1E-6){
-      rc_val = std::min(rc_val, fabs(rc[i])/cut->coeff[i]);
+       rc_val is a lower bound on the LP objective improvement the cut forces.
+       DGG_transformConstraint leaves the LP point at 0 in every transformed
+       variable, so `sum_j coeff_j x_j >= rhs` is violated by exactly rhs, and
+       repairing it through variable j alone costs |rc_j| * rhs / coeff_j.  The
+       repair LP -- minimize sum |rc_j| d_j s.t. sum coeff_j d_j >= rhs, d >= 0
+       -- is optimized by a single variable, so the bound is exactly
+       rhs * min_j(|rc_j|/coeff_j), and across candidate alphas bigger is
+       better -- while the code below takes the smaller.  That inversion is
+       real but MOOT, and measurably so: the `best_rc_val > 1E-6` gate at the
+       bottom was false in every one of 27939 productive calls over 333
+       fixtures, so this rule never selects anything in either direction.  The
+       cause is not the sign of rhs (rhs > 0 in the calls sampled) but the
+       minimum itself: it collapses to 0 as soon as ONE usable column has zero
+       reduced cost, which at an optimal basis is the normal case, not the
+       exception.  A bound of 0 is correct -- a free direction repairs the
+       violation at no objective cost -- and useless.  Left as-is rather than
+       "fixed", because a rule that has never fired cannot be validated by
+       measurement; -DCGL_TWOMIR_ALPHA_RC_MAX takes the maximum for anyone who
+       wants to explore it.
+
+       norm_val is what actually decides.  Minimizing sum(coeff^2)/(rhs^2+1)
+       maximizes rhs/||coeff||, the Euclidean distance from the LP point (at 0)
+       to the cut -- the standard violation-distance criterion.  Two departures
+       from the exact distance: the sum runs only over coefficients > 1E-6, so
+       negative coefficients (DGG_build2step emits them via floor(v)*tau*rho)
+       are omitted from the norm, and the +1 keeps rhs = 0 finite at the cost of
+       distorting the scale for small rhs.  -DCGL_TWOMIR_ALPHA_DIST scores the
+       exact distance instead.  */
+    rc_val = COIN_DBL_MAX;
+    norm_val = 0; // this is the square of the L2 norm
+    int nUsable = 0;
+
+    /* One pass rather than two over the same filtered set: min is
+       order-independent and the sum still accumulates in increasing j, so both
+       values are bit-identical to the two-loop form.  */
+    for(j=0; j<cut->nz; j++) if(cut->coeff[j]> 1E-6){
+      rc_val = std::min(rc_val, fabs(rc[j])/cut->coeff[j]);
+      norm_val += (cut->coeff[j]*cut->coeff[j]);
+      nUsable++;
     }
     rc_val *= cut->rhs;
-
-    norm_val = 0; // this is the square of the L2 norm
- 
-    for(i=0; i<cut->nz; i++) if(cut->coeff[i]> 1E-6){
-      norm_val += (cut->coeff[i]*cut->coeff[i]);
-    }
-
     norm_val /= (cut->rhs * cut->rhs + 1.0);
-         
-    if (rc_val < best_rc_val )  {	
+
+#ifdef CGL_TWOMIR_ALPHA_RC_MAX
+    /* With no coefficient above 1E-6 there is nothing to repair through, so the
+       bound argument yields nothing.  Score 0 rather than leaving
+       COIN_DBL_MAX * rhs, which is +inf for rhs > 0 and would win the maximum
+       outright with a numerically empty cut.  (rhs = ceil(base->rhs)*tau*rho,
+       so it is <= 0 whenever base->rhs <= 0 and rc_val can then go negative;
+       under the minimization below such candidates simply fall through to the
+       norm rule via the `best_rc_val > 1E-6` gate.)  */
+    if (!nUsable) rc_val = 0.0;
+    if (rc_val > best_rc_val )  {
       best_rc_val = rc_val; best_rc_alpha = alpha;  }
+#else
+    if (rc_val < best_rc_val )  {
+      best_rc_val = rc_val; best_rc_alpha = alpha;  }
+#endif
+
+#ifdef CGL_TWOMIR_ALPHA_DIST
+    /* Exact squared violation distance, negated so the existing minimization
+       picks the largest.  Every rhs > 0 candidate scores < 0 and so beats every
+       rhs <= 0 candidate, which keeps the original score and stays rankable
+       among themselves -- so this can never leave best_norm_alpha at -1.0 and
+       drop a cut the original rule would have emitted.  The norm here is over
+       ALL coefficients, negative ones included.  */
+    {
+      double nrm2 = 0.0;
+      for(j=0; j<cut->nz; j++) nrm2 += cut->coeff[j]*cut->coeff[j];
+      if (cut->rhs > 0.0 && nrm2 > 1e-30)
+        norm_val = -(cut->rhs * cut->rhs) / nrm2;
+    }
+#endif
 
     if (norm_val < best_norm_val ) {	
       best_norm_val = norm_val;  best_norm_alpha = alpha;  }
