@@ -216,6 +216,15 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
 	CglTreeInfo info2 = info;
 	info2.level = -1-info.level;
 	generateCuts(si2,cs,info2);
+	/* This `return' skips the `MAXAGGR_ = saveMaxAggr' at the end of the
+	   function, so a negative MAXAGGR_ that the block above rewrote to 5 would
+	   stay 5 for every later call: the `if (MAXAGGR_<0)' test never fires
+	   again, and an in-tree call that should have taken the -1 -> 1 arm, or
+	   returned outright for -2, aggregates five rows deep instead.  Restore
+	   here rather than before the recursion: the recursion only happens when
+	   !info.inTree, so it would recompute the same 5 either way, and doing it
+	   after leaves what the inner call sees untouched. */
+	MAXAGGR_ = saveMaxAggr;
 	return;
       }
 #endif
