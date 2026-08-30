@@ -54,7 +54,54 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
 	return;
     }
   }
-  if (preInit == false &&  preReso == false && doPreproc_ == -1 ) { // Do once
+#ifdef CGL_HAS_CLP
+#define MODIFY_LP 2
+#endif
+#if MODIFY_LP //def CGL_HAS_CLP
+  // need Clp to set row solution for new row
+  const OsiClpSolverInterface * clpSolver =
+    getConstClpSolver(&si);
+#endif
+  /* Count the >= rows that the MODIFY_LP==2 block below would flip, BEFORE
+     preprocessing rather than after, for two reasons.
+
+     One: on nChanged == 0 that block used to deep copy the whole ClpSimplex
+     (OsiClpSolverInterface si2 = *clpSolver) purely to read one array, rowUpper,
+     and then destroy it -- the recursion that consumes the copy does not run.  The
+     count needs nothing but rowUpper, and getConstClpSolver hands back si itself
+     (the dynamic_cast overload at OsiClpSolverInterface.hpp:1688; the pointer-hack
+     twin at :1671 is under #if 0), so reading clpSolver's own rowUpper reads the
+     very array the copy would have duplicated.  getModelPtr() is inert on the
+     source solver: its freeCachedResults() call is commented out
+     (OsiClpSolverInterface.cpp:5152), so asking does not disturb si's lazy caches.
+
+     Two: when the block does fire it recurses and returns, so the
+     mixIntRoundPreprocess call below is thrown away -- nothing between it and the
+     recursion reads a single member it wrote.  Skipping it is only safe when
+     doPreproc_ == 1, because that is the one setting under which the inner call
+     preprocesses again.  With doPreproc_ != 1 and doneInitPre_ == false the inner
+     call sees doneInitPre_ == true and separates on the row types computed here
+     from the UNFLIPPED matrix; that is almost certainly accidental, but
+     reproducing it exactly is part of not changing a single cut. */
+  int nChanged = 0;
+#if MODIFY_LP==2
+  if (!info.inTree && clpSolver && clpSolver->getObjSense()==1.0 &&
+      info.level>=0) {
+    const ClpModel * model = clpSolver->getModelPtr();
+    int numberRows = model->numberRows();
+    const double * rowUpper = model->rowUpper();
+    for (int i=0;i<numberRows;i++) {
+      /* the negation of the block's own test, not `>= 1.0e50', so that a NaN bound
+	 is counted here exactly as it is counted there */
+      if (!(rowUpper[i]<1.0e50))
+	nChanged++;
+    }
+  }
+#endif
+  if (nChanged>0 && doPreproc_==1) {
+    // preprocessing here would be discarded by the recursion below
+  }
+  else if (preInit == false &&  preReso == false && doPreproc_ == -1 ) { // Do once
     if (doneInitPre_ == false) {   
       mixIntRoundPreprocess(si);
       doneInitPre_ = true;
@@ -74,13 +121,7 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
   }
   int numberColumns = si.getNumCols();
   const char * intVar = si.getColType();
-#ifdef CGL_HAS_CLP
-#define MODIFY_LP 2
-#endif
 #if MODIFY_LP //def CGL_HAS_CLP
-  // need Clp to set row solution for new row
-  const OsiClpSolverInterface * clpSolver =
-    getConstClpSolver(&si);
   if (!info.inTree && clpSolver && clpSolver->getObjSense()==1.0) {
     if (info.level>=0) {
 #if MODIFY_LP==1
@@ -123,25 +164,27 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
 #else
       assert(MODIFY_LP==2);
       // make all >= <=
-      OsiClpSolverInterface si2 = *clpSolver;
-      ClpModel *model = si2.getModelPtr();
-      int numberRows = model->numberRows();
-      int numberColumns = model->numberColumns();
-      double * rowLower = model->rowLower();
-      double * rowUpper = model->rowUpper();
-      double * rowSol = model->primalRowSolution();
-      double * rowDual = model->dualRowSolution();
-      bool * swap = new bool[numberRows];
-      int nChanged = 0;
-      for (int i=0;i<numberRows;i++) {
-	if (rowUpper[i]<1.0e50) {
-	  swap[i] = false;
-	} else {
-	  swap[i] = true;
-	  nChanged++;
-	}
-      }
+      /* nChanged was counted at the top of this function from clpSolver's own
+	 rowUpper, so the whole-ClpSimplex copy is now taken only on the path that
+	 consumes it -- the one that flips the rows and recurses.  The bool[numberRows]
+	 goes with it. */
       if (nChanged) {
+	OsiClpSolverInterface si2 = *clpSolver;
+	ClpModel *model = si2.getModelPtr();
+	int numberRows = model->numberRows();
+	int numberColumns = model->numberColumns();
+	double * rowLower = model->rowLower();
+	double * rowUpper = model->rowUpper();
+	double * rowSol = model->primalRowSolution();
+	double * rowDual = model->dualRowSolution();
+	bool * swap = new bool[numberRows];
+	for (int i=0;i<numberRows;i++) {
+	  if (rowUpper[i]<1.0e50) {
+	    swap[i] = false;
+	  } else {
+	    swap[i] = true;
+	  }
+	}
 	//printf("%d G rows\n",nChanged);
 	ClpPackedMatrix *clpMatrix = dynamic_cast< ClpPackedMatrix * >(model->clpMatrix());
 	CoinPackedMatrix *matrix = clpMatrix ? clpMatrix->matrix() : NULL;
@@ -174,8 +217,6 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
 	info2.level = -1-info.level;
 	generateCuts(si2,cs,info2);
 	return;
-      } else {
-	delete [] swap;
       }
 #endif
     } 
@@ -189,10 +230,52 @@ CglMixedIntegerRounding2::generateCuts(const OsiSolverInterface& si,
 
   // get matrix by row
   const CoinPackedMatrix & tempMatrixByRow = *si.getMatrixByRow();
-  CoinPackedMatrix matrixByRow(false,0.0,0.0);
-  // There are no duplicates but this is faster
-  matrixByRow.submatrixOfWithDuplicates(tempMatrixByRow, numRows_, indRows_);
-  CoinPackedMatrix matrixByCol(matrixByRow,0,0,true);
+  /* mixIntRoundPreprocess fills indRows_[iRow] = iRow for every row (:627) in the
+     same pass that sets numRows_ = si.getNumRows() (:459), so whenever the two still
+     agree the submatrix below is the identity and the copy is a full O(nnz)
+     duplicate of a matrix we already hold.  Bind a reference in that case.
+
+     The guard has to be that equality rather than "indRows_ is the identity":
+     doneInitPre_ can leave numRows_ over from a SHORTER model, and then
+     submatrixOfWithDuplicates genuinely selects the first numRows_ rows of a taller
+     matrix, which a reference would get wrong.
+
+     Safe only because both consumers of this local go through getVector(iRow) --
+     :1101 in copyRowSelected and :1649 in cMirSeparation -- which is gap-tolerant,
+     whereas submatrixOfWithDuplicates hands back a gap-free copy
+     (CoinPackedMatrix.cpp:783-784).  The raw-array reads at :461-464 are on
+     *si.getMatrixByRow() directly, a different object, and they pair
+     rowStarts[iRow] with rowLengths[iRow], so they tolerate gaps too.  Re-run that
+     grep before touching this. */
+  const bool identityRows = (numRows_ == si.getNumRows());
+  CoinPackedMatrix matrixByRowCopy(false,0.0,0.0);
+  if (!identityRows) {
+    // There are no duplicates but this is faster
+    matrixByRowCopy.submatrixOfWithDuplicates(tempMatrixByRow, numRows_, indRows_);
+  }
+  const CoinPackedMatrix & matrixByRow =
+    identityRows ? tempMatrixByRow : matrixByRowCopy;
+  /* This transpose has no reachable reader at MAXAGGR_ == 1, which is what CBC
+     runs: CbcSolverCutSetup.cpp:341 constructs (1,true,1) and mixedRoundStrategy_
+     defaults to 1 (CbcSolver.hpp:206), so setMAXAGGR_ at :344 is never called.  The
+     three pointers taken below have four reader sites, all unreachable there --
+     :904 and :925-928 sit in the `else' arm at :897 that needs iAggregate > 0,
+     :1057-1060 is a `for (jAggregate=1; jAggregate<MAXAGGR_; ...)' running zero
+     times, and :1170-1183 is inside selectRowToAggregate, which is never entered.
+
+     Forming the pointers off a default-constructed CoinPackedMatrix is fine:
+     getElements/getIndices/getVectorLengths are plain member returns of null
+     (CoinPackedMatrix.hpp:125-163, no assert and no lazy build) and the default ctor
+     leaves start_ a valid 1-element array.  swap() rather than an assignment keeps
+     the MAXAGGR_ > 1 path on the exact same constructor with no extra copy; the
+     transpose is bit-identical whether it is built from the gapped original or the
+     gap-free copy, since it gathers by minor index in increasing major order and
+     submatrixOfWithDuplicates preserves minorDim_ (CoinPackedMatrix.cpp:804). */
+  CoinPackedMatrix matrixByCol;
+  if (MAXAGGR_ > 1) {
+    CoinPackedMatrix builtByCol(matrixByRow,0,0,true);
+    matrixByCol.swap(builtByCol);
+  }
   //matrixByCol.reverseOrdering();
   //const CoinPackedMatrix & matrixByRow = *si.getMatrixByRow();
   const double* LHS        = si.getRowActivity();
