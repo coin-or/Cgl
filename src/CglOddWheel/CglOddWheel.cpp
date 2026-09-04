@@ -36,7 +36,7 @@ double CglOddWheel::sepTime = 0.0;
 
 static void *xmalloc( const size_t size );
 
-CglOddWheel::CglOddWheel(size_t extMethod) : cap_(0), extMethod_(extMethod) {
+CglOddWheel::CglOddWheel(size_t extMethod) : cap_(0), extMethod_(extMethod), stats_(Stats()) {
     idxs_ = NULL;
     idxMap_ = NULL;
     coefs_ = NULL;
@@ -47,6 +47,8 @@ CglOddWheel::CglOddWheel(size_t extMethod) : cap_(0), extMethod_(extMethod) {
 CglOddWheel::CglOddWheel(const CglOddWheel& rhs) {
     this->cap_ = rhs.cap_;
     this->extMethod_ = rhs.extMethod_;
+    // Not copied: a clone has made no call of its own yet.
+    this->stats_ = Stats();
 
     if (this->cap_ > 0) {
         this->idxs_ = (int*)xmalloc(sizeof(int) * this->cap_);
@@ -96,6 +98,7 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
         return;
     }
 
+    stats_ = Stats();
     double startSep = CoinCpuTime();
     const size_t numCols = si.getNumCols();
     const CoinConflictGraph *cgraph = si.getCGraph();
@@ -107,6 +110,7 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
 
     checkMemory(numCols);
 
+    const double startSetup = CoinGetTimeOfDay();
     const double *colSol = si.getColSolution();
     const double *rCost = si.getReducedCost();
     for(size_t i = 0; i < numCols; i++) {
@@ -116,12 +120,22 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
         rc_[i + numCols] = -rc_[i];
     }
 
+    // tSeparator covers the separator's construction (which runs
+    // fillActiveColumns) and its search; the cut pool's allocation sits in
+    // between and is counted with it rather than reordering the code.
+    const double startSeparator = CoinGetTimeOfDay();
+    stats_.tSetup = startSeparator - startSetup;
+
     CoinOddWheelSeparator oddH(cgraph, x_, rc_, extMethod_);
     if (maxSeconds_ > 0.0)
         oddH.setMaxSeconds(maxSeconds_);
     CoinCutPool cutPool(x_, numCols, "OddWheel");
 
     oddH.searchOddWheels();
+
+    const double startCutPool = CoinGetTimeOfDay();
+    stats_.tSeparator = startCutPool - startSeparator;
+    stats_.sep = oddH.stats();
 
     // Same rationale as CglBKClique::insertCuts(): only pay for the
     // per-column best-score filtering when there are enough candidates
@@ -159,79 +173,105 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
         }
 
         int realSize = 0;
-        bool duplicated = false;
+        size_t duplicated = 0;
         std::fill(idxMap_, idxMap_ + numCols, -1);
 
+        /* Translating conflict graph nodes into columns.
+         *
+         * A node j means x_j = 1 and a node j + numCols means x_j = 0, and
+         * addVariableComplementConflicts() makes those two nodes adjacent, so a
+         * cycle may legitimately pass through a variable *and* its own
+         * complement. Both then map to column j. Summing the coefficients is
+         * exact algebra on x_j + (1 - x_j): the pair cancels to zero and the
+         * RHS keeps its -1, leaving an inequality that is still valid and still
+         * violated by exactly the amount the separator measured on the doubled
+         * value vector. Rejecting the cut instead discarded every odd hole
+         * found on all 237 replay fixtures (2528 of 2528).
+         *
+         * With no repeated column there is no accumulation and no compaction,
+         * so cuts that were emitted before come out unchanged. */
         for(size_t k = 0; k < oddSize; k++) {
-            if(oddEl[k] < numCols) {
-                if(idxMap_[oddEl[k]] == -1) {
-                    idxMap_[oddEl[k]] = realSize;
-                    idxs_[realSize] = oddEl[k];
-                    coefs_[realSize] = 1.0;
-                    realSize++;
-                } else {
-                    duplicated = true;
-                    break;
-                }
-            }
-            else {
-                if(idxMap_[oddEl[k]-numCols] == -1) {
-                    idxMap_[oddEl[k]-numCols] = realSize;
-                    idxs_[realSize] = ((int)(oddEl[k] - numCols));
-                    coefs_[realSize] = -1.0;
-                    rhs -= 1.0;
-                    realSize++;
-                }
-                else {
-                    duplicated = true;
-                    break;
-                }
-            }
-        }
+            const bool complement = (oddEl[k] >= numCols);
+            const int col = complement ? ((int)(oddEl[k] - numCols)) : ((int)oddEl[k]);
+            const double coef = complement ? -1.0 : 1.0;
 
-        if (duplicated) {
-            continue;
+            if (complement) {
+                rhs -= 1.0;
+            }
+
+            if(idxMap_[col] == -1) {
+                idxMap_[col] = realSize;
+                idxs_[realSize] = col;
+                coefs_[realSize] = coef;
+                realSize++;
+            } else {
+                coefs_[idxMap_[col]] += coef;
+                duplicated++;
+            }
         }
 
         const size_t centerSize = oddH.wheelCenterSize(j);
         const size_t *centerIdx = oddH.wheelCenter(j);
         if (centerSize && fabs(rhs) >= ODDHWC_EPS) {
             const double oldRhs = rhs;
+            /* The wheel centres form a clique, so at most one of them is 1 and
+             * lifting them all with coefficient oldRhs stays valid. A centre
+             * whose column already appears in the cycle accumulates for the
+             * same reason as above; dropping the whole wheel over it would
+             * throw away the plain odd-hole cut as well. */
             for (size_t k = 0; k < centerSize; k++) {
-                if (centerIdx[k] < numCols) {
-                    if (idxMap_[centerIdx[k]] == -1) {
-                        idxMap_[centerIdx[k]] = realSize;
-                        idxs_[realSize] = centerIdx[k];
-                        coefs_[realSize] = oldRhs;
-                        realSize++;
-                    } else {
-                        duplicated = true;
-                        break;
-                    }
-                } else {
-                    if (idxMap_[centerIdx[k] - numCols] == -1) {
-                        idxMap_[centerIdx[k] - numCols] = realSize;
-                        idxs_[realSize] = ((int) (centerIdx[k] - numCols));
-                        coefs_[realSize] = -1.0 * oldRhs;
-                        rhs = rhs - oldRhs;
-                        realSize++;
-                    } else {
-                        duplicated = true;
-                        break;
-                    }
-                }
-            }
+                const bool complement = (centerIdx[k] >= numCols);
+                const int col = complement ? ((int)(centerIdx[k] - numCols)) : ((int)centerIdx[k]);
+                const double coef = complement ? (-1.0 * oldRhs) : oldRhs;
 
-            if (duplicated) {
-                continue;
+                if (complement) {
+                    rhs -= oldRhs;
+                }
+
+                if (idxMap_[col] == -1) {
+                    idxMap_[col] = realSize;
+                    idxs_[realSize] = col;
+                    coefs_[realSize] = coef;
+                    realSize++;
+                } else {
+                    coefs_[idxMap_[col]] += coef;
+                    duplicated++;
+                }
             }
         }
 
+        if (duplicated) {
+            /* Every coefficient here is integral -- +-1 from the cycle and
+             * +-floor(|C|/2) from the centres -- so testing against ODDHWC_EPS
+             * separates an exact zero from the smallest survivor. */
+            stats_.cutsDuplicatedIdx++;
+            int keep = 0;
+            for (int k = 0; k < realSize; k++) {
+                if (fabs(coefs_[k]) >= ODDHWC_EPS) {
+                    idxs_[keep] = idxs_[k];
+                    coefs_[keep] = coefs_[k];
+                    keep++;
+                }
+            }
+            stats_.cutsZeroCoefs += (size_t)(realSize - keep);
+            realSize = keep;
+        }
+
+        if (realSize == 0) {
+            /* Nothing left on the left-hand side. Since the row was violated,
+             * `0 <= rhs` with rhs < 0 would be an infeasibility claim, and that
+             * is not a cut separator's call to make. */
+            stats_.cutsEmpty++;
+            continue;
+        }
+
+        stats_.cutsBeforePool++;
         cutPool.add(idxs_, coefs_, realSize, rhs);
     }
 
     cutPool.removeNullCuts();
     cutPool.filterByParallelism();
+    stats_.cutsAfterPool = cutPool.numCuts();
 
     const size_t numberRowCutsBefore = cs.sizeRowCuts();
     for(size_t i = 0; i < cutPool.numCuts(); i++) {
@@ -242,6 +282,8 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
 
     int numberRowCutsAfter = cs.sizeRowCuts();
     CglOddWheel::sepCuts += numberRowCutsAfter - numberRowCutsBefore;
+    stats_.rowCutsAdded = numberRowCutsAfter - numberRowCutsBefore;
+    stats_.tCutPool = CoinGetTimeOfDay() - startCutPool;
 
     if(!info.inTree && ((info.options & 4) == 4 || ((info.options & 8) && !info.pass))) {
         numberRowCutsAfter = cs.sizeRowCuts();

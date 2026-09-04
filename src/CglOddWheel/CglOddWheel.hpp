@@ -22,6 +22,7 @@
 
 #include "CglCutGenerator.hpp"
 #include "CoinConflictGraph.hpp"
+#include "CoinOddWheelSeparator.hpp"
 
 class CoinConflictGraph;
 
@@ -92,6 +93,29 @@ public:
    **/
   size_t getExtendingMethod() const { return extMethod_; }
 
+  /**
+   * Counters and per-stage times of the last generateCuts() call.
+   * Unlike the static sepCuts/sepTime totals above these are per call,
+   * which is what a profiling harness needs.
+   **/
+  struct Stats {
+    CoinOddWheelSeparator::Stats sep; /**< the separator's own counters and stage times */
+    size_t cutsBeforePool;            /**< odd wheels handed to the cut pool */
+    size_t cutsDuplicatedIdx;         /**< odd wheels where a column appeared twice and was merged */
+    size_t cutsZeroCoefs;             /**< coefficients that cancelled to zero while merging */
+    size_t cutsEmpty;                 /**< odd wheels dropped: every coefficient cancelled */
+    size_t cutsAfterPool;             /**< survivors of the cut pool's dominance filter */
+    size_t rowCutsAdded;              /**< row cuts actually inserted into cs */
+    double tSetup;                    /**< the doubled x_/rc_ arrays */
+    double tSeparator;                /**< separator construction plus searchOddWheels() */
+    double tCutPool;                  /**< index translation, cut pool, insertion into cs */
+  };
+
+  /**
+   * Statistics of the last generateCuts() call.
+   **/
+  inline const Stats &stats() const { return stats_; }
+
 private:
   /**
    * Check if it is necessary realloc the memory
@@ -138,6 +162,11 @@ private:
    * 2 = a clique as wheel center
    **/
   size_t extMethod_;
+
+  /**
+   * Counters and per-stage times, see stats().
+   **/
+  Stats stats_;
 };
 
 #endif
