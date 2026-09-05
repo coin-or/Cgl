@@ -20,6 +20,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
+#include <algorithm>
+#include <utility>
+#include <vector>
 
 #include "CglOddWheel.hpp"
 #include "CoinHelperFunctions.hpp"
@@ -36,7 +39,7 @@ double CglOddWheel::sepTime = 0.0;
 
 static void *xmalloc( const size_t size );
 
-CglOddWheel::CglOddWheel(size_t extMethod) : cap_(0), extMethod_(extMethod), stats_(Stats()) {
+CglOddWheel::CglOddWheel(size_t extMethod) : cap_(0), extMethod_(extMethod), verifyPrepare_(false), checkValidity_(false), stats_(Stats()) {
     idxs_ = NULL;
     idxMap_ = NULL;
     coefs_ = NULL;
@@ -47,6 +50,8 @@ CglOddWheel::CglOddWheel(size_t extMethod) : cap_(0), extMethod_(extMethod), sta
 CglOddWheel::CglOddWheel(const CglOddWheel& rhs) {
     this->cap_ = rhs.cap_;
     this->extMethod_ = rhs.extMethod_;
+    this->verifyPrepare_ = rhs.verifyPrepare_;
+    this->checkValidity_ = rhs.checkValidity_;
     // Not copied: a clone has made no call of its own yet.
     this->stats_ = Stats();
 
@@ -129,6 +134,8 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
     CoinOddWheelSeparator oddH(cgraph, x_, rc_, extMethod_);
     if (maxSeconds_ > 0.0)
         oddH.setMaxSeconds(maxSeconds_);
+    if (verifyPrepare_)
+        oddH.setVerifyPrepare(true);
     CoinCutPool cutPool(x_, numCols, "OddWheel");
 
     oddH.searchOddWheels();
@@ -185,8 +192,24 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
          * exact algebra on x_j + (1 - x_j): the pair cancels to zero and the
          * RHS keeps its -1, leaving an inequality that is still valid and still
          * violated by exactly the amount the separator measured on the doubled
-         * value vector. Rejecting the cut instead discarded every odd hole
-         * found on all 237 replay fixtures (2528 of 2528).
+         * value vector.
+         *
+         * Rejecting the cut instead is expensive, and this is the current
+         * measurement of how much: over the 237 replay fixtures at --rounds=1,
+         * 331 of 1228 odd wheels (27%) have a column appearing both plain and
+         * complemented, and none of the 1228 cancels away entirely (cutsEmpty
+         * 0). setCheckValidity() re-derives all 1228 from the graph and agrees
+         * on the count (certComplPair 331 == cutsDuplicatedIdx 331) and on every
+         * coefficient. Complemented nodes are not a corner case at all here:
+         * 1170 of the 1228 cycles (95%) traverse at least one. At --rounds=4 the
+         * share only grows -- 512 of 1633 (31%) repeated, 1567 (96%) with a
+         * complemented node -- so this is not an artifact of one cut pass.
+         *
+         * An earlier version of this comment claimed 2528 of 2528, which was a
+         * *pre-fix* figure -- CoinOddWheelSeparator::addOddHole() used to store
+         * the whole scratch buffer, so every hole tripped this guard for a
+         * reason unrelated to complements. Post-fix, 2528 splits as 1227 holes
+         * plus 1301 duplicates.
          *
          * With no repeated column there is no accumulation and no compaction,
          * so cuts that were emitted before come out unchanged. */
@@ -212,8 +235,10 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
 
         const size_t centerSize = oddH.wheelCenterSize(j);
         const size_t *centerIdx = oddH.wheelCenter(j);
+        double alphaUsed = 0.0;
         if (centerSize && fabs(rhs) >= ODDHWC_EPS) {
             const double oldRhs = rhs;
+            alphaUsed = oldRhs;
             /* The wheel centres form a clique, so at most one of them is 1 and
              * lifting them all with coefficient oldRhs stays valid. A centre
              * whose column already appears in the cycle accumulates for the
@@ -265,6 +290,11 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
             continue;
         }
 
+        if (checkValidity_)
+            certifyOddWheel(cgraph, numCols, oddEl, oddSize, centerIdx,
+              alphaUsed != 0.0 ? centerSize : 0, alphaUsed,
+              idxs_, coefs_, realSize, rhs);
+
         stats_.cutsBeforePool++;
         cutPool.add(idxs_, coefs_, realSize, rhs);
     }
@@ -293,6 +323,129 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
     }
 
 	CglOddWheel::sepTime += (CoinCpuTime() - startSep);
+}
+
+void CglOddWheel::certifyOddWheel(const CoinConflictGraph *cgraph, size_t numCols,
+  const size_t *cycle, size_t cycleSize,
+  const size_t *center, size_t centerSize, double alpha,
+  const int *idxs, const double *coefs, int nz, double rhs)
+{
+    stats_.certChecked++;
+
+    /* k is what makes the inequality valid, and it is a property of the cycle
+     * alone -- not of `rhs`, which the complement translation has already moved
+     * by -1 per complemented node. */
+    const double k = floor(cycleSize / 2.0);
+
+    /* --- the cycle: odd, distinct nodes, consecutive ones in conflict ------ */
+    bool badCycle = (cycleSize < 5) || ((cycleSize % 2) == 0);
+    size_t nCompCycle = 0;
+    for (size_t i = 0; i < cycleSize && !badCycle; i++) {
+        if (cycle[i] >= numCols)
+            nCompCycle++;
+        for (size_t j = i + 1; j < cycleSize; j++) {
+            if (cycle[i] == cycle[j]) {
+                badCycle = true;
+                break;
+            }
+        }
+        if (!badCycle && !cgraph->conflicting(cycle[i], cycle[(i + 1) % cycleSize]))
+            badCycle = true;
+    }
+    if (badCycle) {
+        stats_.certBadCycle++;
+        return;
+    }
+    if (nCompCycle)
+        stats_.certComplCycle++;
+
+    /* --- the centres: adjacent to all of C, and a clique among themselves -- */
+    size_t nCompCenter = 0;
+    for (size_t i = 0; i < centerSize; i++) {
+        if (center[i] >= numCols)
+            nCompCenter++;
+        for (size_t v = 0; v < cycleSize; v++) {
+            if (!cgraph->conflicting(center[i], cycle[v])) {
+                stats_.certBadCenterAdj++;
+                return;
+            }
+        }
+        for (size_t j = i + 1; j < centerSize; j++) {
+            if (!cgraph->conflicting(center[i], center[j])) {
+                stats_.certBadCenterClq++;
+                return;
+            }
+        }
+    }
+    if (nCompCenter)
+        stats_.certComplCenter++;
+    if (centerSize && alpha > k + ODDHWC_EPS) {
+        stats_.certBadAlpha++;
+        return;
+    }
+
+    /* --- the translation: re-derive the column-space cut from scratch ------
+     *
+     * Node j means x_j = 1 and node j + numCols means x_j = 0, i.e. z_{j+numCols}
+     * = 1 - x_j, so a complemented node contributes -coef to column j and -coef
+     * to the right-hand side. Accumulating per column is what makes a wheel that
+     * uses both a variable and its own complement come out right: the two
+     * coefficients cancel and the rhs keeps both shifts. Rebuilding it here
+     * rather than re-reading idxMap_ is the point -- it is an independent
+     * computation of the same thing. */
+    const size_t nNodes = cycleSize + centerSize;
+    std::vector<std::pair<size_t, double> > exp;
+    exp.reserve(nNodes);
+    double expRhs = k;
+    for (size_t i = 0; i < nNodes; i++) {
+        const size_t nd = (i < cycleSize) ? cycle[i] : center[i - cycleSize];
+        const double w = (i < cycleSize) ? 1.0 : alpha;
+        const bool comp = (nd >= numCols);
+        exp.push_back(std::make_pair(comp ? (nd - numCols) : nd, comp ? -w : w));
+        if (comp)
+            expRhs -= w;
+    }
+    std::sort(exp.begin(), exp.end());
+
+    /* A column present both plain and complemented is the edge case that used to
+     * be rejected outright; count it so its frequency is a measured number
+     * rather than an argument. After the sort it is simply a repeated column. */
+    for (size_t i = 1; i < exp.size(); i++) {
+        if (exp[i].first == exp[i - 1].first) {
+            stats_.certComplPair++;
+            break;
+        }
+    }
+
+    /* Merge repeats, drop exact zeros -- the same two steps the emitted cut has
+     * already taken -- then compare column by column. */
+    std::vector<std::pair<size_t, double> > merged;
+    for (size_t i = 0; i < exp.size(); i++) {
+        if (!merged.empty() && merged.back().first == exp[i].first)
+            merged.back().second += exp[i].second;
+        else
+            merged.push_back(exp[i]);
+    }
+    bool bad = fabs(expRhs - rhs) > ODDHWC_EPS;
+    std::vector<std::pair<size_t, double> > got;
+    got.reserve((size_t)nz);
+    for (int i = 0; i < nz; i++)
+        got.push_back(std::make_pair((size_t)idxs[i], coefs[i]));
+    std::sort(got.begin(), got.end());
+
+    size_t g = 0;
+    for (size_t i = 0; i < merged.size() && !bad; i++) {
+        if (fabs(merged[i].second) < ODDHWC_EPS)
+            continue;
+        if (g >= got.size() || got[g].first != merged[i].first
+          || fabs(got[g].second - merged[i].second) > ODDHWC_EPS)
+            bad = true;
+        g++;
+    }
+    if (!bad && g != got.size())
+        bad = true;
+    if (bad)
+        stats_.certBadTranslate++;
 }
 
 void CglOddWheel::checkMemory(const size_t newNumCols) {
