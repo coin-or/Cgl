@@ -172,7 +172,12 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
     for(size_t j = 0; j < oddH.numOddWheels(); j++) {
         const size_t *oddEl = oddH.oddHole(j);
         const size_t oddSize = oddH.oddHoleSize(j);
-        double rhs = oddH.oddWheelRHS(j);
+        /* k = floor(|C|/2): the right-hand side of the odd-cycle inequality in
+         * the conflict graph's own z-space, where z_j = x_j and
+         * z_{j+numCols} = 1 - x_j. Kept separate from rhs, which the loops below
+         * translate into x-space as they go. */
+        const double cycleRhs = oddH.oddWheelRHS(j);
+        double rhs = cycleRhs;
 
         if(oddSize < 5) {
             fprintf(stderr, "Invalid size of cut: %lu\n", oddSize);
@@ -235,22 +240,46 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
 
         const size_t centerSize = oddH.wheelCenterSize(j);
         const size_t *centerIdx = oddH.wheelCenter(j);
-        double alphaUsed = 0.0;
-        if (centerSize && fabs(rhs) >= ODDHWC_EPS) {
-            const double oldRhs = rhs;
-            alphaUsed = oldRhs;
-            /* The wheel centres form a clique, so at most one of them is 1 and
-             * lifting them all with coefficient oldRhs stays valid. A centre
-             * whose column already appears in the cycle accumulates for the
-             * same reason as above; dropping the whole wheel over it would
-             * throw away the plain odd-hole cut as well. */
+        const double alpha = centerSize ? cycleRhs : 0.0;
+        if (centerSize) {
+            /* The odd-wheel inequality in z-space is
+             *
+             *     sum_{v in C} z_v  +  alpha * sum_{w in W} z_w  <=  k
+             *
+             * and it is valid for every alpha <= k. W is a clique, so at most
+             * one z_w is 1; each w conflicts with all of C, so z_w = 1 forces
+             * every z_v to 0 and the left-hand side is alpha <= k. Otherwise
+             * every z_w is 0 and the left-hand side is the odd-cycle sum, at
+             * most k. alpha = k is therefore the strongest valid choice, and
+             * alpha > k is cut off by exactly the z_w = 1 point.
+             *
+             * The lifting coefficient has to be that z-space k, which is why
+             * cycleRhs is captured before the cycle loop runs. rhs has by now
+             * absorbed one -1 per complement in the cycle, so lifting with it
+             * used alpha = k - |C-|: still valid, but weaker on every cycle that
+             * traverses a complement -- 95% of them here -- and for |C-| > k
+             * actually negative, which makes the wheel weaker than the plain odd
+             * cycle it came from. The `fabs(rhs) >= ODDHWC_EPS` guard that used
+             * to sit on this branch existed to keep the degenerate alpha = 0 case
+             * out, and dropped the whole centre when it fired; alpha = k >= 2 for
+             * any cycle of length >= 5, so it can no longer fire and is gone.
+             *
+             * Raising alpha cannot lose a cut: in z-space the right-hand side
+             * does not move and the left-hand side grows by
+             * sum_{w in W} z*_w >= 0, so the violation the cut pool measures is
+             * non-decreasing.
+             *
+             * A centre whose column already appears in the cycle accumulates for
+             * the same reason as above -- and with alpha = k >= 2 such a pair can
+             * no longer cancel to zero, since the cycle contributes +-1 and the
+             * centre +-k. */
             for (size_t k = 0; k < centerSize; k++) {
                 const bool complement = (centerIdx[k] >= numCols);
                 const int col = complement ? ((int)(centerIdx[k] - numCols)) : ((int)centerIdx[k]);
-                const double coef = complement ? (-1.0 * oldRhs) : oldRhs;
+                const double coef = complement ? (-1.0 * alpha) : alpha;
 
                 if (complement) {
-                    rhs -= oldRhs;
+                    rhs -= alpha;
                 }
 
                 if (idxMap_[col] == -1) {
@@ -292,8 +321,7 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
 
         if (checkValidity_)
             certifyOddWheel(cgraph, numCols, oddEl, oddSize, centerIdx,
-              alphaUsed != 0.0 ? centerSize : 0, alphaUsed,
-              idxs_, coefs_, realSize, rhs);
+              centerSize, alpha, idxs_, coefs_, realSize, rhs);
 
         stats_.cutsBeforePool++;
         cutPool.add(idxs_, coefs_, realSize, rhs);
@@ -358,6 +386,10 @@ void CglOddWheel::certifyOddWheel(const CoinConflictGraph *cgraph, size_t numCol
     }
     if (nCompCycle)
         stats_.certComplCycle++;
+    if (nCompCycle && centerSize)
+        stats_.certCenterOnComplCycle++;
+    if ((double)nCompCycle >= k)
+        stats_.certComplAtLeastK++;
 
     /* --- the centres: adjacent to all of C, and a clique among themselves -- */
     size_t nCompCenter = 0;

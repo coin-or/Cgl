@@ -157,6 +157,15 @@ public:
     size_t certComplCycle;            /**< wheels whose cycle uses at least one complemented node */
     size_t certComplCenter;           /**< wheels whose centre uses at least one complemented node */
     size_t certComplPair;             /**< wheels where some column appears both plain and complemented */
+
+    /* How often the choice of alpha can matter at all. alpha must be the
+     * cycle's own floor(|C|/2); deriving it from the already-translated rhs
+     * instead subtracts one per complemented cycle node, which is only
+     * observable on a wheel that has a centre *and* a complemented cycle. The
+     * second counter is where that arithmetic went non-positive, i.e. where the
+     * lifting silently stopped strengthening anything. */
+    size_t certCenterOnComplCycle;    /**< wheels with a centre whose cycle traverses a complemented node */
+    size_t certComplAtLeastK;         /**< wheels whose cycle has at least floor(|C|/2) complemented nodes */
   };
 
   /**
