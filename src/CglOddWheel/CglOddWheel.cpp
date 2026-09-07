@@ -39,6 +39,89 @@ double CglOddWheel::sepTime = 0.0;
 
 static void *xmalloc( const size_t size );
 
+/** Dump one odd wheel's structure as a JSON line, for offline inspection and
+ *  drawing. Off unless CGL_ODDWHEEL_DUMP names a file, and deliberately driven
+ *  by the environment rather than by a setter: a new Stats field or accessor
+ *  changes CglOddWheel's ABI, and Cgl and Cbc are built and installed
+ *  separately here, so a mismatched pair segfaults.
+ *
+ *  CGL_ODDWHEEL_DUMP_CYCLE=n   only wheels whose cycle has exactly n nodes
+ *  CGL_ODDWHEEL_DUMP_CENTRE=1  only wheels that actually received a centre
+ *
+ *  Everything written is read straight off the graph and the value vector, so
+ *  the drawing is a picture of what the separator saw, not a reconstruction:
+ *  `conflicts` is the induced subgraph on cycle+centre as cgraph reports it,
+ *  and `lhs`/`rhs` are the emitted row evaluated at x. */
+static void dumpOddWheel(const CoinConflictGraph *cgraph, size_t numCols,
+  const double *x, const size_t *cycle, size_t cycleSize,
+  const size_t *centre, size_t centreSize, double alpha, double cycleRhs,
+  const int *idxs, const double *coefs, int cutSize, double rhs)
+{
+    const char *path = getenv("CGL_ODDWHEEL_DUMP");
+    if (!path)
+        return;
+    const char *wantCycle = getenv("CGL_ODDWHEEL_DUMP_CYCLE");
+    if (wantCycle && (size_t)atoi(wantCycle) != cycleSize)
+        return;
+    const char *wantCentre = getenv("CGL_ODDWHEEL_DUMP_CENTRE");
+    if (wantCentre && atoi(wantCentre) != 0 && centreSize == 0)
+        return;
+
+    FILE *f = fopen(path, "a");
+    if (!f)
+        return;
+
+    /* cycle then centre, in one array, so the conflict block below can index
+     * both halves uniformly. */
+    std::vector< size_t > nodes;
+    nodes.reserve(cycleSize + centreSize);
+    for (size_t k = 0; k < cycleSize; k++)
+        nodes.push_back(cycle[k]);
+    for (size_t k = 0; k < centreSize; k++)
+        nodes.push_back(centre[k]);
+
+    fprintf(f, "{\"cycleSize\":%lu,\"centreSize\":%lu,\"alpha\":%g,"
+               "\"cycleRhs\":%g,\"rhs\":%g,\"numCols\":%lu",
+      (unsigned long)cycleSize, (unsigned long)centreSize, alpha, cycleRhs,
+      rhs, (unsigned long)numCols);
+
+    fprintf(f, ",\"nodes\":[");
+    for (size_t k = 0; k < nodes.size(); k++) {
+        const bool compl_ = (nodes[k] >= numCols);
+        const size_t col = compl_ ? (nodes[k] - numCols) : nodes[k];
+        /* z is the doubled-graph value the separator ranked on: x_col for a
+         * plain node, 1 - x_col for a complemented one. */
+        const double z = compl_ ? (1.0 - x[col]) : x[col];
+        fprintf(f, "%s{\"node\":%lu,\"col\":%lu,\"compl\":%d,\"x\":%.17g,"
+                   "\"z\":%.17g,\"role\":\"%s\"}",
+          k ? "," : "", (unsigned long)nodes[k], (unsigned long)col,
+          compl_ ? 1 : 0, x[col], z, k < cycleSize ? "cycle" : "centre");
+    }
+    fprintf(f, "]");
+
+    fprintf(f, ",\"conflicts\":[");
+    bool first = true;
+    for (size_t a = 0; a < nodes.size(); a++)
+        for (size_t b = a + 1; b < nodes.size(); b++)
+            if (cgraph->conflicting(nodes[a], nodes[b])) {
+                fprintf(f, "%s[%lu,%lu]", first ? "" : ",",
+                  (unsigned long)a, (unsigned long)b);
+                first = false;
+            }
+    fprintf(f, "]");
+
+    double lhs = 0.0;
+    fprintf(f, ",\"cut\":[");
+    for (int k = 0; k < cutSize; k++) {
+        fprintf(f, "%s{\"col\":%d,\"coef\":%g,\"x\":%.17g}",
+          k ? "," : "", idxs[k], coefs[k], x[idxs[k]]);
+        lhs += coefs[k] * x[idxs[k]];
+    }
+    fprintf(f, "],\"lhs\":%.17g,\"viol\":%.17g}\n", lhs, lhs - rhs);
+
+    fclose(f);
+}
+
 CglOddWheel::CglOddWheel(size_t extMethod) : cap_(0), extMethod_(extMethod), verifyPrepare_(false), useGate_(true), checkValidity_(false), stats_(Stats()) {
     idxs_ = NULL;
     idxMap_ = NULL;
@@ -325,6 +408,9 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
         if (checkValidity_)
             certifyOddWheel(cgraph, numCols, oddEl, oddSize, centerIdx,
               centerSize, alpha, idxs_, coefs_, realSize, rhs);
+
+        dumpOddWheel(cgraph, numCols, x_, oddEl, oddSize, centerIdx, centerSize,
+          alpha, cycleRhs, idxs_, coefs_, realSize, rhs);
 
         stats_.cutsBeforePool++;
         cutPool.add(idxs_, coefs_, realSize, rhs);
