@@ -18,6 +18,7 @@
  **/
 
 #include <cstdio>
+#include <cstdlib>
 #include <cassert>
 
 #include "CglOddWheel.hpp"
@@ -118,9 +119,23 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
     CoinOddWheelSeparator oddH(cgraph, x_, rc_, extMethod_);
     if (maxSeconds_ > 0.0)
         oddH.setMaxSeconds(maxSeconds_);
-    CoinCutPool cutPool(x_, numCols);
+    CoinCutPool cutPool(x_, numCols, "OddWheel");
 
     oddH.searchOddWheels();
+
+    // Same rationale as CglBKClique::insertCuts(): only pay for the
+    // per-column best-score filtering when there are enough candidates
+    // for it to actually matter, and exempt small models outright.
+  const char *alwaysFilterEnv = getenv("CBC_CLIQUE_POOL_ALWAYS_FILTER");
+  if (alwaysFilterEnv && atoi(alwaysFilterEnv) != 0) {
+    cutPool.setFilteringEnabled(true);
+  } else {
+    const char *minCandEnv = getenv("CBC_CLIQUE_POOL_MIN_CANDIDATES");
+    const size_t minCandidates = minCandEnv ? (size_t)strtol(minCandEnv, nullptr, 10) : 20;
+    const char *minColsEnv = getenv("CBC_CLIQUE_POOL_MIN_COLS");
+    const size_t minCols = minColsEnv ? (size_t)strtol(minColsEnv, nullptr, 10) : 500;
+    cutPool.setFilteringEnabled(numCols >= minCols && oddH.numOddWheels() >= minCandidates);
+  }
 
     /* adding odd holes */
     for(size_t j = 0; j < oddH.numOddWheels(); j++) {

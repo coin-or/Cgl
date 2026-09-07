@@ -20,6 +20,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cassert>
 #include <limits>
 #include <utility>
@@ -376,7 +377,30 @@ void CglBKClique::insertCuts(const OsiSolverInterface &si, const CglTreeInfo &in
 {
   const double *x = si.getColSolution();
   const size_t numCols = si.getNumCols();
-  CoinCutPool cutpool(x, numCols);
+  CoinCutPool cutpool(x, numCols, "BKClique");
+
+  // The per-column best-score filtering in CoinCutPool is only worth its
+  // cost when there are many candidate cliques to choose among -- with
+  // few candidates it removes almost nothing (measured: <=20 candidates
+  // are filtered <6% of the time on mip-sanity-data, vs. >100 candidates
+  // being filtered ~68% of the time) but still pays the full per-cut
+  // fitness-scoring cost. Likewise, on genuinely small models (mirroring
+  // CbcSolver.cpp's own "always do up to 100 root passes" cutoff) the
+  // re-optimization cost is negligible either way, so let every candidate
+  // through unconditionally (still deduplicated) rather than risk pruning
+  // a cut that would have helped.
+  // CBC_CLIQUE_POOL_ALWAYS_FILTER=1 forces the original always-filter
+  // behaviour, for A/B benchmarking against the threshold-gated default.
+  const char *alwaysFilterEnv = getenv("CBC_CLIQUE_POOL_ALWAYS_FILTER");
+  if (alwaysFilterEnv && atoi(alwaysFilterEnv) != 0) {
+    cutpool.setFilteringEnabled(true);
+  } else {
+    const char *minCandEnv = getenv("CBC_CLIQUE_POOL_MIN_CANDIDATES");
+    const size_t minCandidates = minCandEnv ? (size_t)strtol(minCandEnv, nullptr, 10) : 20;
+    const char *minColsEnv = getenv("CBC_CLIQUE_POOL_MIN_COLS");
+    const size_t minCols = minColsEnv ? (size_t)strtol(minColsEnv, nullptr, 10) : 500;
+    cutpool.setFilteringEnabled(numCols >= minCols && cliques->nCliques() >= minCandidates);
+  }
 
   for (size_t i = 0; i < cliques->nCliques(); i++) {
     const size_t clqSize = cliques->cliqueSize(i);

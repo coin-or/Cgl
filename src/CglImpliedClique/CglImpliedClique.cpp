@@ -126,7 +126,21 @@ void CglImpliedClique::generateCuts(const OsiSolverInterface &si, OsiCuts &cs, c
   std::vector< double > coefs(numCols);
   std::vector< int > idxMap(numCols, -1);
 
-  CoinCutPool cutpool(sol, numCols);
+  CoinCutPool cutpool(sol, numCols, "ImpliedClique");
+  // Unlike CglBKClique/CglOddWheel, ImpliedClique generates candidates
+  // incrementally (one pass per hub column) so the eventual candidate
+  // count isn't known up front, and empirically (CBC_CLIQUE_POOL_DEBUG
+  // measurements on mip-sanity-data) the per-column best-score filtering
+  // removes ~0% of candidates here even in the largest batches -- so
+  // just disable it unconditionally (still deduplicated) rather than pay
+  // for scoring that essentially never prunes anything. Configurable via
+  // env var. Also checks the shared CBC_CLIQUE_POOL_ALWAYS_FILTER used
+  // by CglBKClique/CglOddWheel, for consistent A/B benchmarking.
+  const char *filterEnv = getenv("CBC_IMPLIEDCLIQUE_POOL_FILTER");
+  const char *alwaysFilterEnv = getenv("CBC_CLIQUE_POOL_ALWAYS_FILTER");
+  const bool forceFilter = (filterEnv && atoi(filterEnv) != 0) ||
+                           (alwaysFilterEnv && atoi(alwaysFilterEnv) != 0);
+  cutpool.setFilteringEnabled(forceFilter);
 
   for (int y = 0; y < numCols; y++) {
     if (colType[y] == 0)
