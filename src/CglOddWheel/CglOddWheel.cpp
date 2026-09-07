@@ -39,7 +39,7 @@ double CglOddWheel::sepTime = 0.0;
 
 static void *xmalloc( const size_t size );
 
-CglOddWheel::CglOddWheel(size_t extMethod) : cap_(0), extMethod_(extMethod), verifyPrepare_(false), checkValidity_(false), stats_(Stats()) {
+CglOddWheel::CglOddWheel(size_t extMethod) : cap_(0), extMethod_(extMethod), verifyPrepare_(false), useGate_(true), checkValidity_(false), stats_(Stats()) {
     idxs_ = NULL;
     idxMap_ = NULL;
     coefs_ = NULL;
@@ -51,6 +51,7 @@ CglOddWheel::CglOddWheel(const CglOddWheel& rhs) {
     this->cap_ = rhs.cap_;
     this->extMethod_ = rhs.extMethod_;
     this->verifyPrepare_ = rhs.verifyPrepare_;
+    this->useGate_ = rhs.useGate_;
     this->checkValidity_ = rhs.checkValidity_;
     // Not copied: a clone has made no call of its own yet.
     this->stats_ = Stats();
@@ -136,6 +137,8 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
         oddH.setMaxSeconds(maxSeconds_);
     if (verifyPrepare_)
         oddH.setVerifyPrepare(true);
+    if (!useGate_)
+        oddH.setUseFutilityGate(false);
     CoinCutPool cutPool(x_, numCols, "OddWheel");
 
     oddH.searchOddWheels();

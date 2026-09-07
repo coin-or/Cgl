@@ -102,6 +102,15 @@ public:
   void setVerifyPrepare(bool verify) { verifyPrepare_ = verify; }
 
   /**
+   * Enable (default) or disable the separator's futility gate, which proves per
+   * active node that no shortest-path call from it can yield a cut and skips the
+   * call. See CoinOddWheelSeparator::buildFutilityGate(). Turning it off exists
+   * so the "no cut lost" claim can be *checked* by replaying a fixture both ways
+   * and comparing every reported field, not just asserted from the proof.
+   **/
+  void setUseGate(bool use) { useGate_ = use; }
+
+  /**
    * Certify every odd wheel against the conflict graph before it is translated
    * into a row cut, reporting the outcome in the Stats::cert* counters. Off by
    * default.
@@ -247,6 +256,11 @@ private:
    * see setVerifyPrepare().
    **/
   bool verifyPrepare_;
+
+  /**
+   * Whether the separator's futility gate runs, see setUseGate().
+   **/
+  bool useGate_;
 
   /**
    * Whether every odd wheel is certified against the conflict graph
