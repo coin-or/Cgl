@@ -379,6 +379,10 @@ void CglBKClique::insertCuts(const OsiSolverInterface &si, const CglTreeInfo &in
   const size_t numCols = si.getNumCols();
   CoinCutPool cutpool(x, numCols, "BKClique");
 
+  const char *minColsEnv = getenv("CBC_CLIQUE_POOL_MIN_COLS");
+  const size_t minCols = minColsEnv ? (size_t)strtol(minColsEnv, nullptr, 10) : 500;
+  const bool smallModel = numCols < minCols;
+
   // The per-column best-score filtering in CoinCutPool is only worth its
   // cost when there are many candidate cliques to choose among -- with
   // few candidates it removes almost nothing (measured: <=20 candidates
@@ -397,10 +401,26 @@ void CglBKClique::insertCuts(const OsiSolverInterface &si, const CglTreeInfo &in
   } else {
     const char *minCandEnv = getenv("CBC_CLIQUE_POOL_MIN_CANDIDATES");
     const size_t minCandidates = minCandEnv ? (size_t)strtol(minCandEnv, nullptr, 10) : 20;
-    const char *minColsEnv = getenv("CBC_CLIQUE_POOL_MIN_COLS");
-    const size_t minCols = minColsEnv ? (size_t)strtol(minColsEnv, nullptr, 10) : 500;
-    cutpool.setFilteringEnabled(numCols >= minCols && cliques->nCliques() >= minCandidates);
+    cutpool.setFilteringEnabled(!smallModel && cliques->nCliques() >= minCandidates);
   }
+
+  // Orthogonality/parallelism-based cut selection, inspired by HiGHS's
+  // HighsCutPool (maxpar=0.1) and SCIP's cutsel_hybrid/cutsel_dynamic
+  // (minortho=0.9, i.e. maxparallelism=0.1): among cuts that survive the
+  // above, greedily drop any cut too cosine-similar (nearly parallel) to
+  // an already-kept, higher-scoring cut -- it adds little beyond what
+  // the kept cut already provides to the reoptimized LP. Disabled
+  // (1.0) by default: a 442-instance A/B sweep of 0.1/0.3/0.5/0.9 vs.
+  // off found no threshold gave a net win for clique cuts specifically
+  // -- dual gap closed was essentially flat while dual/primal
+  // gap-closed-per-second efficiency consistently worsened by ~1-2%,
+  // with some instances regressing sharply (e.g. -7.6% dual efficiency
+  // on fcnf_random_n15_d3 at 0.1). Kept as opt-in infrastructure via
+  // CBC_CLIQUE_POOL_MAX_PARALLELISM for further experimentation.
+  const bool forceFilter = alwaysFilterEnv && atoi(alwaysFilterEnv) != 0;
+  const char *maxParEnv = getenv("CBC_CLIQUE_POOL_MAX_PARALLELISM");
+  const double maxPar = maxParEnv ? atof(maxParEnv) : 1.0;
+  cutpool.setMaxParallelism((smallModel && !forceFilter) ? 1.0 : maxPar);
 
   for (size_t i = 0; i < cliques->nCliques(); i++) {
     const size_t clqSize = cliques->cliqueSize(i);
@@ -460,6 +480,7 @@ void CglBKClique::insertCuts(const OsiSolverInterface &si, const CglTreeInfo &in
   }
 
   cutpool.removeNullCuts();
+  cutpool.filterByParallelism();
 
   const size_t numberRowCutsBefore = cs.sizeRowCuts();
   for (size_t i = 0; i < cutpool.numCuts(); i++) {

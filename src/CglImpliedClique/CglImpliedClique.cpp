@@ -142,6 +142,20 @@ void CglImpliedClique::generateCuts(const OsiSolverInterface &si, OsiCuts &cs, c
                            (alwaysFilterEnv && atoi(alwaysFilterEnv) != 0);
   cutpool.setFilteringEnabled(forceFilter);
 
+  // Orthogonality/parallelism-based cut selection (see CglBKClique for
+  // rationale and A/B benchmark result). Disabled (1.0) by default; opt
+  // in via CBC_CLIQUE_POOL_MAX_PARALLELISM for further experimentation.
+  // ImpliedClique can rediscover the same clique structure from multiple
+  // hub columns, so this generator is a natural future candidate to
+  // revisit if a duplicate-cause-specific dedup (rather than a generic
+  // parallelism threshold) is added instead.
+  const char *minColsEnv = getenv("CBC_CLIQUE_POOL_MIN_COLS");
+  const size_t minCols = minColsEnv ? (size_t)strtol(minColsEnv, nullptr, 10) : 500;
+  const bool smallModel = static_cast< size_t >(numCols) < minCols;
+  const char *maxParEnv = getenv("CBC_CLIQUE_POOL_MAX_PARALLELISM");
+  const double maxPar = maxParEnv ? atof(maxParEnv) : 1.0;
+  cutpool.setMaxParallelism((smallModel && !forceFilter) ? 1.0 : maxPar);
+
   for (int y = 0; y < numCols; y++) {
     if (colType[y] == 0)
       continue;
@@ -264,6 +278,7 @@ void CglImpliedClique::generateCuts(const OsiSolverInterface &si, OsiCuts &cs, c
   }
 
   cutpool.removeNullCuts();
+  cutpool.filterByParallelism();
 
   OsiRowCut rc;
   const size_t numberRowCutsBefore = cs.sizeRowCuts();
