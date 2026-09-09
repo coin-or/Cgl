@@ -1157,11 +1157,6 @@ separation_graph *Cgl012Cut::initialize_sep_graph()
     s_graph->sparseMode = true;
     s_graph->sparseEdges = new std::unordered_map<std::uint64_t, edge *>();
     s_graph->sparseAdj = new std::vector<edge *>[nnodes];
-    if ( cglZeroHalfSepGraphTooLarge(nnodes,maxedges,&estimatedGiB) ) {
-      printf("Warning: using sparse 0-1/2 cut separation due to dense graph with %d active nodes\n", nnodes);
-      printf("         dense graph would need %lld edge slots (about %.2f GiB for even/odd adjacency tables)\n",
-        maxedges, estimatedGiB);
-    }
     return(s_graph);
   }
   s_graph->even_adj_list = reinterpret_cast<edge **> (malloc(maxedges*sizeof(edge *)));
