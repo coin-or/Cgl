@@ -37,6 +37,122 @@
 #ifdef CGL_HAS_CLP_GOMORY
 #include "OsiClpSolverInterface.hpp"
 #endif
+// Off by default; header-only. See its own comment for why a lagomory fixture
+// cannot be captured from CbcModel the way the plain-Gomory one is.
+#include "CglLagomoryFixtureDump.hpp"
+
+/*
+ * Per-stage attribution for the Lagrangean prologue, off unless Cgl is built
+ * -DCGL_GOMORY_PROFILE.
+ *
+ * WHY THE STAGES ARE CUT WHERE THEY ARE. The Lagrangean variants share the whole
+ * Gomory core with plain Gomory, which has already been optimized, so the only
+ * question worth asking is what the *wrapper* costs. The wrapper does five
+ * separable things and they have completely different cost shapes:
+ *
+ *   lagPrep      O(nz of the cut rows) -- the dualization loop, plus for
+ *                gomoryType%10==2 an integrality scan over the same rows and an
+ *                addRows. Linear, and predictable from the .meta's cutRowNz.
+ *   lagResolve   a full primal simplex re-solve of the ORIGINAL LP under a
+ *                perturbed objective. Superlinear, unpredictable, and the only
+ *                stage whose cost is not visible from the input.
+ *   lagFallback  the superbasic scan (O(n+m)) plus, if any turned up, a whole
+ *                extra dual() solve. Timed apart from lagResolve because the
+ *                scan is trivial and the fallback is not, and averaging them
+ *                would hide which one fired.
+ *   core         the shared workhorse. Here only as the denominator.
+ *   lagFilter    the objective restore and the "erase cuts si's own solution
+ *                does not violate" loop. This one is worth measuring for a
+ *                reason other than its time: the count of erased cuts is the
+ *                yield the wrapper throws away after paying for it.
+ *   lagCleanup   the deleteRows that undoes gomoryType%10==2's addRows.
+ *
+ * The accumulators are file-static, so a profiled run must be serial -- already
+ * the rule for any number that gets quoted here.
+ */
+#ifdef CGL_GOMORY_PROFILE
+#include "CoinTime.hpp"
+static double cglGomProfPrep = 0.0;
+static double cglGomProfResolve = 0.0;
+static double cglGomProfFallback = 0.0;
+static double cglGomProfCore = 0.0;
+static double cglGomProfFilter = 0.0;
+static double cglGomProfCleanup = 0.0;
+static int cglGomProfCalls = 0;
+static int cglGomProfGateTrue = 0;
+static int cglGomProfCutRows = 0;
+static int cglGomProfCopiedRows = 0;
+static int cglGomProfResolveIters = 0;
+static int cglGomProfFallbacks = 0;
+static int cglGomProfBadStatus = 0;
+static int cglGomProfCutsMade = 0;
+static int cglGomProfCutsErased = 0;
+/* Calls that passed the gate with NO cut rows to dualize (numberRows ==
+ * numberOriginalRows), so the objective handed to primal(1) is the one the clone
+ * already had, the bounds memcpy'd in are si's own, and the basis handed over is
+ * si's own resized. Such a call re-solves an LP it is already at the optimum of
+ * and then generates from a tableau equal to si's -- precisely what plain Gomory
+ * produces from si directly. What it still pays for is real: 3n of memcpy, a
+ * refactorization inside primal(1), and a getMatrixByRow() on the clone, which
+ * for a cold clone is a full reverseOrderedCopyOf.
+ *
+ * WHICH ARMS CAN REACH HERE, because it is not all three. The whenToDo==1 arm
+ * carries `numberRows>numberOriginalRows` in its own condition, so the endboth
+ * family is already futility-gated by construction and contributes zero. Only
+ * two arms can: whenToDo==2 ("always" -- the bothaswell/cleanaswell/onlyaswell
+ * family, gomoryType_ 2x), and the `(options&1024)` must-call-again arm, which
+ * has no row-count test at all. So a futility gate is a change to those two, and
+ * pricing it on an endboth run would measure a guaranteed zero.
+ *
+ * These two numbers are what price it: the count says how often it would fire,
+ * the seconds say what it would save. Kept separate from gateTrue rather than
+ * inferred from cutRows, which is a SUM and so cannot distinguish "many calls
+ * with no cut rows" from "one call with many". */
+static int cglGomProfGateFutile = 0;
+static double cglGomProfFutileResolve = 0.0;
+#define GOMPROF_T0(v) double v = CoinGetTimeOfDay()
+#define GOMPROF_ADD(acc, v) acc += CoinGetTimeOfDay() - (v)
+#define GOMPROF_INC(c, n) c += (n)
+void cglGomoryProfileReset()
+{
+  cglGomProfPrep = cglGomProfResolve = cglGomProfFallback = 0.0;
+  cglGomProfCore = cglGomProfFilter = cglGomProfCleanup = 0.0;
+  cglGomProfCalls = cglGomProfGateTrue = cglGomProfCutRows = 0;
+  cglGomProfCopiedRows = cglGomProfResolveIters = cglGomProfFallbacks = 0;
+  cglGomProfBadStatus = cglGomProfCutsMade = cglGomProfCutsErased = 0;
+  cglGomProfGateFutile = 0;
+  cglGomProfFutileResolve = 0.0;
+}
+void cglGomoryProfilePrint(const char *tag)
+{
+  const double total = cglGomProfPrep + cglGomProfResolve + cglGomProfFallback
+    + cglGomProfCore + cglGomProfFilter + cglGomProfCleanup;
+  printf("[gomprof] %s calls %d gateTrue %d gateFutile %d cutRows %d"
+         " copiedRows %d resolveIters %d fallbacks %d badStatus %d cutsMade %d"
+         " cutsErased %d\n",
+    tag, cglGomProfCalls, cglGomProfGateTrue, cglGomProfGateFutile,
+    cglGomProfCutRows, cglGomProfCopiedRows, cglGomProfResolveIters,
+    cglGomProfFallbacks, cglGomProfBadStatus, cglGomProfCutsMade,
+    cglGomProfCutsErased);
+  printf("[gomprof] %s futileResolve %.6f\n", tag, cglGomProfFutileResolve);
+  printf("[gomprof] %s lagPrep %.6f lagResolve %.6f lagFallback %.6f"
+         " core %.6f lagFilter %.6f lagCleanup %.6f total %.6f\n",
+    tag, cglGomProfPrep, cglGomProfResolve, cglGomProfFallback, cglGomProfCore,
+    cglGomProfFilter, cglGomProfCleanup, total);
+  if (total > 0.0) {
+    printf("[gomprof] %s pct lagPrep %.2f lagResolve %.2f lagFallback %.2f"
+           " core %.2f lagFilter %.2f lagCleanup %.2f\n",
+      tag, 100.0 * cglGomProfPrep / total, 100.0 * cglGomProfResolve / total,
+      100.0 * cglGomProfFallback / total, 100.0 * cglGomProfCore / total,
+      100.0 * cglGomProfFilter / total, 100.0 * cglGomProfCleanup / total);
+  }
+  fflush(stdout);
+}
+#else
+#define GOMPROF_T0(v)
+#define GOMPROF_ADD(acc, v)
+#define GOMPROF_INC(c, n)
+#endif
 #include "CoinFactorization.hpp"
 #undef CLP_OSL
 #if COINUTILS_BIGINDEX_IS_INT
@@ -72,6 +188,25 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   CoinWarmStart * warmstart = si.getWarmStart();
   CoinWarmStartBasis* warm =
     dynamic_cast<CoinWarmStartBasis*>(warmstart);
+  // A NON-NULL BASIS IS NOT NECESSARILY A BASIS OF THIS MODEL, and every use
+  // below indexes it by column and row number. The pointer test that used to be
+  // the only guard (at the generateCuts() call further down) does not catch the
+  // case that matters: OsiClpSolverInterface::getWarmStart() is
+  //
+  //     return new CoinWarmStartBasis(basis_);
+  //
+  // which hands back a perfectly valid object even when the model has never
+  // been solved -- one describing 0 structural and 0 artificial variables. The
+  // pointer test passes, and the inner routine then indexes a zero-length status
+  // array. Reached from Cbc_generateCuts() in the C interface that was a
+  // SIGSEGV on 27 of 27 corpus instances; the caller has been fixed to solve
+  // first, but the same shape is available to any caller, so refuse it here.
+  if (warm && (warm->getNumStructural() != numberColumns ||
+	       warm->getNumArtificial() != si.getNumRows())) {
+    delete [] intVar;
+    delete warmstart;
+    return;
+  }
   const double * colUpper = si.getColUpper();
   const double * colLower = si.getColLower();
   //#define CLP_INVESTIGATE2
@@ -124,6 +259,22 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 		       && (info.options&512)==0) ||
 	((info.options&1024)!=0 && (info.options&512)==0
 	 && numberTimesStalled_<3)) {
+      GOMPROF_INC(cglGomProfGateTrue,1);
+      GOMPROF_INC(cglGomProfCutRows,numberRows-numberOriginalRows);
+      GOMPROF_INC(cglGomProfGateFutile,numberRows==numberOriginalRows ? 1 : 0);
+      GOMPROF_T0(t0Prep);
+#ifdef CGL_DUMP_LAGOMORY_FIXTURE
+      // Must be here, not earlier and not later: `originalSolver_` still holds
+      // its cloned bounds and objective (both are overwritten below), and the
+      // gate above has already decided that this call really will do Lagrangean
+      // work -- which is the one thing a fixture has to be able to claim.
+      cglDumpLagomoryFixture(si,*originalSolver_,numberOriginalRows,gomoryType_,
+			     info.pass,info.options,info.inTree?1:0,
+			     numberTimesStalled_,limit_,limitAtRoot_,
+			     dynamicLimitInTree_,away_,awayAtRoot_,
+			     conditionNumberMultiplier_,
+			     largestFactorMultiplier_,alternateFactorization_);
+#endif
       // bounds
       memcpy(simplex->columnLower(),colLower,numberColumns*sizeof(double));
       memcpy(simplex->columnUpper(),colUpper,numberColumns*sizeof(double));
@@ -232,7 +383,20 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       delete warm;
       simplex->setDualObjectiveLimit(COIN_DBL_MAX);
       simplex->setLogLevel(0);
+      GOMPROF_INC(cglGomProfCopiedRows,numberCopy);
+      GOMPROF_ADD(cglGomProfPrep,t0Prep);
+      GOMPROF_T0(t0Resolve);
       simplex->primal(1);
+      GOMPROF_ADD(cglGomProfResolve,t0Resolve);
+      // Deliberately the same t0, so the futile share is measured on the same
+      // clock as the total it is a share of. Reading the clock twice skews this
+      // by tens of nanoseconds against a resolve measured in milliseconds, and
+      // the accumulator exists only under CGL_GOMORY_PROFILE.
+      if (numberRows==numberOriginalRows) {
+        GOMPROF_ADD(cglGomProfFutileResolve,t0Resolve);
+      }
+      GOMPROF_INC(cglGomProfResolveIters,simplex->numberIterations());
+      GOMPROF_T0(t0Fallback);
       // check basis
       int numberTotal=simplex->numberRows()+simplex->numberColumns();
       int superbasic=0;
@@ -242,6 +406,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       }
       if (superbasic) {
 	//printf("%d superbasic!\n",superbasic);
+	GOMPROF_INC(cglGomProfFallbacks,1);
 	simplex->dual();
 	superbasic=0;
 	for (int i=0;i<numberTotal;i++) {
@@ -250,6 +415,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	}
 	assert (!superbasic);
       }
+      GOMPROF_ADD(cglGomProfFallback,t0Fallback);
       //printf("Trying - %d its status %d objs %g %g - with offset %g\n",
       //     simplex->numberIterations(),simplex->status(),
       //     simplex->objectiveValue(),si.getObjValue(),simplex->objectiveValue()+offset);
@@ -257,9 +423,25 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       warm=simplex->getBasis();
       warmstart=warm;
       if (simplex->status()) {
+	GOMPROF_INC(cglGomProfBadStatus,1);
 	//printf("BAD status %d\n",simplex->status());
 	//clpSolver->writeMps("clp");
 	//si.writeMps("si");
+	// RESTORE BEFORE DISCARDING THE SAVED COPY. `objective` is the clone's
+	// original objective, and the only place it is ever put back is the
+	// `if (objective)` block after the core, so nulling the pointer here used
+	// to leave the clone holding the DUALIZED objective permanently. The next
+	// call then saved that as its "original" and dualized on top of it, so the
+	// clone's objective drifted further from the true one on every bad-status
+	// call for the rest of the generator's life -- and originalSolver_ is a
+	// clone held across the whole solve, so that is the whole solve.
+	//
+	// Not a validity bug, which is why it survived: the objective decides
+	// which basis primal(1) lands on, not which points the tableau's rows are
+	// valid for, so every cut produced was still correct. It is a cut-quality
+	// and wasted-work bug -- the Lagrangean relaxation being solved after the
+	// first bad status is not the one anybody asked for.
+	memcpy(simplex->objective(),objective,numberColumns*sizeof(double));
 	delete [] objective;
 	objective=NULL;
 	useSolver=&si;
@@ -282,14 +464,19 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 #endif
   int numberRowCutsBefore = cs.sizeRowCuts();
 
+  GOMPROF_INC(cglGomProfCalls,1);
+  GOMPROF_T0(t0Core);
   if (warmstart)
-    generateCuts(debugger, cs, *useSolver->getMatrixByCol(), 
+    generateCuts(debugger, cs, *useSolver->getMatrixByCol(),
 		 *useSolver->getMatrixByRow(),
 		 useSolver->getColSolution(),
-		 useSolver->getColLower(), useSolver->getColUpper(), 
+		 useSolver->getColLower(), useSolver->getColUpper(),
 		 useSolver->getRowLower(), useSolver->getRowUpper(),
 		 intVar,warm,info);
+  GOMPROF_ADD(cglGomProfCore,t0Core);
+  GOMPROF_INC(cglGomProfCutsMade,cs.sizeRowCuts()-numberRowCutsBefore);
 #ifdef CGL_HAS_CLP_GOMORY
+  GOMPROF_T0(t0Filter);
   if (objective) {
     ClpSimplex * simplex = clpSolver->getModelPtr();
     memcpy(simplex->objective(),objective,numberColumns*sizeof(double));
@@ -321,6 +508,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	cs.eraseRowCut(k);
       }
     }
+    GOMPROF_INC(cglGomProfCutsErased,numberRowCutsAfter-cs.sizeRowCuts());
 #ifdef CLP_INVESTIGATE2
     printf("OR %p pass %d inTree %c - %d cuts (but %d deleted)\n",
        originalSolver_,info.pass,info.inTree?'Y':'N',
@@ -328,6 +516,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
        numberRowCutsAfter-cs.sizeRowCuts());
 #endif
   }
+  GOMPROF_ADD(cglGomProfFilter,t0Filter);
 #endif
 
   delete warmstart;
@@ -343,9 +532,14 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     }
   }
 #ifdef CGL_HAS_CLP_GOMORY
-  if ((gomoryType_%10)==2) {
+  GOMPROF_T0(t0Cleanup);
+  // clpSolver is NULL whenever passInOriginalSolver() was never called, so a
+  // bare setGomoryType(2|12|22) reaches the assert -- and under NDEBUG walks
+  // straight into the NULL deref. Guarding on the pointer rather than asserting
+  // keeps a plain-Gomory caller who set the type by hand from segfaulting; there
+  // is nothing to undo in that case, because nothing was added.
+  if ((gomoryType_%10)==2 && clpSolver) {
     // back to original
-    assert(clpSolver);
     int numberRows = clpSolver->getNumRows();
     if (numberRows>numberOriginalRows) {
       int numberDelete = numberRows-numberOriginalRows;
@@ -356,6 +550,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       delete [] delRow;
     }
   }
+  GOMPROF_ADD(cglGomProfCleanup,t0Cleanup);
 #endif
 }
 
