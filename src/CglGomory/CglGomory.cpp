@@ -110,6 +110,23 @@ static int cglGomProfCutsErased = 0;
  * with no cut rows" from "one call with many". */
 static int cglGomProfGateFutile = 0;
 static double cglGomProfFutileResolve = 0.0;
+/* The row-count test above catches only numberRows==numberOriginalRows. A call
+ * whose cut rows ALL carry a zero dual is futile in exactly the same sense and
+ * that test misses it: the dualization subtracts nothing, so the objective handed
+ * to primal(1) is the clone's own, and provided no rows were copied in
+ * (gomoryType==2 can add some, which changes the LP even at zero duals) the clone
+ * is si's formulation with si's objective and si's bounds. The resolve then
+ * confirms optimality in zero iterations and the tableau equals si's, so the cuts
+ * duplicate what plain Gomory produced from si in the same pass.
+ *
+ * Counted separately because the residual per-call cost is NOT zero: a
+ * no-iteration resolve still measured ~0.37ms here (refactorization inside
+ * primal(1), plus getMatrixByRow() on a cold clone, which is a full
+ * reverseOrderedCopyOf). So "how many calls" is what decides whether a pi-based
+ * gate is worth more than the 0.246% the row-count gate turned out to be worth --
+ * non-binding cut rows are common, and the row-count test cannot see them. */
+static int cglGomProfZeroPiCalls = 0;
+static double cglGomProfZeroPiResolve = 0.0;
 #define GOMPROF_T0(v) double v = CoinGetTimeOfDay()
 #define GOMPROF_ADD(acc, v) acc += CoinGetTimeOfDay() - (v)
 #define GOMPROF_INC(c, n) c += (n)
@@ -122,6 +139,8 @@ void cglGomoryProfileReset()
   cglGomProfBadStatus = cglGomProfCutsMade = cglGomProfCutsErased = 0;
   cglGomProfGateFutile = 0;
   cglGomProfFutileResolve = 0.0;
+  cglGomProfZeroPiCalls = 0;
+  cglGomProfZeroPiResolve = 0.0;
 }
 void cglGomoryProfilePrint(const char *tag)
 {
@@ -134,7 +153,8 @@ void cglGomoryProfilePrint(const char *tag)
     cglGomProfCutRows, cglGomProfCopiedRows, cglGomProfResolveIters,
     cglGomProfFallbacks, cglGomProfBadStatus, cglGomProfCutsMade,
     cglGomProfCutsErased);
-  printf("[gomprof] %s futileResolve %.6f\n", tag, cglGomProfFutileResolve);
+  printf("[gomprof] %s futileResolve %.6f zeroPiCalls %d zeroPiResolve %.6f\n",
+    tag, cglGomProfFutileResolve, cglGomProfZeroPiCalls, cglGomProfZeroPiResolve);
   printf("[gomprof] %s lagPrep %.6f lagResolve %.6f lagFallback %.6f"
          " core %.6f lagFilter %.6f lagCleanup %.6f total %.6f\n",
     tag, cglGomProfPrep, cglGomProfResolve, cglGomProfFallback, cglGomProfCore,
@@ -147,6 +167,23 @@ void cglGomoryProfilePrint(const char *tag)
       100.0 * cglGomProfFilter / total, 100.0 * cglGomProfCleanup / total);
   }
   fflush(stdout);
+}
+/* Let a plain `cbc` run report these, not only gomory-bench/lagomory-bench.
+ * Pricing the futility gate and the "locally useless" erase filter needs counts
+ * from a REAL solve: the benches replay a single separation call from a fixture,
+ * and no fixture set for the Lagrangean path exists until Cgl is rebuilt with
+ * -DCGL_DUMP_LAGOMORY_FIXTURE, which is a separate build of its own.
+ *
+ * Env-gated rather than unconditional, for two reasons. The accumulators are
+ * file-static, so a `-threads N` run sums them across threads and the seconds
+ * become meaningless (the counts survive, the times do not) -- requiring an
+ * explicit opt-in keeps that from looking like data. And a profiled libCgl.a
+ * installed into ~/prog poisons every later probe if it prints unbidden. */
+static void __attribute__((destructor)) cglGomoryProfileAtExit()
+{
+  const char *tag = getenv("CGL_GOMORY_PROFILE_TAG");
+  if (tag && *tag)
+    cglGomoryProfilePrint(tag);
 }
 #else
 #define GOMPROF_T0(v)
@@ -328,11 +365,21 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       }
       numberCopy=0;
       numberAdd=0;
+#ifdef CGL_GOMORY_PROFILE
+      /* Nonzero duals seen among the rows actually dualized. Compiles away
+       * entirely without the define, so the hot loop below is untouched in a
+       * production build. */
+      int profNzDual = 0;
+#endif
       //const double * rowSolution = si.getRowActivity();
       //double offset=0.0;
       for (int iRow=numberOriginalRows;iRow<numberRows;iRow++) {
 	if (!copy[iRow-numberOriginalRows]) {
 	  double value = pi[iRow];
+#ifdef CGL_GOMORY_PROFILE
+	  if (value != 0.0)
+	    profNzDual++;
+#endif
 	  //offset += rowSolution[iRow]*value;
 	  for (CoinBigIndex k=rowStart[iRow];
 	       k<rowStart[iRow]+rowLength[iRow];k++) {
@@ -395,6 +442,18 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       if (numberRows==numberOriginalRows) {
         GOMPROF_ADD(cglGomProfFutileResolve,t0Resolve);
       }
+#ifdef CGL_GOMORY_PROFILE
+      /* The generalized futile case: nothing was subtracted from the objective
+       * and nothing was added to the matrix, so this resolve re-derives si's own
+       * tableau. Deliberately the same t0Resolve, for the reason above. Note this
+       * is a SUPERSET test of the row-count one only in effect, not in form -- a
+       * call with zero cut rows also has zero nonzero duals and zero copies, so
+       * the two counters overlap by exactly cglGomProfGateFutile. */
+      if (!profNzDual && !numberCopy) {
+        cglGomProfZeroPiCalls++;
+        cglGomProfZeroPiResolve += CoinGetTimeOfDay() - t0Resolve;
+      }
+#endif
       GOMPROF_INC(cglGomProfResolveIters,simplex->numberIterations());
       GOMPROF_T0(t0Fallback);
       // check basis
