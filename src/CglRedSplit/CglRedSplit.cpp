@@ -1450,7 +1450,7 @@ double *slack_val = new double[nrow];
     }
 
     int ind_row = start + i;
-    if(ind_row > nrow) {
+    if(ind_row >= nrow) {
       ind_row -= nrow;
     }
 
