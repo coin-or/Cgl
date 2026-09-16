@@ -1336,6 +1336,69 @@ void CglRedSplit::generateCuts(OsiCuts &cs)
     }
   }
 
+  /* Tolerance for "is this variable at the bound its status names". This is
+     deliberately not param.getEPS(): that is 1e-6 for CglRedSplit but 1e-12
+     for CglRedSplit2, and 1e-12 is tighter than the primal feasibility
+     tolerance the LP solve itself guarantees, so it rejects bases that are
+     merely rounded rather than inconsistent. A variable within eps_bnd of its
+     bound can shift a cut rhs by at most |coefficient| * eps_bnd, which is
+     not distinguishable from ordinary round-off. */
+  const double eps_bnd = 1.0e-6;
+
+  /* Every nonbasic variable is shifted below by the bound that its status
+     names, and the rhs of each tableau row is taken to be the value of the
+     basic variable at xlp. Both steps are only valid if each nonbasic
+     variable really does sit at that bound: the shifted variable has to be
+     nonnegative over the whole feasible region, and xlp has to be the basic
+     solution of the reported basis. A solver may hand over a pair for which
+     this does not hold -- a variable left superbasic by the LP solve is
+     reported at a bound by OsiClpSolverInterface::getBasisStatus() without
+     the solution being moved to it -- and cuts built from such a pair can
+     cut off integer feasible points. Check it, and generate nothing if it
+     does not hold, as is done above for a nonbasic variable reported free. */
+
+  for(i=0; (i<ncol) && goodModel; i++) {
+    double bnd;
+    if(cstat[i] == 2) {
+      bnd = colUpper[i];
+    }
+    else if(cstat[i] == 3) {
+      bnd = colLower[i];
+    }
+    else {
+      continue;
+    }
+    if(fabs(xlp[i] - bnd) > eps_bnd) {
+#ifndef NDEBUG
+      printf("### WARNING: CglRedSplit::generateCuts(): cstat[%d]: %d but xlp: %.12g, bound: %.12g\n",
+	     i, cstat[i], xlp[i], bnd);
+#endif
+      goodModel = false;
+    }
+  }
+
+  for(i=0; (i<nrow) && goodModel; i++) {
+    /* rstat describes the slack, so a slack at its lower bound means the row
+       is at its upper bound, and vice versa. */
+    double bnd;
+    if(rstat[i] == 2) {
+      bnd = rowLower[i];
+    }
+    else if(rstat[i] == 3) {
+      bnd = rowUpper[i];
+    }
+    else {
+      continue;
+    }
+    if(fabs(rowActivity[i] - bnd) > eps_bnd) {
+#ifndef NDEBUG
+      printf("### WARNING: CglRedSplit::generateCuts(): rstat[%d]: %d but activity: %.12g, bound: %.12g\n",
+	     i, rstat[i], rowActivity[i], bnd);
+#endif
+      goodModel = false;
+    }
+  }
+
   if((card_contNonBasicVar == 0) || (card_intBasicVar_frac == 0)
      || !goodModel) {
     delete[] cstat;
