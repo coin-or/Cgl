@@ -754,6 +754,21 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
                 {
                     code = validator_(cut, cached_.colsol_, si, params, originalColLower_, originalColUpper_);
                 }
+                else if (!code)
+                {
+                    // Neither attempt produced anything, so `cut` is still
+                    // default constructed and there is nothing to validate. That
+                    // only happens when the first optimize() failed too, which
+                    // leaves code at 0 -- and code 0 means "accepted", so the
+                    // empty cut was inserted into the cut set as a free row
+                    // (-inf <= 0 <= +inf) and charged against the nCut budget.
+                    // Reachable through any of optimize()'s failure exits --
+                    // all of them return before the cut is built -- most easily
+                    // the pivot-failure ones in CglLandPSimplex.cpp. Not observed
+                    // firing on this corpus, so this is a latent defect closed by
+                    // inspection rather than one caught in the act.
+                    code = Validator::EmptyCut;
+                }
                 params.pivotLimit = params_.pivotLimit;
             }
         }
@@ -794,7 +809,13 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 		if ((n%5))
 		  printf("\n");
 #endif
-		cut = OsiRowCut();
+		// The cut references a slack column of a range row, so it cannot
+		// be expressed in the original column space at all. Skip it,
+		// rather than replacing it with a default OsiRowCut: that got
+		// inserted into the cut set as a free row (-inf <= 0 <= +inf) and
+		// counted against the nCut budget. Every other rejection in this
+		// loop already neither inserts nor counts.
+		continue;
 	      }
 	    }
             if (canLift_)
