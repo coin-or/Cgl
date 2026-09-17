@@ -6570,6 +6570,8 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
   delete clonedCopy;
   originalModel_->setHintParam(OsiDoPresolveInInitial, false, OsiHintTry);
   originalModel_->setHintParam(OsiDoDualInInitial, false, OsiHintTry);
+  int numberFixedFinal = 0;
+  int numberColumnsFinal = 0;
   {
     int numberFixed = 0;
     int numberColumns = originalModel_->getNumCols();
@@ -6595,6 +6597,8 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
       originalModel_->setWarmStart(empty);
       delete empty;
     }
+    numberFixedFinal = numberFixed;
+    numberColumnsFinal = numberColumns;
   }
   delete [] scBound;
   //double time1 = CoinCpuTime();
@@ -6611,8 +6615,69 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
     }
   }
 #endif
+  // Every column is already pinned to a single value (numberFixedFinal ==
+  // numberColumnsFinal) at this point -- there is no freedom left for an
+  // LP to resolve, only feasibility of the already-fully-determined point
+  // to confirm. Paying for a full initialSolve() here (a real cold
+  // crash + dual/primal simplex pass over the *entire original* matrix,
+  // which for some MIPLIB instances is orders of magnitude bigger than the
+  // preprocessed model B&B actually searched) is pure waste in that case;
+  // it was found, while diagnosing an overrun on MIPLIB's z26 (an
+  // 850513-row, all-binary instance with a severely degenerate LP), to
+  // occasionally take minutes to resolve for no benefit. Check feasibility
+  // directly from the sparse matrix instead (cheap, O(nnz)), and only skip
+  // the real solve if that check fully confirms it -- any doubt (row
+  // solver not Clp, more than one column still free, or a tolerance
+  // violation) simply falls through unchanged to the original, always
+  // correct, unconditional initialSolve() below.
+  bool skippedInitialSolve = false;
+  if (originalSolver && numberFixedFinal == numberColumnsFinal
+    && numberColumnsFinal > 0) {
+    const int numberRows = originalModel_->getNumRows();
+    const double *sol = originalModel_->getColLower(); // == upper for every column here
+    const CoinPackedMatrix *mat = originalModel_->getMatrixByCol();
+    const double *element = mat->getElements();
+    const int *rowIndex = mat->getIndices();
+    const CoinBigIndex *colStart = mat->getVectorStarts();
+    const int *colLen = mat->getVectorLengths();
+    const double *rowLower = originalModel_->getRowLower();
+    const double *rowUpper = originalModel_->getRowUpper();
+    std::vector< double > rowActivity(numberRows, 0.0);
+    for (int iColumn = 0; iColumn < numberColumnsFinal; iColumn++) {
+      double v = sol[iColumn];
+      if (v == 0.0)
+        continue;
+      CoinBigIndex end = colStart[iColumn] + colLen[iColumn];
+      for (CoinBigIndex j = colStart[iColumn]; j < end; j++)
+        rowActivity[rowIndex[j]] += v * element[j];
+    }
+    const double primalTolerance = 1.0e-6;
+    bool feasible = true;
+    for (int iRow = 0; iRow < numberRows && feasible; iRow++) {
+      if (rowActivity[iRow] > rowUpper[iRow] + primalTolerance
+        || rowActivity[iRow] < rowLower[iRow] - primalTolerance)
+        feasible = false;
+    }
+    if (feasible) {
+      const double *objCoeff = originalModel_->getObjCoefficients();
+      double rawObj = 0.0;
+      for (int iColumn = 0; iColumn < numberColumnsFinal; iColumn++)
+        rawObj += objCoeff[iColumn] * sol[iColumn];
+      double objOffset = 0.0;
+      originalModel_->getDblParam(OsiObjOffset, objOffset);
+      // setColSolution() also recomputes primalRowSolution() internally
+      // (via ClpModel::times()), so rowActivity above is only needed for
+      // our own feasibility check, not for populating the solver state.
+      originalSolver->setColSolution(sol);
+      originalSolver->getModelPtr()->setObjectiveValue(rawObj - objOffset);
+      originalSolver->getModelPtr()->setProblemStatus(0); // optimal
+      originalSolver->getModelPtr()->setSecondaryStatus(0);
+      skippedInitialSolve = true;
+    }
+  }
 #endif
-  originalModel_->initialSolve();
+  if (!skippedInitialSolve)
+    originalModel_->initialSolve();
   numberIterationsPost_ += originalModel_->getIterationCount();
   //printf("Time without basis %g seconds, %d iterations\n",CoinCpuTime()-time1,originalModel_->getIterationCount());
   double objectiveValue = originalModel_->getObjValue();
