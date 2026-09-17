@@ -168,7 +168,14 @@ cglZeroHalfGetAuxiliaryArcEdge(const auxiliary_graph *a_graph, int from, int to)
 
 bool Cgl012Cut::checkTimeLimit(const char *, const char *)
 {
-  enum { TIME_CHECK_POLL_INTERVAL = 1024 };
+  // NOTE: a poll interval of 1024 calls was found to let a single separation
+  // pass overrun its budget by minutes on large/dense instances (e.g. z26:
+  // 38223 rows), because each call site here can guard an expensive
+  // per-candidate-row block (shortest-path search over an auxiliary graph
+  // with tens of thousands of nodes) -- 1024 skipped checks can each hide
+  // a multi-millisecond-to-second block of work. Poll every call instead;
+  // CoinGetTimeOfDay() is cheap relative to the work being bounded.
+  enum { TIME_CHECK_POLL_INTERVAL = 1 };
   if (timeLimitReached_ || maxSeconds_ <= 0.0)
     return timeLimitReached_;
   if (--timeCheckCountdown_ > 0)
