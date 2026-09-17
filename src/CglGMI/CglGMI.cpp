@@ -1264,7 +1264,14 @@ void CglGMI::generateCuts(OsiCuts &cs)
 	int j = cutIndex[i];
 	if (isInteger[j]) {
 	  double difference = colUpper[j]-colLower[j];
-	  if (difference > 10.0) 
+	  // An integer column with an infinite bound gives difference ~ DBL_MAX,
+	  // and 1.0e-8*DBL_MAX is 1.798e300. Adding that to the rhs does not
+	  // "relax" the cut, it destroys it: the cut becomes vacuous, and the
+	  // value then poisons the rational scaling in
+	  // OsiCuts::insertIfNotDuplicateAndClean (it crashed there with SIGFPE
+	  // before that arithmetic was hardened). There is no meaningful scale to
+	  // relax against for an unbounded column, so skip it.
+	  if (difference > 10.0 && difference < 1.0e30) 
 	    cutRhs += 1.0e-8*difference;
 	}
       }
