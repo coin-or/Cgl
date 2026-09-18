@@ -25,6 +25,329 @@
 #include "CglGomory.hpp"
 #include "CoinFactorization.hpp"
 #include <fstream>
+
+#ifdef CGL_LANDP_PROFILE
+/*
+ * Per-stage attribution for landp-bench, compiled in only under
+ * -DCGL_LANDP_PROFILE.
+ *
+ * It exists because the obvious question about this generator -- how much of the
+ * time is the per-candidate solver cloning, as against the pivoting it exists to
+ * enable -- cannot be answered by the control flags alone. --pivot-limit=0 removes
+ * the clones AND the pivots together, so it gives their sum and not the split.
+ *
+ * Two levels: the clones and the candidate loop here, and the pivot loop's stages
+ * further down (see lpProfStage). The second level was left out originally on the
+ * grounds that a clock call inside the pivot loop would distort what it measures,
+ * and that was right at the time -- see the note there for why it no longer is.
+ *
+ * THE ACCUMULATORS ARE FILE-STATIC, so a profile run must be serial -- which is
+ * already the rule for any run whose times get quoted. And the counters are the
+ * part to trust: a clone count is exact, while every timer here pays the clock's
+ * own overhead.
+ */
+/* Kept, and now expected to read 0: the two clones in generateCuts that these two
+   counted were dead -- optimize() deleted them unread -- and have been removed.
+   A nonzero value here means a clone has come back. */
+static double lpProfCloneTime = 0.0;
+static double lpProfLoopTime = 0.0;    /* the whole candidate loop */
+static double lpProfSetupTime = 0.0;   /* getData + simplex ctor + candidate sort */
+static double lpProfRangeTime = 0.0;   /* the range-row clone-and-augment path */
+static double lpProfOptCloneTime = 0.0; /* the clone inside optimize() */
+static int lpProfClones = 0;           /* see lpProfCloneTime: now always 0 */
+static int lpProfOptClones = 0;        /* clones made inside optimize() */
+static int lpProfCandidates = 0;
+static int lpProfRetries = 0;          /* candidates that took the :750 retry */
+
+/* Called from CglLandPSimplex::optimize, which is where the clones that the
+   algorithm actually pivots on are made. Split out from lpProfCloneTime on
+   purpose: those two are the removable ones and these two are not, so lumping
+   them would hide exactly the number this profile exists to produce. */
+void cglLandPProfileAddOptClone(double secs)
+{
+  lpProfOptCloneTime += secs;
+  ++lpProfOptClones;
+}
+
+/* optimize()'s six exits, in the order they appear in CglLandPSimplex.cpp:
+   0 entry length gate (BEFORE any pivot -- its clone was pure waste)
+   1 cglp objective went nonnegative after a pivot
+   2 pivot failed and sigma increased
+   3 pivot failed and sigma unchanged
+   4 exit length gate (after pivoting)
+   5 a cut was built. */
+static int lpProfOptExit[6] = {0, 0, 0, 0, 0, 0};
+static int lpProfPivots = 0;
+
+void cglLandPProfileOptExit(int which, int numPivots)
+{
+  if (which >= 0 && which < 6) ++lpProfOptExit[which];
+  lpProfPivots += numPivots;
+}
+
+/* si_->pivot()'s return code is NOT a boolean. Clp documents (and
+   ClpSimplex.cpp:9181 implements) 0 = okay, 1 = "inaccuracy forced
+   re-factorization", which is a pivot that WAS taken, and -1 = "would be
+   singular", the only code under which nothing happened. changeBasis treats
+   every nonzero alike, so splitting them decides between two very different
+   diagnoses: "the algorithm cannot pivot from here" and "the algorithm threw
+   away a pivot it had already made". */
+static int lpProfPivCode[3] = {0, 0, 0}; /* ok / refactorized(+) / singular(-) */
+
+void cglLandPProfilePivotCode(int code)
+{
+  if (code == 0) ++lpProfPivCode[0];
+  else if (code > 0) ++lpProfPivCode[1];
+  else ++lpProfPivCode[2];
+}
+
+/* Per-stage timers INSIDE the pivot loop. The comment at the top of this block
+   used to say nesting this deep would distort what it measures, and that was true
+   of the code as it stood: LandP completed zero pivots, so the loop body ran once
+   per candidate and a clock call was a visible fraction of it. With pivoting
+   repaired the loop body is ~1.4 ms and the eight CoinGetTimeOfDay calls below are
+   ~200 ns of it, so the distortion is ~0.01% and the attribution is worth having.
+
+   The stages are the loop body in source order. LP_STAGE_ROW is the one to watch:
+   fastFindCutImprovingPivotRow walks every column of M1_ and M2_ through the
+   column-major matrix, i.e. all of nnz(A), on every single pivot. */
+enum { LP_ST_UPD = 0,   /* updateM1_M2_M3 + computeCglpObjective */
+       LP_ST_ROW,       /* fastFindCutImprovingPivotRow */
+       LP_ST_COL,       /* fastFindBestPivotColumn */
+       LP_ST_RESCAN,    /* rescanReducedCosts retry loop */
+       LP_ST_PIVOT,     /* si_->pivot() alone */
+       LP_ST_CBREST,    /* rest of changeBasis: bookkeeping + row_k_ update */
+       LP_ST_FACT,      /* the every-40-pivots explicit factorize() */
+       LP_ST_EXACT,     /* exactRowReducedCosts */
+       LP_ST_N };
+static double lpProfStage[LP_ST_N] = {0., 0., 0., 0., 0., 0., 0., 0.};
+/* Call counts, free to collect and worth more than the times on their own: with
+   them, "st_rescan is 38% of the loop" separates into "each call is slow" and
+   "it is called many times per pivot", which point at different fixes. */
+static int lpProfStageN[LP_ST_N] = {0, 0, 0, 0, 0, 0, 0, 0};
+static const char *const lpProfStageName[LP_ST_N] =
+  {"st_upd", "st_row", "st_col", "st_rescan", "st_pivot", "st_cbrest", "st_fact",
+   "st_exact"};
+
+void cglLandPProfileAddStage(int which, double secs)
+{
+  if (which >= 0 && which < LP_ST_N)
+    {
+      lpProfStage[which] += secs;
+      ++lpProfStageN[which];
+    }
+}
+
+/* Why fastFindBestPivotColumn returned no column. Order matches the LP_COL_*
+   macros in CglLandPSimplex.cpp. Only nopivtol and degen return -1 and so charge
+   the maxTryRow budget; the other three return -2 and are free, which is what
+   lets the retry loop run until it runs out of unflagged rows. */
+enum { LP_CF_N = 5 };
+static int lpProfColFail[LP_CF_N] = {0, 0, 0, 0, 0};
+static const char *const lpProfColFailName[LP_CF_N] =
+  {"cf_nogamma", "cf_mistakenrc", "cf_nopivtol", "cf_tinypiv", "cf_degen"};
+
+void cglLandPProfileColFail(int which)
+{
+  if (which >= 0 && which < LP_CF_N) ++lpProfColFail[which];
+}
+
+/* Bins the exact reduced cost of a row the table had promised was improving.
+   "tiny" is |exact| below the pivot tolerance CglLandP itself uses (1e-4 by
+   default, but the bins are absolute so they can be read against any of them);
+   "sign" means the exact value is positive by more than that, i.e. the table did
+   not merely lose precision, it pointed the search at the wrong row. */
+static int lpProfMistakenTiny = 0;
+static int lpProfMistakenSign = 0;
+static double lpProfMistakenWorst = 0.0;   /* largest positive exact rc seen */
+static double lpProfMistakenTableSum = 0.0;/* sum of the table's promises */
+static double lpProfMistakenExactSum = 0.0;/* sum of the exact recomputations */
+
+/* Which of the four reduced-cost tables the row came from. rescanReducedCosts
+   reads ul_i, vl_i, uu_i, vu_i and each maps to exactly one (direction, gammaSign)
+   pair, so binning by that pair says whether the disagreement is a property of ONE
+   table -- a localized sign error -- or spread over all four. Order:
+     0 ul (dir -1, sign -1)   1 vl (dir -1, sign +1)
+     2 uu (dir +1, sign -1)   3 vu (dir +1, sign +1)  */
+static int lpProfMisBin[4] = {0, 0, 0, 0};
+static int lpProfAgreeBin[4] = {0, 0, 0, 0};
+/* Mistaken cases where the exact value is the table's value NEGATED, to within
+   relative 1e-9. A large count here means the table is not imprecise, it is one
+   sign flip away from correct, which is a very different repair. */
+static int lpProfMisNegated = 0;
+/* Ambiguous-column census, split the same way. mis_amb0 / agree_amb0 are the
+   decisive cells: the perturbation explanation predicts mis_amb0 == 0 (no mistaken
+   call is free of ambiguous columns) and agree_amb0 == the whole agree population
+   minus the lucky draws. A nonzero mis_amb0 falsifies it outright. */
+static int lpProfMisAmb0 = 0, lpProfAgreeAmb0 = 0;
+static double lpProfMisAmbSum = 0., lpProfAgreeAmbSum = 0.;
+
+static int lpRcBin(int direction, int gammaSign)
+{
+  return (direction > 0 ? 2 : 0) + (gammaSign > 0 ? 1 : 0);
+}
+
+void cglLandPProfileMistaken(double exact, double table, int direction,
+                             int gammaSign, int nAmb)
+{
+  if (nAmb == 0) ++lpProfMisAmb0;
+  lpProfMisAmbSum += nAmb;
+  if (exact > 1e-6) { ++lpProfMistakenSign;
+                      if (exact > lpProfMistakenWorst) lpProfMistakenWorst = exact; }
+  else ++lpProfMistakenTiny;
+  lpProfMistakenTableSum += table;
+  lpProfMistakenExactSum += exact;
+  ++lpProfMisBin[lpRcBin(direction, gammaSign)];
+  const double scale = fabs(table) > 1. ? fabs(table) : 1.;
+  if (fabs(exact + table) <= 1e-9 * scale) ++lpProfMisNegated;
+}
+
+/* The SAME pair on the calls where the exact test AGREED with the table. This is
+   the control for the mistaken bin above, and it is what decides between the two
+   readings of that data:
+
+     - if table and exact are close here and only differ on the mistaken calls,
+       the table is a good approximation with a tolerance boundary problem;
+     - if they differ by a consistent factor here TOO, then the two formulas do
+       not compute the same quantity at all, they merely usually share a sign,
+       and the "mistake" is a units mismatch rather than a numerical one.
+
+   Sums rather than a max, because a ratio of means is what separates those. */
+static int lpProfAgreeN = 0;
+static double lpProfAgreeExactSum = 0.0;
+static double lpProfAgreeTableSum = 0.0;
+static double lpProfAgreeWorstRatio = 0.0;
+
+void cglLandPProfileAgree(double exact, double table, int direction,
+                          int gammaSign, int nAmb)
+{
+  if (nAmb == 0) ++lpProfAgreeAmb0;
+  lpProfAgreeAmbSum += nAmb;
+  ++lpProfAgreeN;
+  ++lpProfAgreeBin[lpRcBin(direction, gammaSign)];
+  lpProfAgreeExactSum += exact;
+  lpProfAgreeTableSum += table;
+  if (table < -1e-12)
+    {
+      const double ratio = exact / table;   /* both negative => positive ratio */
+      if (ratio > lpProfAgreeWorstRatio) lpProfAgreeWorstRatio = ratio;
+    }
+}
+
+/* Loop-iteration census. COUNTED, not timed, so a parallel sweep collects it
+   correctly -- which matters because the question it answers is "is a sparse
+   rewrite worth writing?" and that must be settled before spending the effort,
+   not after.
+
+   w_col_dense is what the p/q/r/s accumulation loop in fastFindBestPivotColumn
+   costs today: one iteration per nonbasic per call, and it is called ~5x per
+   pivot. w_col_sparse is what it would cost visiting only columns that can
+   contribute -- a column with row_k==0 AND row_i==0 adds exactly zero to all
+   four of p,q,r,s and inserts no gamma, so the ratio of the two is the ceiling
+   on what a sparse rewrite can buy.
+
+   w_gamma / w_gammadrop are the same question for gammas_.sortIncrElement():
+   dropped means the mistaken-rc test then threw the sorted array away.
+
+   w_slot_* are the exact-retry accounting.  A call to exactRowReducedCosts
+   examines the (up to) four candidates of the row already in hand: w_slot_retired
+   counts the ones its exact reduced cost proves non-improving, which fastFind-
+   BestPivotColumn would otherwise have been called on and lost, and w_slot_live
+   counts the calls that found a genuine sibling and so skipped a rescan plus a
+   tableau row solve.  w_pred_bad / w_pred_sign are the verification: the value
+   predicted here must equal the one the column search then computes itself, so
+   w_pred_bad must be 0 (DblEqAssert is compiled out at -O2, hence a counter). */
+enum { LP_W_COLDENSE = 0, LP_W_COLSPARSE, LP_W_GAMMA, LP_W_GAMMADROP,
+       LP_W_PULLDENSE, LP_W_PULLSPARSE, LP_W_M3COL, LP_W_M3ITER,
+       LP_W_SLOTCALL, LP_W_SLOTRETIRE, LP_W_SLOTLIVE, LP_W_PREDBAD,
+       LP_W_PREDSIGN, LP_W_N };
+static double lpProfWork[LP_W_N] = {0., 0., 0., 0., 0., 0., 0., 0.,
+                                    0., 0., 0., 0., 0.};
+static const char *const lpProfWorkName[LP_W_N] =
+  {"w_col_dense", "w_col_sparse", "w_gamma", "w_gammadrop",
+   "w_pull_dense", "w_pull_sparse", "w_m3col", "w_m3iter",
+   "w_slot_calls", "w_slot_retired", "w_slot_live", "w_pred_bad",
+   "w_pred_sign"};
+
+/* double, not long: these reach 1e9 on one fixture and a double counts exactly
+   up to 2^53, which is well past anything a single instance can produce. */
+void cglLandPProfileWork(int which, double n)
+{
+  if (which >= 0 && which < LP_W_N) lpProfWork[which] += n;
+}
+
+void cglLandPProfileReset()
+{
+  for (int i = 0; i < LP_W_N; ++i) lpProfWork[i] = 0.;
+  for (int i = 0; i < 6; ++i) lpProfOptExit[i] = 0;
+  for (int i = 0; i < 3; ++i) lpProfPivCode[i] = 0;
+  for (int i = 0; i < LP_ST_N; ++i) { lpProfStage[i] = 0.; lpProfStageN[i] = 0; }
+  for (int i = 0; i < LP_CF_N; ++i) lpProfColFail[i] = 0;
+  lpProfMistakenTiny = lpProfMistakenSign = 0;
+  lpProfMistakenWorst = lpProfMistakenTableSum = lpProfMistakenExactSum = 0.0;
+  lpProfAgreeN = lpProfMisNegated = 0;
+  lpProfMisAmb0 = lpProfAgreeAmb0 = 0;
+  lpProfMisAmbSum = lpProfAgreeAmbSum = 0.;
+  for (int i = 0; i < 4; ++i) lpProfMisBin[i] = lpProfAgreeBin[i] = 0;
+  lpProfAgreeExactSum = lpProfAgreeTableSum = lpProfAgreeWorstRatio = 0.0;
+  lpProfPivots = 0;
+  lpProfCloneTime = lpProfLoopTime = lpProfSetupTime = lpProfRangeTime = 0.0;
+  lpProfOptCloneTime = 0.0;
+  lpProfClones = lpProfCandidates = lpProfRetries = lpProfOptClones = 0;
+}
+
+void cglLandPProfilePrint(const char *tag)
+{
+  /* One line, tab-separated, tagged, so a serial sweep reduces with awk. The
+     residual is loop time not attributed to the generateCuts clones, i.e.
+     optimize() itself including ITS clone. */
+  printf("[landp-prof]\t%s\tsetup\t%.6f\tloop\t%.6f\tclone\t%.6f\toptclone\t%.6f"
+         "\trange\t%.6f\tclones\t%d\toptclones\t%d\tcand\t%d\tretries\t%d"
+         "\tpivots\t%d\texit_len0\t%d\texit_sigma\t%d\texit_pfup\t%d"
+         "\texit_pfsame\t%d\texit_len1\t%d\texit_cut\t%d"
+         "\tpiv_ok\t%d\tpiv_refact\t%d\tpiv_singular\t%d",
+    tag, lpProfSetupTime, lpProfLoopTime, lpProfCloneTime, lpProfOptCloneTime,
+    lpProfRangeTime, lpProfClones, lpProfOptClones, lpProfCandidates,
+    lpProfRetries, lpProfPivots, lpProfOptExit[0], lpProfOptExit[1],
+    lpProfOptExit[2], lpProfOptExit[3], lpProfOptExit[4], lpProfOptExit[5],
+    lpProfPivCode[0], lpProfPivCode[1], lpProfPivCode[2]);
+  for (int i = 0; i < LP_ST_N; ++i)
+    printf("\t%s\t%.6f", lpProfStageName[i], lpProfStage[i]);
+  for (int i = 0; i < LP_ST_N; ++i)
+    printf("\tn_%s\t%d", lpProfStageName[i], lpProfStageN[i]);
+  for (int i = 0; i < LP_CF_N; ++i)
+    printf("\t%s\t%d", lpProfColFailName[i], lpProfColFail[i]);
+  printf("\tmis_tiny\t%d\tmis_sign\t%d\tmis_worst\t%.6g\tmis_tablesum\t%.6g"
+         "\tmis_exactsum\t%.6g\tagree_n\t%d\tagree_exactsum\t%.6g"
+         "\tagree_tablesum\t%.6g\tagree_worstratio\t%.6g",
+         lpProfMistakenTiny, lpProfMistakenSign, lpProfMistakenWorst,
+         lpProfMistakenTableSum, lpProfMistakenExactSum, lpProfAgreeN,
+         lpProfAgreeExactSum, lpProfAgreeTableSum, lpProfAgreeWorstRatio);
+  printf("\tmis_negated\t%d\tmis_amb0\t%d\tagree_amb0\t%d"
+         "\tmis_ambsum\t%.0f\tagree_ambsum\t%.0f",
+         lpProfMisNegated, lpProfMisAmb0, lpProfAgreeAmb0,
+         lpProfMisAmbSum, lpProfAgreeAmbSum);
+  {
+    static const char *const bn[4] = {"ul", "vl", "uu", "vu"};
+    for (int i = 0; i < 4; ++i)
+      printf("\tmis_%s\t%d\tagree_%s\t%d", bn[i], lpProfMisBin[i],
+             bn[i], lpProfAgreeBin[i]);
+  }
+  for (int i = 0; i < LP_W_N; ++i)
+    printf("\t%s\t%.0f", lpProfWorkName[i], lpProfWork[i]);
+  printf("\n");
+  fflush(stdout);
+}
+
+#define LP_PROF_T0(v) const double v = CoinGetTimeOfDay()
+#define LP_PROF_ADD(acc, t0) (acc) += CoinGetTimeOfDay() - (t0)
+#define LP_PROF_INC(c) ++(c)
+#else
+#define LP_PROF_T0(v)
+#define LP_PROF_ADD(acc, t0)
+#define LP_PROF_INC(c)
+#endif
+
 namespace LAP
 {
 //Setup output messages
@@ -63,6 +386,9 @@ CglLandP::Parameters::Parameters():
         countMistakenRc(false),
         sepSpace(Fractional),
         perturb(true),
+        exactRetry(true),
+        exactBest(false),
+        preLengthGate(true),
         normalization(Unweighted),
         rhsWeightType(Fixed),
         lhs_norm(L1),
@@ -93,6 +419,9 @@ CglLandP::Parameters::Parameters(const Parameters &other):
         countMistakenRc(other.countMistakenRc),
         sepSpace(other.sepSpace),
         perturb(other.perturb),
+        exactRetry(other.exactRetry),
+        exactBest(other.exactBest),
+        preLengthGate(other.preLengthGate),
         normalization(other.normalization),
         rhsWeightType(other.rhsWeightType),
         lhs_norm(other.lhs_norm),
@@ -109,7 +438,13 @@ CglLandP::Parameters & CglLandP::Parameters::operator=(const Parameters &other)
         pivotLimitInTree = other.pivotLimitInTree;
         maxCutPerRound = other.maxCutPerRound;
         failedPivotLimit = other.failedPivotLimit;
-        degeneratePivotLimit = other.failedPivotLimit;
+        /* Was other.failedPivotLimit -- a copy-paste, and not a harmless one: the
+           two members have different defaults (1 and 0), so assigning a
+           default-constructed Parameters used to turn degenerate pivots ON. The
+           copy constructor above always had this right, which is why it survived:
+           clone() uses the copy constructor and only CglLandP::operator= reaches
+           here. */
+        degeneratePivotLimit = other.degeneratePivotLimit;
         extraCutsLimit = other.extraCutsLimit;
 	maximumCandidates = other.maximumCandidates;
 	maximumCutLength = other.maximumCutLength;
@@ -124,6 +459,9 @@ CglLandP::Parameters & CglLandP::Parameters::operator=(const Parameters &other)
         countMistakenRc = other.countMistakenRc;
         sepSpace = other.sepSpace;
         perturb = other.perturb;
+        exactRetry = other.exactRetry;
+        exactBest = other.exactBest;
+        preLengthGate = other.preLengthGate;
         normalization = other.normalization;
         rhsWeightType = other.rhsWeightType;
         lhs_norm = other.lhs_norm;
@@ -596,6 +934,7 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     int nThrownAway=0;
     if (numberRanges) {
       // modify by adding slacks
+      LP_PROF_T0(tRange);
       OsiSolverInterface *tt_si = si.clone();
       const double * rowLower = si.getRowLower();
       const double * rowUpper = si.getRowUpper();
@@ -670,9 +1009,11 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       delete [] solution;
       tt_si->resolve();
       t_si = tt_si;
+      LP_PROF_ADD(lpProfRangeTime, tRange);
     }
 #endif
 
+    LP_PROF_T0(tSetup);
     cached_.getData(*t_si);
     CglLandPSimplex landpSi(*t_si, cached_, params, validator_);
     if (params.generateExtraCuts == CglLandP::AllViolatedMigs)
@@ -686,6 +1027,7 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     getSortedFractionalIndices(indices,cached_, params);
     if (indices.size()>params.maximumCandidates)
       indices.resize(params.maximumCandidates);
+    LP_PROF_ADD(lpProfSetupTime, tSetup);
 
 #ifndef NDEBUG
     int numrows = si.getNumRows();
@@ -705,24 +1047,32 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     params_.timeLimit += CoinCpuTime();
     CoinRelFltEq eq(1e-04);
 
+    LP_PROF_T0(tLoop);
     for (unsigned int i = 0; i < indices.size() && nCut < params.maxCutPerRound &&
             nCut < cached_.nBasics_ ; i++)
     {
 
         //Check for time limit
         int iRow = indices[i];
+        LP_PROF_INC(lpProfCandidates);
         assert(iRow < numrows);
         OsiRowCut cut;
         int code=1;
-        OsiSolverInterface * ncSi = NULL;
 
-        if (params.pivotLimit != 0)
-        {
-            ncSi = t_si->clone();
-            landpSi.setSi(ncSi);
-            ncSi->setDblParam(OsiDualObjectiveLimit, COIN_DBL_MAX);
-            ncSi->messageHandler()->setLogLevel(0);
-        }
+        /* No clone here. optimize() opens by doing `delete si_; si_ =
+           cached.solver_->clone()` unconditionally, so the clone that used to be
+           made at this point was destroyed before a single line of it was read --
+           one full LP copy per candidate, plus a second one on the retry path
+           below, for nothing. cached_.solver_ is itself a clone of *t_si taken by
+           cached_.getData(*t_si) above, so optimize() starts from the same matrix
+           and basis either way.
+
+           Two setters went with it: setDblParam(OsiDualObjectiveLimit,
+           COIN_DBL_MAX) and setLogLevel(0). They were applied to the discarded
+           clone, so they never reached the solver that pivots; they are dead
+           today and removing them changes nothing. Whether the *live* clone ought
+           to have them is a separate question -- answering it yes would be a
+           behaviour change, so it is not folded in here. */
 
         int generated = 0;
         if (params.pivotLimit == 0)
@@ -747,8 +1097,10 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
             {
                 handler_->message(LAP_CUT_FAILED_DO_MIG, messages_)<<validator_.failureString(code)<<CoinMessageEol;
                 landpSi.freeSi();
-                OsiSolverInterface * ncSi = t_si->clone();
-                landpSi.setSi(ncSi);
+                LP_PROF_INC(lpProfRetries);
+                /* Same dead clone as above: optimize() re-clones cached.solver_
+                   on entry whatever pivotLimit is, so the retry needs nothing
+                   from here but the freeSi() that precedes it. */
                 params.pivotLimit = 0;
                 if (landpSi.optimize(iRow, cut, cached_, params))
                 {
@@ -840,6 +1192,8 @@ CglLandP::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
             }
         }
     }
+
+    LP_PROF_ADD(lpProfLoopTime, tLoop);
 
     Cuts& extra = landpSi.extraCuts();
     for (int i = 0 ; i < cached_.nNonBasics_; i++)

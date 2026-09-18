@@ -147,6 +147,91 @@ void checkVecFunc(const CoinIndexedVector &v)
 
 #include <algorithm>
 //#define TEST_M3
+#ifdef CGL_LANDP_PROFILE
+/* Measurement hook, defined in CglLandP.cpp under the same guard. Declared here
+   rather than in a header on purpose: a header declaration would let a normal
+   build fail to link if the profile block in CglLandP.cpp were ever dropped. */
+void cglLandPProfileAddOptClone(double secs);
+void cglLandPProfileOptExit(int which, int numPivots);
+void cglLandPProfilePivotCode(int code);
+void cglLandPProfileAddStage(int which, double secs);
+void cglLandPProfileColFail(int which);
+void cglLandPProfileMistaken(double exact, double table, int direction, int gammaSign, int nAmb);
+void cglLandPProfileWork(int which, double n);
+void cglLandPProfileAgree(double exact, double table, int direction, int gammaSign, int nAmb);
+/* optimize() has six exits and only one of them produces a cut. Which one a
+   candidate takes decides whether its clone was wasted work: exit 0 is the
+   entry length gate, which fires before any pivot, so the clone it was handed
+   was never touched. */
+#define LP_OPT_EXIT(w, np) ::cglLandPProfileOptExit((w), (np))
+#define LP_PIV_CODE(c) ::cglLandPProfilePivotCode((c))
+/* Stage indices must match the enum in CglLandP.cpp. Kept as bare integers here
+   rather than sharing the enum through a header, for the same reason the function
+   declarations above are local: nothing outside a profile build should see them. */
+#define LP_ST_UPD 0
+#define LP_ST_ROW 1
+#define LP_ST_COL 2
+#define LP_ST_RESCAN 3
+#define LP_ST_PIVOT 4
+#define LP_ST_CBREST 5
+#define LP_ST_FACT 6
+#define LP_ST_EXACT 7
+#define LP_STAGE_T0(v) const double v = CoinGetTimeOfDay()
+#define LP_STAGE_ADD(w, t0) ::cglLandPProfileAddStage((w), CoinGetTimeOfDay() - (t0))
+/* Why fastFindBestPivotColumn gave up. Worth counting separately from the
+   stage timer because only ONE of these five charges the maxTryRow budget
+   (nRowFailed is bumped on -1 only, unless countMistakenRc), so the mix decides
+   whether the retry loop is bounded by the budget or by running out of rows. */
+#define LP_COL_NOGAMMA   0
+#define LP_COL_MISTAKENRC 1
+#define LP_COL_NOPIVTOL  2
+#define LP_COL_TINYPIV   3
+#define LP_COL_DEGEN     4
+#define LP_COL_FAIL(w) ::cglLandPProfileColFail((w))
+/* The table said this row was improving and the exact recomputation
+   disagrees. Which of the two is wrong is decided by HOW MUCH: an exact
+   value of +1e-13 against a table value of -1e-4 is a degenerate row and a
+   tolerance question, while a genuinely positive exact value means the
+   reduced-cost table has the wrong sign and every pivot chosen from it is
+   guesswork. */
+#define LP_MISTAKEN(e, t) ::cglLandPProfileMistaken((e), (t), direction, gammaSign, (int)nAmbig)
+/* Same pair on the calls where the exact test agreed with the table -- the
+   control for LP_MISTAKEN. See cglLandPProfileAgree for what it decides. */
+#define LP_AGREE(e, t) ::cglLandPProfileAgree((e), (t), direction, gammaSign, (int)nAmbig)
+/* Loop-iteration census; indices must match the LP_W_* enum in CglLandP.cpp.
+   Counts, not times, because the ratio dense/sparse is the ceiling on what a
+   sparse rewrite of the loop could buy and that has to be known before writing
+   one. LP_WORK_IF exists so the non-profile build has no residual `if` at all
+   rather than an empty statement under a live condition. */
+#define LP_W_COLDENSE  0
+#define LP_W_COLSPARSE 1
+#define LP_W_GAMMA     2
+#define LP_W_GAMMADROP 3
+#define LP_W_PULLDENSE  4
+#define LP_W_PULLSPARSE 5
+#define LP_W_M3COL      6
+#define LP_W_M3ITER     7
+#define LP_W_SLOTCALL   8
+#define LP_W_SLOTRETIRE 9
+#define LP_W_SLOTLIVE   10
+#define LP_W_PREDBAD    11
+#define LP_W_PREDSIGN   12
+#define LP_WORK(w, n) ::cglLandPProfileWork((w), static_cast<double>(n))
+#define LP_WORK_DECL(v) double v = 0.
+#define LP_WORK_IF(cond, v) if (cond) v += 1.
+#else
+#define LP_OPT_EXIT(w, np)
+#define LP_PIV_CODE(c)
+#define LP_STAGE_T0(v)
+#define LP_STAGE_ADD(w, t0)
+#define LP_COL_FAIL(w)
+#define LP_MISTAKEN(e, t)
+#define LP_AGREE(e, t)
+#define LP_WORK(w, n)
+#define LP_WORK_DECL(v)
+#define LP_WORK_IF(cond, v)
+#endif
+
 namespace LAP
 {
 
@@ -209,6 +294,8 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
 #endif
         gammas_(false),
         rowFlags_(NULL),
+        pInvariant_(0.), rInvariant_(1.), fzeroInvariant_(0.),
+        predictedRcNum_(0.), predictedSlot_(-1),
         col_in_subspace(),
         colCandidateToLeave_(NULL),
         basics_(NULL), nonBasics_(NULL),
@@ -220,6 +307,7 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
         chosenReducedCostVal_(1e100),
         original_index_(),
         si_(NULL),
+        ownSi_(false),
         validator_(validator),
         numPivots_(0),
         numSourceRowEntered_(0),
@@ -516,7 +604,19 @@ CglLandPSimplex::cacheUpdate(const CglLandP::CachedData &cached, bool reducedSpa
 
 bool CglLandPSimplex::resetSolver(const CoinWarmStartBasis * /*basis*/)
 {
-    si_->disableSimplexInterface();
+    /* Only a solver we own can have had its simplex interface enabled by us: the
+       one optimize() clones from cached.solver_ inherits the enabled state, and
+       there is no other route to it (the enableSimplexInterface call in optimize()
+       is under #ifndef CACHED_SOLVER, which is dead). So with nothing owned there
+       is nothing to undo -- and calling this on the borrowed si_ would disable the
+       interface on the *caller's* solver, which the old code never did because
+       optimize() always replaced si_ with a clone before returning.
+
+       Both of the states this skips are reachable since optimize() grew its
+       pre-clone length gate: si_ is NULL for every candidate after the first
+       (generateCuts' trailing freeSi()), and is the borrowed solver on the first. */
+    if (ownSi_)
+        si_->disableSimplexInterface();
     return 0;
 }
 
@@ -638,12 +738,67 @@ CglLandPSimplex::optimize
 
     delete basis_;
     basis_ = new CoinWarmStartBasis(*cached.basis_);
+
+    /* Decide the "too many elements" gate below before paying for the clone.
+       On this corpus 142150 of 198329 optimize() calls -- 71.7% -- return at that
+       gate having pivoted zero times, and each of them had just cloned the whole
+       LP for nothing: the clone is 14.8% of the separation loop.
+
+       The gate tests B^-1 A_row of the *optimal* basis, and cached.solver_ holds
+       exactly that: getData() cloned it with the simplex interface enabled and
+       copied Clp's enabled state into it, and the clone below is a clone of
+       cached.solver_ with the same state copied again, so the two factorize the
+       same basis of the same matrix. Nothing between here and the gate touches
+       either. Everything pullTableauRow reads -- nrows_, ncols_, basics_,
+       nonBasics_, basis_ -- is in place by now.
+
+       On the passing path the row is deliberately pulled again from the clone
+       further down, so the row the cut is built from is bit-for-bit the one it
+       was before this gate existed; only the 71.7% that never get that far are
+       affected, and for them the pull done here replaces the one that used to be
+       done there. Skipped when modularize is on: under APPEND_ROW that path
+       appends a row to the clone and then gates on a row of the *augmented*
+       matrix, which cached.solver_ does not have. APPEND_ROW is off in this
+       build, so the skip is only insurance -- but it costs nothing, since
+       modularize is off by default too.
+
+       Skipped for every generateExtraCuts mode but none, because those read the
+       clone after optimize() returns -- genThisBasisMigs dereferences si_ and
+       pulls tableau rows from it -- so returning without one would both change
+       what they produce and, for AllViolatedMigs, dereference NULL. CBC leaves
+       the mode at none. */
+    if (params.preLengthGate && !params.modularize
+            && params.generateExtraCuts == CglLandP::none)
+    {
+        row_k_.num = row;
+        pullTableauRowFrom(cached.solver_, row_k_);
+        if (row_k_.getNumElements() > maximumCutLength)
+        {
+            LP_OPT_EXIT(0, 0);
+            return false;
+        }
+    }
 #define CACHED_SOLVER
 #ifndef CACHED_SOLVER
     si_->enableSimplexInterface(0);
 #else
-    delete si_;
+#ifdef CGL_LANDP_PROFILE
+    const double tOptClone = CoinGetTimeOfDay();
+#endif
+    /* Conditional, because on the first candidate si_ is still the solver the
+       constructor borrowed from generateCuts. Deleting that used to be safe only
+       because generateCuts pre-emptively overwrote si_ with a clone of its own --
+       a clone this line then deleted without ever reading it. */
+    if (ownSi_)
+        delete si_;
     si_ = cached.solver_->clone();
+    ownSi_ = true;
+#ifdef CGL_LANDP_PROFILE
+    /* Qualified: this file's code is inside namespace LAP, and the accumulator
+       lives at global scope in CglLandP.cpp. An unqualified call looked up
+       LAP::cglLandPProfileAddOptClone and failed to link. */
+    ::cglLandPProfileAddOptClone(CoinGetTimeOfDay() - tOptClone);
+#endif
 #ifdef CGL_HAS_OSICLP
     OsiClpSolverInterface * clpSi = getClpSolver(si_);
     OsiClpSolverInterface * clpSiRhs = getClpSolver(cached.solver_);
@@ -677,7 +832,10 @@ CglLandPSimplex::optimize
     pullTableauRow(row_k_);
     // give up if too many elements
     if (row_k_.getNumElements()>maximumCutLength)
+    {
+      LP_OPT_EXIT(0, 0);
       return false;
+    }
     row_k_.rhs = row_k_.rhs - floor(row_k_.rhs);
 
     if (params.modularize)
@@ -709,8 +867,16 @@ CglLandPSimplex::optimize
     {
         if (timeLimit - CoinCpuTime() < 0.) break;
 
+        LP_STAGE_T0(tUpd);
         updateM1_M2_M3(row_k_, 0., params.perturb);
         sigma_ = computeCglpObjective(row_k_);
+        /* One pass over the nonbasics, and only when the exact retry can use it.
+           updateM1_M2_M3 is the only writer of colCandidateToLeave_, so this is
+           the earliest point at which p and r are well defined, and nothing in
+           the pivot below invalidates them. */
+        if (params.exactRetry)
+            computeInvariantPR(params.sepSpace==CglLandP::Fractional);
+        LP_STAGE_ADD(LP_ST_UPD, tUpd);
         int direction = 0;
         int gammaSign = 0;
         int leaving = -1;
@@ -718,8 +884,10 @@ CglLandPSimplex::optimize
         double bestSigma;
         if (params.pivotSelection != CglLandP::initialReducedCosts || numPivots == 0)
         {
+            LP_STAGE_T0(tRow);
             leaving = fastFindCutImprovingPivotRow(direction, gammaSign, params.pivotTol,
                                                    params.pivotSelection == CglLandP::initialReducedCosts);
+            LP_STAGE_ADD(LP_ST_ROW, tRow);
 #if 0
             plotCGLPobj(direction, params.pivotTol, params.pivotTol, true, true, false);
             exit(1);
@@ -732,30 +900,103 @@ CglLandPSimplex::optimize
 
                     if (params.pivotSelection == CglLandP::initialReducedCosts)
                         rowFlags_[leaving] = false;
-                    incoming = fastFindBestPivotColumn(direction, gammaSign,
-                                                       params.pivotTol, params.away,
-                                                       (params.sepSpace==CglLandP::Fractional),
-                                                       allowDegeneratePivot,
-                                                       bestSigma, false//params.modularize
-                                                      );
-                    while (incoming < 0 && !optimal &&
-                            nRowFailed < maxTryRow)   // if no improving was found rescan the tables of reduced cost to find a good one
+                    /* Candidates of the row now in row_i_ that have been tried and
+                       rejected.  Only the exact route uses it: that route is
+                       entitled to try all four of a row's (direction, gammaSign)
+                       candidates, where the tabulated route tries the single one
+                       the tables named and then gives the row up.  Reset whenever
+                       a rescan brings in a different row. */
+                    int triedSlots = 0;
+                    /* Timed per call rather than around the loop, because the loop
+                       body is two different things: rescanReducedCosts (an
+                       O(nrows_) scan of the four reduced-cost tables plus one
+                       pullTableauRow, i.e. a tableau row solve) and another
+                       fastFindBestPivotColumn. Timing the loop as a unit hid that
+                       split, and the call counts printed alongside say how many
+                       times round it went -- the retry limit is maxTryRow, so this
+                       loop can run the two most expensive routines in the pivot
+                       many times for a single pivot. */
+                    for (;;)
                     {
-                        if (incoming == -1 || params.countMistakenRc) nRowFailed ++;
-                        rowFlags_[leaving] = false;
-                        hasFlagedRow = true;
-                        leaving = rescanReducedCosts(direction, gammaSign, params.pivotTol);
-                        if (leaving >= 0)
+                        bool rowExhausted = false;
+                        if (params.exactRetry)
                         {
+                            /* Ask the row itself, instead of believing the tables.
+                               The tableau row is already solved for and sitting in
+                               row_i_, so the exact cost of a candidate -- of all
+                               four of them, in fact -- costs one pass over the
+                               nonbasics, where fastFindBestPivotColumn charges a
+                               pass plus a sort to reach the same verdict for one.
+
+                               exactBest lets the row name the candidate; without it
+                               only the one the tables named is examined, which
+                               cannot change the pivot sequence and so cannot change
+                               a cut: whatever the exact cost decides here, the
+                               column search was going to decide identically. */
+                            const int allowed = params.exactBest
+                                                ? 0xF
+                                                : (1 << rcSlot(direction, gammaSign));
+                            double bestRc = 0.;
+                            LP_STAGE_T0(tExact);
+                            const int live =
+                                exactRowReducedCosts((params.sepSpace==CglLandP::Fractional),
+                                                     (~allowed & 0xF) | triedSlots,
+                                                     bestRc);
+                            LP_STAGE_ADD(LP_ST_EXACT, tExact);
+                            if (live < 0)
+                            {
+                                /* No improving candidate left in this row.  That is
+                                   the outcome the column search reports as -2, so
+                                   report it alike and let the retry budget see what
+                                   it would have seen. */
+                                if (triedSlots == 0) incoming = -2;
+                                rowExhausted = true;
+                            }
+                            else
+                            {
+                                triedSlots |= (1 << live);
+                                if (params.exactBest)
+                                {
+                                    direction = (live < 2) ? -1 : 1;
+                                    gammaSign = (live & 1) ? 1 : -1;
+                                    /* Only with exactBest, because the tabulated
+                                       value is what the diagnostics compare
+                                       against. */
+                                    chosenReducedCostVal_ = bestRc;
+                                }
+                            }
+                        }
+                        if (!rowExhausted)
+                        {
+                            LP_STAGE_T0(tCol);
                             incoming = fastFindBestPivotColumn(direction, gammaSign,
-                                                               params.pivotTol,
-                                                               params.away,
+                                                               params.pivotTol, params.away,
                                                                (params.sepSpace==CglLandP::Fractional),
                                                                allowDegeneratePivot,
                                                                bestSigma, false//params.modularize
                                                               );
+                            LP_STAGE_ADD(LP_ST_COL, tCol);
+                            if (incoming >= 0) break;
+                            /* Only exactBest has other candidates of this row to
+                               offer; the tabulated route, and the exact screen of
+                               the one candidate it named, have said all they can. */
+                            if (params.exactRetry && params.exactBest) continue;
                         }
-                        else optimal = true;
+                        // no improving candidate left in this row: rescan the tables
+                        // of reduced cost to find another one
+                        if (optimal || nRowFailed >= maxTryRow) break;
+                        if (incoming == -1 || params.countMistakenRc) nRowFailed ++;
+                        rowFlags_[leaving] = false;
+                        hasFlagedRow = true;
+                        LP_STAGE_T0(tRescan);
+                        leaving = rescanReducedCosts(direction, gammaSign, params.pivotTol);
+                        LP_STAGE_ADD(LP_ST_RESCAN, tRescan);
+                        if (leaving < 0)
+                        {
+                            optimal = true;
+                            break;
+                        }
+                        triedSlots = 0;
                     }
                 }
                 else if (params.pivotSelection == CglLandP::bestPivot)
@@ -806,7 +1047,9 @@ CglLandPSimplex::optimize
 #ifdef CGL_HAS_OSICLP
                 if (numPivots && ( numPivots % 40 == 0 ) && clp_)
                 {
+                    LP_STAGE_T0(tFact);
                     clp_->getModelPtr()->factorize();
+                    LP_STAGE_ADD(LP_ST_FACT, tFact);
                 }
 #endif
 
@@ -844,7 +1087,7 @@ CglLandPSimplex::optimize
 
                     if (sigma_ - lastSigma > -1e-4*(lastSigma))
                     {
-                      if(sigma_ > 0) return 0;
+                      if(sigma_ > 0) { LP_OPT_EXIT(1, numPivots); return 0; }
 #if 0
 		      if (sigma_ > 0 || sigma_ - lastSigma > 1e1*(-lastSigma))
 			return 0;
@@ -865,10 +1108,12 @@ CglLandPSimplex::optimize
                     {
                         handler_->message(PivotFailedSigmaIncreased,messages_)<<CoinMessageEol<<CoinMessageEol;
                         //break;
+                        LP_OPT_EXIT(2, numPivots);
                         return 0;
                     }
                     handler_->message(PivotFailedSigmaUnchanged,messages_)<<CoinMessageEol<<CoinMessageEol;
                     numFailedPivots = params.failedPivotLimit + 1;
+                    LP_OPT_EXIT(3, numPivots);
                     return 0;
                     if (numFailedPivots > params.failedPivotLimit)
                         break;
@@ -915,7 +1160,10 @@ CglLandPSimplex::optimize
     }
     // give up if too many elements
     if (row_k_.getNumElements()>maximumCutLength)
+    {
+      LP_OPT_EXIT(4, numPivots);
       return false;
+    }
     //Create the cut
 
     //pullTableauRow(row_k_);
@@ -937,6 +1185,7 @@ CglLandPSimplex::optimize
     <<numSourceRowEntered_ - saveNumSourceEntered
     <<numIncreased_- saveNumIncreased
     <<numCycle<<CoinMessageEol;
+    LP_OPT_EXIT(5, numPivots);
     return 1;//At this point nothing failed, always generate a cut
 }
 
@@ -961,7 +1210,14 @@ CglLandPSimplex::changeBasis(int incoming, int leaving, int leavingStatus,
 
     int code = 0;
 
+    LP_STAGE_T0(tPiv);
     code = si_->pivot(nonBasics_[incoming],basics_[leaving], clpLeavingStatus);
+    LP_STAGE_ADD(LP_ST_PIVOT, tPiv);
+    LP_PIV_CODE(code);
+    /* Started here, not at function entry, so st_pivot and st_cbrest are disjoint
+       intervals and their sum is changeBasis. The rejected-pivot path below
+       returns without adding, which is right: it did no bookkeeping. */
+    LP_STAGE_T0(tRest);
     if (code)
     {
 #ifdef OLD_COMPUTATION
@@ -1124,7 +1380,8 @@ else //Update row k by hand
     VecModEqAssert(row_k_, test_row);
 #endif
 }
-    
+
+    LP_STAGE_ADD(LP_ST_CBREST, tRest);
     return true;
 }
 
@@ -1400,6 +1657,13 @@ CglLandPSimplex::fastFindCutImprovingPivotRow( int &direction, int &gammaSign,
             CoinFillN(rWk4bis_,nrows_,0.);
         }
     }
+    /* The price of doing the ambiguous (row_k == 0) columns CORRECTLY instead of
+       assigning them to M1/M2 at random: one dense tableau-column solve per
+       ambiguous column per call, and an nrows_ pass over each. That is the cost
+       side of turning perturb off, so it is counted alongside the retry storm
+       that perturb causes. */
+    LP_WORK(LP_W_M3COL, M3_.size());
+    LP_WORK(LP_W_M3ITER, (double)M3_.size() * nrows_);
     for (unsigned int i = 0 ; i < M3_.size() ; i++)
     {
         const int & ii = M3_[i];
@@ -1719,6 +1983,209 @@ CglLandPSimplex::rescanReducedCosts( int &direction, int &gammaSign, double tole
 }
 
 
+/* The CGLP reduced cost of a candidate is gammaSign*(q*r - p*s)/r, and
+   fastFindBestPivotColumn builds all four of p,q,r,s in one pass over the
+   nonbasics.  Of those, p and r depend only on the source row, the point being
+   cut and the subspace -- never on the leaving row, its direction, or the sign
+   of gamma -- so they are constants of the pivot iteration, computed once here.
+   Accumulated in exactly the order fastFindBestPivotColumn accumulates them, so
+   the values are bit-for-bit the ones it would compute for itself. */
+void
+CglLandPSimplex::computeInvariantPR(bool reducedSpace)
+{
+    const int var_k = basics_[row_k_.num];
+    fzeroInvariant_ = getColsolToCut(var_k) - floor(getColsolToCut(var_k));
+    double p = -row_k_.rhs * (1 - fzeroInvariant_);
+    double r = 1.;
+    for (int i = 0 ; i < ncols_ ; i++)
+    {
+        const int &ii = nonBasics_[i];
+        if (reducedSpace && colCandidateToLeave_[i]==false) continue;
+        const double& row_k = row_k_[ii];
+        if (row_k > 0.)
+        {
+            p += row_k * getColsolToCut(ii);
+            r += normedCoef(row_k, ii);
+        }
+        else if (row_k < 0.)
+        {
+            r -= normedCoef(row_k, ii);
+        }
+    }
+    pInvariant_ = p;
+    rInvariant_ = r;
+}
+
+/** Exact reduced cost of every candidate of the row already in row_i_.
+
+    fastFindCutImprovingPivotRow tabulates a reduced cost per (direction,
+    gammaSign) pair, but under the default perturb=true those numbers describe a
+    CGLP basis chosen by a coin toss for every nonbasic with a zero coefficient in
+    the source row, so a tabulated cost is an estimate.  When
+    fastFindBestPivotColumn recomputes the cost exactly and finds it nonnegative
+    it rejects the row -- and the caller then discarded the row's three other
+    candidates untested, together with the tableau row it had just solved for.
+
+    All four exact costs are available from that same row.  q and s are the only
+    direction- and sign-dependent parts, adjustTableauRow's effect on the row is a
+    negation plus a shift of the rhs, and both are exact in floating point, so one
+    pass carrying four running q and four running s reproduces bit-for-bit what
+    four separate calls would have computed.  The same pass settles the other
+    dominant rejection, an empty gamma list, by counting the signs of -row_k/row_i.
+
+    So one pass buys what four calls to fastFindBestPivotColumn would have cost,
+    and the tableau row solve is spent on a decision that is right rather than on
+    one candidate out of four chosen by an estimate that is usually wrong.  A
+    candidate this proves nonimproving is retired by writing the tables' own "not
+    improving" sentinel, which cannot cost anything: the caller is about to flag the
+    row, and a flagged row is not rescanned. */
+int
+CglLandPSimplex::exactRowReducedCosts(bool reducedSpace, int skipMask,
+                                      double & bestRc)
+{
+    LP_WORK(LP_W_SLOTCALL, 1);
+    const int i_row = row_i_.num;
+    const int var_i = basics_[i_row];
+
+    /* Which candidates exist at all: a direction is available exactly when the
+       bound it moves the leaving variable to is finite, which is the test
+       fastFindCutImprovingPivotRow makes before it fills a table entry.  The
+       tabulated value is deliberately not consulted.  It is an estimate, and a
+       wrong one -- on the fixtures measured here the sign of the tabulated cost
+       disagrees with the exact cost in around 98% of calls -- so evaluating only
+       the candidates it believed in would inherit its mistakes.  skipMask holds
+       the candidates of this row already tried and rejected. */
+    const bool loFinite = getLoBound(var_i) > -1e50;
+    const bool upFinite = getUpBound(var_i) < 1e50;
+    bool live[4];
+    int nLive = 0;
+    for (int s = 0 ; s < 4 ; s++)
+    {
+        live[s] = ((skipMask & (1 << s)) == 0) && ((s < 2) ? loFinite : upFinite);
+        if (live[s]) nLive++;
+    }
+    predictedSlot_ = -1;
+    if (nLive == 0) return -1;
+
+    /* rhs and row entries as adjustTableauRow would leave them.  Written the way
+       it writes them rather than algebraically simplified, so that no rounding
+       differs. */
+    const double rhsDn = row_i_.rhs - getLoBound(var_i);
+    const double rhsUp = -row_i_.rhs + getUpBound(var_i);
+    const double fzero = fzeroInvariant_;
+
+    /* Slot order is (direction, gammaSign) = (-1,-1), (-1,+1), (+1,-1), (+1,+1),
+       which is the order the four tables are read in. */
+    double q[4], sv[4];
+    for (int s = 0 ; s < 4 ; s++)
+    {
+        /* An unavailable direction leaves rhsDn or rhsUp infinite; its slot is
+           never read, but it is still accumulated into below, so keep it finite. */
+        if (!live[s])
+        {
+            q[s] = 0.;
+            sv[s] = 0.;
+            continue;
+        }
+        const double rhsI = (s < 2) ? rhsDn : rhsUp;
+        const int g = (s & 1) ? 1 : -1;
+        q[s] = rhsI * fzero;
+        if (g < 0) q[s] -= rhsI;
+        sv[s] = normedCoef(static_cast<double>(g), var_i);
+    }
+
+    int nPosGamma = 0;
+    int nNegGamma = 0;
+    for (int i = 0 ; i < ncols_ ; i++)
+    {
+        const int &ii = nonBasics_[i];
+        if (reducedSpace && colCandidateToLeave_[i]==false) continue;
+        const double& val = getColsolToCut(ii);
+        const double& row_k = row_k_[ii];
+        const double& rdn = row_i_[ii];   //entry seen when direction < 0
+        if (rdn != 0. && row_k != 0.)
+        {
+            /* direction > 0 negates the entry, so it negates the quotient too:
+               one count per sign serves both directions.  A quotient of exactly
+               zero belongs to neither, matching the original's strict test. */
+            const double g0 = -row_k/rdn;
+            if (g0 > 0.) nPosGamma++;
+            else if (g0 < 0.) nNegGamma++;
+        }
+        const double rv = rdn * val;
+        const double nk = normedCoef(rdn, ii);
+        if (row_k > 0.)
+        {
+            q[0] += rv;
+            q[2] -= rv;
+            sv[0] += nk;
+            sv[1] += nk;
+            sv[2] -= nk;
+            sv[3] -= nk;
+        }
+        else if (row_k < 0.)
+        {
+            q[1] -= rv;
+            q[3] += rv;
+            sv[0] -= nk;
+            sv[1] -= nk;
+            sv[2] += nk;
+            sv[3] += nk;
+        }
+        else
+        {
+            if (rdn < 0.)
+            {
+                q[0] += rv;
+                q[1] -= rv;
+            }
+            else if (rdn > 0.)
+            {
+                q[2] -= rv;
+                q[3] += rv;
+            }
+            const double na = normedCoef(fabs(rdn), ii);
+            sv[0] -= na;
+            sv[1] += na;
+            sv[2] -= na;
+            sv[3] += na;
+        }
+    }
+
+    /* gamma is gammaSign * (-row_k/row_i) in the adjusted row, so which sign
+       count a candidate needs is decided by direction*gammaSign. */
+    const bool hasGamma[4] = { nNegGamma > 0, nPosGamma > 0,
+                               nPosGamma > 0, nNegGamma > 0 };
+    int best = -1;
+    double bestNum = 0.;
+    for (int s = 0 ; s < 4 ; s++)
+    {
+        if (!live[s]) continue;
+        const int g = (s & 1) ? 1 : -1;
+        const double num = g*(q[s]*rInvariant_ - pInvariant_*sv[s]);
+        if (num >= 0. || !hasGamma[s])
+        {
+            rcSlotTable(s)[i_row] = 10.;
+            LP_WORK(LP_W_SLOTRETIRE, 1);
+            continue;
+        }
+        if (best < 0 || num < bestNum)
+        {
+            best = s;
+            bestNum = num;
+        }
+    }
+    if (best < 0) return -1;
+    /* r >= 1 > 0, so dividing by it changes no ranking and no sign; it is done
+       only because the caller reports a reduced cost, not a numerator. */
+    predictedSlot_ = best;
+    predictedRcNum_ = bestNum;
+    bestRc = bestNum / rInvariant_;
+    LP_WORK(LP_W_SLOTLIVE, 1);
+    return best;
+}
+
+
 void
 CglLandPSimplex::compute_p_q_r_s(double gamma, int gammaSign, double &p, double & q, double & r , double &s)
 {
@@ -1809,6 +2276,20 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
     double gammaTolerance = 0;
     if (allowDegenerate)
         gammaTolerance = 0;
+    /* A column with row_k==0 and row_i==0 falls through to the last branch below,
+       where row_i<0 is false and normedCoef(gammaSign*0) is 0, so it adds nothing
+       to any of p,q,r,s and inserts no gamma. Count how many columns are NOT of
+       that shape: the ratio is what a sparse rewrite of this loop could save. */
+    LP_WORK(LP_W_COLDENSE, ncols_);
+    LP_WORK_DECL(nContrib);
+    /* Nonbasic in-subspace columns whose row_k_ coefficient is exactly zero. Those
+       are the ones updateM1_M2_M3 assigns to M1 or M2 AT RANDOM under the default
+       perturb=true, while the loop below puts them in its third branch, which
+       contributes to q and s but to neither p nor r. If that mismatch is what makes
+       the table's reduced cost disagree with the exact recomputation, then every
+       mistaken call has nAmbig > 0 and every nAmbig == 0 call agrees -- which is a
+       falsifiable prediction, so it is counted rather than argued. */
+    LP_WORK_DECL(nAmbig);
     //fill the array with the gammas of correct sign
     for (int i = 0 ; i < ncols_ ; i++)
     {
@@ -1816,6 +2297,8 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
         const double& val = getColsolToCut(ii); //value in solution to cut
         const double& row_k = row_k_[ii]; // coefficient in row k
         const double& row_i = row_i_[ii]; // coefficient in row i
+        LP_WORK_IF(row_k != 0. || row_i != 0., nContrib);
+        LP_WORK_IF(row_k == 0. && (!reducedSpace || colCandidateToLeave_[i]), nAmbig);
         if(modularize){
 	  p-=row_k_.rhs*row_k*val;
 	  q-=row_i_.rhs*row_k*val;
@@ -1877,6 +2360,8 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
     }
 
 
+    LP_WORK(LP_W_COLSPARSE, nContrib);
+
     if(modularize){
       p -= row_k_.rhs * (1 - row_k_.rhs);
       q += row_i_.rhs * row_k_.rhs;
@@ -1886,33 +2371,65 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
     }
 
     int n = gammas_.getNumElements();
+#ifdef CGL_LANDP_PROFILE
+    /* If exactRowReducedCosts sent us here, everything it predicted is now known
+       exactly: the numerator, its sign, and whether the gamma list is nonempty.
+       Checked with a counter rather than DblEqAssert because the -O2 profile build
+       compiles the assert away, and w_pred_bad is meant to be read as a hard 0. */
+    if (predictedSlot_ >= 0 && predictedSlot_ == rcSlot(direction, gammaSign))
+    {
+        const double num = gammaSign*(q * r - p * s);
+        const double ref = fabs(num) + fabs(predictedRcNum_) + 1e-30;
+        if (fabs(num - predictedRcNum_) > 1e-9*ref || n == 0)
+            LP_WORK(LP_W_PREDBAD, 1);
+        if ((num >= 0.) != (predictedRcNum_ >= 0.))
+            LP_WORK(LP_W_PREDSIGN, 1);
+    }
+    predictedSlot_ = -1;
+#endif
     if (n==0)
     {
         resetOriginalTableauRow(basics_[row_i_.num], row_i_, direction);
+        LP_COL_FAIL(LP_COL_NOGAMMA);
         return -2;
     }
-    gammas_.sortIncrElement();
-    const int* inds = gammas_.getIndices();
-    const double * elements = gammas_.getElements();
-    int bestColumn = -1;
-    double newSigma = 1e100;
+    /* Assigned before the mistaken-rc test below, as it was when the test sat
+       after the sort. DblEqAssert says the value is already sigma_, so this is a
+       no-op, but keeping it ahead of the early return keeps the two orderings
+       exactly interchangeable. */
     DblEqAssert(sigma_, rhs_weight_*p/r);
     bestSigma = sigma_ = rhs_weight_*p/r;
-    int lastValid = -1;
 #ifndef NDEBUG
     bool rc_positive=false;
     if (M3_.size())
         DblEqAssert( gammaSign*(q * r - p * s)/r, chosenReducedCostVal_);
 #endif
+    /* Hoisted ABOVE gammas_.sortIncrElement(). The test reads only p,q,r,s, none
+       of which the sort touches, so this is behaviour-preserving -- and it is
+       worth doing because this is where the retry loop overwhelmingly ends:
+       ~99% of the failures on the fixtures measured so far are this one, and
+       every one of them used to pay an O(n log n) three-array sort first and
+       then throw the result away. */
     if ( gammaSign*(q * r - p * s) >= 0)
     {
         // after recomputing reduced cost (using exact row) it is found to be >=0
         resetOriginalTableauRow(basics_[row_i_.num], row_i_, direction);
+        LP_COL_FAIL(LP_COL_MISTAKENRC);
+        LP_MISTAKEN(gammaSign*(q * r - p * s)/r, chosenReducedCostVal_);
+        LP_WORK(LP_W_GAMMADROP, n);
         return -2;
 #ifndef NDEBUG
         rc_positive = true;
 #endif
     }
+    LP_AGREE(gammaSign*(q * r - p * s)/r, chosenReducedCostVal_);
+    LP_WORK(LP_W_GAMMA, n);
+    gammas_.sortIncrElement();
+    const int* inds = gammas_.getIndices();
+    const double * elements = gammas_.getElements();
+    int bestColumn = -1;
+    double newSigma = 1e100;
+    int lastValid = -1;
     for (int i = 0 ; i < n ; i++)
     {
         double newRhs = row_k_.rhs + gammaSign * elements[i] * row_i_.rhs;
@@ -1987,6 +2504,7 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
     {
         resetOriginalTableauRow(basics_[row_i_.num], row_i_, direction);
         handler_->message(WarnFailedPivotTol, messages_)<<CoinMessageEol<<CoinMessageEol;
+        LP_COL_FAIL(LP_COL_NOPIVTOL);
         return -1;
     }
 
@@ -1994,6 +2512,7 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
     {
         resetOriginalTableauRow(basics_[row_i_.num], row_i_, direction);
         handler_->message(WarnFailedPivotTol, messages_)<<CoinMessageEol<<CoinMessageEol;
+        LP_COL_FAIL(LP_COL_TINYPIV);
         return -2;
     }
 
@@ -2028,6 +2547,7 @@ CglLandPSimplex::fastFindBestPivotColumn(int direction, int gammaSign,
     else   //we don't accept a degenerate pivot
     {
         handler_->message(WarnFailedBestImprovingCol, messages_)<<chosenReducedCostVal_<<sigma_<<bestSigma<<CoinMessageEol<<CoinMessageEol;
+        LP_COL_FAIL(LP_COL_DEGEN);
         return -1;
     }
 }
@@ -3164,6 +3684,12 @@ CglLandPSimplex::pullTableauRow(TabRow &row) const
             }
         }
     }
+    /* Dense over every nonbasic, but the body only negates -- so on a zero entry
+       it is a no-op and only the isFree check has any effect. Counted against the
+       row's own sparsity so the saving from driving this off row.getIndices() can
+       be read off. */
+    LP_WORK(LP_W_PULLDENSE, ncols_);
+    LP_WORK(LP_W_PULLSPARSE, row.getNumElements());
     //Now adjust the row of the tableau to reflect non-basic variables activity
     for (int j = 0; j < ncols_ ; j++)
     {
@@ -3193,6 +3719,26 @@ CglLandPSimplex::pullTableauRow(TabRow &row) const
         }
     }
     //  row.clean(1e-30);
+}
+
+/** Get row i of the tableau of a solver that is not si_ */
+void
+CglLandPSimplex::pullTableauRowFrom(OsiSolverInterface * src, TabRow & row)
+{
+    OsiSolverInterface * saveSi = si_;
+    si_ = src;
+#ifdef CGL_HAS_OSICLP
+    /* Chosen the same way optimize() chooses it for the clone, so the same one of
+       pullTableauRow's two branches is taken: src and the clone are the same
+       class, so getClpSolver answers the same for both. */
+    OsiClpSolverInterface * saveClp = clp_;
+    clp_ = getClpSolver(src);
+#endif
+    pullTableauRow(row);
+    si_ = saveSi;
+#ifdef CGL_HAS_OSICLP
+    clp_ = saveClp;
+#endif
 }
 
 /** Adjust the row of the tableau to reflect leaving variable direction */
