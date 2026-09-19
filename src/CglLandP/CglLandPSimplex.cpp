@@ -863,6 +863,17 @@ CglLandPSimplex::optimize
     int numFailedPivots = 0;
     bool hasFlagedRow = false;
     int maxTryRow = 5;
+    /* maxTryRow only bounds the two "real" column-search failures (nopivtol,
+       degen); the other three reasons (nogamma, mistakenrc, tinypiv, and
+       exactRetry's own "no live candidate") are charged as free below, which
+       lets the loop keep flagging rows and calling the O(nrows_) rescan until
+       every row has been tried -- O(nrows_) retries, each an O(nrows_) scan,
+       i.e. O(nrows_^2) for a single pivot on instances where most rows hit a
+       free reason. maxTotalRowTries is a second, unconditional cap on the same
+       loop that bounds this independent of row count; it is set well above
+       maxTryRow so it never binds on the ordinary (small nRowFailed) path this
+       generator was tuned against. */
+    int maxTotalRowTries = 8 * maxTryRow;
     while (  !optimal && numPivots < params.pivotLimit)
     {
         if (timeLimit - CoinCpuTime() < 0.) break;
@@ -916,6 +927,7 @@ CglLandPSimplex::optimize
                        times round it went -- the retry limit is maxTryRow, so this
                        loop can run the two most expensive routines in the pivot
                        many times for a single pivot. */
+                    int nTotalRowTries = 0;
                     for (;;)
                     {
                         bool rowExhausted = false;
@@ -985,6 +997,7 @@ CglLandPSimplex::optimize
                         // no improving candidate left in this row: rescan the tables
                         // of reduced cost to find another one
                         if (optimal || nRowFailed >= maxTryRow) break;
+                        if (++nTotalRowTries >= maxTotalRowTries) break;
                         if (incoming == -1 || params.countMistakenRc) nRowFailed ++;
                         rowFlags_[leaving] = false;
                         hasFlagedRow = true;
