@@ -1655,6 +1655,17 @@ CglGomory::generateCuts(
 #if TRY7==2
 	  double rhsBeforeRelax=rhs;
 #endif
+	  // Remember whether every element of this cut was genuinely integer
+	  // (rather than being forced into the "pretend integer" rational
+	  // reconstruction below just because number<6). If the subsequent
+	  // rational reconstruction cannot represent a truly-all-integer cut
+	  // to its own tolerance, that is a direct signal that the raw
+	  // floating-point coefficients/rhs are not trustworthy (e.g. due to
+	  // accumulated numerical error from the row-substitution/slack
+	  // step on an ill-conditioned row) and the cut must be rejected
+	  // rather than used with its unverified raw values.
+	  bool wasAllInteger = (numberNonInteger==0);
+	  bool rejectUnstableIntegerCut = false;
 	  if ((!numberNonInteger||number<6)&&number&&USE_CGL_RATIONAL>=0) {
 	    // pretend not integer
 	    numberNonInteger=0;
@@ -1724,8 +1735,20 @@ CglGomory::generateCuts(
 		printf("Gomory Scaling: Warning: Overflow detected \n");
 #endif
 		numberNonInteger=-1;
+		if (wasAllInteger) {
+		  // A cut whose original elements were all integer should be
+		  // exactly representable as a small-denominator rational; a
+		  // reconstruction overflow here means the raw coefficients/
+		  // rhs carry more numerical error than this tolerance allows
+		  // and cannot be trusted - reject the cut instead of using
+		  // its unverified raw values (see AGENTS.md "Debugging
+		  // invalid cuts" for how this was root-caused). Defer the
+		  // actual rejection until after cutElement has been erased
+		  // below, so we don't leave stale reinterpreted-Rational/int
+		  // bytes behind for the next candidate.
+		  rejectUnstableIntegerCut = true;
+		}
 	      } else {
-		
 		// find greatest common divisor of the elements
 		j=0;
 		while (!xInt[j])
@@ -1820,6 +1843,10 @@ CglGomory::generateCuts(
 	      printf("after %g <= %g <= %g\n",bounds[0],total,rhs);
 	    }
 #endif
+	  }
+	  if (rejectUnstableIntegerCut) {
+	    cutVector.clear();
+	    continue;
 	  }
 	  if (!dontRelax) {
 	    // relax rhs a tiny bit
