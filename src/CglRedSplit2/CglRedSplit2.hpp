@@ -309,24 +309,36 @@ private:
   // strategy in practice. Corresponds to BRS3 in the paper.
   int sort_rows_by_cosine(struct sortElement* array, int rowIndex, 
 			  int maxRows, int whichTab) const;
-  // Did we hit the time limit? Some call sites are on an O(mTab) loop that
-  // is itself invoked O(mTab) times per generateCuts() round (e.g.
-  // sort_rows_by_cosine driven from reduce_workNonBasicTab), so a real
-  // CoinCpuTime() syscall on every single call here would be effectively
-  // O(mTab^2) timer calls -- this is the "incredibly expensive!" that used
-  // to justify compiling this check out completely (leaving param's
-  // timeLimit_ entirely unenforced). Instead, only actually sample the
-  // clock every checkTimeSamplePeriod_ calls; the coarser call sites (once
-  // per round, or once per strategy combination) call this far less often
-  // than the period, so they still get an essentially real-time check.
+  // Did we hit the time limit? Combines this generator's own configured
+  // budget (param.getTimeLimit(), a fixed default) with the remaining
+  // wall/CPU time CBC has left overall (CglCutGenerator::getMaxSeconds(),
+  // propagated in from CbcCutGenerator::generateCuts() -- see its comment)
+  // so a tight -sec limit actually constrains this generator instead of
+  // only the fixed 60s default. getMaxSeconds() == 0 means "not set by
+  // CBC" (its own default), so it is ignored in that case.
+  //
+  // Some call sites are on an O(mTab) loop that is itself invoked O(mTab)
+  // times per generateCuts() round (e.g. sort_rows_by_cosine driven from
+  // reduce_workNonBasicTab), so a real CoinCpuTime() syscall on every
+  // single call here would be effectively O(mTab^2) timer calls -- this is
+  // the "incredibly expensive!" that used to justify compiling this check
+  // out completely (leaving param's timeLimit_ entirely unenforced).
+  // Instead, only actually sample the clock every checkTimeSamplePeriod_
+  // calls; the coarser call sites (once per round, or once per strategy
+  // combination) call this far less often than the period, so they still
+  // get an essentially real-time check.
   inline bool checkTime() const{
-    if (param.getTimeLimit() <= 0.0){
+    double limit = param.getTimeLimit();
+    if (getMaxSeconds() > 0.0 && getMaxSeconds() < limit){
+      limit = getMaxSeconds();
+    }
+    if (limit <= 0.0){
       return true;
     }
     if ((++timeCheckCallCount_ % checkTimeSamplePeriod_) != 0){
       return true;
     }
-    return (CoinCpuTime() - startTime) < param.getTimeLimit();
+    return (CoinCpuTime() - startTime) < limit;
   }
 
   //@}
