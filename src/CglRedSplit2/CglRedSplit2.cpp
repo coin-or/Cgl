@@ -2390,7 +2390,8 @@ CglRedSplit2::CglRedSplit2() :
   pi_mat(0),
   contNonBasicTab(0),
   intNonBasicTab(0),
-  rhsTab(0)
+  rhsTab(0),
+  timeCheckCallCount_(0)
 {
 }
 
@@ -2419,7 +2420,8 @@ CglRedSplit2::CglRedSplit2(const CglRedSplit2Param &RS_param) :
   pi_mat(0),
   contNonBasicTab(0),
   intNonBasicTab(0),
-  rhsTab(0)
+  rhsTab(0),
+  timeCheckCallCount_(0)
 {
   param = RS_param;
 }
@@ -2450,7 +2452,8 @@ CglRedSplit2::CglRedSplit2 (const CglRedSplit2 & source) :
   pi_mat(NULL),
   contNonBasicTab(NULL),
   intNonBasicTab(NULL),
-  rhsTab(NULL)
+  rhsTab(NULL),
+  timeCheckCallCount_(0)
 {
 }
 

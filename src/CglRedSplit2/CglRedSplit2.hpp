@@ -309,19 +309,25 @@ private:
   // strategy in practice. Corresponds to BRS3 in the paper.
   int sort_rows_by_cosine(struct sortElement* array, int rowIndex, 
 			  int maxRows, int whichTab) const;
-#ifdef CHECK_SPLIT_TIME // incredibly expensive!
-  // Did we hit the time limit?
+  // Did we hit the time limit? Some call sites are on an O(mTab) loop that
+  // is itself invoked O(mTab) times per generateCuts() round (e.g.
+  // sort_rows_by_cosine driven from reduce_workNonBasicTab), so a real
+  // CoinCpuTime() syscall on every single call here would be effectively
+  // O(mTab^2) timer calls -- this is the "incredibly expensive!" that used
+  // to justify compiling this check out completely (leaving param's
+  // timeLimit_ entirely unenforced). Instead, only actually sample the
+  // clock every checkTimeSamplePeriod_ calls; the coarser call sites (once
+  // per round, or once per strategy combination) call this far less often
+  // than the period, so they still get an essentially real-time check.
   inline bool checkTime() const{
-    if ((CoinCpuTime() - startTime) < param.getTimeLimit()){
+    if (param.getTimeLimit() <= 0.0){
       return true;
     }
-    return false;
+    if ((++timeCheckCallCount_ % checkTimeSamplePeriod_) != 0){
+      return true;
+    }
+    return (CoinCpuTime() - startTime) < param.getTimeLimit();
   }
-#else
-  inline bool checkTime() const{
-    return true;
-  }
-#endif
 
   //@}
 
@@ -481,6 +487,13 @@ private:
   /// Time at which cut computations began.
   /// Reset by each call to generateCuts().
   double startTime;
+
+  /// Call counter used to amortize CoinCpuTime() syscalls in checkTime();
+  /// see checkTime()'s comment. Mutable: checkTime() is const.
+  mutable int timeCheckCallCount_;
+
+  /// Only sample CoinCpuTime() every this many checkTime() calls.
+  static const int checkTimeSamplePeriod_ = 64;
 
   //@}
 };
