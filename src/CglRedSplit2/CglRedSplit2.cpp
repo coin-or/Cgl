@@ -48,6 +48,35 @@
 
 #define rs2round(x) (floor((x)+0.5))
 
+namespace {
+// Defense-in-depth memory guard for the "reduced tableau" allocations
+// below (contNonBasicTab/workNonBasicTab/intNonBasicTab), which are sized
+// O(mTab * (card_contNonBasicVar + card_intNonBasicVar)) -- i.e. roughly
+// O(#integer-basic-vars * #nonbasic-vars), unrelated to the row-count-based
+// gate/cap CbcSolverCutSetup.cpp applies to this generator's OTHER
+// allocation (bufflambda, sized O(maxNumComputedCuts * nrow)). A model with
+// many columns and a dense LP basis can blow this one up even when nrow is
+// small enough to pass that other gate (observed: chromaticindex512-7,
+// 36864 cols / 33791 rows, calloc() returning NULL and exit(1) inside
+// rs_allocmatDBL()). Bounded by CGLREDSPLIT2_MAX_TAB_ELEMENTS (element
+// count of the largest single matrix, default 25M doubles =~ 200MB); if
+// exceeded, the caller skips this round the same way it already skips when
+// card_contNonBasicVar==0 (no cuts from this call, not fatal).
+long long redSplit2MaxTabElements()
+{
+  static const long long value = [] {
+    if (const char *env = std::getenv("CGLREDSPLIT2_MAX_TAB_ELEMENTS")) {
+      char *end = nullptr;
+      long long v = strtoll(env, &end, 10);
+      if (end != env && v > 0)
+        return v;
+    }
+    return static_cast< long long >(25000000);
+  }();
+  return value;
+}
+} // namespace
+
 //-------------------------------------------------------------------
 // Generate Reduce-and-Split cuts
 //------------------------------------------------------------------- 
@@ -1825,8 +1854,10 @@ int CglRedSplit2::generateCuts(OsiCuts* cs, int maxNumCuts, int* lambda)
   printf("CglRedSplit2()::card_intBasicVar_frac %d %d\n", 
 	 card_intBasicVar_frac, card_contNonBasicVar);
 #endif
+  const long long tabElements1 =
+    static_cast< long long >(card_intBasicVar) * card_contNonBasicVar;
   if((card_contNonBasicVar == 0) || (card_intBasicVar_frac == 0)
-     || !goodModel) {
+     || !goodModel || tabElements1 > redSplit2MaxTabElements()) {
     delete[] cstat;
     delete[] rstat;
     delete[] basis_index;
@@ -1841,7 +1872,7 @@ int CglRedSplit2::generateCuts(OsiCuts* cs, int maxNumCuts, int* lambda)
     delete[] is_integer;
     delete[] effective_rhs;
 
-    return 0; // no cuts can be generated
+    return 0; // no cuts can be generated (or reduced tableau too large)
   }
 
   double *z = new double[ncol];  // workspace to get row of the tableau
@@ -2721,7 +2752,10 @@ int CglRedSplit2::tiltLandPcut(const OsiSolverInterface* si,
   printf("CglRedSplit2()::card_intBasicVar_frac %d %d\n", 
 	 card_intBasicVar_frac, card_contNonBasicVar);
 #endif
-  if((card_contNonBasicVar == 0) || (card_intBasicVar == 0)) {
+  const long long tabElements2 =
+    static_cast< long long >(card_intBasicVar) * card_contNonBasicVar;
+  if((card_contNonBasicVar == 0) || (card_intBasicVar == 0)
+     || tabElements2 > redSplit2MaxTabElements()) {
     delete[] cstat;
     delete[] rstat;
     delete[] basis_index;
