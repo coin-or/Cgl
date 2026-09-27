@@ -34,6 +34,38 @@
 #include "CoinPresolveDupcol.hpp"
 #include "CglClique.hpp"
 #include "CglBKClique.hpp"
+#ifdef CGL_HAS_CLP
+/*
+  The warm start reaching the initial LP need not be a vertex: after
+  OsiPresolve (keepSolution) and the bound work that follows, columns can sit
+  strictly between their bounds while labelled atLowerBound/atUpperBound, even
+  though the root LP handed over a clean vertex. The dual hinted for that solve
+  first snaps them onto the labelled bound, which throws the point away - ex10
+  after LP racing: 3477 such columns, the dual hit the 120s cap (so
+  preprocessing was abandoned) where primal from the relabelled start takes 4s.
+  Relabel them superbasic; a nonzero return tells the caller to use primal,
+  which prices superbasics in from the point.
+*/
+static int relabelOffBoundNonbasic(OsiClpSolverInterface *clpOsi)
+{
+  ClpSimplex *m = clpOsi->getModelPtr();
+  const double *x = m->primalColumnSolution();
+  const double *lo = m->columnLower();
+  const double *up = m->columnUpper();
+  const double tol = m->primalTolerance();
+  int n = 0;
+  for (int i = 0; i < m->numberColumns(); i++) {
+    ClpSimplex::Status st = m->getColumnStatus(i);
+    if (st == ClpSimplex::basic || st == ClpSimplex::superBasic || st == ClpSimplex::isFree)
+      continue;
+    if (x[i] > lo[i] + tol && x[i] < up[i] - tol) {
+      clpOsi->setColumnStatus(i, ClpSimplex::superBasic);
+      n++;
+    }
+  }
+  return n;
+}
+#endif
 //#define PRINT_DEBUG 1
 //#define COIN_DEVELOP 1
 #ifdef COIN_DEVELOP
@@ -3131,6 +3163,9 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
         double cap = std::min(preDeadline_ - CoinGetTimeOfDay(), 120.0);
         clpOsi->getModelPtr()->setMaximumWallSeconds(std::max(cap, 0.0));
       }
+      // primal, not the dual hinted above, if the start is not a vertex
+      if (clpOsi && relabelOffBoundNonbasic(clpOsi))
+        startModel2->setHintParam(OsiDoDualInInitial, false, OsiHintTry);
       startModel2->initialSolve();
       if (clpOsi && preDeadline_ < 1.0e99) {
         initialLpTimeLimitHit = (clpOsi->getModelPtr()->problemStatus() == 3);
@@ -3208,7 +3243,22 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     startModel2->setHintParam(OsiDoDualInInitial, saveTakeHint, saveStrength);
   }
   if (!startModel2->isProvenOptimal()) {
-    if (!startModel2->isProvenDualInfeasible()) {
+    bool stoppedOnTime = CoinGetTimeOfDay() >= preDeadline_;
+#ifdef CGL_HAS_CLP
+    {
+      OsiClpSolverInterface *clpOsi = dynamic_cast< OsiClpSolverInterface * >(startModel2);
+      if (clpOsi && clpOsi->getModelPtr()->problemStatus() == 3)
+        stoppedOnTime = true;
+    }
+#endif
+    if (stoppedOnTime) {
+      // Cut short by the time cap (Clp status 3): says nothing about
+      // feasibility, and the caller must not be told otherwise (a NULL
+      // return is the same either way, so the message is what misleads).
+      handler_->message(CGL_GENERAL, messages_)
+        << "Preprocessing initial LP stopped on a limit (time or iterations) - not infeasible"
+        << CoinMessageEol;
+    } else if (!startModel2->isProvenDualInfeasible()) {
       handler_->message(CGL_INFEASIBLE, messages_) << CoinMessageEol;
 #if CBC_USEFUL_PRINTING > 1
       startModel2->writeMps("infeas");
