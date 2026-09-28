@@ -294,6 +294,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   t_min = t_min_;
   a_max = a_max_;
   max_elements = info.inTree ? max_elements_ : max_elements_root_;
+  data->cparams.max_length = max_length_;
   data->gomory_threshold = info.inTree ? away_ : awayAtRoot_;
   if (!info.inTree) {
     //const CoinPackedMatrix * columnCopy = useSolver->getMatrixByCol();
@@ -570,7 +571,7 @@ CglTwomir::CglTwomir () :
   away_(0.0005),awayAtRoot_(0.0005),twomirType_(0),
   do_mir_(true), do_2mir_(true), do_tab_(true), do_form_(true),
   t_min_(1), t_max_(1), q_min_(1), q_max_(1), a_max_(2),max_elements_(50000),
-  max_elements_root_(50000),form_nrows_(0) {}
+  max_elements_root_(50000),max_length_(500),form_nrows_(0) {}
 
 //-------------------------------------------------------------------
 // Copy constructor 
@@ -592,6 +593,7 @@ CglTwomir::CglTwomir (const CglTwomir & source) :
   a_max_(source.a_max_),
   max_elements_(source.max_elements_),
   max_elements_root_(source.max_elements_root_),
+  max_length_(source.max_length_),
   form_nrows_(source.form_nrows_)
 {
   probname_ = source.probname_ ;
@@ -638,6 +640,7 @@ CglTwomir::operator=(const CglTwomir& rhs)
     a_max_=rhs.a_max_;
     max_elements_=rhs.max_elements_;
     max_elements_root_ = rhs.max_elements_root_;
+    max_length_ = rhs.max_length_;
     form_nrows_=rhs.form_nrows_;
     delete originalSolver_;
     if (rhs.originalSolver_)
@@ -1676,7 +1679,7 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
       continue;
     }
 
-    if (base->nz > 500) continue;
+    if (base->nz > data->cparams.max_length) continue;
     rval = DGG_generateCutsFromBase(base, cut_list, data, solver_ptr);
     DGG_CHECKRVAL1(rval, rval);
   }
@@ -2329,7 +2332,7 @@ int DGG_isCutDesirable(DGG_constraint_t *c, DGG_data_t *d)
   lhs = DGG_cutLHS(c, d->x);
   rhs = c->rhs;
 
-  if (c->nz > 500) return 0;
+  if (c->nz > d->cparams.max_length) return 0;
 
   /* if the cut is not violated, return 0 */
   if (c->sense == 'G')
@@ -2475,6 +2478,10 @@ CglTwomir::generateCpp( FILE * fp)
     fprintf(fp,"3  twomir.setMaxElementsRoot(%d);\n",max_elements_root_);
   else
     fprintf(fp,"4  twomir.setMaxElementsRoot(%d);\n",max_elements_root_);
+  if (max_length_!=other.max_length_)
+    fprintf(fp,"3  twomir.setMaxLength(%d);\n",max_length_);
+  else
+    fprintf(fp,"4  twomir.setMaxLength(%d);\n",max_length_);
   if (getAggressiveness()!=other.getAggressiveness())
     fprintf(fp,"3  twomir.setAggressiveness(%d);\n",getAggressiveness());
   else

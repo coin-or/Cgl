@@ -36,6 +36,7 @@ typedef struct{
   int t_max;
   int a_max;
   int max_elements;
+  int max_length;
 } cutParams;
 
 #define TWOMIR_LESS_MALLOC
@@ -147,6 +148,10 @@ public:
   void setAMax (int a) {a_max_ = a;}
   void setMaxElements (int n) {max_elements_ = n;}
   void setMaxElementsRoot (int n) {max_elements_root_ = n;}
+  /** Hard ceiling on cut length (default 500), at the root and in the tree.
+      A tableau row longer than this is not used as a base, and a cut longer
+      than this is discarded, whatever maxElements/maxElementsRoot say. */
+  void setMaxLength (int n) {max_length_ = n;}
   void setCutTypes (bool mir, bool twomir, bool tab, bool form)
   { do_mir_ = mir; do_2mir_ = twomir; do_tab_ = tab; do_form_ = form;}
   void setFormulationRows (int n) {form_nrows_ = n;}
@@ -159,6 +164,7 @@ public:
   int getAmax() const {return a_max_;}
   int getMaxElements() const {return max_elements_;}
   int getMaxElementsRoot() const {return max_elements_root_;}
+  int getMaxLength() const {return max_length_;}
   int getIfMir() const { return do_mir_;}
   int getIfTwomir() const { return do_2mir_;}
   int getIfTableau() const { return do_tab_;}
@@ -240,6 +246,7 @@ private:
   int a_max_;  /// a_max - maximum value of bhat/alpha
   int max_elements_; /// Maximum number of elements in cut
   int max_elements_root_; /// Maximum number of elements in cut at root
+  int max_length_; /// Hard ceiling on the length of a base row or a cut
   int form_nrows_; //number of rows on which formulation cuts will be generated
   //@}
 };
