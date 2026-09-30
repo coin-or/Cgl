@@ -1967,6 +1967,16 @@ int CglRedSplit2::generateCuts(OsiCuts* cs, int maxNumCuts, int* lambda)
     }
 #endif
   }
+  // A row skipped above for having too many nonzeroes was never written:
+  // its rhsTab entry is uninitialised and its tableau rows are all zero,
+  // yet with mTab rows it would still be reduced and turned into cuts.
+  // Keep only the rows that were stored.
+  for (i = card_rowTab; i < mTab; i++) {
+    free(contNonBasicTab[i]);
+    free(workNonBasicTab[i]);
+    free(intNonBasicTab[i]);
+  }
+  mTab = card_rowTab;
 #if RS_FAST_INT == 0 && RS_FAST_CONT == 0 && RS_FAST_WORK == 0
   rs_allocmatINT(&pi_mat, mTab, mTab);
 #else
