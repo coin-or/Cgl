@@ -136,6 +136,7 @@ CglOddWheel::CglOddWheel(const CglOddWheel& rhs) {
     this->verifyPrepare_ = rhs.verifyPrepare_;
     this->useGate_ = rhs.useGate_;
     this->checkValidity_ = rhs.checkValidity_;
+    this->poolGate_ = rhs.poolGate_;
     // Not copied: a clone has made no call of its own yet.
     this->stats_ = Stats();
 
@@ -233,26 +234,16 @@ void CglOddWheel::generateCuts( const OsiSolverInterface & si, OsiCuts & cs, con
     // Same rationale as CglBKClique::insertCuts(): only pay for the
     // per-column best-score filtering when there are enough candidates
     // for it to actually matter, and exempt small models outright.
-  const char *minColsEnv = getenv("CBC_CLIQUE_POOL_MIN_COLS");
-  const size_t minCols = minColsEnv ? (size_t)strtol(minColsEnv, nullptr, 10) : 500;
-  const bool smallModel = numCols < minCols;
-
-  const char *alwaysFilterEnv = getenv("CBC_CLIQUE_POOL_ALWAYS_FILTER");
-  if (alwaysFilterEnv && atoi(alwaysFilterEnv) != 0) {
-    cutPool.setFilteringEnabled(true);
-  } else {
-    const char *minCandEnv = getenv("CBC_CLIQUE_POOL_MIN_CANDIDATES");
-    const size_t minCandidates = minCandEnv ? (size_t)strtol(minCandEnv, nullptr, 10) : 20;
-    cutPool.setFilteringEnabled(!smallModel && oddH.numOddWheels() >= minCandidates);
-  }
+  const bool smallModel = numCols < poolGate_.minCols;
+  cutPool.setFilteringEnabled(poolGate_.alwaysFilter
+    || (!smallModel && oddH.numOddWheels() >= poolGate_.minCandidates));
 
   // Orthogonality/parallelism-based cut selection (see CglBKClique for
   // rationale and A/B benchmark result). Disabled (1.0) by default; opt
-  // in via CBC_CLIQUE_POOL_MAX_PARALLELISM for further experimentation.
-  const bool forceFilter = alwaysFilterEnv && atoi(alwaysFilterEnv) != 0;
-  const char *maxParEnv = getenv("CBC_CLIQUE_POOL_MAX_PARALLELISM");
-  const double maxPar = maxParEnv ? atof(maxParEnv) : 1.0;
-  cutPool.setMaxParallelism((smallModel && !forceFilter) ? 1.0 : maxPar);
+  // in via poolGate_.maxParallelism for further experimentation.
+  cutPool.setMaxParallelism((smallModel && !poolGate_.alwaysFilter)
+      ? 1.0
+      : poolGate_.maxParallelism);
 
     /* adding odd holes */
     for(size_t j = 0; j < oddH.numOddWheels(); j++) {

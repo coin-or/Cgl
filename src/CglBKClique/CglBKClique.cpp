@@ -99,6 +99,7 @@ CglBKClique::CglBKClique(const CglBKClique &rhs)
   this->completeBK_ = rhs.completeBK_;
   this->maxSeconds_ = rhs.maxSeconds_;
   this->maxInducedSize_ = rhs.maxInducedSize_;
+  this->poolGate_ = rhs.poolGate_;
 }
 
 CglBKClique::~CglBKClique()
@@ -379,9 +380,7 @@ void CglBKClique::insertCuts(const OsiSolverInterface &si, const CglTreeInfo &in
   const size_t numCols = si.getNumCols();
   CoinCutPool cutpool(x, numCols, "BKClique");
 
-  const char *minColsEnv = getenv("CBC_CLIQUE_POOL_MIN_COLS");
-  const size_t minCols = minColsEnv ? (size_t)strtol(minColsEnv, nullptr, 10) : 500;
-  const bool smallModel = numCols < minCols;
+  const bool smallModel = numCols < poolGate_.minCols;
 
   // The per-column best-score filtering in CoinCutPool is only worth its
   // cost when there are many candidate cliques to choose among -- with
@@ -393,16 +392,11 @@ void CglBKClique::insertCuts(const OsiSolverInterface &si, const CglTreeInfo &in
   // re-optimization cost is negligible either way, so let every candidate
   // through unconditionally (still deduplicated) rather than risk pruning
   // a cut that would have helped.
-  // CBC_CLIQUE_POOL_ALWAYS_FILTER=1 forces the original always-filter
-  // behaviour, for A/B benchmarking against the threshold-gated default.
-  const char *alwaysFilterEnv = getenv("CBC_CLIQUE_POOL_ALWAYS_FILTER");
-  if (alwaysFilterEnv && atoi(alwaysFilterEnv) != 0) {
-    cutpool.setFilteringEnabled(true);
-  } else {
-    const char *minCandEnv = getenv("CBC_CLIQUE_POOL_MIN_CANDIDATES");
-    const size_t minCandidates = minCandEnv ? (size_t)strtol(minCandEnv, nullptr, 10) : 20;
-    cutpool.setFilteringEnabled(!smallModel && cliques->nCliques() >= minCandidates);
-  }
+  // poolGate_.alwaysFilter (cbc's cliqueFilterAlways) forces the original
+  // always-filter behaviour, for A/B benchmarking against the
+  // threshold-gated default.
+  cutpool.setFilteringEnabled(poolGate_.alwaysFilter
+    || (!smallModel && cliques->nCliques() >= poolGate_.minCandidates));
 
   // Orthogonality/parallelism-based cut selection, inspired by HiGHS's
   // HighsCutPool (maxpar=0.1) and SCIP's cutsel_hybrid/cutsel_dynamic
@@ -416,11 +410,11 @@ void CglBKClique::insertCuts(const OsiSolverInterface &si, const CglTreeInfo &in
   // gap-closed-per-second efficiency consistently worsened by ~1-2%,
   // with some instances regressing sharply (e.g. -7.6% dual efficiency
   // on fcnf_random_n15_d3 at 0.1). Kept as opt-in infrastructure via
-  // CBC_CLIQUE_POOL_MAX_PARALLELISM for further experimentation.
-  const bool forceFilter = alwaysFilterEnv && atoi(alwaysFilterEnv) != 0;
-  const char *maxParEnv = getenv("CBC_CLIQUE_POOL_MAX_PARALLELISM");
-  const double maxPar = maxParEnv ? atof(maxParEnv) : 1.0;
-  cutpool.setMaxParallelism((smallModel && !forceFilter) ? 1.0 : maxPar);
+  // poolGate_.maxParallelism (cbc's cliqueFilterMaxParallelism) for
+  // further experimentation.
+  cutpool.setMaxParallelism((smallModel && !poolGate_.alwaysFilter)
+      ? 1.0
+      : poolGate_.maxParallelism);
 
   for (size_t i = 0; i < cliques->nCliques(); i++) {
     const size_t clqSize = cliques->cliqueSize(i);

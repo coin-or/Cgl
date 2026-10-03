@@ -31,6 +31,7 @@ CglImpliedClique::CglImpliedClique()
   , singletonOnly_(false)
   , minViol_(0.02)
   , maxNodeVisits_(0)
+  , poolFilter_(false)
 {
 }
 
@@ -40,6 +41,8 @@ CglImpliedClique::CglImpliedClique(const CglImpliedClique &rhs)
   , singletonOnly_(rhs.singletonOnly_)
   , minViol_(rhs.minViol_)
   , maxNodeVisits_(rhs.maxNodeVisits_)
+  , poolGate_(rhs.poolGate_)
+  , poolFilter_(rhs.poolFilter_)
 {
 }
 
@@ -134,27 +137,23 @@ void CglImpliedClique::generateCuts(const OsiSolverInterface &si, OsiCuts &cs, c
   // removes ~0% of candidates here even in the largest batches -- so
   // just disable it unconditionally (still deduplicated) rather than pay
   // for scoring that essentially never prunes anything. Configurable via
-  // env var. Also checks the shared CBC_CLIQUE_POOL_ALWAYS_FILTER used
-  // by CglBKClique/CglOddWheel, for consistent A/B benchmarking.
-  const char *filterEnv = getenv("CBC_IMPLIEDCLIQUE_POOL_FILTER");
-  const char *alwaysFilterEnv = getenv("CBC_CLIQUE_POOL_ALWAYS_FILTER");
-  const bool forceFilter = (filterEnv && atoi(filterEnv) != 0) ||
-                           (alwaysFilterEnv && atoi(alwaysFilterEnv) != 0);
+  // setPoolFilter() (cbc's impliedCliqueFilter). Also honours the shared
+  // poolGate_.alwaysFilter used by CglBKClique/CglOddWheel, for
+  // consistent A/B benchmarking.
+  const bool forceFilter = poolFilter_ || poolGate_.alwaysFilter;
   cutpool.setFilteringEnabled(forceFilter);
 
   // Orthogonality/parallelism-based cut selection (see CglBKClique for
   // rationale and A/B benchmark result). Disabled (1.0) by default; opt
-  // in via CBC_CLIQUE_POOL_MAX_PARALLELISM for further experimentation.
+  // in via poolGate_.maxParallelism for further experimentation.
   // ImpliedClique can rediscover the same clique structure from multiple
   // hub columns, so this generator is a natural future candidate to
   // revisit if a duplicate-cause-specific dedup (rather than a generic
   // parallelism threshold) is added instead.
-  const char *minColsEnv = getenv("CBC_CLIQUE_POOL_MIN_COLS");
-  const size_t minCols = minColsEnv ? (size_t)strtol(minColsEnv, nullptr, 10) : 500;
-  const bool smallModel = static_cast< size_t >(numCols) < minCols;
-  const char *maxParEnv = getenv("CBC_CLIQUE_POOL_MAX_PARALLELISM");
-  const double maxPar = maxParEnv ? atof(maxParEnv) : 1.0;
-  cutpool.setMaxParallelism((smallModel && !forceFilter) ? 1.0 : maxPar);
+  const bool smallModel = static_cast< size_t >(numCols) < poolGate_.minCols;
+  cutpool.setMaxParallelism((smallModel && !forceFilter)
+      ? 1.0
+      : poolGate_.maxParallelism);
 
   for (int y = 0; y < numCols; y++) {
     if (colType[y] == 0)

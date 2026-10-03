@@ -22,6 +22,7 @@
 
 #include "CglCutGenerator.hpp"
 #include "CoinConflictGraph.hpp"
+#include "CoinCutPool.hpp"
 #include "CoinOddWheelSeparator.hpp"
 
 class CoinConflictGraph;
@@ -109,6 +110,13 @@ public:
    * and comparing every reported field, not just asserted from the proof.
    **/
   void setUseGate(bool use) { useGate_ = use; }
+
+  /**
+   * When the CoinCutPool filters this generator's cuts, see
+   * CoinCutPoolGate. The defaults are CoinCutPoolGate's.
+   **/
+  void setPoolGate(const CoinCutPoolGate &gate) { poolGate_ = gate; }
+  const CoinCutPoolGate &getPoolGate() const { return poolGate_; }
 
   /**
    * Certify every odd wheel against the conflict graph before it is translated
@@ -267,6 +275,11 @@ private:
    * before being emitted, see setCheckValidity().
    **/
   bool checkValidity_;
+
+  /**
+   * When the cut pool filters, see setPoolGate().
+   **/
+  CoinCutPoolGate poolGate_;
 
   /**
    * Counters and per-stage times, see stats().

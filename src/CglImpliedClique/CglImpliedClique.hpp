@@ -49,6 +49,7 @@
 #define _CglImpliedClique_h_
 
 #include <CglCutGenerator.hpp>
+#include "CoinCutPool.hpp"
 #include <atomic>
 #include <vector>
 
@@ -128,6 +129,22 @@ public:
   size_t getMaxNodeVisits() const { return maxNodeVisits_; }
 
   /**
+   * When the CoinCutPool filters this generator's cuts, see
+   * CoinCutPoolGate. minCandidates is not used here: candidates are
+   * generated hub by hub, so their count is not known in advance.
+   **/
+  void setPoolGate(const CoinCutPoolGate &gate) { poolGate_ = gate; }
+  const CoinCutPoolGate &getPoolGate() const { return poolGate_; }
+
+  /**
+   * Turn on the cut pool's per-column filtering, which this generator
+   * otherwise leaves off (default false; see generateCuts()).
+   * poolGate_.alwaysFilter turns it on too.
+   **/
+  void setPoolFilter(bool poolFilter) { poolFilter_ = poolFilter; }
+  bool getPoolFilter() const { return poolFilter_; }
+
+  /**
    * Number of cuts separated.
    **/
   static std::atomic< size_t > sepCuts_;
@@ -157,6 +174,16 @@ private:
    * Node-visit budget for a single generateCuts() call. 0 = unlimited.
    **/
   size_t maxNodeVisits_;
+
+  /**
+   * When the cut pool filters, see setPoolGate().
+   **/
+  CoinCutPoolGate poolGate_;
+
+  /**
+   * Whether the cut pool filters, see setPoolFilter().
+   **/
+  bool poolFilter_;
 };
 
 #endif // CglImpliedClique_HPP
