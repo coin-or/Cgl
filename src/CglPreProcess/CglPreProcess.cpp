@@ -6327,7 +6327,7 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
 #ifdef CBC_HAS_CLP
   OsiClpSolverInterface * originalSolver =
     getClpSolver(originalModel_);
-#ifndef CBC_SKIP_CLP_TEST
+#if !CBC_SKIP_CLP_TEST
   if (originalSolver) // make sure can't stop
 #endif
     originalSolver->getModelPtr()->setMaximumSeconds(-1.0);
