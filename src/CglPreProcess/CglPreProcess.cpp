@@ -5309,7 +5309,6 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
 #ifdef CGL_HAS_CLP
   OsiClpSolverInterface * originalSolver =
     getClpSolver(originalModel_);
-#ifndef CBC_SKIP_CLP_TEST
   if (originalSolver) {
     if (postProcDeadline_ > 0.0) {
       double rem = postProcDeadline_ - CoinWallclockTime();
@@ -5318,7 +5317,6 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
       originalSolver->getModelPtr()->setMaximumSeconds(-1.0); // make sure can't stop
     }
   }
-#endif
   // Every column is already pinned to a single value (numberFixedFinal ==
   // numberColumnsFinal) at this point -- there is no freedom left for an
   // LP to resolve, only feasibility of the already-fully-determined point
