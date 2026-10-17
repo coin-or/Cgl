@@ -882,7 +882,7 @@ CglFakeClique::generateCuts(const OsiSolverInterface& si, OsiCuts & cs,
 #ifdef CGL_HAS_CLP
     OsiClpSolverInterface * clpSolver
       = getClpSolver(fakeSolver_);
-    if (CBC_SKIP_CLP_TEST||clpSolver) {
+    if (clpSolver) {
       // fix up fake solver
       const ClpSimplex * siSimplex = clpSolver->getModelPtr();
       // need to set djs

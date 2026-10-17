@@ -694,7 +694,7 @@ CglLandP::CachedData::getData(const OsiSolverInterface &si)
 #ifdef CGL_HAS_OSICLP
 	OsiClpSolverInterface * clpSi = getClpSolver(solver_);
 	const OsiClpSolverInterface * clpSiRhs = getConstClpSolver(&si);
-	if (CBC_SKIP_CLP_TEST||clpSi)
+	if (clpSi)
 	  clpSi->getModelPtr()->copyEnabledStuff(clpSiRhs->getModelPtr());;
 #endif
         ncSi->disableSimplexInterface();
