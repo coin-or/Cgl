@@ -235,7 +235,7 @@ CglLandPSimplex::CglLandPSimplex(const OsiSolverInterface &si,
 
 #ifdef CGL_HAS_OSICLP
     OsiClpSolverInterface * clpSi = getClpSolver(si_);
-    if (CBC_SKIP_CLP_TEST||clpSi)
+    if (clpSi)
     {
         clp_ = clpSi;
     }
@@ -647,7 +647,7 @@ CglLandPSimplex::optimize
 #ifdef CGL_HAS_OSICLP
     OsiClpSolverInterface * clpSi = getClpSolver(si_);
     OsiClpSolverInterface * clpSiRhs = getClpSolver(cached.solver_);
-    if (CBC_SKIP_CLP_TEST||clpSi)
+    if (clpSi)
     {
         clp_ = clpSi;
 	clpSi->getModelPtr()->copyEnabledStuff(clpSiRhs->getModelPtr());;
