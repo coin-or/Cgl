@@ -2115,6 +2115,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     for (CoinBigIndex j = rowStart[iRow]; j < rowStart[iRow] + rowLength[iRow]; j++) {
       int iColumn = column[j];
       assert (iColumn<numberColumns);
+      // can be problems with multiple singletons
+      if (columnLength[iColumn]==1) {
+	numberContinuous=0; // so will skip
+	break;
+      }
 #ifdef CBC_PREPROCESS_EXPERIMENT
       if (marked[iColumn]) {
 	nPlus = -numberColumns;
