@@ -1963,7 +1963,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   // Column copy
   //const int * row = matrixByColumn->getIndices();
   //const CoinBigIndex * columnStart = matrixByColumn->getVectorStarts();
-  //const int * columnLength = startModel_->getMatrixByCol()->getVectorLengths();
+  const int * columnLength = startModel_->getMatrixByCol()->getVectorLengths();
   //const double * columnElements = matrixByColumn->getElements();
   double *obj = CoinCopyOfArray(startModel_->getObjCoefficients(), numberColumns);
   double offset;
@@ -1990,6 +1990,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     int numberContinuous = 0;
     for (CoinBigIndex j = rowStart[iRow]; j < rowStart[iRow] + rowLength[iRow]; j++) {
       int iColumn = column[j];
+      // can be problems with multiple singletons
+      if (columnLength[iColumn]==1) {
+	numberContinuous=0; // so will skip
+	break;
+      }
       double value = elementByRow[j];
       if (upper[iColumn] > lower[iColumn]) {
         if (startModel_->isInteger(iColumn)) {
