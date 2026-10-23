@@ -163,6 +163,42 @@ public:
         SeparationSpaces sepSpace;
         /** Apply perturbation procedure. */
         bool perturb;
+        /** Choose the pivot candidate of a row by its exact reduced cost rather
+            than by the tabulated estimate.
+
+            The tables that rank rows are only estimates when perturbation is on,
+            and measurably poor ones: they name a candidate whose exact cost turns
+            out not to be improving in around 98% of calls, and each such mistake
+            costs a tableau row solve, because the row is given up and another
+            rescanned.  The exact cost of all four of a row's (direction, gammaSign)
+            candidates is available from the tableau row already in hand for one
+            pass over the nonbasics -- see
+            CglLandPSimplex::exactRowReducedCosts -- so with this on the tables only
+            decide which row to solve for, and the row itself decides which of its
+            candidates to pivot on, or that it has none. */
+        bool exactRetry;
+        /** Let the exact cost pick which of a row's four candidates to pivot on,
+            not just confirm the one the tables picked.
+
+            With exactRetry alone the exact cost is only a screen: it is asked about
+            the candidate the tables named, and the answer is the one the column
+            search would have reached anyway, so the pivots and the cuts are
+            unchanged and only the futile column searches go away.  With this on the
+            row's genuinely best candidate is taken instead, which the tables often
+            fail to name -- a real change of the pivot sequence, so read objImprove
+            and totalViol, not just the time. */
+        bool exactBest;
+        /** Test the maximumCutLength gate before cloning the LP, not after.
+
+            CglLandPSimplex::optimize opens by cloning the whole LP and then, four
+            lines later, gives up on any source row whose tableau row has more than
+            maximumCutLength entries -- which is 71.7% of calls at CBC's setting of
+            2000, so most of the clones are built and destroyed without a single
+            pivot.  The row can be read from the cached optimal-basis solver
+            instead, so with this on the gate is decided first and the clone is
+            only made for a row that will actually be pivoted on.  Output-neutral:
+            the row a cut is built from is still pulled from the clone. */
+        bool preLengthGate;
         /** How to weight normalization.*/
         Normalization normalization;
         /** How to weight RHS of normalization.*/

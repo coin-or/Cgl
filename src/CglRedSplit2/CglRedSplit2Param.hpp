@@ -331,6 +331,13 @@ public:
   /// get the value
   inline int getSkipGomory() const {return skipGomory_;}
 
+  /** Set the largest reduced tableau, in elements (rows times columns),
+   *  that generateCuts() will allocate; a call needing a larger one
+   *  produces no cuts. Default: 25000000 (about 200MB of doubles). */
+  virtual void setMaxTabElements(long long value);
+  /// get the value
+  inline long long getMaxTabElements() const {return maxTabElements_;}
+
   //@}
 
   /**@name Constructors and destructors */
@@ -488,6 +495,9 @@ protected:
 
   /// Skip simple Gomory cuts
   int skipGomory_;
+
+  /// Largest reduced tableau, in elements
+  long long maxTabElements_;
 
   //@}
 };

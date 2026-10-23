@@ -75,9 +75,14 @@ public:
     }
 
 
+    /** Hand the simplex a solver it should take ownership of.
+        Kept for API compatibility; generateCuts() no longer uses it, because
+        optimize() installs its own clone of cached.solver_ and threw this one
+        away unread. */
     void setSi(OsiSolverInterface *si)
     {
         si_ = si;
+        ownSi_ = true;
 #ifdef CGL_HAS_OSICLP
 #ifndef CBC_OTHER_SOLVER
         clp_ = getClpSolver(si);
@@ -92,9 +97,13 @@ public:
     }
     void freeSi()
     {
-        assert(si_ != NULL);
-        delete si_;
+        /* No assert on si_ != NULL: the second freeSi() of the retry path in
+           CglLandP::generateCuts reaches here after the first already nulled it,
+           and a borrowed si_ must be dropped, not deleted. */
+        if (ownSi_)
+            delete si_;
         si_ = NULL;
+        ownSi_ = false;
 #ifdef CGL_HAS_OSICLP
         clp_ = NULL;
 #endif
@@ -200,6 +209,12 @@ protected:
     void createMIG( TabRow & row, OsiRowCut &cut) const;
     /** Get the row i of the tableau */
     void pullTableauRow(TabRow & row) const;
+    /** pullTableauRow, but reading a solver other than si_.
+        The only members pullTableauRow reads of the solver are si_ and clp_, so
+        pointing those at \p src for the duration is the whole of it. Used by
+        optimize() to test the row-length gate against cached.solver_ before it
+        commits to a clone. */
+    void pullTableauRowFrom(OsiSolverInterface * src, TabRow & row);
     /** Adjust the row of the tableau to reflect leaving variable direction */
     void adjustTableauRow(int var, TabRow & row, int direction);
     /** reset the tableau row after a call to adjustTableauRow */
@@ -319,6 +334,22 @@ private:
     std::vector<int> rIntWork_;
     /** Flag rows which we don't want to try anymore */
     bool * rowFlags_;
+    /** The p and r of the CGLP reduced cost gammaSign * (q*r - p*s) / r.  Both
+        depend only on the source row, the point to cut and the subspace, none of
+        which changes while a pivot is being chosen, so they are constants of the
+        pivot iteration rather than of the candidate.  Filled by
+        computeInvariantPR, read by exactRowReducedCosts. */
+    double pInvariant_;
+    double rInvariant_;
+    /** The fractional part of the source row's basic variable, also invariant. */
+    double fzeroInvariant_;
+    /** Numerator q*r - p*s that exactRowReducedCosts predicted for the candidate
+        it last returned, and the slot it returned, or -1 for none.  Declared
+        unconditionally so that the profile and non-profile builds agree on
+        sizeof(*this); only a profile build reads them, to check the prediction
+        against the value fastFindBestPivotColumn recomputes for itself. */
+    double predictedRcNum_;
+    int predictedSlot_;
     /** Flag columns which are in the subspace (usualy remove nonbasic structurals in subspace) */
     std::vector<bool> col_in_subspace;
     /** Flag columns which have to be considered for leaving the basis */
@@ -368,6 +399,12 @@ private:
     /// @{
     /** Pointer to the solver interface */
     OsiSolverInterface * si_;
+    /** Whether si_ is ours to delete.
+        The constructor borrows the caller's solver, setSi() and optimize() both
+        install a clone, and optimize() deletes whatever it finds before cloning.
+        Without this flag the first of those deletes would free the *caller's*
+        solver, so this is what lets generateCuts() stop cloning defensively. */
+    bool ownSi_;
     ///@}
     /// Own the data or not?
     bool own_;
@@ -412,6 +449,29 @@ protected:
     /** Find a row which can be used to perform an improving pivot return index of the cut or -1 if none exists
       * (i.e., find the leaving variable).*/
     int findCutImprovingPivotRow( int &direction, int &gammaSign, double tolerance);
+    /** Index of a (direction, gammaSign) candidate in the ul/vl/uu/vu order the
+        four reduced-cost tables are read in, i.e. rWk1_, rWk3_, rWk2_, rWk4_. */
+    static int rcSlot(int direction, int gammaSign)
+    {
+        return (direction > 0 ? 2 : 0) + (gammaSign > 0 ? 1 : 0);
+    }
+    /** The reduced-cost table holding candidate slot \p s. */
+    double * rcSlotTable(int s)
+    {
+        double * const t[4] = {&rWk1_[0], &rWk3_[0], &rWk2_[0], &rWk4_[0]};
+        return t[s];
+    }
+    /** Recompute pInvariant_, rInvariant_ and fzeroInvariant_ for row_k_. */
+    void computeInvariantPR(bool reducedSpace);
+    /** Exact reduced cost of every candidate of the row currently in row_i_.
+
+        Considers every candidate whose direction is available, not just the ones
+        the tabulated costs believed in, and retires -- writes the 10. "not
+        improving" sentinel into -- each one it proves nonimproving.  \p skipMask
+        excludes candidates already tried, so a caller looping on this call always
+        makes progress.  \return the slot of the best genuinely improving candidate,
+        or -1 if the row has none; \p bestRc receives its reduced cost. */
+    int exactRowReducedCosts(bool reducedSpace, int skipMask, double &bestRc);
     /** Find the column which leads to the best cut (i.e., find incoming variable).*/
     int findBestPivotColumn(int direction,
                             double pivotTol, bool reducedSpace, bool allowDegeneratePivot,

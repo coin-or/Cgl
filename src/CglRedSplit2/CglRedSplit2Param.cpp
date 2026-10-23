@@ -333,6 +333,19 @@ void CglRedSplit2Param::setColumnScalingBoundLAP(double value)
 
 /***********************************************************************/
 
+void CglRedSplit2Param::setMaxTabElements(long long value)
+{
+  if (value > 0){
+    maxTabElements_ = value;
+  }
+  else{
+    printf("### WARNING: CglRedSplit2Param::setMaxTabElements(): value: %lld ignored\n",
+	   value);
+  }
+}
+
+/***********************************************************************/
+
 void CglRedSplit2Param::setSkipGomory(int value)
 {
   if (value >= 0 && value <= 1){
@@ -385,7 +398,8 @@ CglRedSplit2Param::CglRedSplit2Param(bool use_default_strategies,
   maxNumCuts_(maxNumCuts),
   maxNumComputedCuts_(maxNumComputedCuts),
   maxNonzeroesTab_(maxNonzeroesTab),
-  skipGomory_(skipGomory)
+  skipGomory_(skipGomory),
+  maxTabElements_(25000000)
 {
   if (use_default_strategies) {
     addNumRowsReduction(5);
@@ -437,7 +451,8 @@ CglRedSplit2Param::CglRedSplit2Param(const CglParam &source,
   maxNumCuts_(maxNumCuts),
   maxNumComputedCuts_(maxNumComputedCuts),
   maxNonzeroesTab_(maxNonzeroesTab),
-  skipGomory_(skipGomory)
+  skipGomory_(skipGomory),
+  maxTabElements_(25000000)
 {
   if (use_default_strategies) {
     addNumRowsReduction(5);
@@ -477,7 +492,8 @@ CglRedSplit2Param::CglRedSplit2Param(const CglRedSplit2Param &source) :
   maxNumCuts_(source.maxNumCuts_),
   maxNumComputedCuts_(source.maxNumComputedCuts_),
   maxNonzeroesTab_(source.maxNonzeroesTab_),
-  skipGomory_(source.skipGomory_)
+  skipGomory_(source.skipGomory_),
+  maxTabElements_(source.maxTabElements_)
 {}
 
 /***********************************************************************/
@@ -517,6 +533,7 @@ CglRedSplit2Param& CglRedSplit2Param::operator=(const CglRedSplit2Param &rhs)
     maxNumComputedCuts_ = rhs.maxNumComputedCuts_;
     maxNonzeroesTab_ = rhs.maxNonzeroesTab_;
     skipGomory_ = rhs.skipGomory_;
+    maxTabElements_ = rhs.maxTabElements_;
   }
   return *this;
 }

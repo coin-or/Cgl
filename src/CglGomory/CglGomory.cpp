@@ -18,6 +18,9 @@
 #include "CoinPackedMatrix.hpp"
 #include "CoinIndexedVector.hpp"
 #include "OsiRowCutDebugger.hpp"
+// Must be included before the CGL_HAS_CLP check below so the macro
+// (defined in CglConfig.h/config.h) is actually visible at this point.
+#include "CglConfig.h"
 #ifndef USE_CGL_RATIONAL
 #define USE_CGL_RATIONAL 0
 #endif
@@ -28,11 +31,164 @@
 #endif
 #include "CoinRational.hpp"
 #endif
-#ifdef CBC_HAS_CLP
+#ifdef CGL_HAS_CLP
 #define CGL_HAS_CLP_GOMORY
 #endif
 #ifdef CGL_HAS_CLP_GOMORY
 #include "OsiClpSolverInterface.hpp"
+#endif
+// Off by default; header-only. See its own comment for why a lagomory fixture
+// cannot be captured from CbcModel the way the plain-Gomory one is.
+#include "CglLagomoryFixtureDump.hpp"
+
+/*
+ * Per-stage attribution for the Lagrangean prologue, off unless Cgl is built
+ * -DCGL_GOMORY_PROFILE.
+ *
+ * WHY THE STAGES ARE CUT WHERE THEY ARE. The Lagrangean variants share the whole
+ * Gomory core with plain Gomory, which has already been optimized, so the only
+ * question worth asking is what the *wrapper* costs. The wrapper does five
+ * separable things and they have completely different cost shapes:
+ *
+ *   lagPrep      O(nz of the cut rows) -- the dualization loop, plus for
+ *                gomoryType%10==2 an integrality scan over the same rows and an
+ *                addRows. Linear, and predictable from the .meta's cutRowNz.
+ *   lagResolve   a full primal simplex re-solve of the ORIGINAL LP under a
+ *                perturbed objective. Superlinear, unpredictable, and the only
+ *                stage whose cost is not visible from the input.
+ *   lagFallback  the superbasic scan (O(n+m)) plus, if any turned up, a whole
+ *                extra dual() solve. Timed apart from lagResolve because the
+ *                scan is trivial and the fallback is not, and averaging them
+ *                would hide which one fired.
+ *   core         the shared workhorse. Here only as the denominator.
+ *   lagFilter    the objective restore and the "erase cuts si's own solution
+ *                does not violate" loop. This one is worth measuring for a
+ *                reason other than its time: the count of erased cuts is the
+ *                yield the wrapper throws away after paying for it.
+ *   lagCleanup   the deleteRows that undoes gomoryType%10==2's addRows.
+ *
+ * The accumulators are file-static, so a profiled run must be serial -- already
+ * the rule for any number that gets quoted here.
+ */
+#ifdef CGL_GOMORY_PROFILE
+#include "CoinTime.hpp"
+static double cglGomProfPrep = 0.0;
+static double cglGomProfResolve = 0.0;
+static double cglGomProfFallback = 0.0;
+static double cglGomProfCore = 0.0;
+static double cglGomProfFilter = 0.0;
+static double cglGomProfCleanup = 0.0;
+static int cglGomProfCalls = 0;
+static int cglGomProfGateTrue = 0;
+static int cglGomProfCutRows = 0;
+static int cglGomProfCopiedRows = 0;
+static int cglGomProfResolveIters = 0;
+static int cglGomProfFallbacks = 0;
+static int cglGomProfBadStatus = 0;
+static int cglGomProfCutsMade = 0;
+static int cglGomProfCutsErased = 0;
+/* Calls that passed the gate with NO cut rows to dualize (numberRows ==
+ * numberOriginalRows), so the objective handed to primal(1) is the one the clone
+ * already had, the bounds memcpy'd in are si's own, and the basis handed over is
+ * si's own resized. Such a call re-solves an LP it is already at the optimum of
+ * and then generates from a tableau equal to si's -- precisely what plain Gomory
+ * produces from si directly. What it still pays for is real: 3n of memcpy, a
+ * refactorization inside primal(1), and a getMatrixByRow() on the clone, which
+ * for a cold clone is a full reverseOrderedCopyOf.
+ *
+ * WHICH ARMS CAN REACH HERE, because it is not all three. The whenToDo==1 arm
+ * carries `numberRows>numberOriginalRows` in its own condition, so the endboth
+ * family is already futility-gated by construction and contributes zero. Only
+ * two arms can: whenToDo==2 ("always" -- the bothaswell/cleanaswell/onlyaswell
+ * family, gomoryType_ 2x), and the `(options&1024)` must-call-again arm, which
+ * has no row-count test at all. So a futility gate is a change to those two, and
+ * pricing it on an endboth run would measure a guaranteed zero.
+ *
+ * These two numbers are what price it: the count says how often it would fire,
+ * the seconds say what it would save. Kept separate from gateTrue rather than
+ * inferred from cutRows, which is a SUM and so cannot distinguish "many calls
+ * with no cut rows" from "one call with many". */
+static int cglGomProfGateFutile = 0;
+static double cglGomProfFutileResolve = 0.0;
+/* The row-count test above catches only numberRows==numberOriginalRows. A call
+ * whose cut rows ALL carry a zero dual is futile in exactly the same sense and
+ * that test misses it: the dualization subtracts nothing, so the objective handed
+ * to primal(1) is the clone's own, and provided no rows were copied in
+ * (gomoryType==2 can add some, which changes the LP even at zero duals) the clone
+ * is si's formulation with si's objective and si's bounds. The resolve then
+ * confirms optimality in zero iterations and the tableau equals si's, so the cuts
+ * duplicate what plain Gomory produced from si in the same pass.
+ *
+ * Counted separately because the residual per-call cost is NOT zero: a
+ * no-iteration resolve still measured ~0.37ms here (refactorization inside
+ * primal(1), plus getMatrixByRow() on a cold clone, which is a full
+ * reverseOrderedCopyOf). So "how many calls" is what decides whether a pi-based
+ * gate is worth more than the 0.246% the row-count gate turned out to be worth --
+ * non-binding cut rows are common, and the row-count test cannot see them. */
+static int cglGomProfZeroPiCalls = 0;
+static double cglGomProfZeroPiResolve = 0.0;
+#define GOMPROF_T0(v) double v = CoinGetTimeOfDay()
+#define GOMPROF_ADD(acc, v) acc += CoinGetTimeOfDay() - (v)
+#define GOMPROF_INC(c, n) c += (n)
+void cglGomoryProfileReset()
+{
+  cglGomProfPrep = cglGomProfResolve = cglGomProfFallback = 0.0;
+  cglGomProfCore = cglGomProfFilter = cglGomProfCleanup = 0.0;
+  cglGomProfCalls = cglGomProfGateTrue = cglGomProfCutRows = 0;
+  cglGomProfCopiedRows = cglGomProfResolveIters = cglGomProfFallbacks = 0;
+  cglGomProfBadStatus = cglGomProfCutsMade = cglGomProfCutsErased = 0;
+  cglGomProfGateFutile = 0;
+  cglGomProfFutileResolve = 0.0;
+  cglGomProfZeroPiCalls = 0;
+  cglGomProfZeroPiResolve = 0.0;
+}
+void cglGomoryProfilePrint(const char *tag)
+{
+  const double total = cglGomProfPrep + cglGomProfResolve + cglGomProfFallback
+    + cglGomProfCore + cglGomProfFilter + cglGomProfCleanup;
+  printf("[gomprof] %s calls %d gateTrue %d gateFutile %d cutRows %d"
+         " copiedRows %d resolveIters %d fallbacks %d badStatus %d cutsMade %d"
+         " cutsErased %d\n",
+    tag, cglGomProfCalls, cglGomProfGateTrue, cglGomProfGateFutile,
+    cglGomProfCutRows, cglGomProfCopiedRows, cglGomProfResolveIters,
+    cglGomProfFallbacks, cglGomProfBadStatus, cglGomProfCutsMade,
+    cglGomProfCutsErased);
+  printf("[gomprof] %s futileResolve %.6f zeroPiCalls %d zeroPiResolve %.6f\n",
+    tag, cglGomProfFutileResolve, cglGomProfZeroPiCalls, cglGomProfZeroPiResolve);
+  printf("[gomprof] %s lagPrep %.6f lagResolve %.6f lagFallback %.6f"
+         " core %.6f lagFilter %.6f lagCleanup %.6f total %.6f\n",
+    tag, cglGomProfPrep, cglGomProfResolve, cglGomProfFallback, cglGomProfCore,
+    cglGomProfFilter, cglGomProfCleanup, total);
+  if (total > 0.0) {
+    printf("[gomprof] %s pct lagPrep %.2f lagResolve %.2f lagFallback %.2f"
+           " core %.2f lagFilter %.2f lagCleanup %.2f\n",
+      tag, 100.0 * cglGomProfPrep / total, 100.0 * cglGomProfResolve / total,
+      100.0 * cglGomProfFallback / total, 100.0 * cglGomProfCore / total,
+      100.0 * cglGomProfFilter / total, 100.0 * cglGomProfCleanup / total);
+  }
+  fflush(stdout);
+}
+/* Let a plain `cbc` run report these, not only gomory-bench/lagomory-bench.
+ * Pricing the futility gate and the "locally useless" erase filter needs counts
+ * from a REAL solve: the benches replay a single separation call from a fixture,
+ * and no fixture set for the Lagrangean path exists until Cgl is rebuilt with
+ * -DCGL_DUMP_LAGOMORY_FIXTURE, which is a separate build of its own.
+ *
+ * Env-gated rather than unconditional, for two reasons. The accumulators are
+ * file-static, so a `-threads N` run sums them across threads and the seconds
+ * become meaningless (the counts survive, the times do not) -- requiring an
+ * explicit opt-in keeps that from looking like data. And a profiled libCgl.a
+ * installed into ~/prog poisons every later probe if it prints unbidden. */
+static void __attribute__((destructor)) cglGomoryProfileAtExit()
+{
+  const char *tag = getenv("CGL_GOMORY_PROFILE_TAG");
+  if (tag && *tag)
+    cglGomoryProfilePrint(tag);
+}
+#else
+#define GOMPROF_T0(v)
+#define GOMPROF_ADD(acc, v)
+#define GOMPROF_INC(c, n)
 #endif
 #include "CoinFactorization.hpp"
 #undef CLP_OSL
@@ -69,6 +225,25 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   CoinWarmStart * warmstart = si.getWarmStart();
   CoinWarmStartBasis* warm =
     dynamic_cast<CoinWarmStartBasis*>(warmstart);
+  // A NON-NULL BASIS IS NOT NECESSARILY A BASIS OF THIS MODEL, and every use
+  // below indexes it by column and row number. The pointer test that used to be
+  // the only guard (at the generateCuts() call further down) does not catch the
+  // case that matters: OsiClpSolverInterface::getWarmStart() is
+  //
+  //     return new CoinWarmStartBasis(basis_);
+  //
+  // which hands back a perfectly valid object even when the model has never
+  // been solved -- one describing 0 structural and 0 artificial variables. The
+  // pointer test passes, and the inner routine then indexes a zero-length status
+  // array. Reached from Cbc_generateCuts() in the C interface that was a
+  // SIGSEGV on 27 of 27 corpus instances; the caller has been fixed to solve
+  // first, but the same shape is available to any caller, so refuse it here.
+  if (warm && (warm->getNumStructural() != numberColumns ||
+	       warm->getNumArtificial() != si.getNumRows())) {
+    delete [] intVar;
+    delete warmstart;
+    return;
+  }
   const double * colUpper = si.getColUpper();
   const double * colLower = si.getColLower();
   //#define CLP_INVESTIGATE2
@@ -121,6 +296,22 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 		       && (info.options&512)==0) ||
 	((info.options&1024)!=0 && (info.options&512)==0
 	 && numberTimesStalled_<3)) {
+      GOMPROF_INC(cglGomProfGateTrue,1);
+      GOMPROF_INC(cglGomProfCutRows,numberRows-numberOriginalRows);
+      GOMPROF_INC(cglGomProfGateFutile,numberRows==numberOriginalRows ? 1 : 0);
+      GOMPROF_T0(t0Prep);
+#ifdef CGL_DUMP_LAGOMORY_FIXTURE
+      // Must be here, not earlier and not later: `originalSolver_` still holds
+      // its cloned bounds and objective (both are overwritten below), and the
+      // gate above has already decided that this call really will do Lagrangean
+      // work -- which is the one thing a fixture has to be able to claim.
+      cglDumpLagomoryFixture(si,*originalSolver_,numberOriginalRows,gomoryType_,
+			     info.pass,info.options,info.inTree?1:0,
+			     numberTimesStalled_,limit_,limitAtRoot_,
+			     dynamicLimitInTree_,away_,awayAtRoot_,
+			     conditionNumberMultiplier_,
+			     largestFactorMultiplier_,alternateFactorization_);
+#endif
       // bounds
       memcpy(simplex->columnLower(),colLower,numberColumns*sizeof(double));
       memcpy(simplex->columnUpper(),colUpper,numberColumns*sizeof(double));
@@ -174,11 +365,21 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       }
       numberCopy=0;
       numberAdd=0;
+#ifdef CGL_GOMORY_PROFILE
+      /* Nonzero duals seen among the rows actually dualized. Compiles away
+       * entirely without the define, so the hot loop below is untouched in a
+       * production build. */
+      int profNzDual = 0;
+#endif
       //const double * rowSolution = si.getRowActivity();
       //double offset=0.0;
       for (int iRow=numberOriginalRows;iRow<numberRows;iRow++) {
 	if (!copy[iRow-numberOriginalRows]) {
 	  double value = pi[iRow];
+#ifdef CGL_GOMORY_PROFILE
+	  if (value != 0.0)
+	    profNzDual++;
+#endif
 	  //offset += rowSolution[iRow]*value;
 	  for (CoinBigIndex k=rowStart[iRow];
 	       k<rowStart[iRow]+rowLength[iRow];k++) {
@@ -229,7 +430,32 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       delete warm;
       simplex->setDualObjectiveLimit(COIN_DBL_MAX);
       simplex->setLogLevel(0);
+      GOMPROF_INC(cglGomProfCopiedRows,numberCopy);
+      GOMPROF_ADD(cglGomProfPrep,t0Prep);
+      GOMPROF_T0(t0Resolve);
       simplex->primal(1);
+      GOMPROF_ADD(cglGomProfResolve,t0Resolve);
+      // Deliberately the same t0, so the futile share is measured on the same
+      // clock as the total it is a share of. Reading the clock twice skews this
+      // by tens of nanoseconds against a resolve measured in milliseconds, and
+      // the accumulator exists only under CGL_GOMORY_PROFILE.
+      if (numberRows==numberOriginalRows) {
+        GOMPROF_ADD(cglGomProfFutileResolve,t0Resolve);
+      }
+#ifdef CGL_GOMORY_PROFILE
+      /* The generalized futile case: nothing was subtracted from the objective
+       * and nothing was added to the matrix, so this resolve re-derives si's own
+       * tableau. Deliberately the same t0Resolve, for the reason above. Note this
+       * is a SUPERSET test of the row-count one only in effect, not in form -- a
+       * call with zero cut rows also has zero nonzero duals and zero copies, so
+       * the two counters overlap by exactly cglGomProfGateFutile. */
+      if (!profNzDual && !numberCopy) {
+        cglGomProfZeroPiCalls++;
+        cglGomProfZeroPiResolve += CoinGetTimeOfDay() - t0Resolve;
+      }
+#endif
+      GOMPROF_INC(cglGomProfResolveIters,simplex->numberIterations());
+      GOMPROF_T0(t0Fallback);
       // check basis
       int numberTotal=simplex->numberRows()+simplex->numberColumns();
       int superbasic=0;
@@ -239,6 +465,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       }
       if (superbasic) {
 	//printf("%d superbasic!\n",superbasic);
+	GOMPROF_INC(cglGomProfFallbacks,1);
 	simplex->dual();
 	superbasic=0;
 	for (int i=0;i<numberTotal;i++) {
@@ -247,6 +474,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	}
 	assert (!superbasic);
       }
+      GOMPROF_ADD(cglGomProfFallback,t0Fallback);
       //printf("Trying - %d its status %d objs %g %g - with offset %g\n",
       //     simplex->numberIterations(),simplex->status(),
       //     simplex->objectiveValue(),si.getObjValue(),simplex->objectiveValue()+offset);
@@ -254,9 +482,25 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       warm=simplex->getBasis();
       warmstart=warm;
       if (simplex->status()) {
+	GOMPROF_INC(cglGomProfBadStatus,1);
 	//printf("BAD status %d\n",simplex->status());
 	//clpSolver->writeMps("clp");
 	//si.writeMps("si");
+	// RESTORE BEFORE DISCARDING THE SAVED COPY. `objective` is the clone's
+	// original objective, and the only place it is ever put back is the
+	// `if (objective)` block after the core, so nulling the pointer here used
+	// to leave the clone holding the DUALIZED objective permanently. The next
+	// call then saved that as its "original" and dualized on top of it, so the
+	// clone's objective drifted further from the true one on every bad-status
+	// call for the rest of the generator's life -- and originalSolver_ is a
+	// clone held across the whole solve, so that is the whole solve.
+	//
+	// Not a validity bug, which is why it survived: the objective decides
+	// which basis primal(1) lands on, not which points the tableau's rows are
+	// valid for, so every cut produced was still correct. It is a cut-quality
+	// and wasted-work bug -- the Lagrangean relaxation being solved after the
+	// first bad status is not the one anybody asked for.
+	memcpy(simplex->objective(),objective,numberColumns*sizeof(double));
 	delete [] objective;
 	objective=NULL;
 	useSolver=&si;
@@ -279,14 +523,19 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 #endif
   int numberRowCutsBefore = cs.sizeRowCuts();
 
+  GOMPROF_INC(cglGomProfCalls,1);
+  GOMPROF_T0(t0Core);
   if (warmstart)
-    generateCuts(debugger, cs, *useSolver->getMatrixByCol(), 
+    generateCuts(debugger, cs, *useSolver->getMatrixByCol(),
 		 *useSolver->getMatrixByRow(),
 		 useSolver->getColSolution(),
-		 useSolver->getColLower(), useSolver->getColUpper(), 
+		 useSolver->getColLower(), useSolver->getColUpper(),
 		 useSolver->getRowLower(), useSolver->getRowUpper(),
 		 intVar,warm,info);
+  GOMPROF_ADD(cglGomProfCore,t0Core);
+  GOMPROF_INC(cglGomProfCutsMade,cs.sizeRowCuts()-numberRowCutsBefore);
 #ifdef CGL_HAS_CLP_GOMORY
+  GOMPROF_T0(t0Filter);
   if (objective) {
     ClpSimplex * simplex = clpSolver->getModelPtr();
     memcpy(simplex->objective(),objective,numberColumns*sizeof(double));
@@ -318,6 +567,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	cs.eraseRowCut(k);
       }
     }
+    GOMPROF_INC(cglGomProfCutsErased,numberRowCutsAfter-cs.sizeRowCuts());
 #ifdef CLP_INVESTIGATE2
     printf("OR %p pass %d inTree %c - %d cuts (but %d deleted)\n",
        originalSolver_,info.pass,info.inTree?'Y':'N',
@@ -325,6 +575,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
        numberRowCutsAfter-cs.sizeRowCuts());
 #endif
   }
+  GOMPROF_ADD(cglGomProfFilter,t0Filter);
 #endif
 
   delete warmstart;
@@ -340,9 +591,14 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
     }
   }
 #ifdef CGL_HAS_CLP_GOMORY
-  if ((gomoryType_%10)==2) {
+  GOMPROF_T0(t0Cleanup);
+  // clpSolver is NULL whenever passInOriginalSolver() was never called, so a
+  // bare setGomoryType(2|12|22) reaches the assert -- and under NDEBUG walks
+  // straight into the NULL deref. Guarding on the pointer rather than asserting
+  // keeps a plain-Gomory caller who set the type by hand from segfaulting; there
+  // is nothing to undo in that case, because nothing was added.
+  if ((gomoryType_%10)==2 && clpSolver) {
     // back to original
-    assert(clpSolver);
     int numberRows = clpSolver->getNumRows();
     if (numberRows>numberOriginalRows) {
       int numberDelete = numberRows-numberOriginalRows;
@@ -353,6 +609,7 @@ void CglGomory::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
       delete [] delRow;
     }
   }
+  GOMPROF_ADD(cglGomProfCleanup,t0Cleanup);
 #endif
 }
 
@@ -641,6 +898,20 @@ CglGomory::generateCuts(
   // probably could use pivotVariables from OsiSimplexModel
   int * rowIsBasic = new int[numberRows];
   int * columnIsBasic = new int[numberColumns];
+  /*
+   * Stamped marker for "this column is reachable from the current tableau row".
+   * Function-local rather than static so the generator stays reentrant; zeroed
+   * once here, then a fresh stamp per candidate costs only the scatter. See the
+   * long comment at its use site for why the outer loop stays dense.
+   *
+   * Building with -DCGL_GOMORY_DENSE_COLLOOP restores the original dense walk,
+   * which is how the two are checked against each other field-by-field. Keep it
+   * working: it is the only way to re-establish the bit-identical claim after
+   * any future edit to this loop.
+   */
+  int * gomoryMark = new int[numberColumns];
+  CoinZeroN(gomoryMark,numberColumns);
+  int gomoryStamp = 0;
   int i;
   for (i=0;i<numberRows;i++) {
     if (warm->getArtifStatus(i) == CoinWarmStartBasis::basic) {
@@ -679,6 +950,7 @@ CglGomory::generateCuts(
 #endif
     delete [] rowIsBasic;
     delete [] columnIsBasic;
+    delete [] gomoryMark;
     return -1;
   }
   // End of creation of factorization (A) ====
@@ -936,6 +1208,18 @@ CglGomory::generateCuts(
 #if MORE_GOMORY_CUTS==1||MORE_GOMORY_CUTS==3
   OsiCuts secondaryCuts;
 #endif
+  /*
+   * What the dense nonbasic walk costs, in element visits, for ONE candidate.
+   * Loop invariant: the walk's predicate reads only columnIsBasic, colLower and
+   * colUpper, none of which change inside the candidate loop, so this is computed
+   * once here rather than per candidate. Compared against the per-candidate
+   * scatter cost to decide which of the two ways to build the tableau row.
+   */
+  CoinBigIndex denseWalkCost=0;
+  for (int jj=0;jj<numberColumns;jj++) {
+    if (columnIsBasic[jj]<0&&colUpper[jj]>colLower[jj]+testFixed)
+      denseWalkCost += columnLength[jj];
+  }
   for (int kColumn=0;kColumn<nCandidates;kColumn++) {
     if (nTotalEls<=0)
       break;  // Got enough
@@ -1031,8 +1315,105 @@ CglGomory::generateCuts(
 	      printf("start for basic column %d\n",iColumn);
 #endif
 	// columns
+	/*
+	 * Mark the columns the tableau row can actually reach.
+	 *
+	 * The loop below needs alpha = (row of B^-1 A) for each nonbasic column,
+	 * computed as a dot product of the column against `arrayElements`. But
+	 * `arrayElements` is the dense side of a CoinIndexedVector holding only
+	 * `numberInArray` nonzeros, and it is exactly 0.0 elsewhere. That is checked,
+	 * not assumed: a temporary counter over entries nonzero in the dense array but
+	 * absent from arrayRows finds none, on every fixture measured. (A factorization
+	 * update that dropped a small value from the index list while leaving it in the
+	 * dense array would break this silently -- alpha would differ by a
+	 * sub-tolerance amount on a few columns, which no cut count or bound comparison
+	 * catches.) A column whose rows are all outside that index set
+	 * therefore has alpha == 0.0 exactly, and the loop's own
+	 * `if (fabs(value)<1.0e-16) continue;` already discards it.
+	 *
+	 * So scatter once through the row copy over just those nonzero rows and mark
+	 * the columns they touch; every unmarked column can skip its inner walk.
+	 *
+	 * BUT the scatter is not free, and on a wide instance it can cost more than
+	 * it saves. Measured over 56 fixtures, the net saving as a fraction of the
+	 * dense element count ranges from +0.9994 (neos-5114902-kasavu, essentially
+	 * all of the work removed) to -202 (splice1k1, two hundred times MORE work).
+	 * The scp*, eil* and square* families are all net losses: their
+	 * tableau rows are dense enough that almost every column is touched anyway,
+	 * so the scatter is pure overhead. An unconditional rewrite here is a large
+	 * regression on those, which is why this is gated.
+	 *
+	 * Both costs are known before either is paid, which is what makes the gate
+	 * exact rather than a heuristic guess:
+	 *   scatter : sum of rowLength over the numberInArray nonzero rows, i.e.
+	 *             exactly the element visits the marking loop will make
+	 *   dense   : denseWalkCost, the element visits the dense walk will make,
+	 *             computed once per call (it does not vary by candidate)
+	 * Do the scatter only when it is the cheaper of the two by a clear margin.
+	 * The margin matters because the two costs are not the same *kind* of work --
+	 * the scatter's writes are scattered over `mark` while the dense walk streams
+	 * two arrays in order -- so parity in element count is a loss in wall clock.
+	 *
+	 * Three things this deliberately does NOT change, because each one would make
+	 * the output differ rather than merely arrive sooner:
+	 *
+	 *  - The OUTER loop stays dense, in increasing j, so the skip below is a
+	 *    `continue` and not a shorter loop. Its order is load bearing:
+	 *    `if (number>limit) break;` means WHICH columns land in the cut depends on
+	 *    the order they are visited, and `rhs` is accumulated across them, so even
+	 *    the floating-point summation order matters. Collecting touched columns
+	 *    into a list and sorting it back into j order would restore the order but
+	 *    cost more than the walk it replaces.
+	 *
+	 *    Its cost is therefore a floor on what this can save, and that floor is
+	 *    not always small: numberColumns against denseWalkCost is a median 21%
+	 *    across the fixture population, and on 11 of 327 the outer loop dominates
+	 *    the inner element work outright (cvs16r128-89 69x, chromaticindex1024-7
+	 *    1.3x). Those instances cannot be helped from here at all -- a real fix
+	 *    for them means not visiting untouched columns, which means giving up the
+	 *    order, which means changing the cuts. Out of scope for an exactness-
+	 *    preserving change; do not read a poor speedup on one of them as the gate
+	 *    misfiring.
+	 *  - A marked column still recomputes alpha with the ORIGINAL inner walk over
+	 *    all of its elements, including the ones that contribute zero. Summing
+	 *    only the nonzero terms would give a different rounding of the same
+	 *    mathematical value. Bit-identical output is the whole point.
+	 *  - `largestFactor` is left alone. It maxes over every product including the
+	 *    zeros and feeds the rhs relaxation later, but max over |0| contributes
+	 *    nothing, and marked columns still see every one of their own products.
+	 *
+	 * The mark array is stamped rather than cleared, so the per-candidate cost is
+	 * the scatter alone and not an O(numberColumns) memset.
+	 */
+	bool useMark=false;
+#ifndef CGL_GOMORY_DENSE_COLLOOP
+	{
+	  CoinBigIndex scatterCost=0;
+	  for (j=0;j<numberInArray;j++)
+	    scatterCost += rowLength[arrayRows[j]];
+	  // 4x: chosen from the measured distribution, which is strongly bimodal --
+	  // the winners are at ratios of 1e-4 to 1e-3 and the losers at 0.75 and up,
+	  // so nothing real sits near the threshold and its exact value is not
+	  // load bearing. It exists to keep the ambiguous middle on the dense path.
+	  if (4*scatterCost < denseWalkCost) {
+	    useMark=true;
+	    ++gomoryStamp;
+	    for (j=0;j<numberInArray;j++) {
+	      int jRow=arrayRows[j];
+	      for (CoinBigIndex k=rowStart[jRow];k<rowStart[jRow]+rowLength[jRow];k++)
+		gomoryMark[column[k]]=gomoryStamp;
+	    }
+	  }
+	}
+#endif
 	for (j=0;j<numberColumns;j++) {
 	  if (columnIsBasic[j]<0&&colUpper[j]>colLower[j]+testFixed) {
+#ifndef CGL_GOMORY_DENSE_COLLOOP
+	    if (useMark&&gomoryMark[j]!=gomoryStamp) {
+	      // alpha is exactly 0.0 - the test below would discard it anyway
+	      continue;
+	    }
+#endif
 	    double value=0.0;
 	    CoinBigIndex k;
 	    // add in row of tableau
@@ -1274,6 +1655,17 @@ CglGomory::generateCuts(
 #if TRY7==2
 	  double rhsBeforeRelax=rhs;
 #endif
+	  // Remember whether every element of this cut was genuinely integer
+	  // (rather than being forced into the "pretend integer" rational
+	  // reconstruction below just because number<6). If the subsequent
+	  // rational reconstruction cannot represent a truly-all-integer cut
+	  // to its own tolerance, that is a direct signal that the raw
+	  // floating-point coefficients/rhs are not trustworthy (e.g. due to
+	  // accumulated numerical error from the row-substitution/slack
+	  // step on an ill-conditioned row) and the cut must be rejected
+	  // rather than used with its unverified raw values.
+	  bool wasAllInteger = (numberNonInteger==0);
+	  bool rejectUnstableIntegerCut = false;
 	  if ((!numberNonInteger||number<6)&&number&&USE_CGL_RATIONAL>=0) {
 	    // pretend not integer
 	    numberNonInteger=0;
@@ -1343,8 +1735,20 @@ CglGomory::generateCuts(
 		printf("Gomory Scaling: Warning: Overflow detected \n");
 #endif
 		numberNonInteger=-1;
+		if (wasAllInteger) {
+		  // A cut whose original elements were all integer should be
+		  // exactly representable as a small-denominator rational; a
+		  // reconstruction overflow here means the raw coefficients/
+		  // rhs carry more numerical error than this tolerance allows
+		  // and cannot be trusted - reject the cut instead of using
+		  // its unverified raw values (see AGENTS.md "Debugging
+		  // invalid cuts" for how this was root-caused). Defer the
+		  // actual rejection until after cutElement has been erased
+		  // below, so we don't leave stale reinterpreted-Rational/int
+		  // bytes behind for the next candidate.
+		  rejectUnstableIntegerCut = true;
+		}
 	      } else {
-		
 		// find greatest common divisor of the elements
 		j=0;
 		while (!xInt[j])
@@ -1439,6 +1843,10 @@ CglGomory::generateCuts(
 	      printf("after %g <= %g <= %g\n",bounds[0],total,rhs);
 	    }
 #endif
+	  }
+	  if (rejectUnstableIntegerCut) {
+	    cutVector.clear();
+	    continue;
 	  }
 	  if (!dontRelax) {
 	    // relax rhs a tiny bit
@@ -1864,6 +2272,7 @@ CglGomory::generateCuts(
   delete [] packed;
   delete [] rowIsBasic;
   delete [] columnIsBasic;
+  delete [] gomoryMark;
 #ifdef MORE_GOMORY_CUTS
 #if MORE_GOMORY_CUTS==1
   int numberInaccurate = secondaryCuts.sizeRowCuts();

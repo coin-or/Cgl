@@ -48,6 +48,21 @@
 
 #define rs2round(x) (floor((x)+0.5))
 
+// Defense-in-depth memory guard for the "reduced tableau" allocations
+// below (contNonBasicTab/workNonBasicTab/intNonBasicTab), which are sized
+// O(mTab * (card_contNonBasicVar + card_intNonBasicVar)) -- i.e. roughly
+// O(#integer-basic-vars * #nonbasic-vars), unrelated to the row-count-based
+// gate/cap CbcSolverCutSetup.cpp applies to this generator's OTHER
+// allocation (bufflambda, sized O(maxNumComputedCuts * nrow)). A model with
+// many columns and a dense LP basis can blow this one up even when nrow is
+// small enough to pass that other gate (observed: chromaticindex512-7,
+// 36864 cols / 33791 rows, calloc() returning NULL and exit(1) inside
+// rs_allocmatDBL()). Bounded by param.getMaxTabElements() (element count
+// of the largest single matrix, default 25M doubles =~ 200MB; Cbc's
+// -reduce2MaxTabElements); if exceeded, the caller skips this round the
+// same way it already skips when card_contNonBasicVar==0 (no cuts from
+// this call, not fatal).
+
 //-------------------------------------------------------------------
 // Generate Reduce-and-Split cuts
 //------------------------------------------------------------------- 
@@ -1766,12 +1781,69 @@ int CglRedSplit2::generateCuts(OsiCuts* cs, int maxNumCuts, int* lambda)
     assert (fabs(effective_rhs[i])<1.0e100);
   }
 
+  /* Tolerance for "is this variable at the bound its status names". This is
+     deliberately not param.getEPS(): that is 1e-6 for CglRedSplit but 1e-12
+     for CglRedSplit2, and 1e-12 is tighter than the primal feasibility
+     tolerance the LP solve itself guarantees, so it rejects bases that are
+     merely rounded rather than inconsistent. A variable within eps_bnd of its
+     bound can shift a cut rhs by at most |coefficient| * eps_bnd, which is
+     not distinguishable from ordinary round-off. */
+  const double eps_bnd = 1.0e-6;
+
+  /* Every nonbasic variable is shifted below by the bound that its status
+     names -- effective_rhs[] for a slack, colLower/colUpper for a structural
+     variable -- and the rhs of each tableau row is taken to be the value of
+     the basic variable at xlp. Both steps are only valid if each nonbasic
+     variable really does sit at that bound: the shifted variable has to be
+     nonnegative over the whole feasible region, and xlp has to be the basic
+     solution of the reported basis. A solver may hand over a pair for which
+     this does not hold -- a variable left superbasic by the LP solve is
+     reported at a bound by OsiClpSolverInterface::getBasisStatus() without
+     the solution being moved to it -- and cuts built from such a pair can
+     cut off integer feasible points. Check it, and generate nothing if it
+     does not hold, as is done above for a nonbasic variable reported free. */
+
+  for(i=0; (i<ncol) && goodModel; i++) {
+    double bnd;
+    if(cstat[i] == 2) {
+      bnd = colUpper[i];
+    }
+    else if(cstat[i] == 3) {
+      bnd = colLower[i];
+    }
+    else {
+      continue;
+    }
+    if(fabs(xlp[i] - bnd) > eps_bnd) {
+#ifndef NDEBUG
+      printf("### WARNING: CglRedSplit2::generateCuts(): cstat[%d]: %d but xlp: %.12g, bound: %.12g\n",
+	     i, cstat[i], xlp[i], bnd);
+#endif
+      goodModel = false;
+    }
+  }
+
+  for(i=0; (i<nrow) && goodModel; i++) {
+    if((rstat[i] != 2) && (rstat[i] != 3)) {
+      continue;
+    }
+    if(fabs(rowActivity[i] - effective_rhs[i]) > eps_bnd) {
+#ifndef NDEBUG
+      printf("### WARNING: CglRedSplit2::generateCuts(): rstat[%d]: %d but activity: %.12g, bound: %.12g\n",
+	     i, rstat[i], rowActivity[i], effective_rhs[i]);
+#endif
+      goodModel = false;
+    }
+  }
+
 #ifdef RS2_TRACE
   printf("CglRedSplit2()::card_intBasicVar_frac %d %d\n", 
 	 card_intBasicVar_frac, card_contNonBasicVar);
 #endif
+  const long long tabElements1 =
+    static_cast< long long >(card_intBasicVar) * card_contNonBasicVar;
   if((card_contNonBasicVar == 0) || (card_intBasicVar_frac == 0)
-     || !goodModel) {
+     || !goodModel || tabElements1 > param.getMaxTabElements()) {
     delete[] cstat;
     delete[] rstat;
     delete[] basis_index;
@@ -1786,7 +1858,7 @@ int CglRedSplit2::generateCuts(OsiCuts* cs, int maxNumCuts, int* lambda)
     delete[] is_integer;
     delete[] effective_rhs;
 
-    return 0; // no cuts can be generated
+    return 0; // no cuts can be generated (or reduced tableau too large)
   }
 
   double *z = new double[ncol];  // workspace to get row of the tableau
@@ -1881,6 +1953,16 @@ int CglRedSplit2::generateCuts(OsiCuts* cs, int maxNumCuts, int* lambda)
     }
 #endif
   }
+  // A row skipped above for having too many nonzeroes was never written:
+  // its rhsTab entry is uninitialised and its tableau rows are all zero,
+  // yet with mTab rows it would still be reduced and turned into cuts.
+  // Keep only the rows that were stored.
+  for (i = card_rowTab; i < mTab; i++) {
+    free(contNonBasicTab[i]);
+    free(workNonBasicTab[i]);
+    free(intNonBasicTab[i]);
+  }
+  mTab = card_rowTab;
 #if RS_FAST_INT == 0 && RS_FAST_CONT == 0 && RS_FAST_WORK == 0
   rs_allocmatINT(&pi_mat, mTab, mTab);
 #else
@@ -2335,7 +2417,8 @@ CglRedSplit2::CglRedSplit2() :
   pi_mat(0),
   contNonBasicTab(0),
   intNonBasicTab(0),
-  rhsTab(0)
+  rhsTab(0),
+  timeCheckCallCount_(0)
 {
 }
 
@@ -2364,7 +2447,8 @@ CglRedSplit2::CglRedSplit2(const CglRedSplit2Param &RS_param) :
   pi_mat(0),
   contNonBasicTab(0),
   intNonBasicTab(0),
-  rhsTab(0)
+  rhsTab(0),
+  timeCheckCallCount_(0)
 {
   param = RS_param;
 }
@@ -2395,7 +2479,8 @@ CglRedSplit2::CglRedSplit2 (const CglRedSplit2 & source) :
   pi_mat(NULL),
   contNonBasicTab(NULL),
   intNonBasicTab(NULL),
-  rhsTab(NULL)
+  rhsTab(NULL),
+  timeCheckCallCount_(0)
 {
 }
 
@@ -2663,7 +2748,10 @@ int CglRedSplit2::tiltLandPcut(const OsiSolverInterface* si,
   printf("CglRedSplit2()::card_intBasicVar_frac %d %d\n", 
 	 card_intBasicVar_frac, card_contNonBasicVar);
 #endif
-  if((card_contNonBasicVar == 0) || (card_intBasicVar == 0)) {
+  const long long tabElements2 =
+    static_cast< long long >(card_intBasicVar) * card_contNonBasicVar;
+  if((card_contNonBasicVar == 0) || (card_intBasicVar == 0)
+     || tabElements2 > param.getMaxTabElements()) {
     delete[] cstat;
     delete[] rstat;
     delete[] basis_index;

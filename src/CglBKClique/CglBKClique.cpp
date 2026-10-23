@@ -20,6 +20,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstdio>
+#include <cstdlib>
 #include <cassert>
 #include <limits>
 #include <utility>
@@ -98,6 +99,7 @@ CglBKClique::CglBKClique(const CglBKClique &rhs)
   this->completeBK_ = rhs.completeBK_;
   this->maxSeconds_ = rhs.maxSeconds_;
   this->maxInducedSize_ = rhs.maxInducedSize_;
+  this->poolGate_ = rhs.poolGate_;
 }
 
 CglBKClique::~CglBKClique()
@@ -302,7 +304,16 @@ CoinCliqueList *CglBKClique::separateCliques(const OsiSolverInterface &si)
   completeBK_ = true;
 
   if (ppcg->size() >= 2) {
-    ppcg->computeModifiedDegree();
+    // Only the ModifiedDegree and ModifiedDegreeWeight pivoting strategies read
+    // modifiedDegree(); Cbc's default is Weight, which does not. The computation
+    // walks every node's direct conflicts and clique elements summing degrees, so
+    // it was an O(sum of degrees) pass paid unconditionally on every separation
+    // call and then discarded. Note the clique *extender* reads modifiedDegree of
+    // the full conflict graph, not of this induced subgraph, so it is unaffected.
+    if (pivotingStrategy_ == CoinBronKerbosch::PivotingStrategy::ModifiedDegree
+      || pivotingStrategy_ == CoinBronKerbosch::PivotingStrategy::ModifiedDegreeWeight) {
+      ppcg->computeModifiedDegree();
+    }
     CoinBronKerbosch *bk = new CoinBronKerbosch(ppcg, vertexWeight_, pivotingStrategy_);
     bk->setMaxCalls(maxCallsBK_);
     bk->setMinWeight(minWeight_);
@@ -367,7 +378,43 @@ void CglBKClique::insertCuts(const OsiSolverInterface &si, const CglTreeInfo &in
 {
   const double *x = si.getColSolution();
   const size_t numCols = si.getNumCols();
-  CoinCutPool cutpool(x, numCols);
+  CoinCutPool cutpool(x, numCols, "BKClique");
+
+  const bool smallModel = numCols < poolGate_.minCols;
+
+  // The per-column best-score filtering in CoinCutPool is only worth its
+  // cost when there are many candidate cliques to choose among -- with
+  // few candidates it removes almost nothing (measured: <=20 candidates
+  // are filtered <6% of the time on mip-sanity-data, vs. >100 candidates
+  // being filtered ~68% of the time) but still pays the full per-cut
+  // fitness-scoring cost. Likewise, on genuinely small models (mirroring
+  // CbcSolver.cpp's own "always do up to 100 root passes" cutoff) the
+  // re-optimization cost is negligible either way, so let every candidate
+  // through unconditionally (still deduplicated) rather than risk pruning
+  // a cut that would have helped.
+  // poolGate_.alwaysFilter (cbc's cliqueFilterAlways) forces the original
+  // always-filter behaviour, for A/B benchmarking against the
+  // threshold-gated default.
+  cutpool.setFilteringEnabled(poolGate_.alwaysFilter
+    || (!smallModel && cliques->nCliques() >= poolGate_.minCandidates));
+
+  // Orthogonality/parallelism-based cut selection, inspired by HiGHS's
+  // HighsCutPool (maxpar=0.1) and SCIP's cutsel_hybrid/cutsel_dynamic
+  // (minortho=0.9, i.e. maxparallelism=0.1): among cuts that survive the
+  // above, greedily drop any cut too cosine-similar (nearly parallel) to
+  // an already-kept, higher-scoring cut -- it adds little beyond what
+  // the kept cut already provides to the reoptimized LP. Disabled
+  // (1.0) by default: a 442-instance A/B sweep of 0.1/0.3/0.5/0.9 vs.
+  // off found no threshold gave a net win for clique cuts specifically
+  // -- dual gap closed was essentially flat while dual/primal
+  // gap-closed-per-second efficiency consistently worsened by ~1-2%,
+  // with some instances regressing sharply (e.g. -7.6% dual efficiency
+  // on fcnf_random_n15_d3 at 0.1). Kept as opt-in infrastructure via
+  // poolGate_.maxParallelism (cbc's cliqueFilterMaxParallelism) for
+  // further experimentation.
+  cutpool.setMaxParallelism((smallModel && !poolGate_.alwaysFilter)
+      ? 1.0
+      : poolGate_.maxParallelism);
 
   for (size_t i = 0; i < cliques->nCliques(); i++) {
     const size_t clqSize = cliques->cliqueSize(i);
@@ -427,6 +474,7 @@ void CglBKClique::insertCuts(const OsiSolverInterface &si, const CglTreeInfo &in
   }
 
   cutpool.removeNullCuts();
+  cutpool.filterByParallelism();
 
   const size_t numberRowCutsBefore = cs.sizeRowCuts();
   for (size_t i = 0; i < cutpool.numCuts(); i++) {

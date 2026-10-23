@@ -22,7 +22,7 @@
 #include "CoinWarmStartBasis.hpp"
 #include "CglTwomir.hpp"
 class CoinWarmStartBasis;
-#ifdef CBC_HAS_CLP
+#ifdef CGL_HAS_CLP
 #define CGL_HAS_CLP_TWOMIR
 #endif
 #ifdef CGL_HAS_CLP_TWOMIR
@@ -294,6 +294,7 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
   t_min = t_min_;
   a_max = a_max_;
   max_elements = info.inTree ? max_elements_ : max_elements_root_;
+  data->cparams.max_length = max_length_;
   data->gomory_threshold = info.inTree ? away_ : awayAtRoot_;
   if (!info.inTree) {
     //const CoinPackedMatrix * columnCopy = useSolver->getMatrixByCol();
@@ -405,7 +406,18 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	  if (number > 1) {
 	    rowcut.setRow(number, cutIndex, packed);
 	    rowcut.setUb(si.getInfinity());
-	    rowcut.setLb(rhs);
+	    // Relax the RHS a tiny bit to absorb floating-point roundoff
+	    // accumulated upstream (row scaling, DGG_nicefyConstraint's
+	    // near-integer coefficient rounding/padding -- see
+	    // DGG_NICEFY_MAX_PADDING in CglTwomir.hpp, which alone can
+	    // already shift the RHS by up to 1e-6, and can compound across
+	    // multiple adjusted coefficients in the same cut). Without this,
+	    // a cut that is correct only up to roundoff can be marginally
+	    // too tight and exclude the true optimum (observed: a TwoMirCuts
+	    // cut on MIPLIB2017 instance nu25-pr12 that excluded the
+	    // certified-optimal solution by ~1.14e-6, well above
+	    // DGG_NICEFY_MIN_FIX/DGG_MIN_RHO's 1e-7 scale).
+	    rowcut.setLb(rhs - 1.0e-5*(1.0 + fabs(rhs)));
 	    cs.insertIfNotDuplicateAndClean(rowcut,61);
 	  } else {
 	    // singleton row cut!
@@ -559,7 +571,7 @@ CglTwomir::CglTwomir () :
   away_(0.0005),awayAtRoot_(0.0005),twomirType_(0),
   do_mir_(true), do_2mir_(true), do_tab_(true), do_form_(true),
   t_min_(1), t_max_(1), q_min_(1), q_max_(1), a_max_(2),max_elements_(50000),
-  max_elements_root_(50000),form_nrows_(0) {}
+  max_elements_root_(50000),max_length_(500),form_nrows_(0) {}
 
 //-------------------------------------------------------------------
 // Copy constructor 
@@ -581,6 +593,7 @@ CglTwomir::CglTwomir (const CglTwomir & source) :
   a_max_(source.a_max_),
   max_elements_(source.max_elements_),
   max_elements_root_(source.max_elements_root_),
+  max_length_(source.max_length_),
   form_nrows_(source.form_nrows_)
 {
   probname_ = source.probname_ ;
@@ -627,6 +640,7 @@ CglTwomir::operator=(const CglTwomir& rhs)
     a_max_=rhs.a_max_;
     max_elements_=rhs.max_elements_;
     max_elements_root_ = rhs.max_elements_root_;
+    max_length_ = rhs.max_length_;
     form_nrows_=rhs.form_nrows_;
     delete originalSolver_;
     if (rhs.originalSolver_)
@@ -683,6 +697,7 @@ int DGG_freeData( DGG_data_t *data )
   delete data->vector1_;
   //free (data->spareArray0_);
 #endif
+  free(data->tabColStamp_);
 
   free(data);
   return 0;
@@ -751,6 +766,11 @@ DGG_data_t* DGG_getData(const void *osi_ptr )
   //data->spareArray0_ = reinterpret_cast<double*> (malloc( sizeof(double)*total));
   //memset(data->spareArray0_,0,sizeof(double)*total);
 #endif
+  /* scratch for the gated sparse scatter in DGG_getTableauConstraint */
+  data->tabColStamp_ = reinterpret_cast<int*> (calloc( data->ncol ? data->ncol : 1,
+                                                       sizeof(int)));
+  data->tabStamp_ = 0;
+  data->tabDenseWork_ = -1.0;
 
   memset(data->info, 0, sizeof(int)*total);
 
@@ -1041,7 +1061,87 @@ DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
     //coeff[0] = 1.0;
     //indices[0] = index;
     int ncol = data->ncol;
-    /* compute column (structural) variable coefficients */
+    /* Compute column (structural) variable coefficients.
+
+       The BTRAN result above is nonzero on exactly cnt rows, listed in
+       arrayRows[0..cnt-1].  alpha_j is a dot product of column j against that
+       vector, so it can only be nonzero where column j touches one of those
+       rows.  Marking the columns reached through the row copy therefore lets
+       the inner element loop be skipped for every unmarked column: each
+       arrayElements[] such a column reads is exactly 0.0, so value is exactly
+       0.0 and the DGG_MIN_TABLEAU_COEFFICIENT test rejects it -- the same
+       decision the dense loop reaches, at no cost.
+
+       The outer sweep deliberately stays dense and in increasing j.  The
+       CoinSort_2 below sorts only the slack tail (tabrow->index+nz1 onward),
+       so the order of the structural head is whatever this loop emits, and
+       DGG_transformConstraint, DGG_nicefyConstraint and the emit loop consume
+       it in that order.  The win here is on elements, not on the ncol sweep.
+
+       Both sides of the gate are known before either is paid: the scatter
+       costs sum(rowCnt) over the cnt marked rows, while the dense loop costs
+       tabDenseWork_ + colCnt[index] -- the pivot column is basic, so only the
+       j==index clause admits it.  tabDenseWork_ depends on the basis alone and
+       is therefore invariant across every candidate in this generateCuts call.
+
+       Build with -DCGL_TWOMIR_DENSE_COLLOOP to force the original loop
+       unconditionally.  */
+    bool useScatter = false;
+    const CoinBigIndex *rowBeg = 0;
+    const int *rowCnt = 0, *rowInd = 0;
+#ifndef CGL_TWOMIR_DENSE_COLLOOP
+    if (cnt > 0) {
+      if (data->tabDenseWork_ < 0.0) {
+        double denseWork = 0.0;
+        for (int jj = 0; jj < ncol; jj++)
+          if (!DGG_isBasic(data, jj))
+            denseWork += static_cast<double>(colCnt[jj]);
+        data->tabDenseWork_ = denseWork;
+      }
+      const CoinPackedMatrix *rowMatrixPtr = si->getMatrixByRow();
+      rowBeg = rowMatrixPtr->getVectorStarts();
+      rowCnt = rowMatrixPtr->getVectorLengths();
+      rowInd = rowMatrixPtr->getIndices();
+      double scatter = 0.0;
+      for (int k = 0; k < cnt; k++)
+        scatter += static_cast<double>(rowCnt[arrayRows[k]]);
+      useScatter = (4.0*scatter <
+                    data->tabDenseWork_ + static_cast<double>(colCnt[index]));
+    }
+#endif
+    if (useScatter) {
+      /* The mark array is stamped rather than cleared, so marking costs
+         nothing per candidate beyond the scatter itself.  It lives in data
+         (per generateCuts call), not in a static, so the generator stays
+         reentrant. */
+      int *mark = data->tabColStamp_;
+      const int stamp = ++data->tabStamp_;
+      for (int k = 0; k < cnt; k++) {
+        const int iRow = arrayRows[k];
+        const CoinBigIndex end = rowBeg[iRow] + rowCnt[iRow];
+        for (CoinBigIndex i = rowBeg[iRow]; i < end; i++)
+          mark[rowInd[i]] = stamp;
+      }
+      /* Mark the pivot column unconditionally.  In exact arithmetic the
+         scatter always reaches it, but nothing here should depend on that. */
+      mark[index] = stamp;
+      for(j = 0; j < ncol; j++) {
+        if (mark[j] != stamp) continue;
+        if ( !DGG_isBasic(data, j) || j==index) {
+          /* A marked column is summed over ALL of its elements, not just
+             those in marked rows, so the floating-point summation set and
+             order are bit-identical to the dense loop. */
+          double value = 0.0;
+          for(CoinBigIndex i=colBeg[j]; i < colBeg[j]+colCnt[j]; i++)
+            value += colMat[i]*arrayElements[ colInd[i] ];
+          if ( fabs(value) > DGG_MIN_TABLEAU_COEFFICIENT ) {
+            coeff[nz] = value;
+            indices[nz] = j;
+            nz++;
+          }
+        }
+      }
+    } else {
     for(j = 0; j < ncol; j++) {
       if ( !DGG_isBasic(data, j) || j==index) {
 	double value = 0.0;
@@ -1053,6 +1153,7 @@ DGG_getTableauConstraint( int index,  const void *osi_ptr, DGG_data_t *data,
 	  nz++;
 	}
       }
+    }
     }
     /* compute row variable (slack/logical) variable coefficients */
     /* and compute rhs */
@@ -1557,7 +1658,10 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
   const CoinPackedMatrix *colMatrixPtr = si->getMatrixByCol();
   rval = factorization.factorize(*colMatrixPtr, rowIsBasic, colIsBasic); 
   /* 0 = okay. -1 = singular. -2 = too many in basis. -99 = memory. */
-  DGG_TEST2(rval, 1, "factorization error = %d", rval);
+  if (rval) {
+    if (talk) printf ("2mir_test: factorization error = %d\n", rval);
+    DGG_CHECKRVAL1(rval, 1);
+  }
 
   for(k=0; k<data->ncol; k++){
     if (!(DGG_isBasic(data, k) && DGG_isInteger(data,k))) continue;
@@ -1568,18 +1672,19 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
     base->nz = 0;
     rval = DGG_getTableauConstraint(k, solver_ptr, data, base, 
                                     colIsBasic,rowIsBasic,factorization,0);
-    DGG_CHECKRVAL(rval, rval);
+    DGG_CHECKRVAL1(rval, rval);
 
     if (base->nz == 0){
       printf ("2mir_test: why does constraint not exist ?\n");
       continue;
     }
 
-    if (base->nz > 500) continue;
+    if (base->nz > data->cparams.max_length) continue;
     rval = DGG_generateCutsFromBase(base, cut_list, data, solver_ptr);
-    DGG_CHECKRVAL(rval, rval);
+    DGG_CHECKRVAL1(rval, rval);
   }
 
+ CLEANUP:
 #ifndef TWOMIR_LESS_MALLOC
    free(rowIsBasic);
   free(colIsBasic);
@@ -1888,12 +1993,25 @@ DGG_add2stepToList ( DGG_constraint_t *base, char *isint, double * /*x*/,
   int rval;
   DGG_constraint_t *cut = NULL;
   int i;
+  /* j scores the candidate cut.  It must NOT be i: the two scoring loops below
+     used to reuse i, and since DGG_build2step copies every element of base
+     unconditionally, cut->nz == base->nz -- so i came back equal to base->nz,
+     the outer i++ went past the bound and the loop exited after the first
+     candidate that built a cut.  The search evaluated exactly one alpha,
+     best_rc_alpha and best_norm_alpha were always equal, and the two rules at
+     the bottom compared a single value against COIN_DBL_MAX. */
+  int j;
   double norm_val, best_norm_val, best_norm_alpha=-1.0;
   double rc_val, best_rc_val,  best_rc_alpha=-1.0;
   double vht, bht, alpha;
-  
-  best_rc_val = best_norm_val = COIN_DBL_MAX;
-  
+
+#ifdef CGL_TWOMIR_ALPHA_RC_MAX
+  best_rc_val = -COIN_DBL_MAX;
+#else
+  best_rc_val = COIN_DBL_MAX;
+#endif
+  best_norm_val = COIN_DBL_MAX;
+
   bht = ABOV(base->rhs);
 
   double best_rc = 0;
@@ -1920,23 +2038,81 @@ DGG_add2stepToList ( DGG_constraint_t *base, char *isint, double * /*x*/,
     rval = DGG_build2step(alpha, isint, base, &cut);
     DGG_CHECKRVAL(rval, rval);
 
-    rc_val = COIN_DBL_MAX; // this gives a lower bound on obj. fn. improvement
+    /* Two scores per candidate, and only the second one ever decides.
 
-    for(i=0; i<cut->nz; i++) if(cut->coeff[i]> 1E-6){
-      rc_val = std::min(rc_val, fabs(rc[i])/cut->coeff[i]);
+       rc_val is a lower bound on the LP objective improvement the cut forces.
+       DGG_transformConstraint leaves the LP point at 0 in every transformed
+       variable, so `sum_j coeff_j x_j >= rhs` is violated by exactly rhs, and
+       repairing it through variable j alone costs |rc_j| * rhs / coeff_j.  The
+       repair LP -- minimize sum |rc_j| d_j s.t. sum coeff_j d_j >= rhs, d >= 0
+       -- is optimized by a single variable, so the bound is exactly
+       rhs * min_j(|rc_j|/coeff_j), and across candidate alphas bigger is
+       better -- while the code below takes the smaller.  That inversion is
+       real but MOOT, and measurably so: the `best_rc_val > 1E-6` gate at the
+       bottom was false in every one of 27939 productive calls over 333
+       fixtures, so this rule never selects anything in either direction.  The
+       cause is not the sign of rhs (rhs > 0 in the calls sampled) but the
+       minimum itself: it collapses to 0 as soon as ONE usable column has zero
+       reduced cost, which at an optimal basis is the normal case, not the
+       exception.  A bound of 0 is correct -- a free direction repairs the
+       violation at no objective cost -- and useless.  Left as-is rather than
+       "fixed", because a rule that has never fired cannot be validated by
+       measurement; -DCGL_TWOMIR_ALPHA_RC_MAX takes the maximum for anyone who
+       wants to explore it.
+
+       norm_val is what actually decides.  Minimizing sum(coeff^2)/(rhs^2+1)
+       maximizes rhs/||coeff||, the Euclidean distance from the LP point (at 0)
+       to the cut -- the standard violation-distance criterion.  Two departures
+       from the exact distance: the sum runs only over coefficients > 1E-6, so
+       negative coefficients (DGG_build2step emits them via floor(v)*tau*rho)
+       are omitted from the norm, and the +1 keeps rhs = 0 finite at the cost of
+       distorting the scale for small rhs.  -DCGL_TWOMIR_ALPHA_DIST scores the
+       exact distance instead.  */
+    rc_val = COIN_DBL_MAX;
+    norm_val = 0; // this is the square of the L2 norm
+    int nUsable = 0;
+
+    /* One pass rather than two over the same filtered set: min is
+       order-independent and the sum still accumulates in increasing j, so both
+       values are bit-identical to the two-loop form.  */
+    for(j=0; j<cut->nz; j++) if(cut->coeff[j]> 1E-6){
+      rc_val = std::min(rc_val, fabs(rc[j])/cut->coeff[j]);
+      norm_val += (cut->coeff[j]*cut->coeff[j]);
+      nUsable++;
     }
     rc_val *= cut->rhs;
-
-    norm_val = 0; // this is the square of the L2 norm
- 
-    for(i=0; i<cut->nz; i++) if(cut->coeff[i]> 1E-6){
-      norm_val += (cut->coeff[i]*cut->coeff[i]);
-    }
-
     norm_val /= (cut->rhs * cut->rhs + 1.0);
-         
-    if (rc_val < best_rc_val )  {	
+
+#ifdef CGL_TWOMIR_ALPHA_RC_MAX
+    /* With no coefficient above 1E-6 there is nothing to repair through, so the
+       bound argument yields nothing.  Score 0 rather than leaving
+       COIN_DBL_MAX * rhs, which is +inf for rhs > 0 and would win the maximum
+       outright with a numerically empty cut.  (rhs = ceil(base->rhs)*tau*rho,
+       so it is <= 0 whenever base->rhs <= 0 and rc_val can then go negative;
+       under the minimization below such candidates simply fall through to the
+       norm rule via the `best_rc_val > 1E-6` gate.)  */
+    if (!nUsable) rc_val = 0.0;
+    if (rc_val > best_rc_val )  {
       best_rc_val = rc_val; best_rc_alpha = alpha;  }
+#else
+    if (rc_val < best_rc_val )  {
+      best_rc_val = rc_val; best_rc_alpha = alpha;  }
+#endif
+
+#ifdef CGL_TWOMIR_ALPHA_DIST
+    /* Exact squared violation distance, negated so the existing minimization
+       picks the largest.  Every rhs > 0 candidate scores < 0 and so beats every
+       rhs <= 0 candidate, which keeps the original score and stays rankable
+       among themselves -- so this can never leave best_norm_alpha at -1.0 and
+       drop a cut the original rule would have emitted.  The norm here is over
+       ALL coefficients, negative ones included.  */
+    {
+      double nrm2 = 0.0;
+      for(j=0; j<cut->nz; j++) nrm2 += cut->coeff[j]*cut->coeff[j];
+      if (cut->rhs > 0.0 && nrm2 > 1e-30)
+        norm_val = -(cut->rhs * cut->rhs) / nrm2;
+    }
+#endif
 
     if (norm_val < best_norm_val ) {	
       best_norm_val = norm_val;  best_norm_alpha = alpha;  }
@@ -2024,6 +2200,11 @@ int DGG_build2step( double alpha,
   DGG_TEST( DGG_is_a_multiple_of_b(alpha, bht), 1, "can't generate simple 2mir in limiting case");
   /* ensure that rho is not zero */
   DGG_TEST2( rho < DGG_MIN_RHO, 1, "rho (%f) too small", rho);
+  /* cap tau: it multiplies rho (and every coefficient below), so an
+     unbounded tau can amplify residual floating-point noise in rho into a
+     visibly wrong cut RHS/coefficients, even with DGG_MIN_RHO/DGG_MIN_ALPHA
+     enforced above. See DGG_MAX_TAU's comment in CglTwomir.hpp. */
+  DGG_TEST2( tau > DGG_MAX_TAU, 1, "tau (%f) too large" , tau);
 
   /* initialize constraint */
   tmir = DGG_newConstraint( base->nz );
@@ -2151,7 +2332,7 @@ int DGG_isCutDesirable(DGG_constraint_t *c, DGG_data_t *d)
   lhs = DGG_cutLHS(c, d->x);
   rhs = c->rhs;
 
-  if (c->nz > 500) return 0;
+  if (c->nz > d->cparams.max_length) return 0;
 
   /* if the cut is not violated, return 0 */
   if (c->sense == 'G')
@@ -2297,6 +2478,10 @@ CglTwomir::generateCpp( FILE * fp)
     fprintf(fp,"3  twomir.setMaxElementsRoot(%d);\n",max_elements_root_);
   else
     fprintf(fp,"4  twomir.setMaxElementsRoot(%d);\n",max_elements_root_);
+  if (max_length_!=other.max_length_)
+    fprintf(fp,"3  twomir.setMaxLength(%d);\n",max_length_);
+  else
+    fprintf(fp,"4  twomir.setMaxLength(%d);\n",max_length_);
   if (getAggressiveness()!=other.getAggressiveness())
     fprintf(fp,"3  twomir.setAggressiveness(%d);\n",getAggressiveness());
   else

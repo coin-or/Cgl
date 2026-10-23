@@ -24,7 +24,7 @@
 #include "CoinBuild.hpp"
 #include "CoinHelperFunctions.hpp"
 #include "CoinWarmStartBasis.hpp"
-#ifdef CBC_HAS_CLP
+#ifdef CGL_HAS_CLP
 #include "OsiClpSolverInterface.hpp"
 #else
 #undef CBC_USE_PAPILO
@@ -34,6 +34,50 @@
 #include "CoinPresolveDupcol.hpp"
 #include "CglClique.hpp"
 #include "CglBKClique.hpp"
+#ifdef CGL_HAS_CLP
+/*
+  The warm start reaching the initial LP need not be a vertex: after
+  OsiPresolve (keepSolution) and the bound work that follows, columns can sit
+  strictly between their bounds while labelled atLowerBound/atUpperBound, even
+  though the root LP handed over a clean vertex. The dual hinted for that solve
+  first snaps them onto the labelled bound, which throws the point away - ex10
+  after LP racing: 3477 such columns, the dual hit the 120s cap (so
+  preprocessing was abandoned) where primal from the relabelled start takes 4s.
+  Relabel them superbasic; a nonzero return tells the caller to use primal,
+  which prices superbasics in from the point.
+*/
+static int relabelOffBoundNonbasic(OsiClpSolverInterface *clpOsi)
+{
+  ClpSimplex *m = clpOsi->getModelPtr();
+  const double *x = m->primalColumnSolution();
+  const double *lo = m->columnLower();
+  const double *up = m->columnUpper();
+  const double tol = m->primalTolerance();
+  int n = 0;
+  for (int i = 0; i < m->numberColumns(); i++) {
+    ClpSimplex::Status st = m->getColumnStatus(i);
+    if (st == ClpSimplex::basic || st == ClpSimplex::superBasic || st == ClpSimplex::isFree)
+      continue;
+    if (x[i] > lo[i] + tol && x[i] < up[i] - tol) {
+      clpOsi->setColumnStatus(i, ClpSimplex::superBasic);
+      n++;
+    }
+  }
+  return n;
+}
+#endif
+
+/* The OsiPresolve actions every preprocessing presolve starts from: dual
+   reductions on integers and transformations that may not unroll cleanly
+   (1), duplicate columns (16), and 32 if tuning asks for it.  Tuning 4096
+   drops 1, which in effect stops duplicate integer columns being merged. */
+static int basePresolveActions(int tuning)
+{
+  int actions = ((tuning & 4096) == 0) ? 1 + 16 : 16;
+  if ((tuning & 32) != 0)
+    actions |= 32;
+  return actions;
+}
 //#define PRINT_DEBUG 1
 //#define COIN_DEVELOP 1
 #ifdef COIN_DEVELOP
@@ -84,152 +128,6 @@ CglPreProcess::preProcess(OsiSolverInterface &model,
   if (newSolver)
     newSolver->setHintParam(OsiDoInBranchAndCut, false, OsiHintDo);
   return newSolver;
-}
-static void outSingletons(int &nCol, int &nRow,
-  int *startCol, int *row, double *element,
-  int *startRow, int *column)
-{
-  int iRow, iCol;
-  bool singletons = false;
-  int *countRow = new int[nRow];
-  int *countCol = new int[nCol];
-  int *temp = new int[nRow];
-  // make row copy
-  memset(countRow, 0, nRow * sizeof(int));
-  memset(countCol, 0, nCol * sizeof(int));
-  for (iCol = 0; iCol < nCol; iCol++) {
-    for (int j = startCol[iCol]; j < startCol[iCol + 1]; j++) {
-      int iRow = row[j];
-      countRow[iRow]++;
-      countCol[iCol]++;
-    }
-  }
-  startRow[0] = 0;
-  for (iRow = 0; iRow < nRow; iRow++) {
-    int k = countRow[iRow] + startRow[iRow];
-    temp[iRow] = startRow[iRow];
-    startRow[iRow + 1] = k;
-  }
-  for (iCol = 0; iCol < nCol; iCol++) {
-    for (int j = startCol[iCol]; j < startCol[iCol + 1]; j++) {
-      int iRow = row[j];
-      int k = temp[iRow];
-      temp[iRow]++;
-      column[k] = iCol;
-    }
-  }
-  for (iRow = 0; iRow < nRow; iRow++) {
-    if (countRow[iRow] <= 1)
-      singletons = true;
-  }
-  for (iCol = 0; iCol < nCol; iCol++) {
-    if (countCol[iCol] <= 1)
-      singletons = true;
-  }
-  if (singletons) {
-    while (singletons) {
-      singletons = false;
-      for (iCol = 0; iCol < nCol; iCol++) {
-        if (countCol[iCol] == 1) {
-          singletons = true;
-          countCol[iCol] = 0;
-          int iRow = row[startCol[iCol]];
-          int start = startRow[iRow];
-          int end = start + countRow[iRow];
-          countRow[iRow]--;
-          int j;
-          for (j = start; j < end; j++) {
-            if (column[j] == iCol) {
-              column[j] = column[end - 1];
-              break;
-            }
-          }
-          assert(j < end);
-        }
-      }
-      for (iRow = 0; iRow < nRow; iRow++) {
-        if (countRow[iRow] == 1) {
-          singletons = true;
-          countRow[iRow] = 0;
-          int iCol = column[startRow[iRow]];
-          int start = startCol[iCol];
-          int end = start + countCol[iCol];
-          countCol[iCol]--;
-          int j;
-          for (j = start; j < end; j++) {
-            if (row[j] == iRow) {
-              row[j] = row[end - 1];
-              if (element)
-                element[j] = element[end - 1];
-              break;
-            }
-          }
-          assert(j < end);
-        }
-      }
-    }
-    // Pack down
-    int newNrow = 0;
-    for (iRow = 0; iRow < nRow; iRow++) {
-      if (countRow[iRow] == 0) {
-        temp[iRow] = -1;
-      } else {
-        assert(countRow[iRow] > 1);
-        temp[iRow] = newNrow;
-        newNrow++;
-      }
-    }
-    int newNcol = 0;
-    int nEl = 0;
-    int iNext = 0;
-    for (iCol = 0; iCol < nCol; iCol++) {
-      int start = iNext;
-      iNext = startCol[iCol + 1];
-      if (countCol[iCol] == 0) {
-        countCol[iCol] = -1;
-      } else {
-        assert(countCol[iCol] > 1);
-        int end = start + countCol[iCol];
-        countCol[iCol] = newNcol;
-        int j;
-        for (j = start; j < end; j++) {
-          int iRow = row[j];
-          iRow = temp[iRow];
-          assert(iRow >= 0);
-          row[nEl] = iRow;
-          if (element)
-            element[nEl] = element[j];
-          nEl++;
-        }
-        newNcol++;
-        startCol[newNcol] = nEl;
-      }
-    }
-    newNrow = 0;
-    nEl = 0;
-    iNext = 0;
-    for (iRow = 0; iRow < nRow; iRow++) {
-      int start = iNext;
-      iNext = startRow[iRow + 1];
-      if (countRow[iRow] > 1) {
-        int end = start + countRow[iRow];
-        int j;
-        for (j = start; j < end; j++) {
-          int iCol = column[j];
-          iCol = countCol[iCol];
-          assert(iCol >= 0);
-          column[nEl++] = iCol;
-        }
-        newNrow++;
-        startRow[newNrow] = nEl;
-      }
-    }
-    nRow = newNrow;
-    nCol = newNcol;
-  }
-  delete[] countCol;
-  delete[] countRow;
-  delete[] temp;
 }
 static int makeIntegers2(OsiSolverInterface *model, int mode)
 {
@@ -300,30 +198,6 @@ static int makeIntegers2(OsiSolverInterface *model, int mode)
 #endif
     int numberZero = 0;
     int numberNonZero = 0;
-    if (false) {
-      for (iColumn = 0; iColumn < numberColumns; iColumn++) {
-        if (upper[iColumn] > lower[iColumn]) {
-          if (!model->isInteger(iColumn)) {
-            CoinBigIndex start = columnStart[iColumn];
-            CoinBigIndex end = start + columnLength[iColumn];
-            int nC = 0;
-            for (CoinBigIndex j = start; j < end; j++) {
-              int iRow = row[j];
-              if (count[iRow] > 1) {
-                nC++;
-              }
-            }
-            if (nC > 2) {
-              for (CoinBigIndex j = start; j < end; j++) {
-                int iRow = row[j];
-                if (count[iRow] > 1)
-                  count[iRow] = 999999;
-              }
-            }
-          }
-        }
-      }
-    }
     int *newInts = new int[numberColumns];
     // Columns to zap
     int nColumnZap = 0;
@@ -427,16 +301,6 @@ static int makeIntegers2(OsiSolverInterface *model, int mode)
             if (!singletonRow && end > start + 1 && !equality)
               thisGood = false;
             // Can we make equality
-            if (end == start + 1 && !equality && false) {
-#if CBC_USEFUL_PRINTING > 1
-              numberEq++;
-#endif
-              int iRow = row[start];
-              if (element[start] > 0.0)
-                model->setRowUpper(iRow, rowLower[iRow]);
-              else
-                model->setRowLower(iRow, rowUpper[iRow]);
-            }
           } else {
             // wants to be as high as possible
             if (upper[iColumn] > 1.0e10 || fabs(upper[iColumn] - floor(upper[iColumn] + 0.5)) > 1.0e-10) {
@@ -493,16 +357,6 @@ static int makeIntegers2(OsiSolverInterface *model, int mode)
               }
             }
             // Can we make equality
-            if (end == start + 1 && !equality && false) {
-#if CBC_USEFUL_PRINTING > 1
-              numberEq++;
-#endif
-              int iRow = row[start];
-              if (element[start] < 0.0)
-                model->setRowUpper(iRow, rowLower[iRow]);
-              else
-                model->setRowLower(iRow, rowUpper[iRow]);
-            }
           }
         } else if (objValue) {
           CoinBigIndex start = columnStart[iColumn];
@@ -513,14 +367,6 @@ static int makeIntegers2(OsiSolverInterface *model, int mode)
               if (fabs(rhs[iRow]) > 1.0e20 || fabs(rhs[iRow] - floor(rhs[iRow] + 0.5)) > 1.0e-10
                 || fabs(element[start]) != 1.0) {
                 // no good
-              } else if (false) {
-#if CBC_USEFUL_PRINTING > 1
-                numberEqI++;
-#endif
-                if (element[start] * objValue > 0.0)
-                  model->setRowUpper(iRow, rowLower[iRow]);
-                else
-                  model->setRowLower(iRow, rowUpper[iRow]);
               }
             }
           }
@@ -619,452 +465,6 @@ static int makeIntegers2(OsiSolverInterface *model, int mode)
     }
     delete[] newInts;
     // Can we look at remainder and make any integer
-    if (makeAll && false) {
-      int nLook = 0;
-      int nEl = 0;
-      for (iColumn = 0; iColumn < numberColumns; iColumn++) {
-        if (upper[iColumn] > lower[iColumn] && !model->isInteger(iColumn)) {
-          CoinBigIndex start = columnStart[iColumn];
-          CoinBigIndex end = start + columnLength[iColumn];
-          bool possible = true;
-          int n = 0;
-          for (CoinBigIndex j = start; j < end; j++) {
-            int iRow = row[j];
-            if (count[iRow] > 1) {
-              if (count[iRow] == 999999) {
-                possible = false;
-                break;
-              } else {
-                n++;
-              }
-            }
-          }
-          if (possible) {
-            nLook++;
-            nEl += n;
-          }
-        }
-      }
-      if (nLook) {
-        int *startC = new int[nLook + 1];
-        int *back = new int[nLook];
-        int *row2 = new int[nEl];
-        double *element2 = new double[nEl];
-        int *backRow = new int[numberRows];
-        int jRow;
-        for (jRow = 0; jRow < numberRows; jRow++) {
-          backRow[jRow] = -1;
-        }
-        int nCol = nLook;
-        nLook = 0;
-        nEl = 0;
-        startC[0] = 0;
-        int nRow = 0;
-        for (iColumn = 0; iColumn < numberColumns; iColumn++) {
-          if (upper[iColumn] > lower[iColumn] && !model->isInteger(iColumn)) {
-            CoinBigIndex start = columnStart[iColumn];
-            CoinBigIndex end = start + columnLength[iColumn];
-            bool possible = true;
-            int n = 0;
-            for (CoinBigIndex j = start; j < end; j++) {
-              int iRow = row[j];
-              if (count[iRow] > 1) {
-                if (count[iRow] == 999999) {
-                  possible = false;
-                  break;
-                } else {
-                  n++;
-                }
-              }
-            }
-            if (!n)
-              possible = false; // may be done later
-            if (possible) {
-              back[nLook] = iColumn;
-              for (CoinBigIndex j = start; j < end; j++) {
-                int iRow = row[j];
-                if (count[iRow] > 1) {
-                  int jRow = backRow[iRow];
-                  if (jRow < 0) {
-                    // new row
-                    backRow[iRow] = nRow;
-                    jRow = nRow;
-                    nRow++;
-                  }
-                  element2[nEl] = element[j];
-                  row2[nEl++] = jRow;
-                }
-              }
-              nLook++;
-              startC[nLook] = nEl;
-            }
-          }
-        }
-        // Redo nCol
-        nCol = nLook;
-        delete[] backRow;
-        int *startRow = new int[nRow + 1];
-        int *column2 = new int[nEl];
-        // take out singletons and do row copy
-        outSingletons(nCol, nRow,
-          startC, row2, element2,
-          startRow, column2);
-        // Decompose
-        int *rowBlock = new int[nRow];
-        int *stack = new int[nRow];
-        for (int iRow = 0; iRow < nRow; iRow++)
-          rowBlock[iRow] = -2;
-        int numberBlocks = 0;
-        // to say if column looked at
-        int *columnBlock = new int[nCol];
-        int iColumn;
-        for (iColumn = 0; iColumn < nCol; iColumn++)
-          columnBlock[iColumn] = -2;
-        for (iColumn = 0; iColumn < nCol; iColumn++) {
-          int kstart = startC[iColumn];
-          int kend = startC[iColumn + 1];
-          if (columnBlock[iColumn] == -2) {
-            // column not allocated
-            int j;
-            int nstack = 0;
-            for (j = kstart; j < kend; j++) {
-              int iRow = row2[j];
-              if (rowBlock[iRow] != -1) {
-                assert(rowBlock[iRow] == -2);
-                rowBlock[iRow] = numberBlocks; // mark
-                stack[nstack++] = iRow;
-              }
-            }
-            if (nstack) {
-              // new block - put all connected in
-              numberBlocks++;
-              columnBlock[iColumn] = numberBlocks - 1;
-              while (nstack) {
-                int iRow = stack[--nstack];
-                int k;
-                for (k = startRow[iRow]; k < startRow[iRow + 1]; k++) {
-                  int iColumn = column2[k];
-                  int kkstart = startC[iColumn];
-                  int kkend = startC[iColumn + 1];
-                  if (columnBlock[iColumn] == -2) {
-                    columnBlock[iColumn] = numberBlocks - 1; // mark
-                    // column not allocated
-                    int jj;
-                    for (jj = kkstart; jj < kkend; jj++) {
-                      int jRow = row2[jj];
-                      if (rowBlock[jRow] == -2) {
-                        rowBlock[jRow] = numberBlocks - 1;
-                        stack[nstack++] = jRow;
-                      }
-                    }
-                  } else {
-                    assert(columnBlock[iColumn] == numberBlocks - 1);
-                  }
-                }
-              }
-            } else {
-              // Only in master
-              columnBlock[iColumn] = -1;
-              // empty - should already be integer
-              abort();
-            }
-          }
-        }
-        // See if each block OK
-        for (int iBlock = 0; iBlock < numberBlocks; iBlock++) {
-          // Get block
-          int *startCB = new int[nCol + 1];
-          int *row2B = new int[nEl];
-          int *startCC = new int[nCol + 1];
-          int *row2C = new int[nEl];
-          int *startRowC = new int[nRow + 1];
-          int *column2C = new int[nEl];
-          int *whichRow = new int[nRow];
-          int *whichCol = new int[nCol];
-          int i;
-          int nRowB = 0;
-          int nColB = 0;
-          int nElB = 0;
-          for (i = 0; i < nRow; i++) {
-            if (rowBlock[i] == iBlock) {
-              whichRow[i] = nRowB;
-              nRowB++;
-            } else {
-              whichRow[i] = -1;
-            }
-          }
-          bool network = true;
-          // even if not network - take out network columns NO
-          startCB[0] = 0;
-          for (i = 0; i < nCol; i++) {
-            if (columnBlock[i] == iBlock) {
-              int type = 0;
-              whichCol[i] = nColB;
-              for (int j = startC[i]; j < startC[i + 1]; j++) {
-                int iRow = row2[j];
-                iRow = whichRow[iRow];
-                if (iRow >= 0) {
-                  if (element2[j] == 1.0) {
-                    if ((type & 1) == 0)
-                      type |= 1;
-                    else
-                      type = 7;
-                  } else {
-                    assert(element2[j] == -1.0);
-                    if ((type & 2) == 0)
-                      type |= 2;
-                    else
-                      type = 7;
-                  }
-                  row2B[nElB++] = iRow;
-                }
-              }
-              if (type != 3)
-                network = false;
-              nColB++;
-              startCB[nColB] = nElB;
-              assert(startCB[nColB] > startCB[nColB - 1] + 1);
-            } else {
-              whichCol[i] = -1;
-            }
-          }
-          // See if network
-          bool goodInteger = false;
-          if (!network) {
-            // take out singletons
-            outSingletons(nColB, nRowB,
-              startCB, row2B, NULL,
-              startRowC, column2C);
-            // See if totally balanced;
-            int *split = new int[nRowB];
-            int *best = new int[nRowB];
-            int *current = new int[nRowB];
-            int *size = new int[nRowB];
-            {
-              memset(size, 0, nRowB * sizeof(int));
-              for (i = 0; i < nColB; i++) {
-                int j;
-                for (j = startCB[i]; j < startCB[i + 1]; j++) {
-                  int iRow = row2B[j];
-                  size[iRow]++;
-                }
-              }
-#if CBC_USEFUL_PRINTING
-              for (i = 0; i < nRowB; i++)
-                if (size[i] < 2)
-                  printf("%d entries in row %d\n", size[i], i);
-#endif
-            }
-            for (i = 0; i < nColB; i++)
-              whichCol[i] = i;
-            for (i = 0; i < nRowB; i++)
-              whichRow[i] = 0;
-            int nLeft = nColB;
-            int nSet = 1;
-            size[0] = nRowB;
-            while (nLeft) {
-              // find best column
-              int iBest = -1;
-              memset(best, 0, nSet * sizeof(int));
-              memset(current, 0, nSet * sizeof(int));
-              for (i = 0; i < nColB; i++) {
-                if (whichCol[i] < nLeft) {
-                  int j;
-                  for (j = startCB[i]; j < startCB[i + 1]; j++) {
-                    int iRow = row2B[j];
-                    int iSet = whichRow[iRow];
-                    current[iSet]++;
-                  }
-                  // See if better - could this be done faster
-                  bool better = false;
-                  for (j = nSet - 1; j >= 0; j--) {
-                    if (current[j] > best[j]) {
-                      better = true;
-                      break;
-                    } else if (current[j] < best[j]) {
-                      break;
-                    }
-                  }
-                  if (better) {
-                    iBest = i;
-                    memcpy(best, current, nSet * sizeof(int));
-                  }
-                  for (j = startCB[i]; j < startCB[i + 1]; j++) {
-                    int iRow = row2B[j];
-                    int iSet = whichRow[iRow];
-                    current[iSet] = 0;
-                  }
-                }
-              }
-              assert(iBest >= 0);
-              // swap
-              for (i = 0; i < nColB; i++) {
-                if (whichCol[i] == nLeft - 1) {
-                  whichCol[i] = whichCol[iBest];
-                  whichCol[iBest] = nLeft - 1;
-                  break;
-                }
-              }
-              // See which ones will have to split
-              int nMore = 0;
-              for (i = 0; i < nSet; i++) {
-                current[i] = i + nMore;
-                if (best[i] > 0 && best[i] < size[i]) {
-                  split[i] = i + nMore;
-                  nMore++;
-                } else {
-                  split[i] = -1;
-                }
-              }
-              if (nMore) {
-                int j;
-                for (j = startCB[iBest]; j < startCB[iBest + 1]; j++) {
-                  int iRow = row2B[j];
-                  int iSet = whichRow[iRow];
-                  int newSet = split[iSet];
-                  if (newSet >= 0) {
-                    whichRow[iRow] = newSet + 1 + nRowB;
-                  }
-                }
-                nSet += nMore;
-                memset(size, 0, nSet * sizeof(int));
-                for (i = 0; i < nRowB; i++) {
-                  int iSet = whichRow[i];
-                  if (iSet >= nRowB) {
-                    // has 1 - correct it
-                    iSet -= nRowB;
-                  } else {
-                    // 0 part of split set or not split
-                    iSet = current[iSet];
-                  }
-                  whichRow[i] = iSet;
-                  size[iSet]++;
-                }
-              }
-              nLeft--;
-            }
-            if (nSet < nRowB) {
-              // ties - need to spread out whichRow
-              memset(split, 0, nRowB * sizeof(int));
-              for (i = 0; i < nRowB; i++) {
-                int iSet = whichRow[i];
-                split[iSet]++;
-              }
-              current[0] = 0;
-              for (i = 0; i < nSet; i++) {
-                current[i + 1] = current[i] + split[i];
-                split[i] = current[i];
-              }
-              for (i = 0; i < nRowB; i++) {
-                int iSet = whichRow[i];
-                int k = split[iSet];
-                split[iSet] = k;
-                whichRow[i] = k;
-              }
-            }
-            // Get inverse of whichCol
-            for (i = 0; i < nColB; i++) {
-              int iColumn = whichCol[i];
-              startCC[iColumn] = i;
-            }
-            memcpy(whichCol, startCC, nColB * sizeof(int));
-            // Permute matrix
-            startCC[0] = 0;
-            int nelB = 0;
-            memset(split, 0, nRowB * sizeof(int));
-            for (i = 0; i < nColB; i++) {
-              int iColumn = whichCol[i];
-              int j;
-              for (j = startCB[iColumn]; j < startCB[iColumn + 1]; j++) {
-                int iRow = row2B[j];
-                int iSet = whichRow[iRow];
-                row2C[nelB++] = iSet;
-                split[iSet]++;
-              }
-              startCC[i + 1] = nelB;
-            }
-            startRowC[0] = 0;
-            for (i = 0; i < nRowB; i++) {
-              startRowC[i + 1] = startRowC[i] + split[i];
-              split[i] = 0;
-            }
-            for (i = 0; i < nColB; i++) {
-              int j;
-              for (j = startCC[i]; j < startCC[i + 1]; j++) {
-                int iRow = row2C[j];
-                int k = split[iRow] + startRowC[iRow];
-                split[iRow]++;
-                column2C[k] = i;
-              }
-            }
-            for (i = 0; i < nRowB; i++)
-              split[i] = 0;
-            goodInteger = true;
-            for (i = nColB - 1; i > 0; i--) {
-              int j;
-              for (j = startCC[i]; j < startCC[i + 1]; j++) {
-                int iRow = row2C[j];
-                split[iRow] = 1;
-              }
-              for (j = startCC[i]; j < startCC[i + 1]; j++) {
-                int iRow = row2C[j];
-                for (int k = startRowC[iRow]; k < startRowC[iRow + 1]; k++) {
-                  int iColumn = column2C[k];
-                  if (iColumn < i) {
-                    for (int jj = startCC[iColumn]; jj < startCC[iColumn + 1]; jj++) {
-                      int jRow = row2C[jj];
-                      if (jRow > iRow && !split[jRow]) {
-                        // bad
-                        goodInteger = false;
-                        break;
-                      }
-                    }
-                  }
-                }
-              }
-              if (!goodInteger)
-                break;
-              for (j = startCC[i]; j < startCC[i + 1]; j++) {
-                int iRow = row2C[j];
-                split[iRow] = 0;
-              }
-            }
-            delete[] split;
-            delete[] best;
-            delete[] current;
-            delete[] size;
-          } else {
-            // was network
-            goodInteger = true;
-          }
-          if (goodInteger) {
-#if CBC_USEFUL_PRINTING
-            printf("Block %d can be integer\n", iBlock);
-#endif
-            for (i = 0; i < nCol; i++) {
-              if (columnBlock[i] == iBlock) {
-                int iBack = back[i];
-                model->setInteger(iBack);
-              }
-            }
-          }
-          delete[] startRowC;
-          delete[] column2C;
-          delete[] startCB;
-          delete[] row2B;
-          delete[] startCC;
-          delete[] row2C;
-          delete[] whichRow;
-          delete[] whichCol;
-        }
-        delete[] startRow;
-        delete[] column2;
-        delete[] element2;
-        delete[] startC;
-        delete[] row2;
-        delete[] back;
-      }
-    }
     numberIntegers = numberNonZero;
     if (allGood && numberObj) {
 #if CBC_USEFUL_PRINTING > 1
@@ -1181,8 +581,6 @@ static void writeDebugMps(const OsiSolverInterface *solver,
 #else
 #define writeDebugMps(x, y, z)
 #endif
-#define USE_CGL_RATIONAL 1
-#if USE_CGL_RATIONAL>0
 #include "CoinRational.hpp"
 static int64_t computeGcd(int64_t a, int64_t b) {
   // This is the standard Euclidean algorithm for gcd
@@ -1251,7 +649,6 @@ static bool scaleRowIntegral(double* rowElem, int rowNz)
   }
   return true;
 } /* scaleRowIntegral */
-#endif
 // returns -1 if infeasible, +n made integer
 static int analyze(OsiSolverInterface * solver)
 {
@@ -1518,6 +915,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   int tuning)
 {
   double ppstart = getCurrentCPUTime();
+  CglPhaseTimer totalTimer(stats_, CglPreProcessStats::Total);
   OsiSolverInterface * modelIn = &model;
 #if CBC_USE_PAPILO
   papiloStruct keepPapilo = initialTry;
@@ -1566,8 +964,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     }
   }
 #endif
-#define CGL_TRY_MINI_DUAL_STUFF
-#ifdef CGL_TRY_MINI_DUAL_STUFF
   if (makeEquality==-2) {
     OsiPresolve dummy;
     // Just to do dual stuff using existing coding
@@ -1576,7 +972,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     delete returnedModel; // throw it away
     //printf("end mini\n");
   }
-#endif
 #if DEBUG_PREPROCESS > 1
   bool rcdActive = true;
   std::string modelName;
@@ -1662,6 +1057,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   delete[] originalRow_;
   originalColumn_ = NULL;
   originalRow_ = NULL;
+  numberFinalColumns_ = -1;
+  numberFinalRows_ = -1;
   // Should not be hardwired tolerance
 #ifndef CGL_PREPROCESS_TOLERANCE
   // So standalone version can switch off
@@ -1679,16 +1076,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     // keep very simple
     OsiSolverInterface *presolvedModel;
     OsiPresolve *pinfo = new OsiPresolve();
-    int presolveActions = 0;
-    // Allow dual stuff on integers
-    // Allow stuff which may not unroll cleanly - unless told not to
-    if ((tuning & 4096) == 0)
-      presolveActions = 1 + 16;
-    else
-      presolveActions = 16; // actually just switch off duplicate columns for ints
-    if ((tuning & 32) != 0)
-      presolveActions |= 32;
-    presolveActions |= 8;
+    int presolveActions = basePresolveActions(tuning) | 8;
     pinfo->setPresolveActions(presolveActions);
     if (prohibited_)
       assert(numberProhibited_ == originalModel_->getNumCols());
@@ -1711,6 +1099,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     }
   }
   //startModel_=&model;
+  CglPhaseTimer analysisTimer(stats_, CglPreProcessStats::ModelAnalysis);
   // make clone
   delete startModel_;
   startModel_ = originalModel_->clone();
@@ -2292,13 +1681,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     }
     if (makeEquality == 4) {
       makeEquality = 0;
-#if 1
       // Try and make continuous variables integer
       // make clone
       if (!startModel_)
         startModel_ = originalModel_->clone();
       makeInteger();
-#endif
     }
     delete[] whichRow;
     delete[] mark;
@@ -2510,11 +1897,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   }
   if (numberSlacks && ((makeEquality == 2 && !justOnesWithObj)
 		       || makeEquality == -2)) {
-#ifdef CBC_KEEP_OLD_MESSAGES
-    handler_->message(CGL_SLACKS, messages_)
-      << numberSlacks
-      << CoinMessageEol;
-#endif
     // add variables to make equality rows
     // Get new model
     if (!startModel_) {
@@ -2631,62 +2013,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   // look for costed slacks on equality rows first
   int nCosted = 0;
   int nCostedI = 0;
-#define CAN_MOVE_LARGE_OBJ
-#ifndef CAN_MOVE_LARGE_OBJ
-  double goodRatio=0.001;
-#else
   double goodRatio=0.0;
-#endif
 #endif
   double *obj = CoinCopyOfArray(startModel_->getObjCoefficients(), numberColumns);
 #ifdef CBC_PREPROCESS_EXPERIMENT
-#ifdef PRINT_STUFF
-  {
-    int * counts = new int[numberRows];
-    memset(counts,0,numberRows*sizeof(int));
-    int nn=0;
-    int nz=0;
-    int neq=0;
-    for (int i=0;i<numberColumns;i++) {
-      if (columnLength[i]==1) {
-	int iRow = row[columnStart[i]];
-	counts[iRow]++;
-	if (rowLower[iRow]==rowUpper[iRow])
-	  neq++;
-	if (obj[i])
-	  nn++;
-	else
-	  nz++;
-      }
-    }
-    int cc[10];
-    memset(cc,0,sizeof(cc));
-    for (int i=0;i<numberRows;i++) {
-      if (rowLower[i]==rowUpper[i]) {
-	int k = std::min(counts[i],9);
-	cc[k]++;
-      }
-    }
-    for (int i=1;i<10;i++)
-      if (cc[i])
-	printf("(%d E rows have %d singletons) ",cc[i],i);
-    printf("\n");
-    memset(cc,0,sizeof(cc));
-    for (int i=0;i<numberRows;i++) {
-      if (rowLower[i]!=rowUpper[i]) {
-	int k = std::min(counts[i],9);
-	cc[k]++;
-      }
-    }
-    for (int i=1;i<10;i++)
-      if (cc[i])
-	printf("(%d L/G rows have %d singletons) ",cc[i],i);
-    printf("\n");
-    delete [] counts;
-    printf("%d single with cost %d zero cost %d equality rows\n",
-	   nn,nz,neq);
-  }
-#endif
 #endif
   double offset;
 #if CBC_USEFUL_PRINTING > 1
@@ -2766,25 +2096,10 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   if (nCosted||nCostedI) {
     startModel_->setDblParam(OsiObjOffset, offset);
     startModel_->setObjective(obj);
-#ifdef PRINT_STUFF
-    printf("%d integer costed slacks and %d continuous\n",nCostedI,nCosted);
-    int nn=0;
-    int nz=0;
-    for (int i=0;i<numberColumns;i++) {
-      if (columnLength[i]==1) {
-	if (obj[i])
-	  nn++;
-	else
-	  nz++;
-      }
-    }
-    printf("%d single with cost %d zero cost\n",nn,nz);
-#endif
   }
 #endif
   writeDebugMps(startModel_, "b2", NULL);
   // This is not a vital loop so be careful
-#ifndef SKIP_MOVE_COSTS_TO_INTEGERS
   for (iRow = 0; iRow < numberRows; iRow++) {
     int nPlus = 0;
     int nMinus = 0;
@@ -2815,22 +2130,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       double value = elementByRow[j];
       if (upper[iColumn] > lower[iColumn]) {
         if (startModel_->isInteger(iColumn)) {
-#if 0
-	  if (columnLength[iColumn]==1) {
-	    if (value==1.0) {
-	    }
-	  }
-	  if (value!=floor(value+0.5))
-	    allInteger=false;
-	  if (allInteger&&fabs(value)<1.0e8) {
-	    if (!multiple)
-	      multiple = static_cast<int> (fabs(value));
-	    else if (multiple>0)
-	      multiple = gcd(multiple,static_cast<int> (fabs(value)));
-	  } else {
-	    allInteger=false;
-	  }
-#endif
         } else {
           numberContinuous++;
         }
@@ -2921,7 +2220,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       }
     }
   }
-#endif
 #if CBC_USEFUL_PRINTING > 1
   if (numberMoved)
     printf("ZZZ %d costs moved\n", numberMoved);
@@ -2937,6 +2235,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     makeIntegers2(startModel_, makeIntegers);
   }
   writeDebugMps(startModel_, "b4", NULL);
+  analysisTimer.stop();
+  CglPhaseTimer initialPresolveTimer(stats_, CglPreProcessStats::InitialPresolve);
   int infeas = 0;
   OsiSolverInterface *startModel2 = startModel_;
   // Do we want initial presolve
@@ -2945,15 +2245,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     OsiSolverInterface *presolvedModel;
     OsiSolverInterface *oldModel = startModel2;
     OsiPresolve *pinfo = new OsiPresolve();
-    int presolveActions = 0;
-    // Allow dual stuff on integers
-    // Allow stuff which may not unroll cleanly - unless told not to
-    if ((tuning & 4096) == 0)
-      presolveActions = 1 + 16;
-    else
-      presolveActions = 16; // actually just switch off duplicate columns for ints
-    if ((tuning & 32) != 0)
-      presolveActions |= 32;
+    int presolveActions = basePresolveActions(tuning);
     if ((tuning & 512) != 0)
       presolveActions |= 0x4000;
     // Do not allow all +1 to be tampered with
@@ -2983,33 +2275,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     oldModel->messageHandler()->setLogLevel(saveLogLevel);
     if (presolvedModel) {
       //#define MAKE_LESS_THAN
-#ifdef MAKE_LESS_THAN
-      {
-        int numberRows = presolvedModel->getNumRows();
-        int numberColumns = presolvedModel->getNumCols();
-        CoinPackedMatrix *matrix = presolvedModel->getMutableMatrixByCol();
-        const int *row = matrix->getIndices();
-        const CoinBigIndex *columnStart = matrix->getVectorStarts();
-        const int *columnLength = matrix->getVectorLengths();
-        double *element = const_cast< double * >(matrix->getElements());
-        const double *rowLower = presolvedModel->getRowLower();
-        const double *rowUpper = presolvedModel->getRowUpper();
-        for (int iColumn = 0; iColumn < numberColumns; iColumn++) {
-          for (CoinBigIndex j = columnStart[iColumn];
-               j < columnStart[iColumn] + columnLength[iColumn]; j++) {
-            int iRow = row[j];
-            if (rowUpper[iRow] == COIN_DBL_MAX)
-              element[j] = -element[j];
-          }
-        }
-        for (int iRow = 0; iRow < numberRows; iRow++) {
-          if (rowUpper[iRow] == COIN_DBL_MAX) {
-            presolvedModel->setRowUpper(iRow, -rowLower[iRow]);
-            presolvedModel->setRowLower(iRow, -COIN_DBL_MAX);
-          }
-        }
-      }
-#endif
       presolvedModel->messageHandler()->setLogLevel(saveLogLevel);
       //presolvedModel->writeMps("new");
       writeDebugMps(presolvedModel, "ordinary", pinfo);
@@ -3032,6 +2297,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       delete pinfo;
     }
   }
+  initialPresolveTimer.stop();
   // tighten bounds
   /*
 
@@ -3042,6 +2308,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   the current solution.
 */
   if (!infeas) {
+    CglPhaseTimer timer(stats_, CglPreProcessStats::InitialTighten);
     // may be better to just do at end
     writeDebugMps(startModel2, "before", NULL);
     infeas = tightenPrimalBounds(*startModel2,false,scBound);
@@ -3063,6 +2330,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   } else {
     //printf("skipping tightenPrimalBounds\n");
   }
+  CglPhaseTimer initialLpTimer(stats_, CglPreProcessStats::InitialLp);
   OsiSolverInterface *returnModel = NULL;
   int numberChanges;
   if ((tuning & (128 + 1)) != 0) {
@@ -3121,10 +2389,23 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     startModel2->getHintParam(OsiDoDualInInitial,
       saveTakeHint, saveStrength);
     startModel2->setHintParam(OsiDoDualInInitial, true, OsiHintTry);
-    startModel2->initialSolve();
+#ifdef CGL_HAS_CLP
+    {
+      OsiClpSolverInterface *clpOsi = dynamic_cast< OsiClpSolverInterface * >(startModel2);
+      // primal, not the dual hinted above, if the start is not a vertex
+      if (clpOsi && relabelOffBoundNonbasic(clpOsi))
+        startModel2->setHintParam(OsiDoDualInInitial, false, OsiHintTry);
+    }
+#endif
+    // At most 120s.  If it hits the cap the LP isn't optimal; we fall
+    // through to the generic isProvenOptimal() check below, which returns
+    // NULL so the caller retries with simple presolve rather than silently
+    // overrunning the time budget.
+    bool initialLpTimeLimitHit = solveWithinBudget(startModel2, true, 120.0);
     numberIterationsPre_ += startModel2->getIterationCount();
-    // double check
-    if (!startModel2->isProvenOptimal()) {
+    // double check (skip fallback retries if we already hit the time cap —
+    // no point spending more of an exhausted budget on further LP solves)
+    if (!initialLpTimeLimitHit && !startModel2->isProvenOptimal() && CoinGetTimeOfDay() < preDeadline_) {
       if (!startModel2->isProvenDualInfeasible()) {
 	// relax any fixed (or almost fixed) continuous variables
 	if (numberColumns==startModel2->getNumCols()) {
@@ -3151,14 +2432,14 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
         startModel2->getHintParam(OsiDoPresolveInInitial, saveHint, saveStrength);
         startModel2->setHintParam(OsiDoPresolveInInitial, true, OsiHintTry);
         startModel2->setHintParam(OsiDoDualInInitial, false, OsiHintTry);
-        startModel2->initialSolve();
+        solveWithinBudget(startModel2, true);
         numberIterationsPre_ += startModel2->getIterationCount();
-        if (!startModel2->isProvenDualInfeasible()) {
+        if (!startModel2->isProvenDualInfeasible() && CoinGetTimeOfDay() < preDeadline_) {
           CoinWarmStart *empty = startModel2->getEmptyWarmStart();
           startModel2->setWarmStart(empty);
           delete empty;
           startModel2->setHintParam(OsiDoDualInInitial, true, OsiHintTry);
-          startModel2->initialSolve();
+          solveWithinBudget(startModel2, true);
           numberIterationsPre_ += startModel2->getIterationCount();
         }
         startModel2->setHintParam(OsiDoPresolveInInitial, saveHint, saveStrength);
@@ -3167,7 +2448,22 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     startModel2->setHintParam(OsiDoDualInInitial, saveTakeHint, saveStrength);
   }
   if (!startModel2->isProvenOptimal()) {
-    if (!startModel2->isProvenDualInfeasible()) {
+    bool stoppedOnTime = CoinGetTimeOfDay() >= preDeadline_;
+#ifdef CGL_HAS_CLP
+    {
+      OsiClpSolverInterface *clpOsi = dynamic_cast< OsiClpSolverInterface * >(startModel2);
+      if (clpOsi && clpOsi->getModelPtr()->problemStatus() == 3)
+        stoppedOnTime = true;
+    }
+#endif
+    if (stoppedOnTime) {
+      // Cut short by the time cap (Clp status 3): says nothing about
+      // feasibility, and the caller must not be told otherwise (a NULL
+      // return is the same either way, so the message is what misleads).
+      handler_->message(CGL_GENERAL, messages_)
+        << "Preprocessing initial LP stopped on a limit (time or iterations) - not infeasible"
+        << CoinMessageEol;
+    } else if (!startModel2->isProvenDualInfeasible()) {
       handler_->message(CGL_INFEASIBLE, messages_) << CoinMessageEol;
 #if CBC_USEFUL_PRINTING > 1
       startModel2->writeMps("infeas");
@@ -3177,7 +2473,12 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     }
     return NULL;
   }
-  reducedCostFix(*startModel2);
+  initialLpTimer.stop();
+  stats_.setInitialObjective(startModel2->getObjValue());
+  {
+    CglPhaseTimer timer(stats_, CglPreProcessStats::ReducedCostFix);
+    reducedCostFix(*startModel2);
+  }
   if (!numberSolvers_) {
     // just fix
     OsiSolverInterface *newModel = modified(startModel2, false, numberChanges, 0, numberModifiedPasses);
@@ -3201,7 +2502,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     if ((options_ & 4) != 0)
       allPlusOnes = false;
     if ((allPlusOnes && (options_ & 8) == 0) || (tuning & USECGLCLIQUE) != 0) {
-#if 1
       // put at beginning
       int nAdd = ((tuning & (64 + USECGLCLIQUE)) == 64 + USECGLCLIQUE && allPlusOnes) ? 2 : 1;
       CglCutGenerator **temp = generator_;
@@ -3233,12 +2533,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
           dupCuts->setMaximumDominated(numberColumns);
         generator_[nAdd - 1] = dupCuts;
       }
-#else
-      CglDuplicateRow dupCuts(oldModel);
-      addCutGenerator(&dupCuts);
-#endif
     }
-#if 1
     // Dominated columns
     if ((options_&512)!=0) {
     // Column copy
@@ -3478,23 +2773,14 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	  compEls[iRow]=0.0;
 	}
       }
-#ifdef CBC_KEEP_OLD_MESSAGES
-      if (nDominated) {
-	char generalPrint[100];
-	sprintf(generalPrint, "%d variables fixed as dominated",
-		nDominated);
-	handler_->message(CGL_GENERAL, messages_)
-	  << generalPrint
-	  << CoinMessageEol;
-      }
-#endif
       delete [] compEls;
       delete [] test;
       delete [] rowSet;
       delete [] possible;
     }
-#endif
     for (int iPass = doInitialPresolve; ((iPass < numberSolvers_) && ((getCurrentCPUTime() - ppstart) < timeLimit_)); iPass++) {
+      stats_.startPass(iPass, CoinGetTimeOfDay());
+      CglPhaseTimer passPresolveTimer(stats_, CglPreProcessStats::PassPresolve);
       // Look at Vubs
       {
         const double *columnLower = oldModel->getColLower();
@@ -3602,15 +2888,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
         }
       }
       OsiPresolve *pinfo = new OsiPresolve();
-      int presolveActions = 0;
-      // Allow dual stuff on integers
-      // Allow stuff which may not unroll cleanly
-      if ((tuning & 4096) == 0)
-        presolveActions = 1 + 16;
-      else
-        presolveActions = 16; // actually just switch off duplicate columns for ints
-      if ((tuning & 32) != 0)
-	presolveActions |= 32;
+      int presolveActions = basePresolveActions(tuning);
       // Do not allow all +1 to be tampered with
       //if (allPlusOnes)
       //presolveActions |= 2;
@@ -3649,6 +2927,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       presolvedModel->messageHandler()->setLogLevel(saveLogLevel);
       // update prohibited and rowType
       update(pinfo, presolvedModel,scBound);
+      stats_.setPassSize(presolvedModel->getNumRows(), presolvedModel->getNumCols(),
+        presolvedModel->getNumElements());
       writeDebugMps(presolvedModel, "ordinary2", pinfo);
       model_[iPass] = presolvedModel;
       presolve_[iPass] = pinfo;
@@ -3658,6 +2938,8 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
         numberSolvers_ = iPass + 1;
         break; // model totally solved
       }
+      passPresolveTimer.stop();
+      CglPhaseTimer passLpTimer(stats_, CglPreProcessStats::PassLp);
       bool constraints = iPass < numberPasses - 1;
       // Give a hint to do primal
       bool saveTakeHint;
@@ -3666,7 +2948,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
         saveTakeHint, saveStrength);
       //if (iPass)
       presolvedModel->setHintParam(OsiDoDualInInitial, false, OsiHintTry);
-      presolvedModel->initialSolve();
+      // Capped to the remaining preprocessing time budget: an unbounded
+      // solve here (e.g. primal steepest-edge cycling/stalling on a
+      // degenerate warm start) can by itself blow through the entire time
+      // limit with no other time check anywhere in this loop iteration.
+      bool passTimeLimitHit = solveWithinBudget(presolvedModel, true);
       numberIterationsPre_ += presolvedModel->getIterationCount();
       presolvedModel->setHintParam(OsiDoDualInInitial, saveTakeHint, saveStrength);
       if (!presolvedModel->isProvenOptimal()) {
@@ -3674,17 +2960,35 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
         CoinWarmStartBasis *slack = dynamic_cast< CoinWarmStartBasis * >(presolvedModel->getEmptyWarmStart());
         presolvedModel->setWarmStart(slack);
         delete slack;
-        presolvedModel->resolve();
+        // No point spending more of an already-exhausted time budget on a
+        // second resolve attempt -- and skip it entirely so problemStatus()
+        // still reflects the time-out below, not some later dual-infeasible
+        // read on a solve we never ran.
+        if (!passTimeLimitHit)
+          passTimeLimitHit = solveWithinBudget(presolvedModel, false);
         if (!presolvedModel->isProvenOptimal()) {
-          returnModel = NULL;
-          //printf("infeasible\n");
+          // Distinguish "genuinely infeasible" from "ran out of the
+          // preprocessing time budget mid-resolve": the latter must NOT be
+          // reported as infeasible -- that would discard all the good work
+          // from earlier passes (returnModel already holds the last
+          // successful pass's result) and misreport a merely-slow model as
+          // infeasible/unbounded to the caller.
+          if (!passTimeLimitHit) {
+            returnModel = NULL;
+            //printf("infeasible\n");
+          }
           break;
         } else {
           //printf("feasible on second try\n");
         }
       }
+      passLpTimer.stop();
       // maybe we can fix some
-      int numberFixed = reducedCostFix(*presolvedModel);
+      int numberFixed;
+      {
+        CglPhaseTimer timer(stats_, CglPreProcessStats::ReducedCostFix);
+        numberFixed = reducedCostFix(*presolvedModel);
+      }
 #if CBC_USEFUL_PRINTING > 1
       if (numberFixed)
         printf("%d variables fixed on reduced cost\n", numberFixed);
@@ -3695,6 +2999,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
         printf("Contains optimal before modified\n");
 #endif
       OsiSolverInterface *newModel = modified(presolvedModel, constraints, numberChanges, iPass - doInitialPresolve, numberModifiedPasses);
+      stats_.setPassChanges(numberChanges);
 #if DEBUG_PREPROCESS > 1
       if (debugger)
         assert(newModel->getRowCutDebugger());
@@ -3708,11 +3013,12 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       writeDebugMps(newModel, "ordinary3", NULL);
       // tighten bounds
  #if DEBUG_PREPROCESS > 1
-      const OsiRowCutDebugger *debugger = newModel->getRowCutDebugger();
-      if (debugger)
+      const OsiRowCutDebugger *debugger2 = newModel->getRowCutDebugger();
+      if (debugger2)
  	printf("Contains optimal before tightenA\n");
  #endif
       if (!numberChanges && !numberFixed) {
+	CglPhaseTimer timer(stats_, CglPreProcessStats::PassTighten);
 	int change = tightenPrimalBounds(*newModel,true,scBound);
 	if (change > 0) {
 	  if ((change&0x40000000)!=0) {
@@ -3722,24 +3028,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	    change -= 0x40000000;
 	    numberChanges+=change;
 	    if (iPass==numberSolvers_-1) {
-	      OsiSolverInterface ** modelOld = model_;
-	      OsiSolverInterface ** modifiedModelOld = modifiedModel_;
-	      OsiPresolve ** presolveOld = presolve_;
-	      model_ = new OsiSolverInterface *[numberSolvers_+1];
-	      modifiedModel_ = new OsiSolverInterface *[numberSolvers_+1];
-	      presolve_ = new OsiPresolve *[numberSolvers_+1];
-	      for (int i = 0; i < numberSolvers_; i++) {
-		model_[i] = modelOld[i];
-		modifiedModel_[i] = modifiedModelOld[i];
-		presolve_[i] = presolveOld[i];
-	      }
-	      delete [] modelOld;
-	      delete [] modifiedModelOld;
-	      delete [] presolveOld;
-	      model_[numberSolvers_] = NULL;
-	      modifiedModel_[numberSolvers_] = NULL;
-	      presolve_[numberSolvers_] = NULL;
-	      numberSolvers_++;
+	      addSolverSlot();
 	    }
 	    // round again
 	  }
@@ -3750,7 +3039,7 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	  returnModel=NULL;
 	  break;
 	}
-#ifdef CBC_HAS_CLP
+#ifdef CGL_HAS_CLP
 	OsiClpSolverInterface * clpSolver = getClpSolver(newModel);
 	if (clpSolver) {
 	  change = clpSolver->tightenBounds();
@@ -3762,17 +3051,21 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 #endif
       }
  #if DEBUG_PREPROCESS > 1
-       if (debugger)
+       if (debugger2)
          assert(newModel->getRowCutDebugger());
 #endif
        {
+	 CglPhaseTimer timer(stats_, CglPreProcessStats::PassResolve);
 	 bool saveTakeHint;
 	 OsiHintStrength saveStrength;
 	 newModel->getHintParam(OsiDoDualInResolve,
 				saveTakeHint, saveStrength);
 	 newModel->setHintParam(OsiDoDualInResolve, true, OsiHintTry);
-	 newModel->resolve();
+	 // Capped for the same reason as the solve earlier in this loop
+	 solveWithinBudget(newModel, false);
 	 newModel->setHintParam(OsiDoDualInResolve, saveTakeHint, saveStrength);
+	 stats_.setPassObjective(newModel->isProvenOptimal()
+	     ? newModel->getObjValue() : COIN_DBL_MAX);
        }
       if (!newModel->isProvenOptimal()) {
 	numberSolvers_ = iPass + 1;
@@ -3836,74 +3129,24 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
 	    }
 	  }
 	  goRoundAgain = nMadeContinuous > 0;
-#ifdef CBC_KEEP_OLD_MESSAGES
-	  if (nMadeContinuous) {
-	    char generalPrint[100];
-	    sprintf(generalPrint,"%d integer variables made continuous",nMadeContinuous);
-	    handler_->message(CGL_GENERAL, messages_)
-	      << generalPrint
-	      << CoinMessageEol;
-	  }
-#endif
 	  if (!goRoundAgain) {
 	    numberSolvers_ = iPass + 1;
 	    break;
 	  } else if (iPass==numberSolvers_-1) {
-	    OsiSolverInterface ** modelOld = model_;
-	    OsiSolverInterface ** modifiedModelOld = modifiedModel_;
-	    OsiPresolve ** presolveOld = presolve_;
-	    model_ = new OsiSolverInterface *[numberSolvers_+1];
-	    modifiedModel_ = new OsiSolverInterface *[numberSolvers_+1];
-	    presolve_ = new OsiPresolve *[numberSolvers_+1];
-	    for (int i = 0; i < numberSolvers_; i++) {
-	      model_[i] = modelOld[i];
-	      modifiedModel_[i] = modifiedModelOld[i];
-	      presolve_[i] = presolveOld[i];
-	    }
-	    delete [] modelOld;
-	    delete [] modifiedModelOld;
-	    delete [] presolveOld;
-	    model_[numberSolvers_] = NULL;
-	    modifiedModel_[numberSolvers_] = NULL;
-	    presolve_[numberSolvers_] = NULL;
-	    numberSolvers_++;
+	    addSolverSlot();
 	  }
 	}
       }
     }
   }
+  // The pass loop can also end on its own time test, which leaves the
+  // trailing model_[]/presolve_[] slots unused; postProcess() walks all
+  // numberSolvers_ of them and dereferences model_[iPass].
+  while (numberSolvers_ > 1 && !model_[numberSolvers_ - 1])
+    numberSolvers_--;
+  stats_.endPass(CoinGetTimeOfDay());
+  CglPhaseTimer finishTimer(stats_, CglPreProcessStats::Finish);
   if (returnModel) {
-#if 0
-    if (returnModel->getNumRows()) {
-      // tighten bounds
-#if DEBUG_PREPROCESS > 1
-      const OsiRowCutDebugger *debugger = returnModel->getRowCutDebugger();
-      if (debugger)
-	printf("Contains optimal before tighten\n");
-#endif
-      int infeas = tightenPrimalBounds(*returnModel,true,scBound);
-      infeas = (infeas <0) ? -infeas : 0;
-#if DEBUG_PREPROCESS > 1
-      if (debugger)
-        assert(returnModel->getRowCutDebugger());
-      writeDebugMps(returnModel, "afterTighten", NULL);
-#endif
-      if (infeas) {
-	handler_->message(CGL_INFEASIBLE, messages_)
-	  << CoinMessageEol;
-        delete returnModel;
-        for (int iPass = 0; iPass < numberSolvers_; iPass++) {
-          if (returnModel == modifiedModel_[iPass])
-            modifiedModel_[iPass] = NULL;
-        }
-        //printf("startModel_ %p startModel2 %p originalModel_ %p returnModel %p\n",
-        //     startModel_,startModel2,originalModel_,returnModel);
-        if (returnModel == startModel_ && startModel_ != originalModel_)
-          startModel_ = NULL;
-        returnModel = NULL;
-      }
-    }
-#endif
   } else {
     double timeDone = getCurrentCPUTime()-ppstart;
     if (timeDone < timeLimit_) {
@@ -4140,124 +3383,6 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     if (debugger)
       assert(returnModel->getRowCutDebugger());
 #endif
-#ifdef SOS_SUB_STUFF
-    // start of sos sub stuff
-    if (returnModel && !rowType_ && (tuning&6) !=0) {
-      int numberColumns = returnModel->getNumCols();
-      int numberRows = returnModel->getNumRows();
-      const CoinPackedMatrix * rowCopy = returnModel->getMatrixByRow();
-      numberRows = rowCopy->getNumRows();
-      const int * column = rowCopy->getIndices();
-      const int * rowLength = rowCopy->getVectorLengths();
-      const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
-      const double * rowLower = returnModel->getRowLower();
-      const double * rowUpper = returnModel->getRowUpper();
-      const double * element = rowCopy->getElements();
-      int *sort = new int[2*numberRows];
-      int *delrows = sort+numberRows;
-      int numberLook = 0;
-      int k = numberRows;
-      for (int i = 0; i < numberRows; i++) {
-	if (rowLength[i] == 0)
-	  continue;
-	bool possible = true;
-	if (rowLower[i]<rowUpper[i])
-	  possible = false;
-	for (CoinBigIndex j=rowStart[i];j<rowStart[i]+rowLength[i];j++) {
-	  if (element[j]!=1.0) {
-	    possible = false;
-	    break;
-	  }
-	}
-	if (possible) 
-	  sort[numberLook++] = i;
-	else
-	  sort[--k] = i;
-      }
-      int numberTotal = numberLook;
-      if (numberLook) {
-	// move others
-	for (int i=k;i<numberRows;i++)
-	  sort[numberTotal++] = sort[i];
-	
-	double *workrow = new double[numberTotal + 1];
-	
-	double *workcol = new double[numberColumns + 1];
-	coin_init_random_vec(workcol, numberColumns);
-	for (int i=0;i<numberTotal;i++) {
-	  double sum = 0.0;
-	  int iRow = sort[i];
-	  for (CoinBigIndex j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
-	    int iColumn = column[j];
-	    sum += workcol[iColumn];
-	  }
-	  workrow[i] = sum;
-	}
-	CoinSort_2(workrow, workrow + numberLook, sort);
-	CoinSort_2(workrow+numberLook, workrow + numberTotal, sort+numberLook);
-	
-	int numberOut = 0;
-	
-	int iLook = numberLook;
-	for (int kk = 0; kk < numberLook; kk++) {
-	  double dval = workrow[kk];
-	  int ilast = sort[kk];
-	  double req = rowLower[ilast];
-	  for (int jj = iLook; jj < numberTotal; jj++) {
-	    if (workrow[jj] == dval) {
-	      int ithis = sort[jj];
-	      CoinBigIndex krs = rowStart[ithis];
-	      CoinBigIndex kre = krs + rowLength[ithis];
-	      if (rowLength[ithis] == rowLength[ilast]) {
-		CoinBigIndex ishift = rowStart[ilast] - krs;
-		CoinBigIndex k;
-		for (k = krs; k < kre; k++) {
-		  if (column[k] != column[k + ishift]) {
-		    break;
-		  }
-		}
-		if (k == kre) {
-		  /* now check to see if row satisfied */
-		  double rlo2 = rowLower[ithis];
-		  double rup2 = rowUpper[ithis];
-		  for (k = krs; k < kre; k++) {
-		    double value = req*element[k];
-		    if (value<rlo2-feasibilityTolerance ||
-			value>rup2+feasibilityTolerance)
-		      break;
-		  }
-		}
-		if (k == kre) {
-		  delrows[numberOut++] = ithis;
-		}
-	      }
-	    } else if (workrow[jj] < dval) {
-	      iLook++;
-	    } else {
-	      break;
-	    }
-	  }
-	}
-	
-	delete[] workrow;
-	delete[] workcol;
-	
-	if (numberOut) {
-#ifdef CBC_KEEP_OLD_MESSAGES
-	  char generalPrint[100];
-	  sprintf(generalPrint, "%d more redundant rows found",
-		  numberOut);
-	  handler_->message(CGL_GENERAL, messages_)
-	    << generalPrint
-	    << CoinMessageEol;
-#endif
-	  returnModel->deleteRows(numberOut,delrows);
-	  returnModel->resolve();
-	}
-      }
-      delete[] sort;
-    }
-#endif // end of sos sub stuff
 #if DEBUG_PREPROCESS > 1
     if (debugger)
       assert(returnModel->getRowCutDebugger());
@@ -4305,175 +3430,34 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
   if (debugger)
     assert(returnModel->getRowCutDebugger());
 #endif
-#if 0
-  if (returnModel) {
-    int numberColumns = returnModel->getNumCols();
-    int numberRows = returnModel->getNumRows();
-    int * del = new int [std::max(numberColumns,numberRows)];
-    int * original = new int [numberColumns];
-    int nDel=0;
-    for (int i=0;i<numberColumns;i++) {
-      original[i]=i;
-      if (returnModel->isInteger(i))
-	del[nDel++]=i;
-    }
-    int nExtra=0;
-    if (nDel&&nDel!=numberColumns&&(options_&1)!=0&&false) {
-      OsiSolverInterface * yyyy = returnModel->clone();
-      int nPass=0;
-      while (nDel&&nPass<10) {
-	nPass++;
-	OsiSolverInterface * xxxx = yyyy->clone();
-	int nLeft=0;
-	for (int i=0;i<nDel;i++) 
-	  original[del[i]]=-1;
-	for (int i=0;i<numberColumns;i++) {
-	  int kOrig=original[i];
-	  if (kOrig>=0)
-	    original[nLeft++]=kOrig;
-	}
-	assert (nLeft==numberColumns-nDel);
-	xxxx->deleteCols(nDel,del);
-	numberColumns = xxxx->getNumCols();
-	const CoinPackedMatrix * rowCopy = xxxx->getMatrixByRow();
-	numberRows = rowCopy->getNumRows();
-	const int * column = rowCopy->getIndices();
-	const int * rowLength = rowCopy->getVectorLengths();
-	const CoinBigIndex * rowStart = rowCopy->getVectorStarts();
-	const double * rowLower = xxxx->getRowLower();
-	const double * rowUpper = xxxx->getRowUpper();
-	const double * element = rowCopy->getElements();
-        const CoinPackedMatrix * columnCopy = xxxx->getMatrixByCol();
-        const int * columnLength = columnCopy->getVectorLengths(); 
-	nDel=0;
-	// Could do gcd stuff on ones with costs
-	for (int i=0;i<numberRows;i++) {
-	  if (!rowLength[i]) {
-	    del[nDel++]=i;
-	  } else if (rowLength[i]==1) {
-	    int k=rowStart[i];
-	    int iColumn = column[k];
-	    if (!xxxx->isInteger(iColumn)) {
-	      double mult =1.0/fabs(element[k]);
-	      if (rowLower[i]<-1.0e20) {
-		double value = rowUpper[i]*mult;
-		if (fabs(value-floor(value+0.5))<1.0e-8) {
-		  del[nDel++]=i;
-		  if (columnLength[iColumn]==1) {
-		    xxxx->setInteger(iColumn);
-		    int kOrig=original[iColumn];
-		    returnModel->setInteger(kOrig);
-		  }
-		}
-	      } else if (rowUpper[i]>1.0e20) {
-		double value = rowLower[i]*mult;
-		if (fabs(value-floor(value+0.5))<1.0e-8) {
-		  del[nDel++]=i;
-		  if (columnLength[iColumn]==1) {
-		    xxxx->setInteger(iColumn);
-		    int kOrig=original[iColumn];
-		    returnModel->setInteger(kOrig);
-		  }
-		}
-	      } else {
-		double value = rowUpper[i]*mult;
-		if (rowLower[i]==rowUpper[i]&&
-		    fabs(value-floor(value+0.5))<1.0e-8) {
-		  del[nDel++]=i;
-		  xxxx->setInteger(iColumn);
-		  int kOrig=original[iColumn];
-		  returnModel->setInteger(kOrig);
-		}
-	      }
-	    }
-	  } else {
-	    // only if all singletons
-	    bool possible=false;
-	    if (rowLower[i]<-1.0e20) {
-	      double value = rowUpper[i];
-	      if (fabs(value-floor(value+0.5))<1.0e-8) 
-		possible=true;
-	    } else if (rowUpper[i]>1.0e20) {
-	      double value = rowLower[i];
-	      if (fabs(value-floor(value+0.5))<1.0e-8) 
-		possible=true;
-	    } else {
-	      double value = rowUpper[i];
-	      if (rowLower[i]==rowUpper[i]&&
-		  fabs(value-floor(value+0.5))<1.0e-8)
-		possible=true;
-	    }
-	    if (possible) {
-	      for (CoinBigIndex j=rowStart[i];
-		   j<rowStart[i]+rowLength[i];j++) {
-		int iColumn = column[j];
-		if (columnLength[iColumn]!=1||fabs(element[j])!=1.0) {
-		  possible=false;
-		  break;
-		}
-	      }
-	      if (possible) {
-		for (CoinBigIndex j=rowStart[i];
-		     j<rowStart[i]+rowLength[i];j++) {
-		  int iColumn = column[j];
-		  if (!xxxx->isInteger(iColumn)) {
-		    xxxx->setInteger(iColumn);
-		    int kOrig=original[iColumn];
-		    returnModel->setInteger(kOrig);
-		  }
-		}
-		del[nDel++]=i;
-	      }
-	    }
-	  }
-	}
-	if (nDel) {
-	  xxxx->deleteRows(nDel,del);
-	}
-	if (nDel!=numberRows) {
-	  nDel=0;
-	  for (int i=0;i<numberColumns;i++) {
-	    if (xxxx->isInteger(i)) {
-	      del[nDel++]=i;
-	      nExtra++;
-	    }
-	  }
-	} 
-	delete yyyy;
-	yyyy=xxxx->clone();
-      }
-      numberColumns = yyyy->getNumCols();
-      numberRows = yyyy->getNumRows();
-      if (!numberColumns||!numberRows) {
-	printf("All gone\n");
-	int numberColumns = returnModel->getNumCols();
-	for (int i=0;i<numberColumns;i++)
-	  assert(returnModel->isInteger(i));
-      }
-      // Would need to check if original bounds integer
-      //yyyy->writeMps("noints");
-      delete yyyy;
-      printf("Creating simplified model with %d rows and %d columns - %d extra integers\n",
-	     numberRows,numberColumns,nExtra);
-    }
-    delete [] del;
-    delete [] original;
-    //exit(2);
-  }
-#endif
   //writeDebugMps(returnModel, "returnModel", NULL);
 #if DEBUG_PREPROCESS > 1
   if (debugger)
     assert(returnModel->getRowCutDebugger());
 #endif
 
+  // Record the true final row/column counts of the model actually being
+  // returned.  This can be larger than what the last recorded OsiPresolve
+  // pass (see createOriginalIndices()) tracked, since later stages (e.g.
+  // clique-detection) can append extra columns/rows via modified() without
+  // registering an associated OsiPresolve object -- those extra columns/
+  // rows have no "original" counterpart and createOriginalIndices() needs
+  // to know the true final size in order to size its output arrays
+  // correctly and avoid out-of-bounds reads by callers that index
+  // originalColumns()/originalRows() using the final model's actual
+  // number of columns/rows (e.g. the loop right below).
+  if (returnModel) {
+    numberFinalColumns_ = returnModel->getNumCols();
+    numberFinalRows_ = returnModel->getNumRows();
+  }
 
   if (returnModel && returnModel != &model && keepColumnNames_)
   {
     returnModel->setIntParam( OsiNameDiscipline, 1 );
+    const int *originalColumnsForNames = originalColumns();
     for ( int i=0 ; (i<returnModel->getNumCols()) ; i++ ) {
-      int iColumn = originalColumns()[i];
-      if (iColumn<modelIn->getNumCols())
+      int iColumn = originalColumnsForNames[i];
+      if (iColumn>=0 && iColumn<modelIn->getNumCols())
 	returnModel->setColName( i, modelIn->getColName(iColumn) );
     }
   }
@@ -4687,7 +3671,6 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
   const double *rowLower = model.getRowLower();
   const double *rowUpper = model.getRowUpper();
   int nFreed = 0;
-#if 1
   char * intVar = new char [numberColumns];
   for (int i=0;i<numberColumns;i++) {
     if (model.isInteger(i))
@@ -4745,7 +3728,6 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
     delete [] rowStartPos;
     delete [] cLower;
   }
-#endif
 #ifndef NDEBUG
   double large2 = 1.0e10 * large;
 #endif
@@ -4847,11 +3829,6 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
 	    }
 	    if (lower!=lowerNew||upper!=upperNew) {
 	      if (allInteger) {
-#ifdef LOTS_OF_PRINTING
-		printf("On row %d bounds -> %g,%g\n",
-		       iRow,
-		       lower,upper);
-#endif
 		lower = std::max(lower,ceil(lowerNew-1.0e-1));
 		upper = std::min(upper,floor(upperNew+1.0e-1));
 	      } else {
@@ -4859,11 +3836,6 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
 		upper = upperNew;
 	      }
 	      if (lower!=rowLower[iRow]||upper!=rowUpper[iRow])
-#ifdef LOTS_OF_PRINTING
-		printf("On row %d bounds %g,%g -> %g,%g\n",
-		       iRow,rowLower[iRow],rowUpper[iRow],
-		       lower,upper);
-#endif
 	      model.setRowLower(iRow,lower);
 	      model.setRowUpper(iRow,upper);
 	    }
@@ -5023,104 +3995,6 @@ CglPreProcess::tightenPrimalBounds(OsiSolverInterface &model,
 	    if (anyChange) {
 	      numberChanged++;
 	    } else if (columnLength[iColumn] == 1) {
-#if 0 //def CBC_PREPROCESS_EXPERIMENT
-	      // may be able to do better
-	      // should be picked up elsewhere if no objective
-	      if (objective[iColumn]) {
-		double newBound;
-		if (direction*objective[iColumn]>0.0) {
-		  // want objective as low as possible so reduce upper bound
-		  if (value < 0.0) {
-		    double gap = maxUp-upper;
-		    newBound = newLower[iColumn] - gap/value;
-		  } else {
-		    double gap = lower-maxDown;
-		    newBound = newLower[iColumn] + gap/value;
-		  }
-		  if (newBound>1.0e50)
-		    newBound = COIN_DBL_MAX;
-		  if (newBound<newUpper[iColumn]-1.0e-7) {
-		    if (model.isInteger(iColumn)) {
-		      newBound = ceil(newBound);
-		      newBound = std::max(newLower[iColumn],newBound);
-		    } else {
-		      newBound = std::max(newLower[iColumn],newBound+1.0e-7);
-		    }
-		  }
-		  if (newBound<newUpper[iColumn]-1.0e-7) {
-		    numberChanged++;
-#ifdef LOTS_OF_PRINTING
-		    printf("singleton %d obj %g %g <= %g rlo %g rup %g maxd %g maxu %g el %g\n",
-			   iColumn,objective[iColumn],newLower[iColumn],newUpper[iColumn],
-			   lower,upper,maxDown,maxUp,value);
-		    printf("upperbound changed to %g\n",newBound);
-#endif
-		    newUpper[iColumn] = newBound;
-		    anyChange = true;
-		    // check infeasible (relaxed)
-		    if (newBound - nowLower < -100.0 * tolerance) {
-		      numberInfeasible++;
-		    }
-		    // adjust
-		    double now;
-		    if (nowUpper > large) {
-		      now = 0.0;
-		      infiniteUpper--;
-		    } else {
-		      now = nowUpper;
-		    }
-		    maximumUp += (newBound - now) * value;
-		    maxUp += (newBound - now) * value;
-		    nowUpper = newBound;
-		  }
-		} else {
-		  // want objective as low as possible so increase lower bound
-		  if (value > 0.0) { // ?
-		    double gap = maxUp-upper;
-		    newBound = newUpper[iColumn] - gap/value;
-		  } else {
-		    double gap = lower-maxDown;
-		    newBound = newUpper[iColumn] + gap/value;
-		  }
-		  if (newBound<-1.0e50)
-		    newBound = -COIN_DBL_MAX;
-		  if (newBound>newLower[iColumn]+1.0e-7) {
-		    if (model.isInteger(iColumn)) {
-		      newBound = ceil(newBound);
-		      newBound = std::min(newUpper[iColumn],newBound);
-		    } else {
-		      newBound = std::min(newUpper[iColumn],newBound+1.0e-7);
-		    }
-		  }
-		  if (newBound>newLower[iColumn]+1.0e-7) {
-		    numberChanged++;
-#ifdef LOTS_OF_PRINTING
-		    printf("singleton %d obj %g %g <= %g rlo %g rup %g maxd %g maxu %g el %g\n",
-			   iColumn,objective[iColumn],newLower[iColumn],newUpper[iColumn],
-			   lower,upper,maxDown,maxUp,value);
-		    printf("lowerbound changed to %g\n",newBound);
-#endif
-		    newLower[iColumn] = newBound;
-		    anyChange = true;
-		    // check infeasible (relaxed)
-		    if (nowUpper - newBound < -100.0 * tolerance) {
-		      numberInfeasible++;
-		    }
-		    // adjust
-		    double now;
-		    if (nowLower < -large) {
-		      now = 0.0;
-		      infiniteLower--;
-		    } else {
-		      now = nowLower;
-		    }
-		    maximumDown += (newBound - now) * value;
-		    maxDown += (newBound - now) * value;
-		    nowLower = newBound;
-		  }
-		}
-	      }
-#endif
 	    }
           }
         }
@@ -5605,6 +4479,7 @@ tighten(double *colLower, double * colUpper,
    deleteStuff 0 - don't, 1 do (but not if infeasible), 2 always */
 void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
 {
+  CglPhaseTimer postProcessTimer(stats_, CglPreProcessStats::PostProcess);
   // Do presolves
   bool saveHint;
   bool solveWithDual = false;
@@ -5623,6 +4498,7 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
     CoinWarmStartBasis *slack = dynamic_cast< CoinWarmStartBasis * >(modelM->getEmptyWarmStart());
     modelM->setWarmStart(slack);
     delete slack;
+    CglPhaseTimer timer(stats_, CglPreProcessStats::PostLp);
     modelM->resolve();
   }
   double * scBound = NULL;
@@ -5693,50 +4569,6 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
 	}
       }
     }
-    if ((options_&256)!=0&&false) {
-      int numberColumns = modelM->getNumCols();
-      const double *solution = modelM->getColSolution();
-      const double *columnLower = modelM->getColLower();
-      const double *columnUpper = modelM->getColUpper();
-      //OsiSolverInterface * originalModel = originalModel_->clone();
-      OsiSolverInterface * originalModel = originalModel_;
-      for (int iColumn = 0; iColumn < numberColumns; iColumn++) {
-	int jColumn = originalColumn_[iColumn];
-	if (modelM->isInteger(iColumn)) {
-	  double value = solution[iColumn];
-	  double value2 = floor(value + 0.5);
-	  // if test fails then empty integer
-	  if (fabs(value - value2) < 1.0e-3) {
-	    originalModel->setColLower(jColumn, value2);
-	    originalModel->setColUpper(jColumn, value2);
-	  }
-	} else if (columnUpper[iColumn] == columnLower[iColumn]) {
-	  originalModel->setColUpper(jColumn, columnLower[iColumn]);
-	  originalModel->setColLower(jColumn, columnLower[iColumn]);
-	} else if (scBound) {
-	  if (scBound[jColumn]!=-COIN_DBL_MAX) {
-	    double lower =scBound[jColumn];
-	    originalModel->setColLower(jColumn, lower);
-          }
-        }
-      }
-      //originalModel->setHintParam(OsiDoReducePrint, false, OsiHintTry);
-      originalModel->initialSolve();
-      if (deleteStuff) {
-	for (int iPass = numberSolvers_ - 1; iPass >= 0; iPass--) {
-	  delete modifiedModel_[iPass];
-	  ;
-	  delete model_[iPass];
-	  ;
-	  delete presolve_[iPass];
-	  modifiedModel_[iPass] = NULL;
-	  model_[iPass] = NULL;
-	  presolve_[iPass] = NULL;
-	}
-      }
-      delete [] scBound;
-      return;
-    }
     // If some cuts add back rows
     if (cuts_.sizeRowCuts()) {
       clonedCopy = modelM->clone();
@@ -5764,11 +4596,19 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
     }
     for (int iPass = numberSolvers_ - 1; iPass >= 0; iPass--) {
       OsiSolverInterface *model = model_[iPass];
-#ifdef CBC_HAS_CLP
+#ifdef CGL_HAS_CLP
       OsiClpSolverInterface * postsolvedSolver =
 	getClpSolver(model);
-      if (postsolvedSolver) // make sure can't stop
-	postsolvedSolver->getModelPtr()->setMaximumSeconds(-1.0);
+      if (postsolvedSolver) {
+        // Respect postprocess deadline: give each LP the remaining budget.
+        // Historic behaviour (unlimited) is preserved when no deadline is set.
+        if (postProcDeadline_ > 0.0) {
+          double rem = postProcDeadline_ - CoinWallclockTime();
+          postsolvedSolver->getModelPtr()->setMaximumWallSeconds(rem > 0.0 ? rem : 0.0);
+        } else {
+          postsolvedSolver->getModelPtr()->setMaximumSeconds(-1.0); // make sure can't stop
+        }
+      }
 #endif
       int * original = NULL;
       if (model->getNumCols()) {
@@ -5842,6 +4682,54 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
 	    }
           }
         }
+        // IMPORTANT: Copy solution from modelM to model.
+        // The loop above only fixed bounds for integers, but model still has the old
+        // LP relaxation solution. We must copy the values from modelM (which has the
+        // correct integer solution) to model.
+        {
+          int nc = model->getNumCols();
+          double *newSol = new double[nc];
+          const double *oldSol = model->getColSolution();
+          const double *solM = modelM->getColSolution();
+          const double *lo = model->getColLower();
+          const double *hi = model->getColUpper();
+          for (int i = 0; i < nc; i++) {
+            if (i < numberColumns) {
+              // This column exists in modelM, use its value
+              newSol[i] = solM[i];
+            } else {
+              // This column doesn't exist in modelM (modelM has fewer columns),
+              // use the old value but clip to bounds
+              newSol[i] = oldSol[i];
+            }
+            // Clip to bounds
+            newSol[i] = std::max(newSol[i], lo[i]);
+            newSol[i] = std::min(newSol[i], hi[i]);
+          }
+          model->setColSolution(newSol);
+          delete[] newSol;
+        }
+      }
+      // After the fix loop has tightened bounds (fixing integers), the warm-start
+      // basis stored on model may be stale: variables that are now fixed (lo==hi)
+      // could be BASIC in the warm start at fractional LP-relaxation values. CLP's
+      // dual simplex would then declare the basis "optimal" in 0 iterations without
+      // checking primal feasibility, returning the old LP relaxation solution.
+      // Fix: mark all fixed (lo==hi) variables as non-basic (atLowerBound) in the
+      // warm start so CLP will re-solve from a primal-feasible point.
+      {
+        CoinWarmStartBasis *wsb = dynamic_cast<CoinWarmStartBasis*>(model->getWarmStart());
+        if (wsb) {
+          const double *lo2 = model->getColLower(), *hi2 = model->getColUpper();
+          int nc = model->getNumCols();
+          for (int k = 0; k < nc; k++) {
+            if (lo2[k] >= hi2[k] - 1e-10) {
+              wsb->setStructStatus(k, CoinWarmStartBasis::atLowerBound);
+            }
+          }
+          model->setWarmStart(wsb);
+          delete wsb;
+        }
       }
       int numberColumns = modelM->getNumCols();
       const double *solutionM = modelM->getColSolution();
@@ -5859,21 +4747,6 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
   following feasibility check? If this is necessary for clp, solution should
   be acquired before bounds changes.
 */
-      if (0) {
-        int numberColumns = model->getNumCols();
-        const double *lower = model->getColLower();
-        const double *upper = model->getColUpper();
-        double *solution = CoinCopyOfArray(model->getColSolution(), numberColumns);
-        int i;
-        for (i = 0; i < numberColumns; i++) {
-          double value = solution[i];
-          value = std::min(value, upper[i]);
-          value = std::max(value, lower[i]);
-          solution[i] = value;
-        }
-        model->setColSolution(solution);
-        delete[] solution;
-      }
 #if CBC_USEFUL_PRINTING > 1
       {
         int numberColumns = model->getNumCols();
@@ -5955,14 +4828,18 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
         }
       }
       model->setHintParam(OsiDoDualInInitial, true, OsiHintTry);
-      model->initialSolve();
-      numberIterationsPost_ += model->getIterationCount();
-      if (!model->isProvenOptimal()) {
-        // try without basis
-        CoinWarmStartBasis *basis = dynamic_cast< CoinWarmStartBasis * >(model->getEmptyWarmStart());
-        model->setWarmStart(basis);
-        delete basis;
+      model->setHintParam(OsiDoPresolveInInitial, false, OsiHintTry);
+      {
+        CglPhaseTimer timer(stats_, CglPreProcessStats::PostLp);
         model->initialSolve();
+        numberIterationsPost_ += model->getIterationCount();
+        if (!model->isProvenOptimal()) {
+          // try without basis
+          CoinWarmStartBasis *basis = dynamic_cast< CoinWarmStartBasis * >(model->getEmptyWarmStart());
+          model->setWarmStart(basis);
+          delete basis;
+          model->initialSolve();
+        }
       }
       if (!model->isProvenOptimal()) {
 #if COIN_DEVELOP
@@ -6019,7 +4896,7 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
         case CoinWarmStartBasis::atLowerBound:
           if (solutionM[iColumn] > columnLower2[jColumn] + primalTolerance) {
 	    if (columnLower2[jColumn]<-1.0e50&&
-		columnUpper2[iColumn]>1.0e50)
+		columnUpper2[jColumn]>1.0e50)
 	      presolvedBasis->setStructStatus(iColumn, CoinWarmStartBasis::isFree);
 	    else
 	      presolvedBasis->setStructStatus(iColumn, CoinWarmStartBasis::superBasic);
@@ -6029,7 +4906,7 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
         case CoinWarmStartBasis::atUpperBound:
           if (solutionM[iColumn] < columnUpper2[jColumn] - primalTolerance) {
 	    if (columnLower2[jColumn]<-1.0e50&&
-		columnUpper2[iColumn]>1.0e50)
+		columnUpper2[jColumn]>1.0e50)
 	      presolvedBasis->setStructStatus(iColumn, CoinWarmStartBasis::isFree);
 	    else
 	      presolvedBasis->setStructStatus(iColumn, CoinWarmStartBasis::superBasic);
@@ -6044,7 +4921,10 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
         model->setWarmStart(presolvedBasis);
       }
       delete presolvedBasis;
-      presolve_[iPass]->postsolve(true);
+      {
+        CglPhaseTimer timer(stats_, CglPreProcessStats::Postsolve);
+        presolve_[iPass]->postsolve(true);
+      }
       // and fix values
       for (iColumn = 0; iColumn < numberColumns; iColumn++) {
         int jColumn = originalColumns[iColumn];
@@ -6111,6 +4991,100 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
         modifiedModel_[iPass] = NULL;
         model_[iPass] = NULL;
         presolve_[iPass] = NULL;
+      }
+      // After postsolve, presolve back-substitution may have computed fractional
+      // values for eliminated integer variables via equations like
+      //   x_elim = (rhs - a*x_surv) / b  with non-unit b.
+      // These fractional values cascade: the next pass sees them as "unknown"
+      // integers, the LP returns fractional solutions, and the bad values
+      // propagate all the way to startModel_.
+      //
+      // Fix: for each fractional integer in modelM2 try rounding down then
+      // rounding up, checking row activities to ensure feasibility.  Only
+      // commit a rounding if at least one direction is row-feasible; update
+      // row activities after each committed rounding so subsequent roundings
+      // see the correct state (same greedy strategy as numberBadValues code).
+      // Variables for which neither direction is feasible are left fractional
+      // and handled by the outer numberBadValues repair pass.
+      {
+        int nM2Cols = modelM2->getNumCols();
+        int nM2Rows = modelM2->getNumRows();
+        const double *sM2 = modelM2->getColSolution();
+        const double *loM2 = modelM2->getColLower();
+        const double *hiM2 = modelM2->getColUpper();
+        bool anyFrac = false;
+        for (int k = 0; k < nM2Cols && !anyFrac; k++) {
+          if (modelM2->isInteger(k) && fabs(sM2[k] - floor(sM2[k] + 0.5)) > 1e-5)
+            anyFrac = true;
+        }
+        if (anyFrac) {
+          const double *rowLoM2 = modelM2->getRowLower();
+          const double *rowHiM2 = modelM2->getRowUpper();
+          const CoinPackedMatrix *colMtx2 = modelM2->getMatrixByCol();
+          const double *elems2 = colMtx2->getElements();
+          const int *rowIdx2 = colMtx2->getIndices();
+          const CoinBigIndex *colStarts2 = colMtx2->getVectorStarts();
+          const int *colLens2 = colMtx2->getVectorLengths();
+          // Compute initial row activities.
+          std::vector<double> rowAct(nM2Rows, 0.0);
+          for (int k = 0; k < nM2Cols; k++) {
+            double val = sM2[k];
+            if (val == 0.0) continue;
+            for (CoinBigIndex j = colStarts2[k]; j < colStarts2[k] + colLens2[k]; j++)
+              rowAct[rowIdx2[j]] += val * elems2[j];
+          }
+          std::vector<double> newSol(sM2, sM2 + nM2Cols);
+          const double rowTol = 1e-5;
+          for (int k = 0; k < nM2Cols; k++) {
+            if (!modelM2->isInteger(k)) continue;
+            double v = newSol[k];
+            double vr = floor(v + 0.5);
+            if (fabs(v - vr) <= 1e-5) continue; // already close to integer
+            double vDown = std::max(loM2[k], floor(v));
+            double vUp   = std::min(hiM2[k], ceil(v));
+            // Check round-down feasibility against current row activities.
+            bool canDown = (vDown >= loM2[k] - 1e-10);
+            if (canDown) {
+              double delta = vDown - v;
+              for (CoinBigIndex j = colStarts2[k]; j < colStarts2[k] + colLens2[k]; j++) {
+                int r = rowIdx2[j];
+                double newA = rowAct[r] + delta * elems2[j];
+                if (newA < rowLoM2[r] - rowTol || newA > rowHiM2[r] + rowTol) {
+                  canDown = false;
+                  break;
+                }
+              }
+            }
+            // Check round-up feasibility against current row activities.
+            bool canUp = (vUp <= hiM2[k] + 1e-10);
+            if (canUp) {
+              double delta = vUp - v;
+              for (CoinBigIndex j = colStarts2[k]; j < colStarts2[k] + colLens2[k]; j++) {
+                int r = rowIdx2[j];
+                double newA = rowAct[r] + delta * elems2[j];
+                if (newA < rowLoM2[r] - rowTol || newA > rowHiM2[r] + rowTol) {
+                  canUp = false;
+                  break;
+                }
+              }
+            }
+            double chosen;
+            if (canDown && canUp)
+              chosen = (fabs(v - vDown) <= fabs(v - vUp)) ? vDown : vUp;
+            else if (canDown)
+              chosen = vDown;
+            else if (canUp)
+              chosen = vUp;
+            else
+              continue; // neither direction feasible: leave fractional
+            // Commit the rounding: update row activities.
+            double delta = chosen - v;
+            for (CoinBigIndex j = colStarts2[k]; j < colStarts2[k] + colLens2[k]; j++)
+              rowAct[rowIdx2[j]] += delta * elems2[j];
+            newSol[k] = chosen;
+          }
+          modelM2->setColSolution(newSol.data());
+        }
       }
       modelM = modelM2;
       delete [] original;
@@ -6280,7 +5254,11 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
           }
         }
       }
-      assert(numberCheck == numberBadValues);
+      // numberBadValues counts fractional integers in startModel_ (which can
+      // include CGL-discovered implicit-integer variables not present in
+      // originalModel_).  numberCheck counts only those in originalModel_.
+      // Since startModel_ is a superset, numberCheck <= numberBadValues always.
+      assert(numberCheck <= numberBadValues);
       model->setColSolution(solution);
       delete[] rowActivity;
       delete[] solution;
@@ -6299,8 +5277,10 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
     }
   }
   delete clonedCopy;
-  originalModel_->setHintParam(OsiDoPresolveInInitial, true, OsiHintTry);
+  originalModel_->setHintParam(OsiDoPresolveInInitial, false, OsiHintTry);
   originalModel_->setHintParam(OsiDoDualInInitial, false, OsiHintTry);
+  int numberFixedFinal = 0;
+  int numberColumnsFinal = 0;
   {
     int numberFixed = 0;
     int numberColumns = originalModel_->getNumCols();
@@ -6326,16 +5306,87 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
       originalModel_->setWarmStart(empty);
       delete empty;
     }
+    numberFixedFinal = numberFixed;
+    numberColumnsFinal = numberColumns;
   }
   delete [] scBound;
   //double time1 = CoinCpuTime();
-#ifdef CBC_HAS_CLP
+#ifdef CGL_HAS_CLP
   OsiClpSolverInterface * originalSolver =
     getClpSolver(originalModel_);
-  if (originalSolver) // make sure can't stop
-    originalSolver->getModelPtr()->setMaximumSeconds(-1.0);
+  if (originalSolver) {
+    if (postProcDeadline_ > 0.0) {
+      double rem = postProcDeadline_ - CoinWallclockTime();
+      originalSolver->getModelPtr()->setMaximumWallSeconds(rem > 0.0 ? rem : 0.0);
+    } else {
+      originalSolver->getModelPtr()->setMaximumSeconds(-1.0); // make sure can't stop
+    }
+  }
+  // Every column is already pinned to a single value (numberFixedFinal ==
+  // numberColumnsFinal) at this point -- there is no freedom left for an
+  // LP to resolve, only feasibility of the already-fully-determined point
+  // to confirm. Paying for a full initialSolve() here (a real cold
+  // crash + dual/primal simplex pass over the *entire original* matrix,
+  // which for some MIPLIB instances is orders of magnitude bigger than the
+  // preprocessed model B&B actually searched) is pure waste in that case;
+  // it was found, while diagnosing an overrun on MIPLIB's z26 (an
+  // 850513-row, all-binary instance with a severely degenerate LP), to
+  // occasionally take minutes to resolve for no benefit. Check feasibility
+  // directly from the sparse matrix instead (cheap, O(nnz)), and only skip
+  // the real solve if that check fully confirms it -- any doubt (row
+  // solver not Clp, more than one column still free, or a tolerance
+  // violation) simply falls through unchanged to the original, always
+  // correct, unconditional initialSolve() below.
+  bool skippedInitialSolve = false;
+  if (originalSolver && numberFixedFinal == numberColumnsFinal
+    && numberColumnsFinal > 0) {
+    const int numberRows = originalModel_->getNumRows();
+    const double *sol = originalModel_->getColLower(); // == upper for every column here
+    const CoinPackedMatrix *mat = originalModel_->getMatrixByCol();
+    const double *element = mat->getElements();
+    const int *rowIndex = mat->getIndices();
+    const CoinBigIndex *colStart = mat->getVectorStarts();
+    const int *colLen = mat->getVectorLengths();
+    const double *rowLower = originalModel_->getRowLower();
+    const double *rowUpper = originalModel_->getRowUpper();
+    std::vector< double > rowActivity(numberRows, 0.0);
+    for (int iColumn = 0; iColumn < numberColumnsFinal; iColumn++) {
+      double v = sol[iColumn];
+      if (v == 0.0)
+        continue;
+      CoinBigIndex end = colStart[iColumn] + colLen[iColumn];
+      for (CoinBigIndex j = colStart[iColumn]; j < end; j++)
+        rowActivity[rowIndex[j]] += v * element[j];
+    }
+    const double primalTolerance = 1.0e-6;
+    bool feasible = true;
+    for (int iRow = 0; iRow < numberRows && feasible; iRow++) {
+      if (rowActivity[iRow] > rowUpper[iRow] + primalTolerance
+        || rowActivity[iRow] < rowLower[iRow] - primalTolerance)
+        feasible = false;
+    }
+    if (feasible) {
+      const double *objCoeff = originalModel_->getObjCoefficients();
+      double rawObj = 0.0;
+      for (int iColumn = 0; iColumn < numberColumnsFinal; iColumn++)
+        rawObj += objCoeff[iColumn] * sol[iColumn];
+      double objOffset = 0.0;
+      originalModel_->getDblParam(OsiObjOffset, objOffset);
+      // setColSolution() also recomputes primalRowSolution() internally
+      // (via ClpModel::times()), so rowActivity above is only needed for
+      // our own feasibility check, not for populating the solver state.
+      originalSolver->setColSolution(sol);
+      originalSolver->getModelPtr()->setObjectiveValue(rawObj - objOffset);
+      originalSolver->getModelPtr()->setProblemStatus(0); // optimal
+      originalSolver->getModelPtr()->setSecondaryStatus(0);
+      skippedInitialSolve = true;
+    }
+  }
 #endif
-  originalModel_->initialSolve();
+  if (!skippedInitialSolve) {
+    CglPhaseTimer timer(stats_, CglPreProcessStats::PostFinalLp);
+    originalModel_->initialSolve();
+  }
   numberIterationsPost_ += originalModel_->getIterationCount();
   //printf("Time without basis %g seconds, %d iterations\n",CoinCpuTime()-time1,originalModel_->getIterationCount());
   double objectiveValue = originalModel_->getObjValue();
@@ -6365,9 +5416,15 @@ void CglPreProcess::postProcess(OsiSolverInterface &modelIn, int deleteStuff)
     }
   } else if (fabs(saveObjectiveValue - objectiveValue) > testObj
     && deleteStuff) {
-    handler_->message(CGL_POST_CHANGED, messages_)
-      << saveObjectiveValue << objectiveValue
-      << CoinMessageEol;
+    // Only warn when postprocessing makes the solution worse; an improvement
+    // is expected when the MIP solution was found by a heuristic (e.g.
+    // Feasibility Jump) that does not re-optimise continuous variables.
+    double direction = originalModel_->getObjSense(); // +1 min, -1 max
+    if (direction * (objectiveValue - saveObjectiveValue) > testObj) {
+      handler_->message(CGL_POST_CHANGED, messages_)
+        << saveObjectiveValue << objectiveValue
+        << CoinMessageEol;
+    }
   }
   originalModel_->setHintParam(OsiDoDualInInitial, saveHint2, saveStrength2);
   originalModel_->setHintParam(OsiDoPresolveInInitial, saveHint, saveStrength);
@@ -6402,7 +5459,6 @@ static int gcd(int a, int b)
   }
   return b;
 }
-#define CGL_PREPROCESS_DENSE_CODE
 #define F77_FUNC(x, y) x##_
 /* Type of Fortran integer translated into C */
 #ifndef ipfint
@@ -6412,7 +5468,6 @@ typedef const int cipfint;
 #endif
 //#define COIN_HAS_LAPACK
 //#include "CoinFactorization.hpp"
-#ifdef CGL_PREPROCESS_DENSE_CODE
 // using simple lapack interface
 extern "C" {
 /** LAPACK Fortran subroutine DGETRF. */
@@ -6425,7 +5480,6 @@ void F77_FUNC(dgetrs, DGETRS)(char *trans, cipfint *n,
   cipfint *ipiv, double *B, cipfint *ldB, ipfint *info,
   int trans_len);
 }
-#endif
 /* Return model with useful modifications.  
    If constraints true then adds any x+y=1 or x-y=0 constraints
    If NULL infeasible
@@ -6437,6 +5491,8 @@ CglPreProcess::modified(OsiSolverInterface *model,
   int iBigPass,
   int numberPasses)
 {
+  CglPhaseTimer modifiedTimer(stats_, CglPreProcessStats::Modified);
+  CglPhaseTimer setupTimer(stats_, CglPreProcessStats::ModSetup);
   OsiSolverInterface *newModel = model->clone();
   int numberRows = newModel->getNumRows();
   CglUniqueRowCuts twoCuts(numberRows);
@@ -6464,24 +5520,14 @@ CglPreProcess::modified(OsiSolverInterface *model,
   info.options = !numberProhibited_ ? 0 : 2;
   info.randomNumberGenerator = &randomGenerator;
   info.strengthenRow = whichCut;
-#ifdef HEAVY_PROBING
-  // See if user asked for heavy probing
-  bool heavyProbing = false;
-  for (int iGenerator = 0; iGenerator < numberCutGenerators_; iGenerator++) {
-    CglProbing *probingCut = dynamic_cast< CglProbing * >(generator_[iGenerator]);
-    if (probingCut && probingCut->getMaxPassRoot() > 1) {
-      heavyProbing = true;
-      break;
-    }
-  }
-#endif
   bool feasible = true;
   int firstGenerator = 0;
   int lastGenerator = numberCutGenerators_;
   bool useSolution = getCutoff() < 1.0e20;
-#if 1
+  setupTimer.stop();
   // Do triple stuff
   if (iBigPass == 0) {
+    CglPhaseTimer timer(stats_, CglPreProcessStats::ModTriple);
     // Row copy
     CoinPackedMatrix matrixByRow(*newModel->getMatrixByRow());
     const double *elementByRow = matrixByRow.getElements();
@@ -6849,7 +5895,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
                   printf("fixing %d to 0\n", iColumn);
 #endif
                   colUpper[0] = 0.0;
-                  newModel->setColLower(iColumn, 0.0);
+                  newModel->setColUpper(iColumn, 0.0);
                   nMarkRow = 0; // stop looking
                 }
                 if (colLower[0] > colUpper[0] + 1.0e-6 || colLower[1] > colUpper[1] + 1.0e-6) {
@@ -6975,6 +6021,17 @@ CglPreProcess::modified(OsiSolverInterface *model,
                       if (stronger) {
                         int strongerEl = 2;
                         for (int k3 = 1; k3 < nBits; k3++) {
+                          // A magnitude-only comparison of el[k3][k1] vs el[k3][k2] is only
+                          // meaningful when the two rows use the same-signed coefficient for
+                          // this shared variable (i.e. the same literal sense). If the signs
+                          // disagree (e.g. +1 in one row, -1 in the other, both nonzero), the
+                          // rows are not comparable for domination purposes -- treat as "not
+                          // stronger" rather than letting the raw numeric compare silently
+                          // fall through and wrongly conclude domination.
+                          if (el[k3][k1] * el[k3][k2] < 0.0) {
+                            stronger = 0;
+                            break;
+                          }
                           if (scaleFactor[k1] * el[k3][k1] < scaleFactor[k2] * el[k3][k2] - 1.0e-9) {
                             stronger = 0;
                             break;
@@ -7080,331 +6137,15 @@ CglPreProcess::modified(OsiSolverInterface *model,
 #endif
     delete[] which;
   }
-#endif
-#if 0
-  // Do domination stuff
-  if (iBigPass==0) {
-    // Row copy
-    CoinPackedMatrix matrixByRow(*newModel->getMatrixByRow());
-    const double * elementByRow = matrixByRow.getElements();
-    const int * column = matrixByRow.getIndices();
-    const CoinBigIndex * rowStart = matrixByRow.getVectorStarts();
-    const int * rowLength = matrixByRow.getVectorLengths();
-
-    // Column copy
-    CoinPackedMatrix  matrixByCol(*newModel->getMatrixByCol());
-    //const double * element = matrixByCol.getElements();
-    const int * row = matrixByCol.getIndices();
-    const CoinBigIndex * columnStart = matrixByCol.getVectorStarts();
-    const int * columnLength = matrixByCol.getVectorLengths();
-
-    const double * rowLower = newModel->getRowLower();
-    const double * rowUpper = newModel->getRowUpper();
-    const double * columnLower = newModel->getColLower();
-    const double * columnUpper = newModel->getColUpper();
-    // get sizes for canonical form (overestimate if free columns)
-    int nRows=numberRows;
-    CoinBigIndex nEls=matrixByRow.getNumElements();
-    for (int iRow=0;iRow<numberRows;iRow++) {
-      if (rowLower[iRow]>-1.0e30&&rowUpper[iRow]<1.0e30) {
-	nRows++;
-	nEls += rowLength[iRow];
-      }
-    }
-    int * rowNumber = new int[3*nRows+numberColumns];
-    int * rowBinary = rowNumber+nRows;
-    int * rowPos = rowBinary+nRows;
-    int * whichColumn = rowPos+nRows;
-    double * elementByRow2 = new double [nEls+numberColumns+nRows];
-    double * columnValue = elementByRow2+nEls;
-    double * rhs = columnValue+numberColumns;
-    int * column2 = new int [nEls];
-    CoinBigIndex * rowStart2 = new CoinBigIndex[nRows+1];
-    char * marked = new char [numberColumns+nRows];
-    char * markedRow = marked + numberColumns;
-    for (int iColumn=0;iColumn<numberColumns;iColumn++) {
-      columnValue[iColumn]=0.0;
-      if (columnLower[iColumn]<-1.0e10&&columnUpper[iColumn]>1.0e10) {
-	marked[iColumn]=-1;
-      } else if (fabs(columnUpper[iColumn])<fabs(columnLower[iColumn])) {
-	// flip
-	marked[iColumn]=2;
-	columnValue[iColumn]=-columnUpper[iColumn];
-	if (newModel->isInteger(iColumn) &&
-	    columnUpper[iColumn]==columnLower[iColumn]+1) 
-	  marked[iColumn]=3;
-      } else {
-	marked[iColumn]=0;
-	columnValue[iColumn]=columnLower[iColumn];
-	if (newModel->isInteger(iColumn) &&
-	    columnUpper[iColumn]==columnLower[iColumn]+1) 
-	  marked[iColumn]=1;
-      }
-    }
-    nRows=0;
-    nEls=0;
-    rowStart2[0]=0;
-    for (int iRow=0;iRow<numberRows;iRow++) {
-      CoinBigIndex start = rowStart[iRow];
-      CoinBigIndex end = start + rowLength[iRow];
-      for (int iTry=0;iTry<2;iTry++) {
-	double multiplier;
-	double rhsValue;
-	if (!iTry) {
-	  multiplier=1.0;
-	  rhsValue = rowUpper[iRow];
-	} else {
-	  multiplier=-1.0;
-	  rhsValue = -rowLower[iRow];
-	}
-	if (rhsValue<1.0e30) {
-	  char typeRow=iTry;
-	  int nPos=0;
-	  int nInt=0;
-	  double largest=0.0;
-	  double smallest=COIN_DBL_MAX;
-	  for (CoinBigIndex k=start;k<end;k++) {
-	    int kColumn = column[k];
-	    int type = marked[kColumn];
-	    double value = multiplier*elementByRow[k];
-	    if (type<0) {
-	      nEls=rowStart2[nRows];
-	      typeRow=-1;;
-	      break;
-	    } else if ((type&2)!=0) {
-	      value = -value;
-	    }
-	    if ((type&1)!=0)
-	      nInt++;
-	    rhsValue -= value*columnValue[kColumn];
-	    elementByRow2[nEls]=value;
-	    if (value>0.0)
-	      nPos++;
-	    largest=std::max(fabs(value),largest);
-	    smallest=std::min(fabs(value),smallest);
-	    column2[nEls++]=kColumn;
-	  }
-	  if (typeRow>=0 && smallest*1.0e7>largest) {
-	    double scale = sqrt(largest*smallest);
-	    if (fabs(rhsValue)>1.0e6*scale||
-		(rhsValue&&fabs(rhsValue)<1.0e-6*scale)) {
-	      scale=0.0;
-	    } else if (rhsValue) {
-	      scale=1.0/fabs(rhsValue);
-	    }
-	    if (scale) {
-	      rhs[nRows]=scale*rhsValue;
-	      for (CoinBigIndex k=rowStart2[nRows];k<nEls;k++) 
-		elementByRow2[k] *= scale;
-	      rowPos[nRows]=nPos;
-	      markedRow[nRows]=typeRow;
-	      rowBinary[nRows]=nInt;
-	      rowNumber[nRows++]=iRow;
-	      rowStart2[nRows]=nEls;
-	    } else {
-	      nEls=rowStart2[nRows];
-	    }
-	  }
-	}
-      }
-    }
-    memset(columnValue,0,numberColumns*sizeof(double));
-    double tolerance = 1.0e-9;
-    for (int iRow=0;iRow<nRows;iRow++) {
-      CoinBigIndex start = rowStart2[iRow];
-      CoinBigIndex end = rowStart2[iRow+1];
-      int n=0;
-      int nInt=rowBinary[iRow];
-      for (CoinBigIndex k=start;k<end;k++) {
-	int kColumn = column2[k];
-	double value = elementByRow2[k];
-	columnValue[kColumn]=value;
-	whichColumn[n++]=kColumn;
-      }
-      double rhsValue=rhs[iRow];
-      int nPos=rowPos[iRow];
-      int nNeg=n-nPos;
-      // initially only short integer rows
-      if (n>3)
-	nInt=0;
-      // for first try ignore integers!
-      nInt=0;
-      if (nInt) {
-      } else {
-	for (int jRow=iRow+1;jRow<nRows;jRow++) {
-	  CoinBigIndex start2 = rowStart2[jRow];
-	  CoinBigIndex end2 = rowStart2[jRow+1];
-	  int n2=end2-start2;
-	  int nPos2=rowPos[jRow];
-	  int nNeg2=n2-nPos2;
-	  int nInt2=rowBinary[jRow];
-	  double rhsValue2=rhs[jRow];
-	  // initially only short integer rows
-	  if (n2>3)
-	    nInt2=0;
-	  // for first try ignore integers!
-	  nInt2=0;
-	  if (nInt2) {
-	  } else {
-	    // continuous tests
-	    // -1 iRow may be stronger, +1 jRow may be stronger, 0 continue, 2 == els
-	    int way=2;
-	    if (rhsValue>rhsValue2+tolerance)
-	      way=1;
-	    else if (rhsValue2>rhsValue+tolerance)
-	      way=-1;
-	    if (nNeg2>nNeg) {
-	      // iRow can be stronger
-	      if (nPos2>nPos || way == 1) 
-		way=0;
-	      else
-		way=-1;
-	    } else if (nNeg2==nNeg) {
-	      // iRow can be either way
-	      if (nPos2>nPos) {
-		if (way!=-1)
-		  way=1;
-		else
-		  way=0;
-	      } else if (nPos2<nPos) { 
-		if (way!=1)
-		  way=-1;
-		else
-		  way=0;
-	      }
-	    } else {
-	      // jRow can be stronger
-	      if (nPos2<nPos || way==-1) 
-		way=0;
-	      else
-		way=1;
-	    }
-	    int nHitPos=0;
-	    int nHitNeg=0;
-	    if (way==-1) {
-	      // iRow may be stronger
-	      for (CoinBigIndex k2=start2;k2<end2;k2++) {
-		int kColumn = column2[k2];
-		double value = elementByRow2[k2];
-		double valueI=columnValue[kColumn];
-		if (value>valueI+1.0e-12) {
-		  way=0;
-		  break;
-		} else {
-		  if (valueI<0.0)
-		    nHitNeg++;
-		}
-	      }
-	      if (nHitNeg<nNeg2)
-		way=0;
-	    } else if (way==1) {
-	      // jRow may be stronger
-	      for (CoinBigIndex k2=start2;k2<end2;k2++) {
-		int kColumn = column2[k2];
-		double value = elementByRow2[k2];
-		double valueI=columnValue[kColumn];
-		if (value<valueI-1.0e-12) {
-		  way=0;
-		  break;
-		} else {
-		  if (valueI>0.0)
-		    nHitPos++;
-		}
-	      }
-	      if (nHitPos<nPos)
-		way=0;
-	    } else if (way==2) {
-	      // same number and rhs - could go either way
-	      CoinBigIndex k2;
-	      for (k2=start2;k2<end2;k2++) {
-		int kColumn = column2[k2];
-		double value = elementByRow2[k2];
-		if (value<columnValue[kColumn]-1.0e-12) {
-		  way=-1;
-		  break;
-		} else if (value>columnValue[kColumn]+1.0e-12) {
-		  way=1;
-		  break;
-		}
-	      }
-	      k2++;
-	      if (way==1) {
-		for (;k2<end2;k2++) {
-		  int kColumn = column2[k2];
-		  double value = elementByRow2[k2];
-		  double valueI=columnValue[kColumn];
-		  if (value<valueI-1.0e-12) {
-		    way=0;
-		    break;
-		  } else {
-		    if (valueI>0.0)
-		      nHitPos++;
-		  }
-		}
-		if (nHitPos<nPos)
-		  way=0;
-	      } else if (way==-1) {
-		for (;k2<end2;k2++) {
-		  int kColumn = column2[k2];
-		  double value = elementByRow2[k2];
-		  double valueI=columnValue[kColumn];
-		  if (value>valueI+1.0e-12) {
-		    way=0;
-		    break;
-		  } else {
-		    if (valueI<0.0)
-		      nHitNeg++;
-		  }
-		}
-		if (nHitNeg<nNeg2)
-		  way=0;
-	      }
-	    }
-#if CBC_USEFUL_PRINTING
-	    if (way) {
-	      int iRowX=rowNumber[iRow];
-	      int jRowX=rowNumber[jRow];
-	      CoinBigIndex startI = rowStart[iRowX];
-	      CoinBigIndex endI = startI + rowLength[iRowX];
-	      CoinBigIndex startJ = rowStart[jRowX];
-	      CoinBigIndex endJ = startJ + rowLength[jRowX];
-	      printf("way %d for row %d (%d - %d els) and %d (%d - %d els)\n",
-		     way,iRow,iRowX,endI-startI,jRow,jRowX,endJ-startJ);
-	      printf("%g <= ",rowLower[iRowX]);
-	      if (endI-startI<100&&endJ-startJ<10) {
-		for (CoinBigIndex k=startI;k<endI;k++) 
-		  printf("(%d,%g) ",column[k],elementByRow[k]);
-	      } else {
-		printf("something ");
-	      }
-	      printf("<= %g\n",rowUpper[iRowX]);
-	      printf("%g <= ",rowLower[jRowX]);
-	      if (endI-startI<100&&endJ-startJ<10) {
-		for (CoinBigIndex k=startJ;k<endJ;k++) 
-		  printf("(%d,%g) ",column[k],elementByRow[k]);
-	      } else {
-		printf("something ");
-	      }
-	      printf("<= %g\n",rowUpper[jRowX]);
-	    }
-#endif
-	  }
-	}
-      }
-      for (int j=0;j<n;j++) {
-	int kColumn = whichColumn[j];
-	columnValue[kColumn]=0.0;
-      }
-    }
-    delete [] rowNumber;
-    delete [] elementByRow2;
-    delete [] column2;
-    delete [] rowStart2;
-    delete [] marked;
-  }
-#endif
   bool noStrengthening = false;
   for (int iPass = 0; iPass < numberPasses; iPass++) {
+    // Respect the preprocessing deadline: stop starting new passes once the
+    // budget set via setTimeLimit() is exhausted, so a single expensive
+    // strengthening pass cannot outlast the overall time budget. The model
+    // returned here (possibly missing this pass's changes) is still fully
+    // consistent since we only ever break *between* passes at this point.
+    if (CoinGetTimeOfDay() >= preDeadline_)
+      break;
     // Statistics
     int numberFixed = 0;
     int numberTwo = twoCuts.sizeRowCuts();
@@ -7412,7 +6153,6 @@ CglPreProcess::modified(OsiSolverInterface *model,
     info.pass = iPass;
     info.options = 0;
     int numberChangedThisPass = 0;
-#if 1
     // look at cliques every time
     if ((options_ & 32) != 0) {
       OsiSolverInterface *temp = cliqueIt(*newModel, 0.0001);
@@ -7436,12 +6176,13 @@ CglPreProcess::modified(OsiSolverInterface *model,
 #endif
       }
     }
-#endif
     /*
       needResolve    solution is stale
       rebuilt   constraint system deleted and recreated (implies initialSolve)
     */
     for (int iGenerator = firstGenerator; iGenerator < lastGenerator; iGenerator++) {
+      // Started at the end of the body, so it times the destructors below
+      CglPhaseTimer cleanupTimer(stats_, CglPreProcessStats::ModCutCleanup, false);
       bool needResolve = false;
       bool rebuilt = false;
       OsiCuts cs;
@@ -7471,6 +6212,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
         double time1 = CoinCpuTime();
 #endif
         if (!probingCut) {
+          CglPhaseTimer timer(stats_, CglPreProcessStats::ModOtherGenerators);
           generator_[iGenerator]->generateCuts(*newModel, cs, info);
         } else {
           info.options = 64 | 2048;
@@ -7498,7 +6240,26 @@ CglPreProcess::modified(OsiSolverInterface *model,
             probingCut->setMaxProbeRoot(probingCut->getMaxProbe());
             probingCut->setMaxLookRoot(probingCut->getMaxLook());
           }
-          probingCut->generateCutsAndModify(*newModel, cs, &info);
+          // Cap CglProbing generation time to the remaining preprocessing
+          // budget so a single expensive probing pass cannot consume all the
+          // time (observed: 600s+ on some instances). If the budget is
+          // already exhausted, skip this generator entirely rather than
+          // starting work we cannot finish.
+          double saveMaxSeconds = probingCut->getMaxSeconds();
+          bool probingBudgetExhausted = false;
+          if (preDeadline_ < 1.0e99) {
+            double remaining = preDeadline_ - CoinGetTimeOfDay();
+            if (remaining <= 0.0) {
+              probingBudgetExhausted = true;
+            } else {
+              probingCut->setMaxSeconds(remaining);
+            }
+          }
+          if (!probingBudgetExhausted) {
+            CglPhaseTimer timer(stats_, CglPreProcessStats::ModProbing);
+            probingCut->generateCutsAndModify(*newModel, cs, &info);
+          }
+          probingCut->setMaxSeconds(saveMaxSeconds);
           probingCut->setMaxElementsRoot(saveMaxElements);
           probingCut->setMaxProbeRoot(saveMaxProbe);
           probingCut->setMaxLookRoot(saveMaxLook);
@@ -7519,12 +6280,11 @@ CglPreProcess::modified(OsiSolverInterface *model,
           for (int i = 0; i < numberRows; i++)
             whichCut[i] = 0;
         }
-#if 1 //def CLIQUE_ANALYSIS
         if (probingCut) {
           //printf("ordinary probing\n");
+          CglPhaseTimer timer(stats_, CglPreProcessStats::ModImplicationAnalysis);
           info.analyze(*newModel);
         }
-#endif
         // If CglDuplicate may give us useless rows
         if (dupRow) {
           numberFromCglDuplicate = dupRow->numberOriginalRows();
@@ -7572,7 +6332,6 @@ CglPreProcess::modified(OsiSolverInterface *model,
           }
           int nOther = 0;
           for (int iRow = numberRows + n - 1; iRow >= numberRows; iRow--) {
-#if 1
             int earliest = used[iRow];
             while (earliest >= numberRows) {
               if (duplicate[earliest] == -2)
@@ -7580,9 +6339,6 @@ CglPreProcess::modified(OsiSolverInterface *model,
               else
                 break;
             }
-#else
-            int earliest = 0;
-#endif
             if (duplicate[iRow] == -2 || earliest == -1 || earliest >= numberRows) {
               cs.eraseRowCut(iRow - numberRows);
               nOther++;
@@ -7621,27 +6377,6 @@ CglPreProcess::modified(OsiSolverInterface *model,
 	      newModel->setHintParam(OsiDoDualInResolve, saveTakeHint, saveStrength);
 	      solveWithDual = true;
 	    }
-#if 0
-	    int numberRows2=copySolver->getNumRows();
-	    const double * rowLower = copySolver->getRowLower();
-	    const double * rowUpper = copySolver->getRowUpper();
-	    const CoinPackedMatrix * matrixByRow = copySolver->getMatrixByRow();
-	    // Row copy
-	    const double * elementByRow = matrixByRow->getElements();
-	    const int * column = matrixByRow->getIndices();
-	    const CoinBigIndex * rowStart = matrixByRow->getVectorStarts();
-	    const int * rowLength = matrixByRow->getVectorLengths();
-	    const double * solution = newModel->getColSolution();
-	    for (int iRow=0;iRow<numberRows2;iRow++) {
-	      double sum=0.0;
-	      for (int j=rowStart[iRow];j<rowStart[iRow]+rowLength[iRow];j++) {
-		int iColumn = column[j];
-		double value = elementByRow[j];
-		sum += value*solution[iColumn];
-	      }
-	      assert (sum>rowLower[iRow]-1.0e-4&&sum<rowUpper[iRow]+1.0e-4);
-	    }
-#endif
           }
           delete copySolver;
           delete[] drop;
@@ -7652,73 +6387,14 @@ CglPreProcess::modified(OsiSolverInterface *model,
           //}
         }
       } else {
-#ifdef HEAVY_PROBING
-        // special probing
-        CglProbing generator1;
-        probingCut = &generator1;
-        generator1.setUsingObjective(false);
-        generator1.setMaxPass(1);
-        generator1.setMaxPassRoot(1);
-        generator1.setMaxProbeRoot(100);
-        generator1.setMaxLook(100);
-        generator1.setRowCuts(3);
-        if (heavyProbing) {
-          generator1.setMaxElements(400);
-          //generator1.setMaxLook(10000);
-          generator1.setMaxProbeRoot(model->getNumCols());
-        }
-        // out for now - think about cliques
-        if (!generator1.snapshot(*newModel, NULL, false)) {
-          generator1.createCliques(*newModel, 2, 1000);
-          // To get special stuff
-          info.pass = 4;
-          CoinZeroN(whichCut, numberRows);
-          generator1.setMode(16 + 4);
-          generator1.generateCutsAndModify(*newModel, cs, &info);
-#if CBC_USEFUL_PRINTING > 0
-          printf("After probing clique stuff %d row cuts and %d column cuts\n",
-            cs.sizeRowCuts(), cs.sizeColCuts());
-#endif
-          // can we extend cliques?
-          // make fake model
-          OsiSolverInterface *fakeModel = generator1.cliqueModel(newModel, 1);
-          // if above added rows then take out duplicates
-          OsiSolverInterface *fakeModel2 = cliqueIt(*fakeModel, 0.0);
-          delete fakeModel;
-          //delete fakeModel2;
-          delete newModel;
-          newModel = fakeModel2;
-#ifdef CLIQUE_ANALYSIS
-          printf("special probing\n");
-          info.analyze(*newModel);
-#endif
-        } else {
-          feasible = false;
-        }
-#endif
       }
+      CglPhaseTimer applyRowCutsTimer(stats_, CglPreProcessStats::ModApplyRowCuts);
       // check changes
       // first are any rows strengthened by cuts
       int iRow;
-#ifdef MAX_ADD_ELEMENTS_PREPROCESS
-      const CoinPackedMatrix *tempRowCopy = newModel->getMatrixByRow();
-      const int *tempRowLength = tempRowCopy->getVectorLengths();
-#endif
       for (iRow = 0; iRow < numberRows; iRow++) {
         if (whichCut[iRow]) {
-#ifdef MAX_ADD_ELEMENTS_PREPROCESS
-          OsiRowCut *thisCut = whichCut[iRow];
-          CoinPackedVector row = thisCut->row();
-          if (row.getNumElements() <= tempRowLength[iRow]
-              + MAX_ADD_ELEMENTS_PREPROCESS) {
-            numberStrengthened++;
-          } else {
-            delete thisCut;
-            whichCut[iRow] = NULL;
-          }
-#else
           numberStrengthened++;
-#endif
         }
       }
       // Also can we get rid of duplicate rows
@@ -7756,52 +6432,6 @@ CglPreProcess::modified(OsiSolverInterface *model,
           OsiRowCut *thisCut = whichCut[iRow];
           //whichCut[iRow]=NULL;
           if (rowLower[iRow] > -1.0e20 || rowUpper[iRow] < 1.0e20) {
-#if 0
-	    if (thisCut) {
-	      double * allColumns = new double[numberColumns];
-	      int which[]={0,8,11,19,21,29,30,38,42,61,77,90,104,105,7,37};
-	      memset(allColumns,0,numberColumns*sizeof(double));
-	      for (int k=0;k<sizeof(which)/sizeof(int);k++) {
-		allColumns[which[k]]=1.0;
-	      }
-	      double lb = thisCut->lb();
-	      double ub = thisCut->ub();
-	      CoinPackedVector row = thisCut->row();
-	      printf("Cut on row %d - %g <= ",iRow,lb);
-	      bool feas1=true;
-	      double sum1=0.0;
-	      for (int k = 0; k < row.getNumElements(); ++k) {
-		int j = row.getIndices()[k];
-		double value = row.getElements()[k];
-		printf("(%d,%g) ",j,value);
-		sum1 += value*allColumns[j];
-	      }
-	      if (sum1<lb-1.0e-3||sum1>ub+1.0e-3) {
-		printf(" ******** ");
-		feas1 = false;
-	      }
-	      printf("<= %g\n",ub);
-	      printf("Old row %g <= ",rowLower[iRow]);
-	      bool feas2=true;
-	      double sum2=0.0;
-              int start=rowStart[iRow];
-	      int end = start + rowLength[iRow];
-	      for (int k = start; k < end; ++k) {
-		CoinBigIndex j = column[k];
-		double value = rowElements[k];
-		printf("(%d,%g) ",j,value);
-		sum2 += value*allColumns[j];
-	      }
-	      if (sum2<rowLower[iRow]-1.0e-3||sum2>rowUpper[iRow]+1.0e-3) {
-		printf(" ******** ");
-		feas2 = false;
-	      }
-	      printf("<= %g\n",rowUpper[iRow]);
-	      if (feas1 && !feas2)
-		abort();
-	      delete [] allColumns;
-	    }
-#endif
             if (!thisCut) {
               // put in old row
               CoinBigIndex start = rowStart[iRow];
@@ -8084,16 +6714,6 @@ CglPreProcess::modified(OsiSolverInterface *model,
                   //	 iRow,n,n1);
                 }
                 if (good) {
-#if PRINT_DEBUG > 1
-                  printf("Original row %.8d %g <= ", iRow, rowLower[iRow]);
-                  for (i = 0; i < n1; i++)
-                    printf("%g * x%d ", rowElements[start + i], column[start + i]);
-                  printf("<= %g\n", rowUpper[iRow]);
-                  printf("New                   %g <= ", lower);
-                  for (i = 0; i < n; i++)
-                    printf("%g * x%d ", elementCut[i], columnCut[i]);
-                  printf("<= %g\n", upper);
-#endif
                 } else {
                   // can't use
                   n = -1;
@@ -8198,8 +6818,10 @@ CglPreProcess::modified(OsiSolverInterface *model,
         columnLower = newModel->getColLower();
         columnUpper = newModel->getColUpper();
       }
+      applyRowCutsTimer.stop();
       if (!feasible)
         break;
+      CglPhaseTimer twoCutsTimer(stats_, CglPreProcessStats::ModTwoCuts);
       // now see if we have any x=y x+y=1
       if (constraints) {
         int numberRowCuts = cs.sizeRowCuts();
@@ -8384,6 +7006,8 @@ CglPreProcess::modified(OsiSolverInterface *model,
         delete[] markLB;
         delete[] markUB;
       }
+      twoCutsTimer.stop();
+      CglPhaseTimer applyColCutsTimer(stats_, CglPreProcessStats::ModApplyColCuts);
       // see if we have any column cuts
       int numberColumnCuts = cs.sizeColCuts();
       int numberBounds = 0;
@@ -8410,12 +7034,6 @@ CglPreProcess::modified(OsiSolverInterface *model,
           if (values[j] > columnLower[iColumn] && values[j] > -1.0e20) {
             //printf("%d lower from %g to %g\n",iColumn,columnLower[iColumn],values[j]);
             newModel->setColLower(iColumn, values[j]);
-            if (false) {
-              OsiSolverInterface *xx = newModel->clone();
-              xx->initialSolve();
-              assert(xx->isProvenOptimal());
-              delete xx;
-            }
             numberChangedThisPass++;
             if (columnLower[iColumn] == columnUpper[iColumn]) {
               numberFixed++;
@@ -8434,12 +7052,6 @@ CglPreProcess::modified(OsiSolverInterface *model,
           if (values[j] < columnUpper[iColumn] && values[j] < 1.0e20) {
             //printf("%d upper from %g to %g\n",iColumn,columnUpper[iColumn],values[j]);
             newModel->setColUpper(iColumn, values[j]);
-            if (false) {
-              OsiSolverInterface *xx = newModel->clone();
-              xx->initialSolve();
-              assert(xx->isProvenOptimal());
-              delete xx;
-            }
             numberChangedThisPass++;
             if (columnLower[iColumn] == columnUpper[iColumn]) {
               numberFixed++;
@@ -8454,16 +7066,27 @@ CglPreProcess::modified(OsiSolverInterface *model,
       writeDebugMps(newModel, "aftercolcut", NULL);
       numberTwo = twoCuts.sizeRowCuts() - numberTwo;
       numberChanges += numberTwo + numberStrengthened / 10;
-      if (numberFixed || numberTwo || numberStrengthened || numberBounds)
+      applyColCutsTimer.stop();
+      if (numberFixed || numberTwo || numberStrengthened || numberBounds) {
+        CglPreProcessStats::Round round;
+        round.pass = iBigPass;
+        round.round = iPass;
+        round.fixed = numberFixed;
+        round.tightened = numberBounds;
+        round.strengthened = numberStrengthened;
+        round.substitutions = numberTwo;
+        stats_.addRound(round);
         handler_->message(CGL_PROCESS_STATS, messages_)
           << numberFixed << numberBounds << numberStrengthened << numberTwo
           << CoinMessageEol;
+      }
       if (!feasible)
         break;
       /*
 	If solution needs to be refreshed, do resolve or initialSolve as appropriate.
       */
       if (needResolve) {
+        CglPhaseTimer timer(stats_, CglPreProcessStats::ModResolve);
         if (rebuilt) {
           // basis shot to bits?
           //CoinWarmStartBasis *slack =
@@ -8477,17 +7100,28 @@ CglPreProcess::modified(OsiSolverInterface *model,
           if ((numberFixed + numberTwo) * 4 > numberColumns)
             newModel->setHintParam(OsiDoPresolveInInitial, true, OsiHintTry);
           newModel->setHintParam(OsiDoDualInInitial, true, OsiHintTry);
-          newModel->initialSolve();
+          bool timedOut = solveWithinBudget(newModel, true);
           newModel->setHintParam(OsiDoPresolveInInitial, saveHint, saveStrength);
+          if (timedOut) {
+            // LP interrupted by the preprocessing deadline: stop this pass
+            // (and the whole modified() loop, via the outer preDeadline_
+            // check) here rather than proceeding with a stale/incomplete
+            // solve, so the model stays consistent for the caller's
+            // fallback path (simple OsiPresolve retry, or postProcess() on
+            // whatever solvers were fully completed so far).
+            break;
+          }
         } else {
 	  bool saveTakeHint;
 	  OsiHintStrength saveStrength;
 	  newModel->getHintParam(OsiDoDualInResolve,
 				 saveTakeHint, saveStrength);
 	  newModel->setHintParam(OsiDoDualInResolve, solveWithDual, OsiHintTry);
-	  newModel->resolve();
+	  bool timedOut = solveWithinBudget(newModel, false);
 	  newModel->setHintParam(OsiDoDualInResolve, saveTakeHint, saveStrength);
 	  solveWithDual = true;
+          if (timedOut)
+            break;
         }
         numberIterationsPre_ += newModel->getIterationCount();
         feasible = newModel->isProvenOptimal();
@@ -8496,8 +7130,10 @@ CglPreProcess::modified(OsiSolverInterface *model,
           CoinWarmStartBasis *slack = dynamic_cast< CoinWarmStartBasis * >(newModel->getEmptyWarmStart());
           newModel->setWarmStart(slack);
           delete slack;
-          newModel->resolve();
+          bool timedOut = solveWithinBudget(newModel, false);
           numberIterationsPre_ += newModel->getIterationCount();
+          if (timedOut)
+            break;
           feasible = newModel->isProvenOptimal();
           //if (!feasible)
           //newModel->writeMpsNative("infeas.mps",NULL,NULL,2,1);
@@ -8507,6 +7143,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
         writeDebugMps(newModel, "infeasible", NULL);
         break;
       }
+      cleanupTimer.start();
     }
     if (!feasible)
       break;
@@ -8523,6 +7160,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
       }
     }
   }
+  CglPhaseTimer finishTimer(stats_, CglPreProcessStats::ModFinish);
   delete[] whichCut;
   int numberRowCuts = twoCuts.sizeRowCuts();
   if (numberRowCuts) {
@@ -8601,6 +7239,8 @@ CglPreProcess::CglPreProcess()
   , appData_(NULL)
   , originalColumn_(NULL)
   , originalRow_(NULL)
+  , numberFinalColumns_(-1)
+  , numberFinalRows_(-1)
   , numberCutGenerators_(0)
   , generator_(NULL)
   , numberSOS_(0)
@@ -8617,6 +7257,8 @@ CglPreProcess::CglPreProcess()
   , rowType_(NULL)
   , useElapsedTime_(true)
   , timeLimit_(COIN_DBL_MAX)
+  , postProcDeadline_(-1.0)
+  , preDeadline_(1.0e100)
   , keepColumnNames_(false)
 {
   handler_ = new CoinMessageHandler();
@@ -8630,6 +7272,8 @@ CglPreProcess::CglPreProcess(const CglPreProcess &rhs)
   , appData_(rhs.appData_)
   , originalColumn_(NULL)
   , originalRow_(NULL)
+  , numberFinalColumns_(rhs.numberFinalColumns_)
+  , numberFinalRows_(rhs.numberFinalRows_)
   , numberCutGenerators_(rhs.numberCutGenerators_)
   , numberProhibited_(rhs.numberProhibited_)
   , numberIterationsPre_(rhs.numberIterationsPre_)
@@ -8638,7 +7282,10 @@ CglPreProcess::CglPreProcess(const CglPreProcess &rhs)
   , options_(rhs.options_)
   , useElapsedTime_(true)
   , timeLimit_(COIN_DBL_MAX)
+  , postProcDeadline_(-1.0)
+  , preDeadline_(1.0e100)
   , keepColumnNames_(false)
+  , stats_(rhs.stats_)
 {
   if (defaultHandler_) {
     handler_ = new CoinMessageHandler();
@@ -8770,7 +7417,12 @@ CglPreProcess::operator=(const CglPreProcess &rhs)
     rowType_ = CoinCopyOfArray(rhs.rowType_, numberRowType_);
     cuts_ = rhs.cuts_;
     timeLimit_ = rhs.timeLimit_;
+    postProcDeadline_ = rhs.postProcDeadline_;
+    preDeadline_ = rhs.preDeadline_;
     keepColumnNames_ = rhs.keepColumnNames_;
+    stats_ = rhs.stats_;
+    numberFinalColumns_ = rhs.numberFinalColumns_;
+    numberFinalRows_ = rhs.numberFinalRows_;
   }
   return *this;
 }
@@ -8814,6 +7466,8 @@ void CglPreProcess::gutsOfDestructor()
   delete[] originalRow_;
   originalColumn_ = NULL;
   originalRow_ = NULL;
+  numberFinalColumns_ = -1;
+  numberFinalRows_ = -1;
   delete[] typeSOS_;
   delete[] startSOS_;
   delete[] whichSOS_;
@@ -8868,9 +7522,6 @@ void CglPreProcess::addCutGenerator(CglCutGenerator *generator)
 
 void CglPreProcess::setApplicationData(void *appData)
 {
-#if 0 //was   
-  appData_ = appData;
-#else
   // At present only use is SC variables
   // If more then need to have flag to say which
     typedef struct {
@@ -8897,7 +7548,6 @@ void CglPreProcess::setApplicationData(void *appData)
       delete [] lotsize;
       appData_ = NULL;
     }
-#endif
 }
 //-----------------------------------------------------------------------------
 void *CglPreProcess::getApplicationData() const
@@ -8970,10 +7620,26 @@ void CglPreProcess::createOriginalIndices()
     nRows = originalModel_->getNumRows();
     nColumns = originalModel_->getNumCols();
   }
+  // The model actually returned by preProcessNonDefault() (see
+  // numberFinalColumns_/numberFinalRows_) can have more rows/columns than
+  // what the last OsiPresolve pass found above tracked -- e.g. clique
+  // detection can append extra "slack" rows/columns via modified() without
+  // ever registering an associated OsiPresolve object for that step. Size
+  // the arrays we return to the true final model so that callers indexing
+  // originalColumns()/originalRows() with the final model's actual number
+  // of columns/rows don't read out of bounds; the extra, untracked
+  // columns/rows are marked unmapped (-1), same convention already used
+  // below for rows that fall outside a presolve pass's range.
+  int nColumnsOut = nColumns;
+  int nRowsOut = nRows;
+  if (numberFinalColumns_ > nColumnsOut)
+    nColumnsOut = numberFinalColumns_;
+  if (numberFinalRows_ > nRowsOut)
+    nRowsOut = numberFinalRows_;
   delete[] originalColumn_;
-  originalColumn_ = new int[nColumns];
+  originalColumn_ = new int[nColumnsOut];
   delete[] originalRow_;
-  originalRow_ = new int[nRows];
+  originalRow_ = new int[nRowsOut];
   if (iPass >= 0) {
     memcpy(originalColumn_, presolve_[iPass]->originalColumns(),
       nColumns * sizeof(int));
@@ -8982,9 +7648,15 @@ void CglPreProcess::createOriginalIndices()
     iPass--;
     for (; iPass >= 0; iPass--) {
       const int *originalColumns = presolve_[iPass]->originalColumns();
+      int nColumnsNow = model_[iPass]->getNumCols();
       int i;
-      for (i = 0; i < nColumns; i++)
-        originalColumn_[i] = originalColumns[originalColumn_[i]];
+      for (i = 0; i < nColumns; i++) {
+        int iColumn = originalColumn_[i];
+        if (iColumn >= 0 && iColumn < nColumnsNow)
+          originalColumn_[i] = originalColumns[iColumn];
+        else
+          originalColumn_[i] = -1;
+      }
       const int *originalRows = presolve_[iPass]->originalRows();
       int nRowsNow = model_[iPass]->getNumRows();
       for (i = 0; i < nRows; i++) {
@@ -8995,6 +7667,12 @@ void CglPreProcess::createOriginalIndices()
           originalRow_[i] = -1;
       }
     }
+    // Any columns/rows beyond what the last presolve pass tracked were
+    // appended later without an original mapping -- mark them unmapped.
+    for (int i = nColumns; i < nColumnsOut; i++)
+      originalColumn_[i] = -1;
+    for (int i = nRows; i < nRowsOut; i++)
+      originalRow_[i] = -1;
 #if CBC_USE_PAPILO
     if (this==initialTry.preProcess) {
       int *mapping = initialTry.mapping;
@@ -9027,6 +7705,10 @@ void CglPreProcess::createOriginalIndices()
       originalColumn_[i] = i;
     for (i = 0; i < nRows; i++)
       originalRow_[i] = i;
+    for (i = nColumns; i < nColumnsOut; i++)
+      originalColumn_[i] = -1;
+    for (i = nRows; i < nRowsOut; i++)
+      originalRow_[i] = -1;
   }
 }
 // Update prohibited and rowType
@@ -9497,9 +8179,6 @@ void CglPreProcess::makeInteger()
   delete[] changed;
 }
 //#define BRON_TIMES
-#ifdef BRON_TIMES
-static int numberTimesX = 0;
-#endif
 /* Replace cliques by more maximal cliques
    Returns NULL if rows not reduced by greater than cliquesNeeded*rows
    
@@ -9654,15 +8333,9 @@ CglPreProcess::cliqueIt(OsiSolverInterface &model,
       printf("%d cliques needing 2 * %g ints\n",
         numberCliques, numberElements);
 #endif
-#ifdef BRON_TIMES
-      double time1 = CoinCpuTime();
-#endif
       CglBK bk(model, type, static_cast< int >(numberElements));
       bk.bronKerbosch();
       newSolver = bk.newSolver(model);
-#ifdef BRON_TIMES
-      printf("Time %g - bron called %d times\n", CoinCpuTime() - time1, numberTimesX);
-#endif
     } else {
 #if CBC_USEFUL_PRINTING > 0
       printf("*** %d cliques needing 2 * %g ints\n",
@@ -9728,7 +8401,6 @@ CglBK::CglBK(const OsiSolverInterface &model, const char *rowType,
   const int *column = matrixByRow.getIndices();
   const CoinBigIndex *rowStart = matrixByRow.getVectorStarts();
   const int *rowLength = matrixByRow.getVectorLengths();
-#if 1
   // take out duplicate doubleton rows
   double *sort = new double[numberRows_];
   int *which = new int[numberRows_];
@@ -9790,7 +8462,6 @@ CglBK::CglBK(const OsiSolverInterface &model, const char *rowType,
   delete[] randomValues;
   delete[] sort;
   delete[] which;
-#endif
   for (int iColumn = 0; iColumn < numberColumns_; iColumn++) {
     start_[iColumn] = numberElements;
     CoinBigIndex start = columnStart[iColumn];
@@ -9800,15 +8471,6 @@ CglBK::CglBK(const OsiSolverInterface &model, const char *rowType,
         int iRow = row[j];
         if (rowType[iRow] >= 0 && !dominated_[iRow]) {
           assert(element[j] == 1.0);
-#if 0
-	  CoinBigIndex r=rowStart[iRow];
-	  assert (rowLength[iRow]==2);
-	  int kColumn = column[r];
-	  if (kColumn==iColumn)
-	    kColumn=column[r+1];
-	  originalRow_[numberElements]=iRow;
-	  otherColumn_[numberElements++]=kColumn;
-#else
           for (CoinBigIndex r = rowStart[iRow]; r < rowStart[iRow] + rowLength[iRow]; r++) {
             int kColumn = column[r];
             if (kColumn != iColumn) {
@@ -9817,7 +8479,6 @@ CglBK::CglBK(const OsiSolverInterface &model, const char *rowType,
             }
           }
 
-#endif
         }
       }
       if (numberElements > start_[iColumn]) {
@@ -9910,11 +8571,6 @@ CglBK::~CglBK()
 // For Bron-Kerbosch
 void CglBK::bronKerbosch()
 {
-#ifdef BRON_TIMES
-  numberTimesX++;
-  if ((numberTimesX % 1000) == 0)
-    printf("times %d - %d candidates left\n", numberTimesX, numberCandidates_);
-#endif
   if (!numberCandidates_ && firstNot_ == numberPossible_) {
     // mark original rows which are dominated
     // save if clique size >2
@@ -9950,15 +8606,6 @@ void CglBK::bronKerbosch()
       delete[] elements;
     }
   } else {
-#if 0
-    int nCplusN=numberCandidates_+(numberPossible_-firstNot_);
-    int iChoose = CoinDrand48()*nCplusN;
-    iChoose=std::min(0,nCplusN-1);
-    if (iChoose>=numberCandidates_) {
-      iChoose -= numberCandidates_;
-      iChoose += firstNot_;
-    }
-#else
     for (int i = 0; i < numberCandidates_; i++) {
       int jColumn = candidates_[i];
       mark_[jColumn] = 1;
@@ -9995,7 +8642,6 @@ void CglBK::bronKerbosch()
       int jColumn = candidates_[i];
       mark_[jColumn] = 0;
     }
-#endif
     iChoose = candidates_[iChoose];
     int *temp = candidates_ + numberPossible_ + numberIn_;
     int nTemp = 0;
@@ -10028,15 +8674,6 @@ void CglBK::bronKerbosch()
       numberCandidates_--;
       CglBK bk2(*this);
       int *newCandidates = bk2.candidates_;
-#if 0
-      printf("%p (next %p) iColumn %d, %d candidates %d not %d in\n",
-	     this,&bk2,iColumn,numberCandidates_,
-	     numberPossible_-firstNot_,numberIn_);
-      for (int i=0;i<numberCandidates_;i++) {
-	printf(" %d",candidates_[i]);
-      }
-      printf("\n");
-#endif
       newCandidates[numberPossible_ + numberIn_] = iColumn;
       bk2.numberIn_ = numberIn_ + 1;
       // Neighborhood of iColumn
@@ -10105,12 +8742,6 @@ CglBK::newSolver(const OsiSolverInterface &model)
     //const int * rowLength = cliqueMatrix_->getVectorLengths();
     assert(cliqueMatrix_->getNumElements() == rowStart[nAdd]);
     newSolver->addRows(nAdd, rowStart, column, elementByRow, lower, upper);
-#if PRINT_DEBUG
-    for (int i = 0; i < nAdd; i++) {
-      if (rowStart[i + 1] - rowStart[i] > 10)
-        printf("Clique %d has %d entries\n", i, rowStart[i + 1] - rowStart[i]);
-    }
-#endif
     delete[] lower;
     delete[] upper;
   }
@@ -10399,6 +9030,9 @@ void CglPreProcess::setTimeLimit(const double timeLimit, const bool useElapsedTi
 {
   this->timeLimit_ = timeLimit;
   this->useElapsedTime_ = useElapsedTime;
+  // Store absolute deadline so modified()/preProcessNonDefault() can
+  // time-cap their LP re-solves and CglProbing cut generation.
+  preDeadline_ = (timeLimit < 1.0e99) ? CoinGetTimeOfDay() + timeLimit : 1.0e100;
 }
 
 void CglPreProcess::setKeepColumnNames(const bool keep)
@@ -10409,6 +9043,218 @@ void CglPreProcess::setKeepColumnNames(const bool keep)
 double CglPreProcess::getCurrentCPUTime() const
 {
   return CoinGetTimeOfDay();
+}
+
+void CglPreProcess::addSolverSlot()
+{
+  OsiSolverInterface **modelOld = model_;
+  OsiSolverInterface **modifiedModelOld = modifiedModel_;
+  OsiPresolve **presolveOld = presolve_;
+  model_ = new OsiSolverInterface *[numberSolvers_ + 1];
+  modifiedModel_ = new OsiSolverInterface *[numberSolvers_ + 1];
+  presolve_ = new OsiPresolve *[numberSolvers_ + 1];
+  for (int i = 0; i < numberSolvers_; i++) {
+    model_[i] = modelOld[i];
+    modifiedModel_[i] = modifiedModelOld[i];
+    presolve_[i] = presolveOld[i];
+  }
+  delete[] modelOld;
+  delete[] modifiedModelOld;
+  delete[] presolveOld;
+  model_[numberSolvers_] = NULL;
+  modifiedModel_[numberSolvers_] = NULL;
+  presolve_[numberSolvers_] = NULL;
+  numberSolvers_++;
+}
+
+bool CglPreProcess::solveWithinBudget(OsiSolverInterface *solver, bool initial,
+  double maxSeconds)
+{
+#ifdef CGL_HAS_CLP
+  OsiClpSolverInterface *clpSolver = dynamic_cast< OsiClpSolverInterface * >(solver);
+  const bool capped = clpSolver && preDeadline_ < 1.0e99;
+  if (capped)
+    clpSolver->getModelPtr()->setMaximumWallSeconds(
+      std::max(std::min(preDeadline_ - CoinGetTimeOfDay(), maxSeconds), 0.0));
+#endif
+  if (initial)
+    solver->initialSolve();
+  else
+    solver->resolve();
+#ifdef CGL_HAS_CLP
+  if (capped)
+    clpSolver->getModelPtr()->setMaximumWallSeconds(1.0e100);
+  return clpSolver && clpSolver->getModelPtr()->problemStatus() == 3;
+#else
+  return false;
+#endif
+}
+
+namespace {
+struct PhaseInfo {
+  CglPreProcessStats::Phase parent;
+  const char *name;
+};
+// Indexed by CglPreProcessStats::Phase
+const PhaseInfo phaseInfo[CglPreProcessStats::NumPhases] = {
+  { CglPreProcessStats::NumPhases, "preprocessing" },
+  { CglPreProcessStats::Total, "model analysis" },
+  { CglPreProcessStats::Total, "initial presolve" },
+  { CglPreProcessStats::Total, "initial bound tightening" },
+  { CglPreProcessStats::Total, "initial LP" },
+  { CglPreProcessStats::Total, "reduced cost fixing" },
+  { CglPreProcessStats::Total, "pass presolve" },
+  { CglPreProcessStats::Total, "pass LP" },
+  { CglPreProcessStats::Total, "modify" },
+  { CglPreProcessStats::Modified, "setup" },
+  { CglPreProcessStats::Modified, "triples" },
+  { CglPreProcessStats::Modified, "probing" },
+  { CglPreProcessStats::Modified, "other generators" },
+  { CglPreProcessStats::Modified, "implication analysis" },
+  { CglPreProcessStats::Modified, "apply row cuts" },
+  { CglPreProcessStats::Modified, "two-variable cuts" },
+  { CglPreProcessStats::Modified, "apply column cuts" },
+  { CglPreProcessStats::Modified, "LP re-solve" },
+  { CglPreProcessStats::Modified, "cut cleanup" },
+  { CglPreProcessStats::Modified, "add two-variable rows" },
+  { CglPreProcessStats::Total, "pass bound tightening" },
+  { CglPreProcessStats::Total, "pass LP re-solve" },
+  { CglPreProcessStats::Total, "finish" },
+  { CglPreProcessStats::NumPhases, "postprocessing" },
+  { CglPreProcessStats::PostProcess, "LP at each level" },
+  { CglPreProcessStats::PostProcess, "postsolve" },
+  { CglPreProcessStats::PostProcess, "final LP" },
+};
+}
+
+CglPreProcessStats::CglPreProcessStats()
+{
+  clear();
+}
+
+void CglPreProcessStats::clear()
+{
+  CoinZeroN(seconds_, NumPhases);
+  CoinZeroN(calls_, NumPhases);
+  passes_.clear();
+  rounds_.clear();
+  initialObjective_ = COIN_DBL_MAX;
+  openPass_ = -1;
+  openPassStart_ = 0.0;
+  CoinZeroN(openPassPhaseSeconds_, NumPhases);
+}
+
+double CglPreProcessStats::selfSeconds(Phase phase) const
+{
+  double self = seconds_[phase];
+  for (int i = 0; i < NumPhases; i++) {
+    if (phaseInfo[i].parent == phase)
+      self -= seconds_[i];
+  }
+  return std::max(self, 0.0);
+}
+
+const char *CglPreProcessStats::name(Phase phase)
+{
+  return phaseInfo[phase].name;
+}
+
+CglPreProcessStats::Phase CglPreProcessStats::parent(Phase phase)
+{
+  return phaseInfo[phase].parent;
+}
+
+int CglPreProcessStats::depth(Phase phase)
+{
+  int depth = 0;
+  for (Phase p = phaseInfo[phase].parent; p != NumPhases; p = phaseInfo[p].parent)
+    depth++;
+  return depth;
+}
+
+void CglPreProcessStats::add(Phase phase, double seconds)
+{
+  seconds_[phase] += seconds;
+  calls_[phase]++;
+}
+
+void CglPreProcessStats::startPass(int pass, double now)
+{
+  endPass(now);
+  Pass record;
+  record.pass = pass;
+  record.rows = -1;
+  record.columns = -1;
+  record.elements = -1;
+  record.changes = 0;
+  record.objective = COIN_DBL_MAX;
+  record.seconds = 0.0;
+  CoinZeroN(record.phaseSeconds, NumPhases);
+  passes_.push_back(record);
+  openPass_ = static_cast< int >(passes_.size()) - 1;
+  openPassStart_ = now;
+  CoinMemcpyN(seconds_, NumPhases, openPassPhaseSeconds_);
+}
+
+void CglPreProcessStats::endPass(double now)
+{
+  if (openPass_ < 0)
+    return;
+  Pass &record = passes_[openPass_];
+  record.seconds = now - openPassStart_;
+  for (int i = 0; i < NumPhases; i++)
+    record.phaseSeconds[i] = seconds_[i] - openPassPhaseSeconds_[i];
+  openPass_ = -1;
+}
+
+void CglPreProcessStats::setPassSize(int rows, int columns, CoinBigIndex elements)
+{
+  if (openPass_ < 0)
+    return;
+  passes_[openPass_].rows = rows;
+  passes_[openPass_].columns = columns;
+  passes_[openPass_].elements = elements;
+}
+
+void CglPreProcessStats::setPassChanges(int changes)
+{
+  if (openPass_ >= 0)
+    passes_[openPass_].changes = changes;
+}
+
+void CglPreProcessStats::setPassObjective(double objective)
+{
+  if (openPass_ >= 0)
+    passes_[openPass_].objective = objective;
+}
+
+void CglPreProcessStats::addRound(const Round &round)
+{
+  rounds_.push_back(round);
+}
+
+CglPhaseTimer::CglPhaseTimer(CglPreProcessStats &stats,
+  CglPreProcessStats::Phase phase, bool startNow)
+  : stats_(stats)
+  , phase_(phase)
+  , start_(-1.0)
+{
+  if (startNow)
+    start();
+}
+
+void CglPhaseTimer::start()
+{
+  if (start_ < 0.0)
+    start_ = CoinGetTimeOfDay();
+}
+
+void CglPhaseTimer::stop()
+{
+  if (start_ >= 0.0) {
+    stats_.add(phase_, CoinGetTimeOfDay() - start_);
+    start_ = -1.0;
+  }
 }
 #if CBC_USE_PAPILO
 static papiloStruct papiloPresolve(ClpSimplex * inModel,

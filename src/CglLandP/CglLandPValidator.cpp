@@ -79,6 +79,27 @@ Validator::cleanCut(OsiRowCut & aCut, const double * solCut, const OsiSolverInte
             }
 
             int & iCol = indices[i];
+            // A cut coming out of CglLandP can carry slack columns of range
+            // rows: the generator works on a transformed problem with one extra
+            // column per range, while colLower/colUpper here are the ORIGINAL
+            // solver's arrays, of length numcols. Substituting a bound for such
+            // an index reads past the end of them. That is not theoretical -- on
+            // dsbmip (numcols 1886) indices 1897..1923 appear, and the values
+            // read there were 1.79769e+308, nan and denormals, so
+            // "rhs -= -1.01e-09 * 1.79769e+308" moved the rhs to 1.82e+299 and
+            // produced a cut that excludes the integer optimum.
+            //
+            // CglLandP::generateCuts already means to throw these cuts away (see
+            // its oddSlack test), but that test runs after this function, by
+            // which time the offending element has been zeroed and dropped, so
+            // no slack column is left for it to find. Reject here instead, which
+            // is what the else branch below does for any other coefficient whose
+            // bound cannot be substituted.
+            if (iCol < 0 || iCol >= numcols)
+            {
+                numRejected_[SmallCoefficient]++;
+                return SmallCoefficient;
+            }
             if (elems[i]>0. && colUpper[iCol] < 10000.)
             {
                 offset++;
@@ -233,6 +254,14 @@ Validator::cleanCut2(OsiRowCut & aCut, const double * solCut, const OsiSolverInt
                     continue;
                 }
                 int & iCol = indices[i];
+                // Same out-of-range slack column as in cleanCut above; this
+                // routine has no callers in the tree today, but the indexing
+                // pattern is identical, so guard it the same way.
+                if (iCol < 0 || iCol >= numcols)
+                {
+                    numRejected_[SmallCoefficient]++;
+                    return SmallCoefficient;
+                }
                 if (elems[i]>0. && colUpper[iCol] < 1000.)
                 {
                     offset++;

@@ -819,7 +819,7 @@ CglKnapsackCover::liftAndUncomplementAndAdd(
          CoinPackedVector & krow,
          double & b,
          int * complement,
-         int /*row*/,
+         int row,
          CoinPackedVector & cover,
          CoinPackedVector & remainder,
          OsiCuts & cs )
@@ -2237,8 +2237,26 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
 
   //assert ( unsatRhs > 0 );
 
+  // BUG FIX: unsatRhs = b - sum(atOne elements) can be <= 0 when the
+  // variables fixed at 1 in the current LP relaxation (atOne) already
+  // consume all (or more than) the knapsack's capacity by themselves.
+  // The original code silently fell through to the "nothing to lift"
+  // path below, which only ever set the cut to "fracCover <= |fracCover|-1"
+  // WITHOUT including the atOne variables in either the cut or the rhs.
+  // That is mathematically invalid: the genuine cover here is
+  // fracCover UNION atOne (its element sum exceeds b precisely because
+  // atOne alone already reaches/exceeds b), so a correct (unlifted) cover
+  // cut must include the atOne variables at coefficient 1 with
+  // cutRhs = |fracCover|+|atOne|-1. Without this, the emitted cut was
+  // "too strong" (e.g. forcing a variable to 0) and could cut off
+  // genuinely feasible/optimal integer solutions.
+  if (unsatRhs<=0.0 && atOne.getNumElements()>0) {
+    cut.setConstant(atOne.getNumElements(),atOne.getIndices(),1.0);
+    cutRhs += atOne.getNumElements();
+    unsatRhs = 0.0; // nothing left to lift for remainder either
+  }
   // If there is something to lift, then calculate the lifted coefficients
-  if (unsatRhs>0.0&&(remainder.getNumElements()+atOne.getNumElements())> 0){
+  else if (unsatRhs>0.0&&(remainder.getNumElements()+atOne.getNumElements())> 0){
     
     // What order to lift?
     // Take the remainder vars in decreasing order of their
@@ -3551,7 +3569,23 @@ CglKnapsackCover::exactSolveKnapsack(
   // 1. initialize 
   double zhat = 0.0;
   z = 0.0;
-  double chat = c+epsilon2_;
+  // NOTE: this used to be "c+epsilon2_", but epsilon2_ (1.0e-5) is a
+  // "violation margin" tolerance used elsewhere in this class to detect
+  // genuinely violated covers/cuts. Callers such as
+  // findExactMostViolatedMinCover() deliberately shrink the capacity they
+  // pass in (by epsilon_ == 1.0e-7) so that knapsack items whose weight
+  // exactly equals the residual capacity are excluded from the "packed"
+  // (non-cover) side, guaranteeing the complementary cover is a genuine
+  // violation (sum of cover weights > b). Adding back epsilon2_ here -
+  // two orders of magnitude larger than epsilon_ - overshoots that
+  // shrinkage and can let items back in that exactly (or near-exactly)
+  // fill the original, un-shrunk capacity. That produces a "cover" whose
+  // weight sum only equals (not exceeds) b, which is not a valid cover
+  // and leads to invalid generated cuts. Use a tiny, purely
+  // floating-point safety margin here instead, decoupled from the
+  // caller-facing epsilon2_ tolerance.
+  const double knapsackFpTolerance = 1.0e-9;
+  double chat = c+knapsackFpTolerance;
   p[n+1] = 0.0;
   w[n+1]= COIN_DBL_MAX;
   j=1;

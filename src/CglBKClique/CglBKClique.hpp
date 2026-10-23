@@ -21,6 +21,7 @@
 
 #include <CglCutGenerator.hpp>
 #include "CoinBronKerbosch.hpp"
+#include "CoinCutPool.hpp"
 #include <atomic>
 
 class CoinCliqueList;
@@ -151,6 +152,13 @@ public:
    * Set the pivoting strategy used in BK algorithm
    **/
   void setPivotingStrategy(const CoinBronKerbosch::PivotingStrategy pivotingStrategy);
+
+  /**
+   * When the CoinCutPool filters this generator's cuts, see
+   * CoinCutPoolGate. The defaults are CoinCutPoolGate's.
+   **/
+  void setPoolGate(const CoinCutPoolGate &gate) { poolGate_ = gate; }
+  const CoinCutPoolGate &getPoolGate() const { return poolGate_; }
 
   /**
    * Number of cuts separated.
@@ -285,6 +293,11 @@ private:
    * maxInducedSize_ survive.  0 = unlimited.
    **/
   size_t maxInducedSize_;
+
+  /**
+   * When the cut pool filters, see setPoolGate().
+   **/
+  CoinCutPoolGate poolGate_;
 
   /**
    * Auxiliary structure used to temporary

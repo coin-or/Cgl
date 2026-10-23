@@ -150,6 +150,7 @@ AC_CONFIG_FILES([Makefile
                  src/CglFlowCover/Makefile
                  src/CglGMI/Makefile
                  src/CglGomory/Makefile
+                 src/CglImpliedClique/Makefile
                  src/CglKnapsackCover/Makefile
                  src/CglLandP/Makefile
                  src/CglLiftAndProject/Makefile

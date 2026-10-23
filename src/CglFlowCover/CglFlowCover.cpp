@@ -589,6 +589,29 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
     }
   }
 
+  // VUB indicator collision check: if a continuous variable's VUB
+  // indicator binary also appears in this row as a bare binary, the
+  // SGFC lifting double-counts that binary (once via VUB substitution
+  // for the continuous variable's xCoef, once via the bare binary's
+  // own xCoef in L-/L--), producing invalid cuts.  Skip the row.
+  for (i = 0; i < rowLen; ++i) {
+    if (sign[i] == CGLFLOW_COL_CONTPOS || sign[i] == CGLFLOW_COL_CONTNEG) {
+      VUB = getVubs(ind[i]);
+      if (VUB.getVar() != UNDEFINED_) {
+	for (j = 0; j < rowLen; ++j) {
+	  if (j != i && ind[j] == VUB.getVar() &&
+	      (sign[j] == CGLFLOW_COL_BINPOS || sign[j] == CGLFLOW_COL_BINNEG)) {
+	    delete [] sign;
+	    delete [] up;
+	    delete [] x;
+	    delete [] y;
+	    return generated;
+	  }
+	}
+      }
+    }
+  }
+
   //-------------------------------------------------------------------------
   // Find a initial cover (C+, C-) in (N+, N-)
   double  knapRHS   = rhs;
@@ -1102,7 +1125,16 @@ CglFlowCover::generateOneFlowCut( const OsiSolverInterface & si,
   if(CGLFLOW_DEBUG) {
     std::cout << "violation = " << violation << std::endl;
   }
-    
+
+  // Guard: if C- lifting drove cutRHS below zero and the all-zero solution
+  // is feasible for this (possibly flipped) row (rhs >= 0), the cut is
+  // invalid — it would separate a point (x=0, y=0) that satisfies the row.
+  // This can occur due to floating-point boundary errors in liftMinus when
+  // z = up[C-] is numerically equal to M[t] - lambda.
+  if (cutRHS < -EPSILON_ && rhs >= -EPSILON_) {
+    violation = 0.0;
+  }
+
   int     cutLen     = 0;
   int*    cutInd     = 0;
   double* cutCoef    = 0;

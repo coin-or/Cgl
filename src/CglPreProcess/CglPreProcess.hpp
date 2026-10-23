@@ -16,6 +16,171 @@
 
 //#############################################################################
 
+/** Where preprocessing spends its time.
+
+    Wall-clock seconds and call counts per phase, accumulated by
+    CglPreProcess as it runs.  Phases nest: each one has a parent (see
+    parent()), and a parent's time includes its children's, so
+    seconds(p) minus the sum over its children is time spent in p itself.
+
+    Statistics accumulate over every preProcessNonDefault() and
+    postProcess() call on the same CglPreProcess object, including the
+    simpler retry a caller may run after a failed first attempt; call
+    CglPreProcess::resetStats() to start afresh.
+*/
+class CGLLIB_EXPORT CglPreProcessStats {
+public:
+  enum Phase {
+    /// All of preProcessNonDefault()
+    Total = 0,
+    /// Row scaling, clique/SOS detection, slacks, moving costs
+    ModelAnalysis,
+    /// First OsiPresolve, before any pass
+    InitialPresolve,
+    /// tightenPrimalBounds() and analyze() on the initially presolved model
+    InitialTighten,
+    /// First LP solve (and its fallbacks)
+    InitialLp,
+    /// reducedCostFix(), before and in each pass
+    ReducedCostFix,
+    /// Per pass: VUB analysis and OsiPresolve
+    PassPresolve,
+    /// Per pass: LP solve of the presolved model
+    PassLp,
+    /// Per pass: modified(), i.e. the cut generators and what they found
+    Modified,
+    /// modified(): cloning the model and setting up
+    ModSetup,
+    /// modified(): "triple" pass over short rows (first pass only)
+    ModTriple,
+    /// modified(): CglProbing::generateCutsAndModify()
+    ModProbing,
+    /// modified(): generators other than probing
+    ModOtherGenerators,
+    /// modified(): CglTreeProbingInfo::analyze() after probing
+    ModImplicationAnalysis,
+    /// modified(): replacing rows by stronger cuts, rebuilding the matrix
+    ModApplyRowCuts,
+    /// modified(): x == y and x + y == 1 from cuts and implications
+    ModTwoCuts,
+    /// modified(): applying column cuts (fixings and bounds)
+    ModApplyColCuts,
+    /// modified(): LP re-solves after changes
+    ModResolve,
+    /// modified(): destroying the cuts of each generator call
+    ModCutCleanup,
+    /// modified(): adding the x == y and x + y == 1 rows
+    ModFinish,
+    /// Per pass: tightenPrimalBounds() and the solver's tightenBounds()
+    PassTighten,
+    /// Per pass: LP re-solve of the modified model
+    PassResolve,
+    /// After the passes: SOS detection, rhs rounding, statistics
+    Finish,
+    /// All of postProcess()
+    PostProcess,
+    /// postProcess(): LP solves at each presolve level
+    PostLp,
+    /// postProcess(): OsiPresolve::postsolve()
+    Postsolve,
+    /// postProcess(): final LP solve of the original model
+    PostFinalLp,
+    NumPhases
+  };
+
+  /// What one pass of the main preprocessing loop did and cost
+  struct Pass {
+    /// Pass number, as in model_[] and presolve_[]
+    int pass;
+    /// Size after this pass's presolve (-1 if presolve did not finish)
+    int rows;
+    int columns;
+    CoinBigIndex elements;
+    /// Changes reported by modified() (fixings, bounds, two-cuts, ...)
+    int changes;
+    /** LP objective after the pass's final re-solve, in the presolved
+        model's terms (offset included); COIN_DBL_MAX if not optimal */
+    double objective;
+    /// Wall-clock seconds for the whole pass
+    double seconds;
+    /// Seconds spent in each phase during this pass
+    double phaseSeconds[NumPhases];
+  };
+
+  /// One CGL_PROCESS_STATS line: what one round of modified() found
+  struct Round {
+    /** Main pass counted from 0 at the first modified() call (Pass::pass
+        counts from 1 when an initial presolve was done), and the round
+        within that modified() call */
+    int pass;
+    int round;
+    int fixed;
+    int tightened;
+    int strengthened;
+    int substitutions;
+  };
+
+  CglPreProcessStats();
+  void clear();
+
+  /// Seconds and number of calls in phase
+  inline double seconds(Phase phase) const { return seconds_[phase]; }
+  inline int calls(Phase phase) const { return calls_[phase]; }
+  /// Seconds in phase not accounted for by its child phases
+  double selfSeconds(Phase phase) const;
+  inline const std::vector< Pass > &passes() const { return passes_; }
+  inline const std::vector< Round > &rounds() const { return rounds_; }
+
+  /// Short name (e.g. "probing"), parent (NumPhases for a root) and depth
+  static const char *name(Phase phase);
+  static Phase parent(Phase phase);
+  static int depth(Phase phase);
+
+  /// For CglPreProcess: record time, open and close passes, record rounds
+  void add(Phase phase, double seconds);
+  void startPass(int pass, double now);
+  void endPass(double now);
+  void setPassSize(int rows, int columns, CoinBigIndex elements);
+  void setPassChanges(int changes);
+  void setPassObjective(double objective);
+  /// LP objective of the initial solve (COIN_DBL_MAX if none)
+  inline double initialObjective() const { return initialObjective_; }
+  inline void setInitialObjective(double objective) { initialObjective_ = objective; }
+  void addRound(const Round &round);
+
+private:
+  double seconds_[NumPhases];
+  int calls_[NumPhases];
+  std::vector< Pass > passes_;
+  std::vector< Round > rounds_;
+  double initialObjective_;
+  /// Pass open since startPass(), or -1
+  int openPass_;
+  double openPassStart_;
+  double openPassPhaseSeconds_[NumPhases];
+};
+
+/** Adds the wall-clock time from start() to stop() (or destruction) to a
+    CglPreProcessStats phase.  Starts on construction unless told not to. */
+class CGLLIB_EXPORT CglPhaseTimer {
+public:
+  CglPhaseTimer(CglPreProcessStats &stats, CglPreProcessStats::Phase phase,
+    bool startNow = true);
+  ~CglPhaseTimer() { stop(); }
+  void start();
+  void stop();
+
+private:
+  CglPhaseTimer(const CglPhaseTimer &);
+  CglPhaseTimer &operator=(const CglPhaseTimer &);
+  CglPreProcessStats &stats_;
+  CglPreProcessStats::Phase phase_;
+  /// Start time, or negative when not running
+  double start_;
+};
+
+//#############################################################################
+
 /** Class for preProcessing and postProcessing.
 
     While cuts can be added at any time in the tree, some cuts are actually just
@@ -345,8 +510,18 @@ public:
   /// Set time limit
   void setTimeLimit(const double timeLimit, const bool useElapsedTime);
 
+  /** Set an absolute wallclock deadline for postProcess() LP solves.
+      LP solvers inside postProcess() will be given at most
+      \c max(0, deadline - CoinWallclockTime()) seconds.  Pass -1.0 (the
+      default) to keep the historic behaviour of unlimited LP solves. */
+  inline void setPostProcDeadline(double deadline) { postProcDeadline_ = deadline; }
+
   /// Keeps original column names
   void setKeepColumnNames(const bool keep);
+
+  /// Where time went in preprocessing (see CglPreProcessStats)
+  inline const CglPreProcessStats &stats() const { return stats_; }
+  inline void resetStats() { stats_.clear(); }
 
   //@}
 private:
@@ -361,6 +536,14 @@ private:
     int &numberChanges,
     int iBigPass,
     int numberPasses);
+  /** initialSolve() (if initial) or resolve() on solver, with Clp's
+      wall-clock limit set to what is left of the preprocessing budget but
+      at most maxSeconds, and lifted again afterwards.  Returns true if the
+      solve stopped on a limit, which says nothing about feasibility. */
+  bool solveWithinBudget(OsiSolverInterface *solver, bool initial,
+    double maxSeconds = COIN_DBL_MAX);
+  /// Makes room for one more pass in model_, modifiedModel_ and presolve_
+  void addSolverSlot();
   /// create original columns and rows
   void createOriginalIndices();
   /// Make continuous variables integer
@@ -405,6 +588,18 @@ private:
   int *originalColumn_;
   /// Original row numbers
   int *originalRow_;
+  /** Number of columns in the model actually returned by
+      preProcessNonDefault()/process().  This can exceed the number of
+      columns tracked by the last OsiPresolve pass recorded in model_/
+      presolve_ (see createOriginalIndices()), since later stages (e.g.
+      clique-detection) can append extra columns via modified() without
+      ever registering an associated OsiPresolve object.  -1 if not yet
+      known. */
+  int numberFinalColumns_;
+  /** Number of rows in the model actually returned by
+      preProcessNonDefault()/process(), analogous to numberFinalColumns_.
+      -1 if not yet known. */
+  int numberFinalRows_;
   /// Number of cut generators
   int numberCutGenerators_;
   /// Cut generators
@@ -458,8 +653,22 @@ private:
   /// time limit (default COIN_DBL_MAX)
   double timeLimit_;
 
+  /// Absolute wallclock deadline for postProcess() LP solves (-1.0 = unlimited)
+  double postProcDeadline_;
+
+  /** Absolute wallclock deadline (CoinGetTimeOfDay()) for preprocessing LP
+      solves (1e100 = unlimited).  Set automatically by setTimeLimit(); used
+      by modified() and preProcessNonDefault() to time-cap per-pass LP
+      re-solves and CglProbing cut generation, and to abort preprocessing
+      cleanly (falling back to the caller's simple-presolve retry path)
+      rather than silently overrunning the caller's time budget. */
+  double preDeadline_;
+
   /// keep column names
   bool keepColumnNames_;
+
+  /// Where time went (accumulates until resetStats())
+  CglPreProcessStats stats_;
 
   /// current elapsed or cpu time
   double getCurrentCPUTime() const;
