@@ -197,36 +197,38 @@ CglLandPUnitTest(
         // Setup
         OsiSolverInterface  * siP = si->clone();
         std::string fn(mpsDir+"p0033");
-        siP->readMps(fn.c_str(),"mps");
-        siP->activateRowCutDebugger("p0033");
-        CglLandP test;
+        const int error = siP->readMps(fn.c_str(),"mps");
+        if (!error) {
+          siP->activateRowCutDebugger("p0033");
+          CglLandP test;
 
-        // Solve the LP relaxation of the model and
-        // print out ofv for sake of comparison
-        siP->initialSolve();
-        double lpRelaxBefore=siP->getObjValue();
-        assert( eq(lpRelaxBefore, 2520.5717391304347) );
+          // Solve the LP relaxation of the model and
+          // print out ofv for sake of comparison
+          siP->initialSolve();
+          double lpRelaxBefore=siP->getObjValue();
+          assert( eq(lpRelaxBefore, 2520.5717391304347) );
 #ifdef CGL_DEBUG
-        printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
+          printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
 #endif
 
-        OsiCuts cuts;
+          OsiCuts cuts;
 
-        // Test generateCuts method
-        test.generateCuts(*siP,cuts);
-        OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cuts);
+          // Test generateCuts method
+          test.generateCuts(*siP,cuts);
+          OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cuts);
 
-        siP->resolve();
-        double lpRelaxAfter=siP->getObjValue();
-        //assert( eq(lpRelaxAfter, 2592.1908295194507) );
+          siP->resolve();
+          double lpRelaxAfter=siP->getObjValue();
+          //assert( eq(lpRelaxAfter, 2592.1908295194507) );
 
-        std::cout<<"Relaxation after "<<lpRelaxAfter<<std::endl;
-        assert( lpRelaxAfter> 2840. );
+          std::cout<<"Relaxation after "<<lpRelaxAfter<<std::endl;
+          assert( lpRelaxAfter> 2840. );
 #ifdef CGL_DEBUG
-        printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
-        printf("\n\nFinal LP min=%f\n",lpRelaxAfter);
+          printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
+          printf("\n\nFinal LP min=%f\n",lpRelaxAfter);
 #endif
-        assert( lpRelaxBefore < lpRelaxAfter );
+          assert( lpRelaxBefore < lpRelaxAfter );
+        }
 
         delete siP;
     }
@@ -235,36 +237,38 @@ CglLandPUnitTest(
         // Setup
         OsiSolverInterface  * siP = si->clone();
         std::string fn(mpsDir+"p0033");
-        siP->readMps(fn.c_str(),"mps");
-        siP->activateRowCutDebugger("p0033");
-        CglLandP test;
-        test.parameter().modularize = true;
-        // Solve the LP relaxation of the model and
-        // print out ofv for sake of comparison
-        siP->initialSolve();
-        double lpRelaxBefore=siP->getObjValue();
-        assert( eq(lpRelaxBefore, 2520.5717391304347) );
+        const int error = siP->readMps(fn.c_str(),"mps");
+        if (!error) {
+          siP->activateRowCutDebugger("p0033");
+          CglLandP test;
+          test.parameter().modularize = true;
+          // Solve the LP relaxation of the model and
+          // print out ofv for sake of comparison
+          siP->initialSolve();
+          double lpRelaxBefore=siP->getObjValue();
+          assert( eq(lpRelaxBefore, 2520.5717391304347) );
 #ifdef CGL_DEBUG
-        printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
+          printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
 #endif
 
-        OsiCuts cuts;
+          OsiCuts cuts;
 
-        // Test generateCuts method
-        test.generateCuts(*siP,cuts);
-        OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cuts);
+          // Test generateCuts method
+          test.generateCuts(*siP,cuts);
+          OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cuts);
 
-        siP->resolve();
-        double lpRelaxAfter=siP->getObjValue();
-        //assert( eq(lpRelaxAfter, 2592.1908295194507) );
+          siP->resolve();
+          double lpRelaxAfter=siP->getObjValue();
+          //assert( eq(lpRelaxAfter, 2592.1908295194507) );
 
-        std::cout<<"Relaxation after "<<lpRelaxAfter<<std::endl;
-        assert( lpRelaxAfter> 2840. );
+          std::cout<<"Relaxation after "<<lpRelaxAfter<<std::endl;
+          assert( lpRelaxAfter> 2840. );
 #ifdef CGL_DEBUG
-        printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
-        printf("\n\nFinal LP min=%f\n",lpRelaxAfter);
+          printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
+          printf("\n\nFinal LP min=%f\n",lpRelaxAfter);
 #endif
-        assert( lpRelaxBefore < lpRelaxAfter );
+          assert( lpRelaxBefore < lpRelaxAfter );
+        }
 
         delete siP;
     }
@@ -273,36 +277,38 @@ CglLandPUnitTest(
         // Setup
         OsiSolverInterface  * siP = si->clone();
         std::string fn(mpsDir+"p0033");
-        siP->readMps(fn.c_str(),"mps");
-        siP->activateRowCutDebugger("p0033");
-        CglLandP test;
-        test.parameter().pivotSelection = CglLandP::bestPivot;
-        // Solve the LP relaxation of the model and
-        // print out ofv for sake of comparison
-        siP->initialSolve();
-        double lpRelaxBefore=siP->getObjValue();
-        assert( eq(lpRelaxBefore, 2520.5717391304347) );
+        const int error = siP->readMps(fn.c_str(),"mps");
+        if (!error) {
+          siP->activateRowCutDebugger("p0033");
+          CglLandP test;
+          test.parameter().pivotSelection = CglLandP::bestPivot;
+          // Solve the LP relaxation of the model and
+          // print out ofv for sake of comparison
+          siP->initialSolve();
+          double lpRelaxBefore=siP->getObjValue();
+          assert( eq(lpRelaxBefore, 2520.5717391304347) );
 #ifdef CGL_DEBUG
-        printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
+          printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
 #endif
 
-        OsiCuts cuts;
+          OsiCuts cuts;
 
-        // Test generateCuts method
-        test.generateCuts(*siP,cuts);
-        OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cuts);
+          // Test generateCuts method
+          test.generateCuts(*siP,cuts);
+          OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cuts);
 
-        siP->resolve();
-        double lpRelaxAfter=siP->getObjValue();
-        //assert( eq(lpRelaxAfter, 2592.1908295194507) );
+          siP->resolve();
+          double lpRelaxAfter=siP->getObjValue();
+          //assert( eq(lpRelaxAfter, 2592.1908295194507) );
 
-        std::cout<<"Relaxation after "<<lpRelaxAfter<<std::endl;
-        assert( lpRelaxAfter> 2840. );
+          std::cout<<"Relaxation after "<<lpRelaxAfter<<std::endl;
+          assert( lpRelaxAfter> 2840. );
 #ifdef CGL_DEBUG
-        printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
-        printf("\n\nFinal LP min=%f\n",lpRelaxAfter);
+          printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
+          printf("\n\nFinal LP min=%f\n",lpRelaxAfter);
 #endif
-        assert( lpRelaxBefore < lpRelaxAfter );
+          assert( lpRelaxBefore < lpRelaxAfter );
+        }
 
         delete siP;
     }
@@ -312,40 +318,42 @@ CglLandPUnitTest(
         // Setup
         OsiSolverInterface  * siP = si->clone();
         std::string fn(mpsDir+"p0033");
-        siP->readMps(fn.c_str(),"mps");
-        siP->activateRowCutDebugger("p0033");
-        CglLandP landpGen;
+        const int error = siP->readMps(fn.c_str(),"mps");
+        if (!error) {
+          siP->activateRowCutDebugger("p0033");
+          CglLandP landpGen;
 
-        landpGen.parameter().timeLimit = 10.;
-        landpGen.parameter().pivotLimit = 2;
+          landpGen.parameter().timeLimit = 10.;
+          landpGen.parameter().pivotLimit = 2;
 
 
-        // Solve the LP relaxation of the model and
-        // print out ofv for sake of comparison
-        siP->initialSolve();
-        double lpRelaxBefore=siP->getObjValue();
-        assert( eq(lpRelaxBefore, 2520.5717391304347) );
+          // Solve the LP relaxation of the model and
+          // print out ofv for sake of comparison
+          siP->initialSolve();
+          double lpRelaxBefore=siP->getObjValue();
+          assert( eq(lpRelaxBefore, 2520.5717391304347) );
 #ifdef CGL_DEBUG
-        printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
+          printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
 #endif
 
-        OsiCuts cuts;
+          OsiCuts cuts;
 
-        // Test generateCuts method
-        landpGen.generateCuts(*siP, cuts);
-        OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cuts);
+          // Test generateCuts method
+          landpGen.generateCuts(*siP, cuts);
+          OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cuts);
 
-        siP->resolve();
-        double lpRelaxAfter=siP->getObjValue();
-        //assert( eq(lpRelaxAfter, 2592.1908295194507) );
+          siP->resolve();
+          double lpRelaxAfter=siP->getObjValue();
+          //assert( eq(lpRelaxAfter, 2592.1908295194507) );
 
-        std::cout<<"Relaxation after "<<lpRelaxAfter<<std::endl;
-        assert( lpRelaxAfter> 2840. );
+          std::cout<<"Relaxation after "<<lpRelaxAfter<<std::endl;
+          assert( lpRelaxAfter> 2840. );
 #ifdef CGL_DEBUG
-        printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
-        printf("\n\nFinal LP min=%f\n",lpRelaxAfter);
+          printf("\n\nOrig LP min=%f\n",lpRelaxBefore);
+          printf("\n\nFinal LP min=%f\n",lpRelaxAfter);
 #endif
-        assert( lpRelaxBefore < lpRelaxAfter );
+          assert( lpRelaxBefore < lpRelaxAfter );
+        }
 
         delete siP;
     }
