@@ -1013,6 +1013,7 @@ CglGomory::generateCuts(
 
   */
   int * rowType = new int[numberRows];
+  double * rowRange = new double[numberRows];
   for (iRow=0;iRow<numberRows;iRow++) {
     if (rowIsBasic[iRow]<0&&rowUpper[iRow]>rowLower[iRow]+1.0e-7) {
       int type=0;
@@ -1054,6 +1055,20 @@ CglGomory::generateCuts(
 	}
 	if (allInteger) {
 	  type |= 4;
+	  // range of the activity, for the integer slack
+	  double lo = 0.0, hi = 0.0;
+	  for (k=rowStart[iRow];k<rowStart[iRow]+rowLength[iRow];k++) {
+	    double element = rowElements[k];
+	    int iColumn = column[k];
+	    if (element>0.0) {
+	      lo += element*colLower[iColumn];
+	      hi += element*colUpper[iColumn];
+	    } else {
+	      lo += element*colUpper[iColumn];
+	      hi += element*colLower[iColumn];
+	    }
+	  }
+	  rowRange[iRow] = std::min(hi-lo,rowUpper[iRow]-rowLower[iRow]);
 	}
       }
       rowType[iRow]=type;
@@ -1298,6 +1313,9 @@ CglGomory::generateCuts(
 	}
 #endif
 	double largestFactor=0.0;
+	// sum of |alpha| times the distance of each nonbasic variable or
+	// slack from the bound it is taken to be at
+	double offBound=0.0;
 	for (j=0;j<numberInArray;j++) {
 	  int indexValue=arrayRows[j];
 	  double value=arrayElements[indexValue];
@@ -1441,6 +1459,7 @@ CglGomory::generateCuts(
 	      if (iColumn==52) printf("for basic %d, column %d has alpha %g, colsol %g\n",
 				      iColumn,j,value,colsol[j]);
 #endif
+	      offBound += fabs(value)*fabs(colsol[j]-(swap[j] ? colUpper[j] : colLower[j]));
 	      // deal with bounds
 	      if (swap[j]) {
 		//reducedValue -= value*colUpper[j];
@@ -1457,6 +1476,12 @@ CglGomory::generateCuts(
 	      if (intVar[j]) {
 		// integer
 		coefficient = above_integer(value);
+		// above_integer rounds anything within 1e-9 of an integer to
+		// fractional part 0, which drops the term; keep the true
+		// fractional part when that could matter over the column's range
+		if (!coefficient&&value!=floor(value)&&
+		    fabs(value-floor(value+0.5))*(colUpper[j]-colLower[j])>1.0e-9)
+		  coefficient = value-floor(value);
 		if (coefficient > reducedValue) {
 		  coefficient = ratio * (1.0-coefficient);
 		} 
@@ -1511,6 +1536,7 @@ CglGomory::generateCuts(
 	  double value = arrayElements[iRow];
 	  int type=rowType[iRow];
 	  if (type&&fabs(value)>=1.0e-16) {
+	    offBound += fabs(value)*fabs(rowActivity[iRow]-((type&1)!=0 ? rowUpper[iRow] : rowLower[iRow]));
 	    if ((type&1)==0) {
 	      // negate to get correct coefficient
 	      value = - value;
@@ -1519,6 +1545,10 @@ CglGomory::generateCuts(
 	    if ((type&4)!=0) {
 	      // integer
 	      coefficient = above_integer(value);
+	      // as for columns - an integer slack can be very large
+	      if (!coefficient&&value!=floor(value)&&
+		  fabs(value-floor(value+0.5))*rowRange[iRow]>1.0e-9)
+		coefficient = value-floor(value);
 	      if (coefficient > reducedValue) {
 		coefficient = ratio * (1.0-coefficient);
 	      } 
@@ -1561,6 +1591,13 @@ CglGomory::generateCuts(
 	//assert (n); can be 0!
 	// If too many - just clear vector and skip
 	if (n>limit) {
+	  cutVector.clear();
+	  continue;
+	}
+	// The derivation takes the right-hand side from colsol[iColumn] and
+	// assumes every nonbasic variable and slack is at its bound. If the LP
+	// point is off them (an unclean solve), f0 is wrong and so is the cut.
+	if (offBound>1.0e-6) {
 	  cutVector.clear();
 	  continue;
 	}
@@ -1655,17 +1692,6 @@ CglGomory::generateCuts(
 #if TRY7==2
 	  double rhsBeforeRelax=rhs;
 #endif
-	  // Remember whether every element of this cut was genuinely integer
-	  // (rather than being forced into the "pretend integer" rational
-	  // reconstruction below just because number<6). If the subsequent
-	  // rational reconstruction cannot represent a truly-all-integer cut
-	  // to its own tolerance, that is a direct signal that the raw
-	  // floating-point coefficients/rhs are not trustworthy (e.g. due to
-	  // accumulated numerical error from the row-substitution/slack
-	  // step on an ill-conditioned row) and the cut must be rejected
-	  // rather than used with its unverified raw values.
-	  bool wasAllInteger = (numberNonInteger==0);
-	  bool rejectUnstableIntegerCut = false;
 	  if ((!numberNonInteger||number<6)&&number&&USE_CGL_RATIONAL>=0) {
 	    // pretend not integer
 	    numberNonInteger=0;
@@ -1735,19 +1761,6 @@ CglGomory::generateCuts(
 		printf("Gomory Scaling: Warning: Overflow detected \n");
 #endif
 		numberNonInteger=-1;
-		if (wasAllInteger) {
-		  // A cut whose original elements were all integer should be
-		  // exactly representable as a small-denominator rational; a
-		  // reconstruction overflow here means the raw coefficients/
-		  // rhs carry more numerical error than this tolerance allows
-		  // and cannot be trusted - reject the cut instead of using
-		  // its unverified raw values (see AGENTS.md "Debugging
-		  // invalid cuts" for how this was root-caused). Defer the
-		  // actual rejection until after cutElement has been erased
-		  // below, so we don't leave stale reinterpreted-Rational/int
-		  // bytes behind for the next candidate.
-		  rejectUnstableIntegerCut = true;
-		}
 	      } else {
 		// find greatest common divisor of the elements
 		j=0;
@@ -1843,10 +1856,6 @@ CglGomory::generateCuts(
 	      printf("after %g <= %g <= %g\n",bounds[0],total,rhs);
 	    }
 #endif
-	  }
-	  if (rejectUnstableIntegerCut) {
-	    cutVector.clear();
-	    continue;
 	  }
 	  if (!dontRelax) {
 	    // relax rhs a tiny bit
@@ -2269,6 +2278,7 @@ CglGomory::generateCuts(
   delete [] rowActivity;
   delete [] swap;
   delete [] rowType;
+  delete [] rowRange;
   delete [] packed;
   delete [] rowIsBasic;
   delete [] columnIsBasic;
