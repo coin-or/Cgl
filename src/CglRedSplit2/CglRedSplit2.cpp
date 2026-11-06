@@ -1734,8 +1734,11 @@ int CglRedSplit2::generateCuts(OsiCuts* cs, int maxNumCuts, int* lambda)
 
     default: // free variable ? Don't know how to handle 
 #ifndef NDEBUG
-      printf("### ERROR: CglRedSplit2::generateCuts(): cstat[%d]: %d\n",
-	     i, cstat[i]);
+      static int numberFree=0;
+      if (!numberFree)
+	printf("### ERROR: CglRedSplit2::generateCuts(): cstat[%d]: %d - free\n",
+	       i, cstat[i]);
+      numberFree++;
 #endif
       goodModel = false;
       break;

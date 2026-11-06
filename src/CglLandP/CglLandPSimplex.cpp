@@ -3639,7 +3639,7 @@ CglLandPSimplex::update_row(TabRow &row)
 
 }
 #endif
-
+static int numberFreeVariables = 0;
 /** Get the row i of the tableau */
 void
 CglLandPSimplex::pullTableauRow(TabRow &row) const
@@ -3717,8 +3717,24 @@ CglLandPSimplex::pullTableauRow(TabRow &row) const
             }
             else
             {
-                std::cout<<(basis_->getStructStatus(nonBasics_[j])==CoinWarmStartBasis::isFree)<<std::endl;
-                throw CoinError("Invalid basis","CglLandPSimplex","pullTableauRow");
+#if 0
+	      std::cout<<(basis_->getStructStatus(nonBasics_[j])==CoinWarmStartBasis::isFree)<<std::endl;
+	      throw CoinError("Invalid basis","CglLandPSimplex","pullTableauRow");
+#else
+	      if (!numberFreeVariables) {
+		numberFreeVariables++;
+		CoinMessages mmmm = si_->messages();
+		CoinMessages * messagesPointer = si_->messagesPointer();
+		CoinMessageHandler *handler = si_->messageHandler();
+		int logLevel = handler->logLevel();
+		handler->setLogLevel(1);
+		handler->message(COIN_GENERAL_INFO,si_->messages()) <<
+		  "At present CglLandPSimplex is unable to handle free variables" <<
+		  CoinMessageEol;
+		handler->setLogLevel(logLevel);
+	      }
+	      return;
+#endif
             }
         }
         else
