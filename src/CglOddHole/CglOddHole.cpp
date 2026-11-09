@@ -777,8 +777,12 @@ CglOddHole::operator=(
     delete [] suitableRows_;
     // copy list of suitable rows
     numberRows_=rhs.numberRows_;
-    suitableRows_=new int[numberRows_];
-    memcpy(suitableRows_,rhs.suitableRows_,numberRows_*sizeof(int));
+    if (numberRows_) {
+      suitableRows_=new int[numberRows_];
+      memcpy(suitableRows_,rhs.suitableRows_,numberRows_*sizeof(int));
+    } else {
+      suitableRows_=NULL;
+    }
     delete [] startClique_;
     delete [] member_;
     // copy list of cliques
