@@ -23,6 +23,15 @@
 //-----------------------------------------------------------------------------
 // Generate knapsack cover cuts
 //------------------------------------------------------------------- 
+// Capacity margin for exactSolveKnapsack. In the lifting calls (liftUpDownAndUncomplementAndAdd,
+// seqLiftAndUncomplementAndAdd) a larger capacity gives a larger psi_j and so a weaker, safe
+// coefficient: an item that fits to within the primal feasibility tolerance must count as fitting,
+// or the cut can remove solutions that are feasible within tolerance (MIPLIB ran14x18-disj-8: an
+// arc 1.3e-9 short of fitting got coefficient 1, which cut off the optimum).
+// findExactMostViolatedMinCover subtracts the same margin from the capacity it passes, so its net
+// capacity stays elementSum-b-epsilon_ and tied items stay out of the packed set.
+static const double knapsackCapacityMargin = 1.0e-6;
+
 void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
 				    const CglTreeInfo info)
 {
@@ -1501,10 +1510,7 @@ CglKnapsackCover::findExactMostViolatedMinCover(
   }
   
   // vectors are indexed in ratioSortIndex order 
-  // exactSolveKnapsack adds epsilon2_ to the capacity (for the lifting calls), so take it off
-  // here: the net capacity stays elementSum-b-epsilon_, which keeps tied items out of the
-  // packed set, so the complementary cover's weight really exceeds b.
-  exactSolveKnapsack(krow.getNumElements(), (elementSum-b-epsilon_-epsilon2_), p, w,
+  exactSolveKnapsack(krow.getNumElements(), (elementSum-b-epsilon_-knapsackCapacityMargin), p, w,
 		     exactOptVal, exactOptSol);
   
   if(objConst-exactOptVal < 1){
@@ -3572,13 +3578,8 @@ CglKnapsackCover::exactSolveKnapsack(
   // 1. initialize 
   double zhat = 0.0;
   z = 0.0;
-  // The capacity is relaxed by epsilon2_ (1e-5). In the lifting calls (liftUpDownAndUncomplementAndAdd,
-  // seqLiftAndUncomplementAndAdd), a larger capacity gives a larger psi_j and so a weaker, safe lifted
-  // coefficient: an item that fits within the feasibility tolerance must count as fitting, or the
-  // cut can exclude solutions that are feasible within tolerance (MIPLIB ran14x18-disj-8: an arc
-  // short by 1.3e-9 got coefficient 1, cutting off the optimum). findExactMostViolatedMinCover
-  // subtracts epsilon2_ from the capacity it passes, so its net capacity stays c-epsilon_.
-  double chat = c+epsilon2_;
+  // see knapsackCapacityMargin above: tolerance-safe for the lifting calls
+  double chat = c+knapsackCapacityMargin;
   p[n+1] = 0.0;
   w[n+1]= COIN_DBL_MAX;
   j=1;
