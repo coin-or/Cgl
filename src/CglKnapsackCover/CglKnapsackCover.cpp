@@ -1501,7 +1501,10 @@ CglKnapsackCover::findExactMostViolatedMinCover(
   }
   
   // vectors are indexed in ratioSortIndex order 
-  exactSolveKnapsack(krow.getNumElements(), (elementSum-b-epsilon_), p, w,
+  // exactSolveKnapsack adds epsilon2_ to the capacity (for the lifting calls), so take it off
+  // here: the net capacity stays elementSum-b-epsilon_, which keeps tied items out of the
+  // packed set, so the complementary cover's weight really exceeds b.
+  exactSolveKnapsack(krow.getNumElements(), (elementSum-b-epsilon_-epsilon2_), p, w,
 		     exactOptVal, exactOptSol);
   
   if(objConst-exactOptVal < 1){
@@ -3569,23 +3572,13 @@ CglKnapsackCover::exactSolveKnapsack(
   // 1. initialize 
   double zhat = 0.0;
   z = 0.0;
-  // NOTE: this used to be "c+epsilon2_", but epsilon2_ (1.0e-5) is a
-  // "violation margin" tolerance used elsewhere in this class to detect
-  // genuinely violated covers/cuts. Callers such as
-  // findExactMostViolatedMinCover() deliberately shrink the capacity they
-  // pass in (by epsilon_ == 1.0e-7) so that knapsack items whose weight
-  // exactly equals the residual capacity are excluded from the "packed"
-  // (non-cover) side, guaranteeing the complementary cover is a genuine
-  // violation (sum of cover weights > b). Adding back epsilon2_ here -
-  // two orders of magnitude larger than epsilon_ - overshoots that
-  // shrinkage and can let items back in that exactly (or near-exactly)
-  // fill the original, un-shrunk capacity. That produces a "cover" whose
-  // weight sum only equals (not exceeds) b, which is not a valid cover
-  // and leads to invalid generated cuts. Use a tiny, purely
-  // floating-point safety margin here instead, decoupled from the
-  // caller-facing epsilon2_ tolerance.
-  const double knapsackFpTolerance = 1.0e-9;
-  double chat = c+knapsackFpTolerance;
+  // The capacity is relaxed by epsilon2_ (1e-5). In the lifting calls (liftUpDownAndUncomplementAndAdd,
+  // seqLiftAndUncomplementAndAdd), a larger capacity gives a larger psi_j and so a weaker, safe lifted
+  // coefficient: an item that fits within the feasibility tolerance must count as fitting, or the
+  // cut can exclude solutions that are feasible within tolerance (MIPLIB ran14x18-disj-8: an arc
+  // short by 1.3e-9 got coefficient 1, cutting off the optimum). findExactMostViolatedMinCover
+  // subtracts epsilon2_ from the capacity it passes, so its net capacity stays c-epsilon_.
+  double chat = c+epsilon2_;
   p[n+1] = 0.0;
   w[n+1]= COIN_DBL_MAX;
   j=1;
