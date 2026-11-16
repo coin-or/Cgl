@@ -1388,6 +1388,20 @@ CglMixedIntegerRounding2::boundSubstitution(
     }
 
     if (fabs(coefCol) < EPSILON_) {
+      if (indCol >= numCols_) {
+        // A slack variable of an aggregated row: its bounds are [0, inf), and
+        // colUpperBound/colLowerBound have no entry for it. A positive term
+        // can be dropped as it is. A negative one can't be relaxed away (that
+        // needs a finite upper bound), so keep it in s as below. Aggregation
+        // scales rows, so this coefficient can be tiny while the slack is
+        // large: dropping it made cuts that cut off feasible points.
+        if (coefCol < 0.0) {
+          contVariablesInS.insert(indCol, coefCol);
+          sStar -= coefCol * xlpExtra[indCol - numCols_];
+          numCont++;
+        }
+        continue;
+      }
       // relax as far as possible
       if (coefCol<0.0)
 	rhsMixedKnapsack -= coefCol*colUpperBound[indCol];
