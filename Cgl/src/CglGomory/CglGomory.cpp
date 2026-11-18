@@ -732,6 +732,7 @@ CglGomory::generateCuts(
 
   */
   int * rowType = new int[numberRows];
+  double * rowRange = new double[numberRows];
   for (iRow=0;iRow<numberRows;iRow++) {
     if (rowIsBasic[iRow]<0&&rowUpper[iRow]>rowLower[iRow]+1.0e-7) {
       int type=0;
@@ -773,6 +774,20 @@ CglGomory::generateCuts(
 	}
 	if (allInteger) {
 	  type |= 4;
+	  // range of the activity, for the integer slack
+	  double lo = 0.0, hi = 0.0;
+	  for (k=rowStart[iRow];k<rowStart[iRow]+rowLength[iRow];k++) {
+	    double element = rowElements[k];
+	    int iColumn = column[k];
+	    if (element>0.0) {
+	      lo += element*colLower[iColumn];
+	      hi += element*colUpper[iColumn];
+	    } else {
+	      lo += element*colUpper[iColumn];
+	      hi += element*colLower[iColumn];
+	    }
+	  }
+	  rowRange[iRow] = CoinMin(hi-lo,rowUpper[iRow]-rowLower[iRow]);
 	}
       }
       rowType[iRow]=type;
@@ -1002,6 +1017,9 @@ CglGomory::generateCuts(
 	}
 #endif
 	double largestFactor=0.0;
+	// sum of |alpha| times the distance of each nonbasic variable or
+	// slack from the bound it is taken to be at
+	double offBound=0.0;
 	for (j=0;j<numberInArray;j++) {
 	  int indexValue=arrayRows[j];
 	  double value=arrayElements[indexValue];
@@ -1048,6 +1066,7 @@ CglGomory::generateCuts(
 	      if (iColumn==52) printf("for basic %d, column %d has alpha %g, colsol %g\n",
 				      iColumn,j,value,colsol[j]);
 #endif
+	      offBound += fabs(value)*fabs(colsol[j]-(swap[j] ? colUpper[j] : colLower[j]));
 	      // deal with bounds
 	      if (swap[j]) {
 		//reducedValue -= value*colUpper[j];
@@ -1064,6 +1083,12 @@ CglGomory::generateCuts(
 	      if (intVar[j]) {
 		// integer
 		coefficient = above_integer(value);
+		// above_integer rounds anything within 1e-9 of an integer to
+		// fractional part 0, which drops the term; keep the true
+		// fractional part when that could matter over the column's range
+		if (!coefficient&&value!=floor(value)&&
+		    fabs(value-floor(value+0.5))*(colUpper[j]-colLower[j])>1.0e-9)
+		  coefficient = value-floor(value);
 		if (coefficient > reducedValue) {
 		  coefficient = ratio * (1.0-coefficient);
 		} 
@@ -1118,6 +1143,7 @@ CglGomory::generateCuts(
 	  double value = arrayElements[iRow];
 	  int type=rowType[iRow];
 	  if (type&&fabs(value)>=1.0e-16) {
+	    offBound += fabs(value)*fabs(rowActivity[iRow]-((type&1)!=0 ? rowUpper[iRow] : rowLower[iRow]));
 	    if ((type&1)==0) {
 	      // negate to get correct coefficient
 	      value = - value;
@@ -1126,6 +1152,10 @@ CglGomory::generateCuts(
 	    if ((type&4)!=0) {
 	      // integer
 	      coefficient = above_integer(value);
+	      // as for columns - an integer slack can be very large
+	      if (!coefficient&&value!=floor(value)&&
+		  fabs(value-floor(value+0.5))*rowRange[iRow]>1.0e-9)
+		coefficient = value-floor(value);
 	      if (coefficient > reducedValue) {
 		coefficient = ratio * (1.0-coefficient);
 	      } 
@@ -1168,6 +1198,13 @@ CglGomory::generateCuts(
 	//assert (n); can be 0!
 	// If too many - just clear vector and skip
 	if (n>limit) {
+	  cutVector.clear();
+	  continue;
+	}
+	// The derivation takes the right-hand side from colsol[iColumn] and
+	// assumes every nonbasic variable and slack is at its bound. If the LP
+	// point is off them (an unclean solve), f0 is wrong and so is the cut.
+	if (offBound>1.0e-6) {
 	  cutVector.clear();
 	  continue;
 	}
@@ -1311,16 +1348,21 @@ CglGomory::generateCuts(
 	      for (j=0; j<number+1;j++) {
 		double value = fabs(packed[j]);
 		double dxInt = value*multiplier;
-		xInt[j]= static_cast<int> (dxInt+0.5); 
 #if CGL_DEBUG>1
 		printf("%g => %g   \n",value,dxInt);
 #endif
-		if (dxInt>1.0e9||fabs(dxInt-xInt[j])> 1.0e-8) {
+		if (dxInt>1.0e9) {
+		  nOverflow++;
+		  break;
+		}
+
+		xInt[j]= static_cast<int> (dxInt+0.5);
+		if (fabs(dxInt-xInt[j])> 1.0e-8) {
 		  nOverflow++;
 		  break;
 		}
 	      }
-	      
+
 	      if (nOverflow){
 #ifdef CGL_DEBUG
 		printf("Gomory Scaling: Warning: Overflow detected \n");
@@ -1764,6 +1806,7 @@ CglGomory::generateCuts(
   delete [] rowActivity;
   delete [] swap;
   delete [] rowType;
+  delete [] rowRange;
   delete [] packed;
   delete [] rowIsBasic;
   delete [] columnIsBasic;
