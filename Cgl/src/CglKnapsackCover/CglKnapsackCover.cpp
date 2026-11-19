@@ -24,6 +24,15 @@
 //-----------------------------------------------------------------------------
 // Generate knapsack cover cuts
 //------------------------------------------------------------------- 
+// Capacity margin for exactSolveKnapsack. In the lifting calls (liftUpDownAndUncomplementAndAdd,
+// seqLiftAndUncomplementAndAdd) a larger capacity gives a larger psi_j and so a weaker, safe
+// coefficient: an item that fits to within the primal feasibility tolerance must count as fitting,
+// or the cut can remove solutions that are feasible within tolerance (MIPLIB ran14x18-disj-8: an
+// arc 1.3e-9 short of fitting got coefficient 1, which cut off the optimum).
+// findExactMostViolatedMinCover subtracts the same margin from the capacity it passes, so its net
+// capacity stays elementSum-b-epsilon_ and tied items stay out of the packed set.
+static const double knapsackCapacityMargin = 1.0e-6;
+
 void CglKnapsackCover::generateCuts(const OsiSolverInterface& si, OsiCuts& cs,
 				    const CglTreeInfo info)
 {
@@ -1502,7 +1511,7 @@ CglKnapsackCover::findExactMostViolatedMinCover(
   }
   
   // vectors are indexed in ratioSortIndex order 
-  exactSolveKnapsack(krow.getNumElements(), (elementSum-b-epsilon_), p, w,
+  exactSolveKnapsack(krow.getNumElements(), (elementSum-b-epsilon_-knapsackCapacityMargin), p, w,
 		     exactOptVal, exactOptSol);
   
   if(objConst-exactOptVal < 1){
@@ -2238,8 +2247,26 @@ CglKnapsackCover::liftUpDownAndUncomplementAndAdd(
 
   //assert ( unsatRhs > 0 );
 
+  // BUG FIX: unsatRhs = b - sum(atOne elements) can be <= 0 when the
+  // variables fixed at 1 in the current LP relaxation (atOne) already
+  // consume all (or more than) the knapsack's capacity by themselves.
+  // The original code silently fell through to the "nothing to lift"
+  // path below, which only ever set the cut to "fracCover <= |fracCover|-1"
+  // WITHOUT including the atOne variables in either the cut or the rhs.
+  // That is mathematically invalid: the genuine cover here is
+  // fracCover UNION atOne (its element sum exceeds b precisely because
+  // atOne alone already reaches/exceeds b), so a correct (unlifted) cover
+  // cut must include the atOne variables at coefficient 1 with
+  // cutRhs = |fracCover|+|atOne|-1. Without this, the emitted cut was
+  // "too strong" (e.g. forcing a variable to 0) and could cut off
+  // genuinely feasible/optimal integer solutions.
+  if (unsatRhs<=0.0 && atOne.getNumElements()>0) {
+    cut.setConstant(atOne.getNumElements(),atOne.getIndices(),1.0);
+    cutRhs += atOne.getNumElements();
+    unsatRhs = 0.0; // nothing left to lift for remainder either
+  }
   // If there is something to lift, then calculate the lifted coefficients
-  if (unsatRhs>0.0&&(remainder.getNumElements()+atOne.getNumElements())> 0){
+  else if (unsatRhs>0.0&&(remainder.getNumElements()+atOne.getNumElements())> 0){
     
     // What order to lift?
     // Take the remainder vars in decreasing order of their
@@ -3552,7 +3579,8 @@ CglKnapsackCover::exactSolveKnapsack(
   // 1. initialize 
   double zhat = 0.0;
   z = 0.0;
-  double chat = c+epsilon2_;
+  // see knapsackCapacityMargin above: tolerance-safe for the lifting calls
+  double chat = c+knapsackCapacityMargin;
   p[n+1] = 0.0;
   w[n+1]= COIN_DBL_MAX;
   j=1;
