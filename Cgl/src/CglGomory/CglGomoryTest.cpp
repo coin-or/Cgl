@@ -32,7 +32,7 @@ CglGomoryUnitTest(
     assert (aGenerator.getLimit()==50);
     assert (aGenerator.getAway()==0.05);
   }
-  
+
   // Test copy & assignment etc
   {
     CglGomory rhs;
@@ -53,7 +53,7 @@ CglGomoryUnitTest(
     CglGomory test1;
     int i;
     int nOldCuts=0,nRowCuts;
- 
+
     // matrix data
     //deliberate hiccup of 2 between 0 and 1
     CoinBigIndex start[5]={0,4,7,8,9};
@@ -61,13 +61,13 @@ CglGomoryUnitTest(
     int rows[11]={0,2,-1,-1,0,1,2,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0,1,1,1};
     CoinPackedMatrix matrix(true,3,5,8,elements,rows,start,length);
-    
+
     // rim data (objective not used just yet)
     double rowLower[5]={14.0,3.0,3.0,1.0e10,1.0e10};
     double rowUpper[5]={14.0,3.0,3.0,-1.0e10,-1.0e10};
     double colLower[7]={0.0,0.0,0.0,0.0,0.0,0.0,0.0};
     double colUpper[7]={100.0,100.0,100.0,100.0,100.0,100.0,100.0};
-  
+
     // integer
     char intVar[7]={2,2,2,2,2,2,2};
 
@@ -262,7 +262,7 @@ CglGomoryUnitTest(
     nRowCuts = osicuts.sizeRowCuts();
     std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==nOldCuts);
-    
+
   }
   // Test explicit form - this time with x4 flipped
   if (1) {
@@ -270,7 +270,7 @@ CglGomoryUnitTest(
     CglGomory test1;
     int i;
     int nOldCuts=0,nRowCuts;
- 
+
     // matrix data
     //deliberate hiccup of 2 between 0 and 1
     CoinBigIndex start[5]={0,4,7,8,9};
@@ -278,13 +278,13 @@ CglGomoryUnitTest(
     int rows[11]={0,2,-1,-1,0,1,2,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0,1,-1,1};
     CoinPackedMatrix matrix(true,3,5,8,elements,rows,start,length);
-    
+
     // rim data (objective not used just yet)
     double rowLower[5]={14.0,-5.0,3.0,1.0e10,1.0e10};
     double rowUpper[5]={14.0,-5.0,3.0,-1.0e10,-1.0e10};
     double colLower[7]={0.0,0.0,0.0,0.0,0.0,0.0,0.0};
     double colUpper[7]={100.0,100.0,100.0,8.0,100.0,100.0,100.0};
-  
+
     // integer
     char intVar[7]={2,2,2,2,2,2,2};
 
@@ -479,15 +479,15 @@ CglGomoryUnitTest(
     nRowCuts = osicuts.sizeRowCuts();
     std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==nOldCuts);
-    
+
   }
-  // Test with slacks 
+  // Test with slacks
   if (1) {
     OsiCuts osicuts;
     CglGomory test1;
     int i;
     int nOldCuts=0,nRowCuts;
- 
+
     // matrix data
     //deliberate hiccup of 2 between 0 and 1
     CoinBigIndex start[5]={0,4};
@@ -495,13 +495,13 @@ CglGomoryUnitTest(
     int rows[11]={0,2,-1,-1,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0};
     CoinPackedMatrix matrix(true,3,2,5,elements,rows,start,length);
-    
+
     // rim data (objective not used just yet)
     double rowLower[5]={-1.0e10,-1.0e10,-1.0e10,1.0e10,1.0e10};
     double rowUpper[5]={14.0,3.0,3.0,-1.0e10,-1.0e10};
     double colLower[2]={0.0,0.0};
     double colUpper[2]={100.0,100.0};
-  
+
     // integer
     char intVar[2]={2,2};
 
@@ -690,7 +690,7 @@ CglGomoryUnitTest(
     nRowCuts = osicuts.sizeRowCuts();
     std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==nOldCuts);
-    
+
   }
   // swap some rows to G
   if (1) {
@@ -698,7 +698,7 @@ CglGomoryUnitTest(
     CglGomory test1;
     int i;
     int nOldCuts=0,nRowCuts;
- 
+
     // matrix data
     //deliberate hiccup of 2 between 0 and 1
     CoinBigIndex start[5]={0,4};
@@ -706,13 +706,13 @@ CglGomoryUnitTest(
     int rows[11]={0,2,-1,-1,0,1,2};
     double elements[11]={-7.0,-2.0,1.0e10,1.0e10,+2.0,1.0,+2.0};
     CoinPackedMatrix matrix(true,3,2,5,elements,rows,start,length);
-    
+
     // rim data (objective not used just yet)
     double rowUpper[5]={1.0e10,3.0,1.0e10,-1.0e10,-1.0e10};
     double rowLower[5]={-14.0,-1.0e10,-3.0,1.0e10,1.0e10};
     double colLower[2]={0.0,0.0};
     double colUpper[2]={100.0,100.0};
-  
+
     // integer
     char intVar[2]={2,2};
 
@@ -901,7 +901,7 @@ CglGomoryUnitTest(
     nRowCuts = osicuts.sizeRowCuts();
     std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==nOldCuts);
-    
+
   }
 
 
@@ -914,7 +914,7 @@ CglGomoryUnitTest(
     CglGomory test1;
     int i;
     int nOldCuts=0,nRowCuts;
- 
+
     // matrix data
     //deliberate hiccup of 2 between 0 and 1
     CoinBigIndex start[5]={0,4,7,8,9};
@@ -922,13 +922,13 @@ CglGomoryUnitTest(
     int rows[11]={0,2,-1,-1,0,1,2,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0,1,1,1};
     CoinPackedMatrix matrix(true,3,5,8,elements,rows,start,length);
-    
+
     // rim data (objective not used just yet)
     double rowLower[5]={14.0,3.0,3.0,1.0e10,1.0e10};
     double rowUpper[5]={14.0,3.0,3.0,-1.0e10,-1.0e10};
     double colLower[7]={0.0,0.0,0.0,0.0,0.0,0.0,0.0};
     double colUpper[7]={100.0,100.0,100.0,100.0,100.0,100.0,100.0};
-  
+
     // integer
     char intVar[7]={2,0,0,0,0,0,0};
 
@@ -1044,15 +1044,15 @@ CglGomoryUnitTest(
     nRowCuts = osicuts.sizeRowCuts();
     std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==nOldCuts);
-    
+
   }
-  // Test explicit form - this time with x4 flipped 
+  // Test explicit form - this time with x4 flipped
   if (1) {
     OsiCuts osicuts;
     CglGomory test1;
     int i;
     int nOldCuts=0,nRowCuts;
- 
+
     // matrix data
     //deliberate hiccup of 2 between 0 and 1
     CoinBigIndex start[5]={0,4,7,8,9};
@@ -1060,13 +1060,13 @@ CglGomoryUnitTest(
     int rows[11]={0,2,-1,-1,0,1,2,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0,1,-1,1};
     CoinPackedMatrix matrix(true,3,5,8,elements,rows,start,length);
-    
+
     // rim data (objective not used just yet)
     double rowLower[5]={14.0,-5.0,3.0,1.0e10,1.0e10};
     double rowUpper[5]={14.0,-5.0,3.0,-1.0e10,-1.0e10};
     double colLower[7]={0.0,0.0,0.0,0.0,0.0,0.0,0.0};
     double colUpper[7]={100.0,100.0,100.0,8.0,100.0,100.0,100.0};
-  
+
     // integer
     char intVar[7]={2,0,0,0,0,0,0};
 
@@ -1100,7 +1100,7 @@ CglGomoryUnitTest(
     std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==1);
     // cuts always <=
-    int testCut=0; 
+    int testCut=0;
     double rhs=10.0/7.0;
     double testCut1[5]={0.0,0.0,-1.0/7.0,2.0/7.0,0.0};
     double * cut = testCut1;
@@ -1182,15 +1182,15 @@ CglGomoryUnitTest(
     nRowCuts = osicuts.sizeRowCuts();
     std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==nOldCuts);
-    
+
   }
-  // Test with slacks 
+  // Test with slacks
   if (1) {
     OsiCuts osicuts;
     CglGomory test1;
     int i;
     int nOldCuts=0,nRowCuts;
- 
+
     // matrix data
     //deliberate hiccup of 2 between 0 and 1
     CoinBigIndex start[5]={0,4};
@@ -1198,13 +1198,13 @@ CglGomoryUnitTest(
     int rows[11]={0,2,-1,-1,0,1,2};
     double elements[11]={7.0,2.0,1.0e10,1.0e10,-2.0,1.0,-2.0};
     CoinPackedMatrix matrix(true,3,2,5,elements,rows,start,length);
-    
+
     // rim data (objective not used just yet)
     double rowLower[5]={-1.0e10,-1.0e10,-1.0e10,1.0e10,1.0e10};
     double rowUpper[5]={14.0,3.0,3.0,-1.0e10,-1.0e10};
     double colLower[2]={0.0,0.0};
     double colUpper[2]={100.0,100.0};
-  
+
     // integer
     char intVar[2]={2,0};
 
@@ -1315,7 +1315,7 @@ CglGomoryUnitTest(
     nRowCuts = osicuts.sizeRowCuts();
     std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==nOldCuts);
-    
+
   }
   // swap some rows to G
   if (1) {
@@ -1323,7 +1323,7 @@ CglGomoryUnitTest(
     CglGomory test1;
     int i;
     int nOldCuts=0,nRowCuts;
- 
+
     // matrix data
     //deliberate hiccup of 2 between 0 and 1
     CoinBigIndex start[5]={0,4};
@@ -1331,13 +1331,13 @@ CglGomoryUnitTest(
     int rows[11]={0,2,-1,-1,0,1,2};
     double elements[11]={-7.0,-2.0,1.0e10,1.0e10,+2.0,1.0,+2.0};
     CoinPackedMatrix matrix(true,3,2,5,elements,rows,start,length);
-    
+
     // rim data (objective not used just yet)
     double rowUpper[5]={1.0e10,3.0,1.0e10,-1.0e10,-1.0e10};
     double rowLower[5]={-14.0,-1.0e10,-3.0,1.0e10,1.0e10};
     double colLower[2]={0.0,0.0};
     double colUpper[2]={100.0,100.0};
-  
+
     // integer
     char intVar[2]={2,0};
 
@@ -1448,7 +1448,7 @@ CglGomoryUnitTest(
     nRowCuts = osicuts.sizeRowCuts();
     std::cout<<"There are "<<nRowCuts<<" gomory cuts"<<std::endl;
     assert (nRowCuts==nOldCuts);
-    
+
   }
 
   // Miplib3 problem p0033
@@ -1456,47 +1456,49 @@ CglGomoryUnitTest(
     // Setup
     OsiSolverInterface  * siP = baseSiP->clone();
     std::string fn(mpsDir+"p0033");
-    siP->readMps(fn.c_str(),"mps");
-    siP->activateRowCutDebugger("p0033");
-    CglGomory test;
+    const int error = siP->readMps(fn.c_str(),"mps");
+    if (!error) {
+      siP->activateRowCutDebugger("p0033");
+      CglGomory test;
 
-    // Solve the LP relaxation of the model and
-    // print out ofv for sake of comparison 
-    siP->initialSolve();
-    double lpRelaxBefore=siP->getObjValue();
-    std::cout<<"Initial LP value: "<<lpRelaxBefore<<std::endl;
-    assert( eq(lpRelaxBefore, 2520.5717391304347) );
+      // Solve the LP relaxation of the model and
+      // print out ofv for sake of comparison
+      siP->initialSolve();
+      double lpRelaxBefore=siP->getObjValue();
+      std::cout<<"Initial LP value: "<<lpRelaxBefore<<std::endl;
+      assert( eq(lpRelaxBefore, 2520.5717391304347) );
 
-    // Fails with OsiCpx, OsiXpr:
-    /**********
-    double mycs[] = {0, 1, 0, 0, -2.0837010502455788e-19, 1, 0, 0, 1,
-		       0.021739130434782594, 0.35652173913043478, 
-		       -6.7220534694101275e-18, 5.3125906451789717e-18, 
-		       1, 0, 1.9298798670241979e-17, 0, 0, 0,
-		       7.8875708048320448e-18, 0.5, 0, 
-		       0.85999999999999999, 1, 1, 0.57999999999999996,
-		       1, 0, 1, 0, 0.25, 0, 0.67500000000000004};
-    siP->setColSolution(mycs);
-    ****/
+      // Fails with OsiCpx, OsiXpr:
+      /**********
+        double mycs[] = {0, 1, 0, 0, -2.0837010502455788e-19, 1, 0, 0, 1,
+        0.021739130434782594, 0.35652173913043478,
+        -6.7220534694101275e-18, 5.3125906451789717e-18,
+        1, 0, 1.9298798670241979e-17, 0, 0, 0,
+        7.8875708048320448e-18, 0.5, 0,
+        0.85999999999999999, 1, 1, 0.57999999999999996,
+        1, 0, 1, 0, 0.25, 0, 0.67500000000000004};
+        siP->setColSolution(mycs);
+       ****/
 
-    OsiCuts cuts;    
-    
-    // Test generateCuts method
-    test.generateCuts(*siP,cuts);
-    int nRowCuts = cuts.sizeRowCuts();
-    std::cout<<"There are "<<nRowCuts<<" Gomory cuts"<<std::endl;
-    assert(cuts.sizeRowCuts() > 0);
-    OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cuts);
-    
-    siP->resolve();
-    double lpRelaxAfter=siP->getObjValue(); 
-    std::cout<<"LP value with cuts: "<<lpRelaxAfter<<std::endl;
-    //assert( eq(lpRelaxAfter, 2592.1908295194507) );
-    assert( lpRelaxAfter> 2545.0 );
-    assert( lpRelaxBefore < lpRelaxAfter );
-    assert(lpRelaxAfter < 3089.1);
-    
+      OsiCuts cuts;
+
+      // Test generateCuts method
+      test.generateCuts(*siP,cuts);
+      int nRowCuts = cuts.sizeRowCuts();
+      std::cout<<"There are "<<nRowCuts<<" Gomory cuts"<<std::endl;
+      assert(cuts.sizeRowCuts() > 0);
+      OsiSolverInterface::ApplyCutsReturnCode rc = siP->applyCuts(cuts);
+
+      siP->resolve();
+      double lpRelaxAfter=siP->getObjValue();
+      std::cout<<"LP value with cuts: "<<lpRelaxAfter<<std::endl;
+      //assert( eq(lpRelaxAfter, 2592.1908295194507) );
+      assert( lpRelaxAfter> 2545.0 );
+      assert( lpRelaxBefore < lpRelaxAfter );
+      assert(lpRelaxAfter < 3089.1);
+    }
+
     delete siP;
-  } 
+  }
 }
 
