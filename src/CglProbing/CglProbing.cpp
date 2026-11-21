@@ -210,6 +210,7 @@ public:
         OsiRowCut2 *newCutPtr = new OsiRowCut2(whichRow);
         newCutPtr->setLb(newLb);
         newCutPtr->setUb(newUb);
+        newCutPtr->setEffectiveness(cut.effectiveness());
         newCutPtr->setRow(std::move(cut.mutableRow()));
         rowCut_[numberCuts_++] = newCutPtr;
         return 0;
@@ -249,9 +250,10 @@ public:
         }
       }
     } else {
-      // just best
+      // just best: keep the nRows_ most effective cuts, cuts that
+      // strengthen a row first
       double *effectiveness = new double[numberCuts_];
-      int iCut = 0;
+      int *sequence = new int[numberCuts_];
       for (i = 0; i < numberCuts_; i++) {
         double value = -rowCut_[i]->effectiveness();
         if (whichRow) {
@@ -259,24 +261,27 @@ public:
           if (iRow >= 0)
             value -= 1.0e10;
         }
-        effectiveness[iCut++] = value;
+        effectiveness[i] = value;
+        sequence[i] = i;
       }
-      std::sort(effectiveness, effectiveness + numberCuts_);
-      double threshold = -1.0e20;
-      if (iCut > nRows_)
-        threshold = effectiveness[nRows_];
+      CoinSort_2(effectiveness, effectiveness + numberCuts_, sequence);
+      char *keep = new char[numberCuts_];
+      memset(keep, 0, numberCuts_);
+      for (i = 0; i < nRows_ && i < numberCuts_; i++)
+        keep[sequence[i]] = 1;
       for (i = 0; i < numberCuts_; i++) {
-        if (rowCut_[i]->effectiveness() > threshold) {
+        if (keep[i]) {
           cs.insert(*rowCut_[i]);
           if (whichRow) {
             int iRow = rowCut_[i]->whichRow();
             if (iRow >= 0 && !whichRow[iRow])
               whichRow[iRow] = cs.rowCutPtr(numberCuts);
-            ;
           }
           numberCuts++;
         }
       }
+      delete[] keep;
+      delete[] sequence;
       delete[] effectiveness;
     }
     for (i = 0; i < numberCuts_; i++) {
