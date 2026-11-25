@@ -396,7 +396,18 @@ void CglTwomir::generateCuts(const OsiSolverInterface & si, OsiCuts & cs,
 	if (largest<5.0e9*smallest&&goodCut) {
 	  rowcut.setRow(number, cutIndex, packed);
 	  rowcut.setUb(si.getInfinity());
-	  rowcut.setLb(rhs);
+	  // Relax the RHS a tiny bit to absorb floating-point roundoff
+	  // accumulated upstream (row scaling, DGG_nicefyConstraint's
+	  // near-integer coefficient rounding/padding -- see
+	  // DGG_NICEFY_MAX_PADDING in CglTwomir.hpp, which alone can
+	  // already shift the RHS by up to 1e-6, and can compound across
+	  // multiple adjusted coefficients in the same cut). Without this,
+	  // a cut that is correct only up to roundoff can be marginally
+	  // too tight and exclude the true optimum (observed: a TwoMirCuts
+	  // cut on MIPLIB2017 instance nu25-pr12 that excluded the
+	  // certified-optimal solution by ~1.14e-6, well above
+	  // DGG_NICEFY_MIN_FIX/DGG_MIN_RHO's 1e-7 scale).
+	  rowcut.setLb(rhs - 1.0e-5*(1.0 + fabs(rhs)));
 	  cs.insertIfNotDuplicate(rowcut);
 	}
 #else
@@ -1446,7 +1457,10 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
   const CoinPackedMatrix *colMatrixPtr = si->getMatrixByCol();
   rval = factorization.factorize(*colMatrixPtr, rowIsBasic, colIsBasic); 
   /* 0 = okay. -1 = singular. -2 = too many in basis. -99 = memory. */
-  DGG_TEST2(rval, 1, "factorization error = %d", rval);
+  if (rval) {
+    if (talk) printf ("2mir_test: factorization error = %d\n", rval);
+    DGG_CHECKRVAL1(rval, 1);
+  }
 
   for(k=0; k<data->ncol; k++){
     if (!(DGG_isBasic(data, k) && DGG_isInteger(data,k))) continue;
@@ -1457,7 +1471,7 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
     base->nz = 0;
     rval = DGG_getTableauConstraint(k, solver_ptr, data, base, 
                                     colIsBasic,rowIsBasic,factorization,0);
-    DGG_CHECKRVAL(rval, rval);
+    DGG_CHECKRVAL1(rval, rval);
 
     if (base->nz == 0){
       printf ("2mir_test: why does constraint not exist ?\n");
@@ -1466,9 +1480,10 @@ DGG_generateTabRowCuts( DGG_list_t *cut_list,
 
     if (base->nz > 500) continue;
     rval = DGG_generateCutsFromBase(base, cut_list, data, solver_ptr);
-    DGG_CHECKRVAL(rval, rval);
+    DGG_CHECKRVAL1(rval, rval);
   }
 
+ CLEANUP:
   free(rowIsBasic);
   free(colIsBasic);
 
@@ -1616,6 +1631,11 @@ DGG_generateCutsFromBase( DGG_constraint_t *orig_base,
   if (orig_base->sense == 'L') return 0;
   if (orig_base->nz == 0) return 0;
 
+#define CGL_TWOMIR_LARGE_RHS 1.0e10
+#ifdef CGL_TWOMIR_LARGE_RHS 
+  if (fabs(orig_base->rhs) > CGL_TWOMIR_LARGE_RHS )
+    return 0;
+#endif
   rval = DGG_transformConstraint(data, &x, &rc, &isint, orig_base);
   double frac = frac_part(orig_base->rhs);
   //printf ("frac = %.7f, r %.7f, fr %.7f\n", frac, orig_base->rhs, floor(orig_base->rhs));
@@ -1888,6 +1908,11 @@ int DGG_build2step( double alpha,
   DGG_TEST( DGG_is_a_multiple_of_b(alpha, bht), 1, "can't generate simple 2mir in limiting case");
   /* ensure that rho is not zero */
   DGG_TEST2( rho < DGG_MIN_RHO, 1, "rho (%f) too small", rho);
+  /* cap tau: it multiplies rho (and every coefficient below), so an
+     unbounded tau can amplify residual floating-point noise in rho into a
+     visibly wrong cut RHS/coefficients, even with DGG_MIN_RHO/DGG_MIN_ALPHA
+     enforced above. See DGG_MAX_TAU's comment in CglTwomir.hpp. */
+  DGG_TEST2( tau > DGG_MAX_TAU, 1, "tau (%f) too large" , tau);
 
   /* initialize constraint */
   tmir = DGG_newConstraint( base->nz );

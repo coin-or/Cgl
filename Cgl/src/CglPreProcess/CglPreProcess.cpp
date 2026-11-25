@@ -2602,6 +2602,11 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
       }
     }
   }
+  // The pass loop can also end on its own time test, which leaves the
+  // trailing model_[]/presolve_[] slots unused; postProcess() walks all
+  // numberSolvers_ of them and dereferences model_[iPass].
+  while (numberSolvers_ > 1 && !model_[numberSolvers_ - 1])
+    numberSolvers_--;
 #if CGL_WRITEMPS
   const OsiRowCutDebugger *debugger = returnModel->getRowCutDebugger();
   if (debugger)
@@ -3078,12 +3083,53 @@ CglPreProcess::preProcessNonDefault(OsiSolverInterface &model,
     assert(returnModel->getRowCutDebugger());
 #endif
 
+  // createOriginalIndices() sizes originalColumn_/originalRow_ from the
+  // last presolve pass (or the original model if there was none), which
+  // can be smaller than the model returned here: modified() adds rows,
+  // and slack columns are added before the passes.  Callers index
+  // originalColumns()/originalRows() with the returned model's
+  // dimensions (e.g. the loop right below), so extend the arrays to it
+  // and mark the extra columns/rows as unmapped (-1).
+  if (returnModel) {
+    createOriginalIndices();
+    int nColumns = originalModel_->getNumCols();
+    int nRows = originalModel_->getNumRows();
+    for (int iPass = numberSolvers_ - 1; iPass >= 0; iPass--) {
+      if (presolve_[iPass]) {
+        nColumns = model_[iPass]->getNumCols();
+        nRows = model_[iPass]->getNumRows();
+        break;
+      }
+    }
+    int nColumnsOut = returnModel->getNumCols();
+    if (nColumnsOut > nColumns) {
+      int *temp = new int[nColumnsOut];
+      memcpy(temp, originalColumn_, nColumns * sizeof(int));
+      for (int i = nColumns; i < nColumnsOut; i++)
+        temp[i] = -1;
+      delete[] originalColumn_;
+      originalColumn_ = temp;
+    }
+    int nRowsOut = returnModel->getNumRows();
+    if (nRowsOut > nRows) {
+      int *temp = new int[nRowsOut];
+      memcpy(temp, originalRow_, nRows * sizeof(int));
+      for (int i = nRows; i < nRowsOut; i++)
+        temp[i] = -1;
+      delete[] originalRow_;
+      originalRow_ = temp;
+    }
+  }
 
-  if (returnModel != &model && keepColumnNames_)
+  if (returnModel && returnModel != &model && keepColumnNames_)
   {
     returnModel->setIntParam( OsiNameDiscipline, 1 );
-    for ( int i=0 ; (i<returnModel->getNumCols()) ; i++ )
-      returnModel->setColName( i, model.getColName( originalColumns()[i] ) );
+    const int *originalColumnsForNames = originalColumns();
+    for ( int i=0 ; (i<returnModel->getNumCols()) ; i++ ) {
+      int iColumn = originalColumnsForNames[i];
+      if (iColumn>=0 && iColumn<model.getNumCols())
+	returnModel->setColName( i, model.getColName(iColumn) );
+    }
   }
 
   return returnModel;
@@ -4389,6 +4435,13 @@ CglPreProcess::modified(OsiSolverInterface *model,
             rowTypeAll[iRow] = 0;
           }
         }
+      } else {
+	// continuous - take out to be on safe side
+	for (CoinBigIndex j = columnStart[iColumn];
+	     j < columnStart[iColumn] + columnLength[iColumn]; j++) {
+	  int iRow = row[j];
+	  rowTypeAll[iRow] = 0;
+	}
       }
     }
 #if CBC_USEFUL_PRINTING > 0
@@ -4639,7 +4692,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
                   printf("fixing %d to 0\n", iColumn);
 #endif
                   colUpper[0] = 0.0;
-                  newModel->setColLower(iColumn, 0.0);
+                  newModel->setColUpper(iColumn, 0.0);
                   nMarkRow = 0; // stop looking
                 }
                 if (colLower[0] > colUpper[0] + 1.0e-6 || colLower[1] > colUpper[1] + 1.0e-6) {
@@ -4765,6 +4818,17 @@ CglPreProcess::modified(OsiSolverInterface *model,
                       if (stronger) {
                         int strongerEl = 2;
                         for (int k3 = 1; k3 < nBits; k3++) {
+                          // A magnitude-only comparison of el[k3][k1] vs el[k3][k2] is only
+                          // meaningful when the two rows use the same-signed coefficient for
+                          // this shared variable (i.e. the same literal sense). If the signs
+                          // disagree (e.g. +1 in one row, -1 in the other, both nonzero), the
+                          // rows are not comparable for domination purposes -- treat as "not
+                          // stronger" rather than letting the raw numeric compare silently
+                          // fall through and wrongly conclude domination.
+                          if (el[k3][k1] * el[k3][k2] < 0.0) {
+                            stronger = 0;
+                            break;
+                          }
                           if (scaleFactor[k1] * el[k3][k1] < scaleFactor[k2] * el[k3][k2] - 1.0e-9) {
                             stronger = 0;
                             break;
@@ -6195,7 +6259,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
               numberFixed++;
             } else {
               numberBounds++;
-              if (columnLower[iColumn] > columnUpper[iColumn])
+              if (columnLower[iColumn] > columnUpper[iColumn] + 1.0e-12)
                 feasible = false;
             }
           }
@@ -6219,7 +6283,7 @@ CglPreProcess::modified(OsiSolverInterface *model,
               numberFixed++;
             } else {
               numberBounds++;
-              if (columnLower[iColumn] > columnUpper[iColumn])
+              if (columnLower[iColumn] > columnUpper[iColumn]+1.0e-12)
                 feasible = false;
             }
           }
@@ -6669,9 +6733,15 @@ void CglPreProcess::createOriginalIndices()
     iPass--;
     for (; iPass >= 0; iPass--) {
       const int *originalColumns = presolve_[iPass]->originalColumns();
+      int nColumnsNow = model_[iPass]->getNumCols();
       int i;
-      for (i = 0; i < nColumns; i++)
-        originalColumn_[i] = originalColumns[originalColumn_[i]];
+      for (i = 0; i < nColumns; i++) {
+        int iColumn = originalColumn_[i];
+        if (iColumn >= 0 && iColumn < nColumnsNow)
+          originalColumn_[i] = originalColumns[iColumn];
+        else
+          originalColumn_[i] = -1;
+      }
       const int *originalRows = presolve_[iPass]->originalRows();
       int nRowsNow = model_[iPass]->getNumRows();
       for (i = 0; i < nRows; i++) {
